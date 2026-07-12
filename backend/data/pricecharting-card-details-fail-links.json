@@ -1,0 +1,24 @@
+{
+  "updatedAt": "2026-07-12T06:10:59.220Z",
+  "count": 2,
+  "links": [
+    {
+      "key": "ASC:109",
+      "setCode": "ASC",
+      "setName": "Ascended Heroes",
+      "cardNo": "109",
+      "cardName": "Cynthia's Gible",
+      "error": "Card not found on PriceCharting",
+      "failedAt": "2026-07-12T06:10:56.015Z"
+    },
+    {
+      "key": "ASC:100",
+      "setCode": "ASC",
+      "setName": "Ascended Heroes",
+      "cardNo": "100",
+      "cardName": "Team Rocket's Diglett",
+      "error": "Card not found on PriceCharting",
+      "failedAt": "2026-07-12T06:10:35.418Z"
+    }
+  ]
+}

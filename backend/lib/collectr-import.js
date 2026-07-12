@@ -1,0 +1,452 @@
+"use strict";
+
+const COLLECTR_PROFILE_RE =
+  /^(?:https?:\/\/)?(?:app\.)?getcollectr\.com\/showcase\/profile\/@?([a-z0-9_]{3,24})\/?(?:\?.*)?$/i;
+const COLLECTR_HANDLE_RE = /^@?([a-z0-9_]{3,24})$/i;
+const COLLECTR_API_ORIGIN = "https://api-v2.getcollectr.com";
+const COLLECTR_ANON_USERNAME = "00000000-0000-0000-0000-000000000000";
+const COLLECTR_DEFAULT_PAGE_SIZE = 100;
+const COLLECTR_PAGE_DELAY_MS = 120;
+const { fetchCollectrShowcaseCatalogViaBrowser } = require("./collectr-browser");
+const {
+  isCollectrPokemonProduct,
+  filterCollectrPokemonProducts
+} = require("./collectr-pokemon-filter");
+
+function parseCollectrProfileUrl(rawUrl = "") {
+  const text = String(rawUrl || "").trim();
+  if (!text) return { ok: false, error: "Collectr profile URL is required" };
+  const urlMatch = text.match(COLLECTR_PROFILE_RE);
+  if (urlMatch) {
+    const handle = urlMatch[1].toLowerCase();
+    return {
+      ok: true,
+      handle,
+      profileUrl: `https://app.getcollectr.com/showcase/profile/@${handle}`
+    };
+  }
+  const handleMatch = text.match(COLLECTR_HANDLE_RE);
+  if (handleMatch) {
+    const handle = handleMatch[1].toLowerCase();
+    return {
+      ok: true,
+      handle,
+      profileUrl: `https://app.getcollectr.com/showcase/profile/@${handle}`
+    };
+  }
+  return {
+    ok: false,
+    error: "Use @username or a Collectr link like https://app.getcollectr.com/showcase/profile/@username"
+  };
+}
+
+function buildCollectrShowcaseApiUrl(handle, offset = 0, limit = COLLECTR_DEFAULT_PAGE_SIZE) {
+  const params = new URLSearchParams({
+    searchString: "",
+    offset: String(Math.max(0, Number(offset) || 0)),
+    limit: String(Math.min(100, Math.max(1, Number(limit) || COLLECTR_DEFAULT_PAGE_SIZE))),
+    id: "",
+    sortType: "",
+    sortOrder: "",
+    groupId: "",
+    unstackedView: "true",
+    username: COLLECTR_ANON_USERNAME
+  });
+  const slug = String(handle || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^@+/, "");
+  return `${COLLECTR_API_ORIGIN}/data/showcase/@${encodeURIComponent(slug)}?${params}`;
+}
+
+function collectrFetchHeaders(handle) {
+  const profileUrl = `https://app.getcollectr.com/showcase/profile/@${handle}`;
+  return {
+    Accept: "application/json, text/plain, */*",
+    "Accept-Language": "en-US,en;q=0.9",
+    "User-Agent":
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    Referer: profileUrl,
+    Origin: "https://app.getcollectr.com"
+  };
+}
+
+function extractEscapedJsonArray(html, marker, endMarker) {
+  const start = html.indexOf(marker);
+  if (start < 0) return [];
+  const arrStart = start + marker.length;
+  const end = html.indexOf(endMarker, arrStart);
+  if (end < 0) return [];
+  const escaped = html.slice(arrStart, end);
+  try {
+    const unescaped = escaped.replace(/\\"/g, '"').replace(/\\\\/g, "\\");
+    const parsed = JSON.parse(`[${unescaped}]`);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function extractProfileTotalsFromHtml(html) {
+  const totalCardsMatch = String(html || "").match(/total_cards\\":\\"(\d+)\\"/);
+  const totalSealedMatch = String(html || "").match(/total_sealed\\":\\"(\d+)\\"/);
+  return {
+    totalCards: totalCardsMatch ? Number(totalCardsMatch[1]) : 0,
+    totalSealed: totalSealedMatch ? Number(totalSealedMatch[1]) : 0
+  };
+}
+
+function extractProfileMetaFromHtml(html, handle) {
+  const userMatch = html.match(/\\"user\\":\\"([^"\\]+)\\"/);
+  const handleMatch = html.match(/\\"handle\\":\\"([^"\\]+)\\"/);
+  const photoMatch = html.match(/\\"profile_photo\\":\\"([^"\\]+)\\"/);
+  return {
+    handle: (handleMatch?.[1] || handle || "").toLowerCase(),
+    displayName: userMatch?.[1] || handleMatch?.[1] || handle,
+    profilePhoto: photoMatch?.[1]?.replace(/\\u0026/g, "&") || null
+  };
+}
+
+function extractProductsFromCollectrHtml(html) {
+  const markers = ['\\"products\\":[', '"products":['];
+  const endMarkers = [
+    '],\\"verified\\"',
+    '],"verified"',
+    '],\\"badges\\"',
+    '],"badges"',
+    '],\\"total_cards\\"',
+    '],"total_cards"'
+  ];
+  const byKey = new Map();
+
+  for (const marker of markers) {
+    let searchFrom = 0;
+    while (searchFrom < html.length) {
+      const start = html.indexOf(marker, searchFrom);
+      if (start < 0) break;
+      const arrStart = start + marker.length;
+      let advanced = false;
+      for (const endMarker of endMarkers) {
+        const end = html.indexOf(endMarker, arrStart);
+        if (end < 0) continue;
+        const slice = html.slice(arrStart, end);
+        try {
+          const unescaped = slice.replace(/\\"/g, '"').replace(/\\\\/g, "\\");
+          const rows = JSON.parse(`[${unescaped}]`);
+          if (Array.isArray(rows)) {
+            for (const row of rows) {
+              const key = `${row?.product_id || ""}::${row?.grade_id || ""}::${row?.product_sub_type || ""}`;
+              if (!row?.product_id || byKey.has(key)) continue;
+              byKey.set(key, row);
+            }
+          }
+        } catch {
+          // try next end marker
+        }
+        searchFrom = end + endMarker.length;
+        advanced = true;
+        break;
+      }
+      if (!advanced) {
+        searchFrom = arrStart;
+      }
+    }
+  }
+
+  return [...byKey.values()];
+}
+
+async function fetchCollectrShowcaseApiPage(handle, offset = 0, limit = COLLECTR_DEFAULT_PAGE_SIZE) {
+  const url = buildCollectrShowcaseApiUrl(handle, offset, limit);
+  try {
+    const response = await fetch(url, { headers: collectrFetchHeaders(handle) });
+    if (!response.ok) return null;
+    const payload = await response.json();
+    if (!payload || typeof payload !== "object") return null;
+    const products = Array.isArray(payload.products)
+      ? payload.products
+      : Array.isArray(payload.data)
+        ? payload.data
+        : [];
+    return {
+      profile: {
+        handle: payload.handle || handle,
+        displayName: payload.user || payload.displayName || handle,
+        profilePhoto: payload.profile_photo || payload.profilePhoto || null
+      },
+      products,
+      totalCards: Number(payload.total_cards) || 0,
+      totalSealed: Number(payload.total_sealed) || 0
+    };
+  } catch {
+    return null;
+  }
+}
+
+function mergeCollectrProductsIntoMap(byKey, rows) {
+  if (!byKey || !Array.isArray(rows)) return;
+  for (const row of rows) {
+    const key = `${row?.product_id || ""}::${row?.grade_id || ""}::${row?.product_sub_type || ""}`;
+    if (!row?.product_id || byKey.has(key)) continue;
+    byKey.set(key, row);
+  }
+}
+
+async function fetchCollectrShowcaseRscPage(handle) {
+  const slug = String(handle || "").trim().toLowerCase();
+  const path = `/showcase/profile/@${encodeURIComponent(slug)}`;
+  try {
+    const response = await fetch(`https://app.getcollectr.com${path}`, {
+      headers: {
+        RSC: "1",
+        "Next-Url": path,
+        Accept: "text/x-component",
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      }
+    });
+    if (!response.ok) return { products: [], totalCards: 0, totalSealed: 0 };
+    const text = await response.text();
+    const totals = extractProfileTotalsFromHtml(text);
+    return {
+      products: extractProductsFromCollectrHtml(text),
+      totalCards: totals.totalCards,
+      totalSealed: totals.totalSealed
+    };
+  } catch {
+    return { products: [], totalCards: 0, totalSealed: 0 };
+  }
+}
+
+async function fetchCollectrShowcaseHtmlPage(handle) {
+  const profileUrl = `https://app.getcollectr.com/showcase/profile/@${encodeURIComponent(handle)}`;
+  const response = await fetch(profileUrl, { headers: collectrFetchHeaders(handle) });
+  if (!response.ok) {
+    throw new Error(`Collectr profile returned ${response.status}`);
+  }
+  const html = await response.text();
+  if (!html || html.length < 1000) {
+    throw new Error("Collectr profile page was empty");
+  }
+  if (html.includes("Collector not found") || html.includes("Page not found")) {
+    throw new Error("Collectr profile not found");
+  }
+  const totals = extractProfileTotalsFromHtml(html);
+  return {
+    profile: extractProfileMetaFromHtml(html, handle),
+    products: extractProductsFromCollectrHtml(html),
+    profileUrl,
+    totalCards: totals.totalCards,
+    totalSealed: totals.totalSealed
+  };
+}
+
+async function fetchCollectrShowcaseCatalog(handle, options = {}) {
+  const parsed = parseCollectrProfileUrl(handle);
+  if (!parsed.ok) return parsed;
+  const slug = parsed.handle;
+  const maxItems = Math.min(25_000, Math.max(1, Number(options.maxItems) || 20_000));
+  const useBrowser = options.useBrowser !== false;
+
+  if (useBrowser) {
+    const browserResult = await fetchCollectrShowcaseCatalogViaBrowser(slug, {
+      maxItems,
+      onProgress: options.onProgress
+    });
+    if (browserResult?.ok && browserResult.products?.length) {
+      const capped = browserResult.products.length >= maxItems;
+      return applyPokemonFilterToCatalogResult(
+        {
+          ok: true,
+          handle: slug,
+          profileUrl: parsed.profileUrl,
+          profile: browserResult.profile,
+          products: browserResult.products,
+          totalCards: browserResult.totalCards || 0,
+          totalSealed: browserResult.totalSealed || 0,
+          expectedTotal: null,
+          filteredOutNonPokemon: Number(browserResult.filteredOutNonPokemon) || 0,
+          source: browserResult.source,
+          partial: capped,
+          needsBrowserFetch: false
+        },
+        maxItems
+      );
+    }
+  }
+
+  const byKey = new Map();
+  let profile = null;
+  let totalCards = 0;
+  let totalSealed = 0;
+
+  // Collectr's showcase API returns 401 without a logged-in browser session.
+  const [htmlPage, rscPage] = await Promise.all([
+    fetchCollectrShowcaseHtmlPage(slug),
+    fetchCollectrShowcaseRscPage(slug)
+  ]);
+  profile = htmlPage.profile;
+  mergeCollectrProductsIntoMap(byKey, htmlPage.products);
+  mergeCollectrProductsIntoMap(byKey, rscPage.products);
+  totalCards = htmlPage.totalCards || rscPage.totalCards || 0;
+  totalSealed = htmlPage.totalSealed || rscPage.totalSealed || 0;
+  let source =
+    byKey.size > htmlPage.products.length && byKey.size > rscPage.products.length
+      ? "collectr-rsc"
+      : byKey.size > htmlPage.products.length
+        ? "collectr-html+rsc"
+        : "collectr-html";
+  let partial = true;
+
+  if (!byKey.size) {
+    return {
+      ok: false,
+      error: "Could not read this Collectr showcase. Check the link is public and try again."
+    };
+  }
+
+  if (!profile) {
+    profile = { handle: slug, displayName: slug, profilePhoto: null };
+  }
+
+  const expectedTotal = totalCards + totalSealed;
+  if (expectedTotal > 0 && byKey.size < expectedTotal) {
+    partial = true;
+  }
+
+  return applyPokemonFilterToCatalogResult(
+    {
+      ok: true,
+      handle: slug,
+      profileUrl: parsed.profileUrl,
+      profile,
+      products: [...byKey.values()].slice(0, maxItems),
+      totalCards,
+      totalSealed,
+      expectedTotal: expectedTotal || null,
+      source,
+      partial,
+      needsBrowserFetch: partial,
+      browserUnavailable: useBrowser
+    },
+    maxItems
+  );
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function summarizeCollectrProductQuantities(products) {
+  const rows = Array.isArray(products) ? products : [];
+  let cards = 0;
+  let sealed = 0;
+  for (const row of rows) {
+    const qty = Math.max(1, Number(row?.quantity) || 1);
+    if (row?.is_card === false) sealed += qty;
+    else cards += qty;
+  }
+  return { cards, sealed, lineItems: rows.length };
+}
+
+function applyPokemonFilterToCatalogResult(result, maxItems) {
+  if (!result?.ok) return result;
+  const raw = Array.isArray(result.products) ? result.products : [];
+  const products = filterCollectrPokemonProducts(raw).slice(0, maxItems);
+  const totals = summarizeCollectrProductQuantities(products);
+  const priorFiltered = Number(result.filteredOutNonPokemon) || 0;
+  const passFiltered = Math.max(0, raw.length - products.length);
+  return {
+    ...result,
+    products,
+    totalCards: totals.cards,
+    totalSealed: totals.sealed,
+    expectedTotal: totals.cards + totals.sealed > 0 ? totals.cards + totals.sealed : null,
+    pokemonOnly: true,
+    filteredOutNonPokemon: priorFiltered + passFiltered
+  };
+}
+
+function detectSetLanguage(product) {
+  const group = String(product?.catalog_group || "");
+  const name = String(product?.product_name || "");
+  const blob = `${group} ${name}`;
+  if (/\(japanese\)|\(jp\)|japanese/i.test(blob)) return "japanese";
+  return "english";
+}
+
+function mapCollectrProductToItem(product) {
+  if (!isCollectrPokemonProduct(product)) return null;
+  const name = String(product?.product_name || "").trim();
+  if (!name) return null;
+  const isCard = product?.is_card !== false;
+  const qty = Math.max(1, Number(product?.quantity) || 1);
+  const market = Number(product?.market_price);
+  const gradeId = String(product?.grade_id || "").trim();
+  const gradeCompany = String(product?.grade_company || "").trim();
+  const isGraded = Boolean(gradeCompany) || (gradeId && gradeId !== "12" && gradeId !== "0");
+
+  return {
+    type: isCard ? "single" : "sealed",
+    name,
+    setName: String(product?.catalog_group || "").trim(),
+    cardNumber: String(product?.card_number || "").trim(),
+    setCode: "",
+    setLanguage: detectSetLanguage(product),
+    imageUrl: String(product?.image_url || "")
+      .replace(/\\u0026/g, "&")
+      .trim(),
+    tcgProductId: String(product?.product_id || "").trim(),
+    conditionType: isGraded ? "graded" : "raw",
+    condition: String(product?.card_condition || "").trim() || "Near Mint",
+    gradeCompany: gradeCompany || "",
+    gradeValue: gradeId && isGraded ? gradeId : "",
+    quantity: qty,
+    costBasis: 0,
+    currency: "USD",
+    notes: product?.product_sub_type
+      ? `Imported from Collectr (${product.product_sub_type})`
+      : "Imported from Collectr",
+    marketPrice: Number.isFinite(market) && market > 0 ? Number(market.toFixed(2)) : 0,
+    manualPrice: null,
+    sourceBreakdown: { collectr: true },
+    lastPricedAt: null
+  };
+}
+
+function itemImportKey(item) {
+  return [
+    item.type,
+    item.name.toLowerCase(),
+    item.setName.toLowerCase(),
+    item.cardNumber.toLowerCase(),
+    item.tcgProductId,
+    item.gradeCompany.toLowerCase(),
+    item.gradeValue,
+    item.conditionType
+  ].join("::");
+}
+
+function filterCollectrProductsByImportType(products, options = {}) {
+  const importSingles = options.importSingles !== false;
+  const importSealed = options.importSealed !== false;
+  const rows = Array.isArray(products) ? products : [];
+  if (importSingles && importSealed) return rows;
+  if (!importSingles && !importSealed) return [];
+  return rows.filter((row) => {
+    const isSealed = row && row.is_card === false;
+    return isSealed ? importSealed : importSingles;
+  });
+}
+
+module.exports = {
+  COLLECTR_ANON_USERNAME,
+  parseCollectrProfileUrl,
+  fetchCollectrShowcaseCatalog,
+  isCollectrPokemonProduct,
+  filterCollectrPokemonProducts,
+  filterCollectrProductsByImportType,
+  mapCollectrProductToItem,
+  itemImportKey,
+  mergeCollectrProductsIntoMap
+};

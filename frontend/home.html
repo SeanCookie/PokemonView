@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pokemon Card Home</title>
+  <link rel="stylesheet" href="/card-sky.css" />
+  <link rel="stylesheet" href="/brand-logo.css" />
+  <script src="/card-sky.js?v=2"></script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #060b14;
+      --panel: rgba(13, 22, 36, 0.82);
+      --border: #2b3f5e;
+      --text: #e9f1ff;
+      --muted: #98add0;
+      --accent: #67b2ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, "Segoe UI", Arial, sans-serif;
+      color: var(--text);
+      /* Flat base; flying cards provide the visual field */
+      background: var(--bg);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .top-nav {
+      height: 56px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(8, 14, 24, 0.86);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+    .nav-left, .nav-right { display: flex; align-items: center; gap: 14px; }
+    .nav-link {
+      color: var(--muted);
+      font-size: 13px;
+      text-decoration: none;
+    }
+    .nav-link.active, .nav-link:hover { color: var(--text); }
+
+    .page {
+      position: relative;
+      z-index: 2;
+      max-width: 1240px;
+      margin: 18px auto;
+      padding: 0 14px 28px;
+      display: grid;
+      gap: 14px;
+    }
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--panel);
+      backdrop-filter: blur(3px);
+      padding: 14px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 14px;
+      align-items: stretch;
+    }
+    .hero h1 {
+      margin: 0;
+      font-size: clamp(32px, 6vw, 54px);
+      line-height: 1.05;
+      letter-spacing: 0.3px;
+    }
+    .hero p {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 15px;
+      max-width: 640px;
+    }
+    .hero-actions {
+      margin-top: 16px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      height: 38px;
+      border: 1px solid #446086;
+      border-radius: 9px;
+      padding: 0 14px;
+      font-size: 13px;
+      color: #e9f1ff;
+      background: #1b2d46;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+    }
+    .btn.alt {
+      background: #121e30;
+      border-color: var(--border);
+      color: #cad9f2;
+    }
+    .badge-grid {
+      display: grid;
+      gap: 8px;
+      align-content: start;
+      min-height: 0;
+    }
+    .badge {
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      background: #111c2d;
+      padding: 10px;
+    }
+    .badge .label { color: var(--muted); font-size: 11px; }
+    .badge .value {
+      margin-top: 5px;
+      font-size: 21px;
+      font-weight: 700;
+    }
+
+    .section-title {
+      margin: 0 0 10px;
+      font-size: 18px;
+    }
+
+    .quick-links {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .link-card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #0f1726;
+      padding: 12px;
+      text-decoration: none;
+      color: var(--text);
+      display: grid;
+      gap: 4px;
+    }
+    .link-card:hover { border-color: #4b6790; }
+    .link-title { font-size: 15px; font-weight: 700; }
+    .link-sub { color: var(--muted); font-size: 12px; }
+
+    @media (min-width: 981px) {
+      /* Signed out: empty right column, same two-column hero as when signed in */
+      #heroKpis:empty {
+        min-height: 296px;
+      }
+    }
+    @media (max-width: 980px) {
+      .hero { grid-template-columns: 1fr; }
+      .quick-links { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 640px) {
+      .quick-links { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div id="cardSky" class="card-sky" data-auto-init="off" aria-hidden="true"></div>
+
+  <nav class="top-nav">
+    <div class="nav-left">
+      <a href="/" class="brand" aria-label="Go to homepage">
+        <span class="pokeball-logo" aria-hidden="true"></span>
+      </a>
+      <a href="/" class="nav-link active">Home</a>
+      <a href="/sets.html" class="nav-link">Sets</a>
+      <a href="/dashboard.html" class="nav-link">Collection</a>
+      <a href="/showcase" class="nav-link">Showcase</a>
+      <a href="/poke-view.html" class="nav-link">Poke View</a>
+      <a href="/scan-your-cards.html" class="nav-link">Scan Your Cards</a>
+      <a href="/restock-tracker.html" class="nav-link">Restock Tracker</a>
+    </div>
+    <div class="nav-right">
+      <div data-account-slot></div>
+    </div>
+  </nav>
+
+  <main class="page">
+    <section class="panel hero" id="heroSection">
+      <div>
+        <h1>Build and Track Your Pokemon Card Collection</h1>
+        <p>
+          Browse sets, manage collection value, and track your cards in one place.
+        </p>
+        <div class="hero-actions">
+          <a class="btn" href="/dashboard.html" data-collection-gate>Open Collection Dashboard</a>
+          <a class="btn alt" href="/sets.html">Browse Sets</a>
+          <a class="btn alt" href="/showcase">Collector Showcase</a>
+        </div>
+      </div>
+      <div id="heroKpis" class="badge-grid"></div>
+    </section>
+
+    <section class="panel">
+      <h2 class="section-title">Quick Navigation</h2>
+      <div class="quick-links">
+        <a class="link-card" href="/sets.html">
+          <div class="link-title">Sets</div>
+          <div class="link-sub">English/Japanese sets and card details</div>
+        </a>
+        <a class="link-card" href="/dashboard.html" data-collection-gate>
+          <div class="link-title">Collection</div>
+          <div class="link-sub">Inventory, pricing, and recent activity</div>
+        </a>
+        <a class="link-card" href="/poke-view.html">
+          <div class="link-title">Poke View</div>
+          <div class="link-sub">Visual card browser and lookups</div>
+        </a>
+        <a class="link-card" href="/restock-tracker.html">
+          <div class="link-title">Restock Tracker</div>
+          <div class="link-sub">Product availability across major retailers</div>
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const byId = (id) => document.getElementById(id);
+
+    function money(v) {
+      return `$${Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+
+    function renderKpis(k, blank = false) {
+      byId("heroKpis").innerHTML = `
+        <article class="badge"><div class="label">Market Value</div><div class="value">${money(k.marketValue)}</div></article>
+        <article class="badge"><div class="label">Cost Basis</div><div class="value">${money(k.costBasis)}</div></article>
+        <article class="badge"><div class="label">Unrealized PnL</div><div class="value">${money(k.unrealizedPnL)}</div></article>
+        <article class="badge"><div class="label">Total Items</div><div class="value">${Number(k.totalItems || 0).toLocaleString()}</div></article>
+      `;
+    }
+
+    async function loadCardSkyFromLocalImages() {
+      const skyOpts = { includeJapanesePaths: false, homeSky: true };
+      const res = await fetch("/api/sets/card-sky-urls?limit=all&localOnly=1", { cache: "no-store" });
+      if (!res.ok) return;
+      const payload = await res.json();
+      const urls = payload && Array.isArray(payload.urls) ? payload.urls : [];
+      if (!urls.length || typeof startInfinityCardSkyRecycler !== "function") return;
+      if (typeof stopInfinityCardSkyRecycler === "function") stopInfinityCardSkyRecycler();
+      startInfinityCardSkyRecycler(urls, skyOpts);
+    }
+
+    function scheduleHomeCardSky() {
+      const run = () => {
+        void loadCardSkyFromLocalImages().catch(() => {});
+      };
+      if (typeof requestIdleCallback === "function") {
+        requestIdleCallback(run, { timeout: 10000 });
+      } else {
+        window.addEventListener("load", () => setTimeout(run, 800), { once: true });
+      }
+    }
+
+    scheduleHomeCardSky();
+
+    async function loadSignedInKpis() {
+      const dashboardRes = await fetch("/api/dashboard");
+      const dashboard = dashboardRes.ok ? await dashboardRes.json() : { kpis: {} };
+      renderKpis(dashboard.kpis || {});
+    }
+
+    function applyHomeAuthState({ signedIn }) {
+      if (signedIn) {
+        loadSignedInKpis().catch(() => renderKpis({}));
+      } else {
+        byId("heroKpis").innerHTML = "";
+      }
+    }
+
+    function bindCollectionGates() {
+      document.querySelectorAll("[data-collection-gate]").forEach((el) => {
+        el.addEventListener("click", (event) => {
+          if (window.InfinityAccount && window.InfinityAccount.isSignedIn()) return;
+          event.preventDefault();
+          window.InfinityAccount.openSignIn();
+        });
+      });
+    }
+
+    function initHomeAuth() {
+      bindCollectionGates();
+      if (window.InfinityAccount) {
+        window.InfinityAccount.onChange(applyHomeAuthState);
+      } else {
+        applyHomeAuthState({ signedIn: false });
+      }
+    }
+  </script>
+  <script src="/account-ui.js"></script>
+  <script>
+    initHomeAuth();
+  </script>
+</body>
+</html>
+

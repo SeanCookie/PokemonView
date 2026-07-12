@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Restock Tracker — Infinity Cards</title>
+  <meta name="description" content="Track Pokémon TCG product availability across major retailers" />
+  <link rel="stylesheet" href="/restock-tracker.css" />
+</head>
+<body>
+  <nav class="top-nav">
+    <div class="nav-left">
+      <a href="/" class="brand" aria-label="Go to homepage">
+        <span class="pokeball-logo" aria-hidden="true"></span>
+      </a>
+      <a href="/" class="nav-link">Home</a>
+      <a href="/sets.html" class="nav-link">Sets</a>
+      <a href="/dashboard.html" class="nav-link">Collection</a>
+      <a href="/showcase" class="nav-link">Showcase</a>
+      <a href="/poke-view.html" class="nav-link">Poke View</a>
+      <a href="/scan-your-cards.html" class="nav-link">Scan Your Cards</a>
+      <a href="/restock-tracker.html" class="nav-link active">Restock Tracker</a>
+    </div>
+    <div class="nav-right">
+      <div data-account-slot></div>
+    </div>
+  </nav>
+
+  <main class="page">
+    <header class="hero panel">
+      <h1 class="title">Restock Tracker</h1>
+    </header>
+
+    <section class="stats" id="statsRow" aria-label="Stock summary"></section>
+
+    <section class="toolbar panel">
+      <div class="toolbar-row">
+        <input type="search" id="searchInput" class="search" placeholder="Search product or retailer…" autocomplete="off" />
+        <select id="retailerFilter" class="select" aria-label="Filter by retailer">
+          <option value="all">All Retailers</option>
+        </select>
+      </div>
+      <div class="filter-chips" id="statusFilters" role="group" aria-label="Filter by stock status">
+        <button type="button" class="chip active" data-status="all">All</button>
+        <button type="button" class="chip" data-status="in_stock">In stock</button>
+        <button type="button" class="chip" data-status="out_of_stock">Out of stock</button>
+        <button type="button" class="chip" data-status="preorder">Preorder</button>
+      </div>
+    </section>
+
+    <section class="table-wrap panel">
+      <div class="table-scroll">
+        <table class="tracker-table" id="trackerTable">
+          <thead>
+            <tr>
+              <th scope="col">
+                <button type="button" class="th-sort-btn" data-sort="name" id="sortByName">NAME</button>
+              </th>
+              <th scope="col">Status</th>
+              <th scope="col">
+                <button type="button" class="th-sort-btn" data-sort="price" id="sortByPrice">LAST PRICE</button>
+              </th>
+              <th scope="col">Last available</th>
+            </tr>
+          </thead>
+          <tbody id="trackerBody">
+            <tr><td colspan="4" class="empty">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-foot" id="tableFoot"></p>
+    </section>
+  </main>
+
+  <script src="/account-ui.js"></script>
+  <script src="/restock-tracker.js"></script>
+</body>
+</html>

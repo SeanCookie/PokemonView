@@ -1,0 +1,7 @@
+{
+  "name": "infinity-cards-backend",
+  "private": true,
+  "optionalDependencies": {
+    "playwright-core": "^1.60.0"
+  }
+}

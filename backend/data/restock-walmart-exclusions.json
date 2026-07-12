@@ -1,0 +1,58 @@
+{
+  "updatedAt": "2026-05-23T00:00:00.000Z",
+  "note": "Assorted/random bulk lots excluded from Walmart browse imports (will not repopulate on import).",
+  "itemIds": [
+    "386271651",
+    "185037542",
+    "118720549",
+    "5054112662",
+    "159206100",
+    "841095457",
+    "205184526",
+    "1346557742",
+    "16759355205",
+    "259024694"
+  ],
+  "items": [
+    {
+      "itemId": "386271651",
+      "name": "100 Assorted Pokemon Trading Cards with 7 Bonus Free Holo Foils"
+    },
+    {
+      "itemId": "185037542",
+      "name": "100 Assorted Pokemon Trading Cards with 7 Bonus Free Holo Foils (alt listing)"
+    },
+    {
+      "itemId": "118720549",
+      "name": "100 Random Pokemon Card Lot with 1 EX"
+    },
+    {
+      "itemId": "5054112662",
+      "name": "1000 Japanese Pokemon Cards UNSEARCHED Bulk Lot C UC BONUS HOLOS NM"
+    },
+    {
+      "itemId": "159206100",
+      "name": "25 Assorted Reverse Holo Pokemon Cards"
+    },
+    {
+      "itemId": "841095457",
+      "name": "25 Rare Pokemon Cards with 100 HP or Higher Assorted Lot with No Duplicates"
+    },
+    {
+      "itemId": "205184526",
+      "name": "50 Randomly Assorted Pokemon Energy Cards"
+    },
+    {
+      "itemId": "1346557742",
+      "name": "50 Shiny Foil Pokemon Cards Assorted Lot with No Duplicates"
+    },
+    {
+      "itemId": "16759355205",
+      "name": "MJH POKEMON LIGHTNING ENVELOPE"
+    },
+    {
+      "itemId": "259024694",
+      "name": "Pokemon Assorted Lot of 50 Single Cards Any Series"
+    }
+  ]
+}

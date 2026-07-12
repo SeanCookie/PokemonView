@@ -1,0 +1,2240 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Infinity Cards Dashboard</title>
+  <link rel="stylesheet" href="/showcase.css" />
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0a0f18;
+      --panel: #101825;
+      --border: #26364f;
+      --text: #e9f1ff;
+      --muted: #93a8c7;
+      --up: #33d18f;
+      --down: #ff5f73;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, "Segoe UI", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .top-nav {
+      height: 56px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(10, 15, 24, 0.92);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      position: sticky;
+      top: 0;
+      z-index: 4;
+    }
+
+    .nav-left, .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .nav-link {
+      color: var(--muted);
+      font-size: 13px;
+      text-decoration: none;
+    }
+
+    .nav-link.active, .nav-link:hover { color: var(--text); }
+
+    .search {
+      width: 260px;
+      height: 34px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #0e1623;
+      color: var(--text);
+      padding: 0 10px;
+      font-size: 13px;
+    }
+
+    .page {
+      max-width: 1180px;
+      margin: 18px auto;
+      padding: 0 14px 28px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent), var(--panel);
+      padding: 12px;
+    }
+
+    .title { margin: 0; font-size: 28px; }
+    .sub { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .kpi {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #0f1726;
+      padding: 10px;
+      display: grid;
+      gap: 4px;
+    }
+
+    .kpi-label { font-size: 11px; color: var(--muted); }
+    .kpi-value { font-size: 20px; font-weight: 700; }
+    .kpi-value.up { color: var(--up); }
+    .kpi-value.down { color: var(--down); }
+
+    .collection-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .collection-toolbar-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .collection-toolbar .showcase-search {
+      flex: 1;
+      min-width: 200px;
+      max-width: 360px;
+    }
+
+    .collection-card {
+      position: relative;
+    }
+
+    .collection-card-remove {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      z-index: 3;
+      width: 26px;
+      height: 26px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 95, 115, 0.45);
+      background: rgba(10, 15, 24, 0.88);
+      color: #ff9aa5;
+      font-size: 16px;
+      line-height: 1;
+      cursor: pointer;
+      font-family: inherit;
+      display: grid;
+      place-items: center;
+      padding: 0;
+    }
+
+    .collection-card-remove:hover {
+      background: rgba(255, 80, 95, 0.35);
+      border-color: rgba(255, 140, 150, 0.7);
+      color: #fff;
+    }
+
+    a.collection-card-link {
+      text-decoration: none;
+      color: inherit;
+      display: block;
+    }
+
+    .muted { color: var(--muted); font-size: 12px; }
+
+    .collectr-import-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    .collectr-import-row .search {
+      flex: 1;
+      min-width: 240px;
+      max-width: none;
+    }
+
+    .collectr-import-actions {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .collectr-import-btn-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .collectr-import-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .collectr-import-options label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      color: var(--muted);
+    }
+
+    .set-progress-panel {
+      display: grid;
+      gap: 0;
+    }
+
+    #setProgressPanel[hidden] {
+      display: none !important;
+    }
+
+    .collection-panel:not(.collection-panel--sets) #setProgressPanel {
+      display: none !important;
+    }
+
+    .collection-panel--sets #setProgressPanel:not([hidden]) {
+      display: grid;
+    }
+
+    .set-progress-summary {
+      font-size: 14px;
+      line-height: 1.5;
+      margin: 0 0 14px;
+      color: var(--text);
+    }
+
+    .set-progress-summary .owned {
+      color: var(--up);
+      font-weight: 700;
+    }
+
+    .set-progress-summary .need {
+      color: #f0a060;
+      font-weight: 700;
+    }
+
+    .set-progress-era {
+      margin-bottom: 18px;
+    }
+
+    .set-progress-era-title {
+      margin: 0;
+      padding: 8px 12px;
+      font-size: 15px;
+      font-weight: 700;
+      background: linear-gradient(90deg, rgba(51, 209, 143, 0.35), rgba(51, 209, 143, 0.12));
+      border: 1px solid rgba(51, 209, 143, 0.35);
+      border-radius: 4px 4px 0 0;
+      color: #dfffea;
+    }
+
+    .set-progress-list {
+      border: 1px solid var(--border);
+      border-top: 0;
+      border-radius: 0 0 8px 8px;
+      overflow: hidden;
+      background: transparent;
+      color: var(--text);
+    }
+
+    .set-progress-row {
+      display: grid;
+      grid-template-columns: 44px 1fr minmax(140px, 220px);
+      gap: 10px 14px;
+      align-items: center;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(15, 23, 38, 0.55);
+    }
+
+    .set-progress-row:nth-child(even) {
+      background: rgba(15, 23, 38, 0.85);
+    }
+
+    .set-progress-row:last-child {
+      border-bottom: 0;
+    }
+
+    .set-progress-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      object-fit: contain;
+      background: #0c1421;
+      border: 1px solid var(--border);
+    }
+
+    .set-progress-icon--ph {
+      display: grid;
+      place-items: center;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--muted);
+    }
+
+    .set-progress-name {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .set-progress-name a {
+      color: #67b2ff;
+      text-decoration: none;
+    }
+
+    .set-progress-name a:hover {
+      text-decoration: underline;
+    }
+
+    .set-progress-stats {
+      margin: 2px 0 0;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .set-progress-stats .owned {
+      color: var(--up);
+      font-weight: 600;
+    }
+
+    .set-progress-stats .need {
+      color: #f0a060;
+      font-weight: 600;
+    }
+
+    .set-progress-stats .all-done {
+      color: var(--up);
+      font-weight: 700;
+    }
+
+    .set-progress-bar-wrap {
+      display: grid;
+      gap: 4px;
+      align-content: center;
+    }
+
+    .set-progress-bar {
+      height: 14px;
+      border-radius: 2px;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .set-progress-bar-fill {
+      height: 100%;
+      min-width: 0;
+      transition: width 0.2s ease;
+    }
+
+    .set-progress-bar-fill.tone-complete {
+      background: linear-gradient(180deg, #4cd964, #2db84a);
+    }
+
+    .set-progress-bar-fill.tone-good {
+      background: linear-gradient(180deg, #5ac8fa, #2f9fe0);
+    }
+
+    .set-progress-bar-fill.tone-low {
+      background: linear-gradient(180deg, #ff6b6b, #e03e3e);
+    }
+
+    .set-progress-pct {
+      text-align: center;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    .collection-panel--sets #itemsList {
+      display: none !important;
+    }
+
+    @media (max-width: 720px) {
+      .set-progress-row {
+        grid-template-columns: 40px 1fr;
+        grid-template-rows: auto auto;
+      }
+      .set-progress-bar-wrap {
+        grid-column: 1 / -1;
+      }
+    }
+
+    .empty {
+      text-align: center;
+      color: var(--muted);
+      padding: 24px;
+      border: 1px dashed var(--border);
+      border-radius: 10px;
+      background: #0f1726;
+    }
+
+    @media (max-width: 1080px) {
+      .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 640px) {
+      .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .collection-toolbar .showcase-search { max-width: none; width: 100%; }
+      .collectr-import-actions { width: 100%; align-items: stretch; }
+      .collectr-import-btn-row { justify-content: stretch; }
+      .collectr-import-btn-row .btn-primary { flex: 1; }
+    }
+
+    .btn-primary {
+      height: 34px;
+      padding: 0 14px;
+      border-radius: 8px;
+      border: 1px solid #3d5a8a;
+      background: linear-gradient(180deg, rgba(80, 140, 255, 0.35), rgba(40, 90, 200, 0.2));
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    .btn-primary:hover {
+      border-color: #5c7ebe;
+      background: linear-gradient(180deg, rgba(100, 160, 255, 0.45), rgba(50, 100, 220, 0.28));
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .collectr-progress {
+      display: none;
+      margin-top: 12px;
+      gap: 6px;
+    }
+
+    .collectr-progress.active {
+      display: grid;
+    }
+
+    .collectr-progress-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 10px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .collectr-progress-pct {
+      font-variant-numeric: tabular-nums;
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .collectr-progress-track {
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .collectr-progress-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(80, 140, 255, 0.85), rgba(103, 178, 255, 0.95));
+      transition: width 0.25s ease;
+    }
+
+    .collectr-preview-summary {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: rgba(0, 0, 0, 0.18);
+      display: none;
+      gap: 4px;
+      font-size: 13px;
+    }
+
+    .collectr-preview-summary.visible {
+      display: grid;
+    }
+
+    .collectr-preview-summary strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .collectr-delete-wrap {
+      margin-top: 0;
+      width: 100%;
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .collectr-delete-btn {
+      height: 34px;
+      border: 1px solid rgba(255, 120, 130, 0.45);
+      border-radius: 8px;
+      background: rgba(255, 80, 95, 0.12);
+      color: #ff9aa5;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 0 12px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .collectr-delete-btn:hover {
+      border-color: rgba(255, 140, 150, 0.7);
+      background: rgba(255, 80, 95, 0.2);
+      color: #ffc4ca;
+    }
+
+    .collectr-delete-btn.collectr-undo-btn {
+      border-color: rgba(51, 209, 143, 0.45);
+      background: rgba(51, 209, 143, 0.12);
+      color: var(--up);
+    }
+
+    .collectr-delete-btn.collectr-undo-btn:hover {
+      border-color: rgba(51, 209, 143, 0.7);
+      background: rgba(51, 209, 143, 0.2);
+      color: #9ef0c8;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(6, 10, 18, 0.72);
+      backdrop-filter: blur(6px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 80;
+      padding: 14px;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .add-card-panel {
+      width: min(920px, 100%);
+      max-height: calc(100vh - 28px);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--panel);
+      padding: 16px;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+    }
+
+    .add-card-panel h2 {
+      margin: 0 0 6px;
+      font-size: 18px;
+    }
+
+    .add-card-panel p.subtle {
+      margin: 0 0 14px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .add-card-panel input {
+      width: 100%;
+      height: 36px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #0e1623;
+      color: var(--text);
+      padding: 0 10px;
+      font-size: 13px;
+      font-family: inherit;
+    }
+
+    .add-card-results-wrap {
+      flex: 1;
+      min-height: 200px;
+      max-height: min(52vh, 520px);
+      overflow-y: auto;
+      margin-bottom: 0;
+    }
+
+    .add-card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+      gap: 10px;
+      padding: 2px;
+    }
+
+    .add-card-tile {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #0f1726;
+      padding: 8px;
+      cursor: pointer;
+      text-align: left;
+      color: inherit;
+      font: inherit;
+      display: grid;
+      gap: 6px;
+    }
+
+    .add-card-tile:hover {
+      border-color: #3d5a8a;
+    }
+
+    .add-card-tile.selected {
+      border-color: #f5d951;
+      box-shadow: 0 0 0 1px rgba(245, 217, 81, 0.35);
+    }
+
+    .add-card-thumb {
+      width: 100%;
+      aspect-ratio: 63 / 88;
+      object-fit: contain;
+      border-radius: 6px;
+      background: #0a0f18;
+    }
+
+    .add-card-thumb--ph {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    .add-card-tile-name {
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+    }
+
+    .add-card-tile-meta {
+      font-size: 10px;
+      color: var(--muted);
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+    }
+
+    .add-card-grid-empty {
+      padding: 22px 12px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+      border: 1px dashed var(--border);
+      border-radius: 10px;
+      background: #0f1726;
+    }
+
+    .add-card-row {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .add-card-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 12px;
+    }
+
+    .add-card-actions button {
+      height: 36px;
+      padding: 0 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    .add-card-actions .ghost {
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+    }
+
+    .add-card-actions .ghost:hover {
+      color: var(--text);
+      border-color: #3d4f6e;
+    }
+
+    body.collection-locked .page {
+      pointer-events: none;
+      user-select: none;
+      filter: grayscale(0.4) brightness(0.55);
+      opacity: 0.7;
+    }
+
+    body.collection-locked .top-nav {
+      pointer-events: auto;
+      filter: none;
+      opacity: 1;
+    }
+
+    .collection-gate {
+      position: fixed;
+      inset: 56px 0 0;
+      z-index: 3;
+      display: none;
+      place-items: center;
+      padding: 24px;
+      pointer-events: none;
+    }
+
+    .collection-gate.open {
+      display: grid;
+    }
+
+    .collection-gate-card {
+      pointer-events: auto;
+      max-width: 420px;
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent), #101825;
+      padding: 22px 24px;
+      text-align: center;
+      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
+    }
+
+    .collection-gate-card h2 {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.3;
+    }
+
+    .collection-gate-card p {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .collection-gate-card .gate-btn {
+      margin-top: 16px;
+      height: 38px;
+      border: 1px solid #446086;
+      border-radius: 9px;
+      padding: 0 16px;
+      font-size: 13px;
+      color: #e9f1ff;
+      background: #1b2d46;
+      cursor: pointer;
+    }
+
+    .collection-gate-card .gate-btn:hover {
+      border-color: #5b9dff;
+    }
+  </style>
+</head>
+<body>
+  <nav class="top-nav">
+    <div class="nav-left">
+      <a href="/" class="brand" aria-label="Go to homepage">
+        <span class="pokeball-logo" aria-hidden="true"></span>
+      </a>
+      <a href="/" class="nav-link">Home</a>
+      <a href="/sets.html" class="nav-link">Sets</a>
+      <a href="/dashboard.html" class="nav-link active">Collection</a>
+      <a href="/showcase" class="nav-link">Showcase</a>
+      <a href="/poke-view.html" class="nav-link">Poke View</a>
+      <a href="/scan-your-cards.html" class="nav-link">Scan Your Cards</a>
+      <a href="/restock-tracker.html" class="nav-link">Restock Tracker</a>
+    </div>
+    <div class="nav-right">
+      <input id="topSearch" class="search" placeholder="Search your collection…" />
+      <div data-account-slot></div>
+    </div>
+  </nav>
+
+  <div id="collectionGate" class="collection-gate" aria-hidden="true">
+    <div class="collection-gate-card">
+      <h2>Sign in to start tracking your Collection</h2>
+      <p>Your dashboard will unlock once you are signed in.</p>
+      <button type="button" class="gate-btn" id="collectionGateSignIn">Sign In</button>
+    </div>
+  </div>
+
+  <main class="page">
+    <section class="panel">
+      <h1 class="title">Personal Collection</h1>
+      <p class="sub">Track your inventory and market value. Recent activity is in <a href="/settings.html#activity" style="color:#67b2ff;">Settings</a>.</p>
+    </section>
+
+    <section id="kpiPanel" class="panel">
+      <div class="kpis" id="kpis"></div>
+    </section>
+
+    <section class="panel" id="collectrImportPanel">
+      <h2 style="margin:0 0 6px;font-size:18px;">Import from Collectr</h2>
+      <p class="sub" style="margin:0 0 10px;">Paste a Collectr showcase link, or type <strong>@username</strong>, to copy <strong>Pokémon</strong> into your collection (other TCGs are skipped).</p>
+      <div class="collectr-import-row">
+        <input
+          id="collectrImportUrl"
+          class="search"
+          type="text"
+          spellcheck="false"
+          autocomplete="off"
+          placeholder="@username or https://app.getcollectr.com/showcase/profile/@username"
+        />
+        <div class="collectr-import-actions">
+          <div class="collectr-import-btn-row">
+            <button type="button" class="btn-primary" id="collectrPreviewBtn">Preview</button>
+            <button type="button" class="btn-primary" id="collectrImportBtn">Import</button>
+          </div>
+          <div id="collectrDeleteWrap" class="collectr-delete-wrap" hidden>
+            <button type="button" class="collectr-delete-btn" id="collectrDeleteImportBtn">Delete All</button>
+          </div>
+        </div>
+      </div>
+      <div class="collectr-import-options">
+        <label><input type="checkbox" id="collectrImportSingles" checked /> Only Singles</label>
+        <label><input type="checkbox" id="collectrImportSealed" checked /> Only Sealed</label>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12px;color:var(--muted);">
+        <input type="checkbox" id="collectrReplaceExisting" />
+        Replace my current collection before import
+      </label>
+      <div id="collectrProgress" class="collectr-progress" aria-hidden="true">
+        <div class="collectr-progress-head">
+          <span id="collectrProgressLabel">Working…</span>
+          <span id="collectrProgressPct" class="collectr-progress-pct">0%</span>
+        </div>
+        <div class="collectr-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div id="collectrProgressFill" class="collectr-progress-fill"></div>
+        </div>
+      </div>
+      <div id="collectrPreviewSummary" class="collectr-preview-summary"></div>
+      <p id="collectrImportStatus" class="sub" style="margin:10px 0 0;min-height:18px;"></p>
+    </section>
+
+    <section class="panel collection-panel" id="collectionPanel">
+      <div class="collection-toolbar showcase-toolbar">
+        <div class="showcase-tabs" role="tablist" aria-label="Filter collection">
+          <button type="button" class="showcase-tab active" data-collection-filter="all">All</button>
+          <button type="button" class="showcase-tab" data-collection-filter="single">Singles</button>
+          <button type="button" class="showcase-tab" data-collection-filter="sealed">Sealed</button>
+          <button type="button" class="showcase-tab" data-collection-filter="sets">Sets</button>
+        </div>
+        <div class="collection-toolbar-actions">
+          <input id="nameFilter" class="showcase-search" type="search" placeholder="Search cards or sets…" />
+          <button id="openAddCardBtn" type="button" class="btn-primary">Add card…</button>
+        </div>
+      </div>
+      <div id="setProgressPanel" class="set-progress-panel" hidden>
+        <p id="setProgressSummary" class="set-progress-summary"></p>
+        <div id="setProgressEras"></div>
+      </div>
+      <div id="itemsList" class="showcase-grid"></div>
+    </section>
+  </main>
+
+  <div id="addCardModal" class="modal-backdrop" aria-hidden="true">
+    <section class="add-card-panel" role="dialog" aria-labelledby="addCardTitle" aria-modal="true">
+      <h2 id="addCardTitle">Add card to collection</h2>
+      <p class="subtle">Search the Sets catalog, choose a card, and add it as a single to your collection.</p>
+      <div class="add-card-row">
+        <label class="muted" for="addCardSearch" style="font-size:12px;">Search</label>
+        <input id="addCardSearch" type="search" autocomplete="off" placeholder="Search cards…" />
+      </div>
+      <div class="add-card-row add-card-results-wrap">
+        <div id="addCardGrid" class="add-card-grid" role="listbox" aria-label="Matching cards"></div>
+      </div>
+      <div class="add-card-row" style="grid-template-columns: 1fr 1fr; display: grid; gap: 8px;">
+        <div>
+          <label class="muted" for="addCardQty" style="font-size:12px;">Quantity</label>
+          <input id="addCardQty" type="number" min="1" step="1" value="1" />
+        </div>
+      </div>
+      <div class="add-card-actions">
+        <button type="button" class="ghost" id="addCardCancelBtn">Cancel</button>
+        <button type="button" class="btn-primary" id="addCardConfirmBtn">Add to collection</button>
+      </div>
+    </section>
+  </div>
+
+  <script src="/english-sets-catalog.js"></script>
+  <script src="/collectr-import-client.js?v=5"></script>
+  <script src="/account-ui.js"></script>
+  <script>
+    const state = {
+      items: [],
+      dashboard: null,
+      query: "",
+      type: "all",
+      cardIndex: [],
+      cardIndexById: {},
+      cardIndexLoaded: false,
+      addCardSelectedId: "",
+      /** Built once per session: resolve thumbnails when items lack imageUrl */
+      cardImagesForDashboard: null,
+      /** English set catalog + card counts for Sets tab */
+      setProgress: {
+        loaded: false,
+        loading: false,
+        catalogByEra: null,
+        manifestByCode: {},
+        pokesymbolsBySlug: {},
+        pokesymbolsByCode: {}
+      }
+    };
+
+    const byId = (id) => document.getElementById(id);
+
+    function decodeHtml(value) {
+      return String(value || "")
+        .replace(/&#8217;/g, "'")
+        .replace(/&quot;/g, '"')
+        .replace(/&amp;/g, "&")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">");
+    }
+
+    function escapeHtml(value) {
+      return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function escapeAttr(value) {
+      return String(value || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+    }
+
+    function toQueryText(value) {
+      return String(value || "")
+        .toLowerCase()
+        .trim();
+    }
+
+    async function loadCardImagesForDashboard() {
+      if (state.cardImagesForDashboard) return;
+      const empty = {
+        byLang: { english: {}, japanese: {} },
+        titleToCode: { english: {}, japanese: {} }
+      };
+      try {
+        const [enRes, jaRes] = await Promise.all([
+          fetch("/api/sets/cards?language=english"),
+          fetch("/api/sets/cards?language=japanese")
+        ]);
+        const en = enRes.ok ? await enRes.json() : null;
+        const ja = jaRes.ok ? await jaRes.json() : null;
+        const out = {
+          byLang: { english: {}, japanese: {} },
+          titleToCode: { english: {}, japanese: {} }
+        };
+        function ingest(payload, langKey) {
+          if (!payload || !payload.byCode || typeof payload.byCode !== "object") return;
+          for (const [codeRaw, entry] of Object.entries(payload.byCode)) {
+            const c = String(codeRaw || "").toUpperCase();
+            if (!c || !entry || typeof entry !== "object") continue;
+            const localImages = entry.localImages && typeof entry.localImages === "object" ? entry.localImages : {};
+            const remoteImages = entry.images && typeof entry.images === "object" ? entry.images : {};
+            const imgs = { ...remoteImages, ...localImages };
+            out.byLang[langKey][c] = imgs;
+            const title = decodeHtml(String(entry.sourceTitle || "")).trim().toLowerCase();
+            if (title && !out.titleToCode[langKey][title]) out.titleToCode[langKey][title] = c;
+          }
+        }
+        ingest(en, "english");
+        ingest(ja, "japanese");
+        state.cardImagesForDashboard = out;
+      } catch {
+        state.cardImagesForDashboard = empty;
+      }
+    }
+
+    function resolveItemSetCode(item) {
+      let code = String(item.setCode || "").trim().toUpperCase();
+      if (code) return code;
+      const bucket = state.cardImagesForDashboard;
+      if (!bucket || !item.setName) return "";
+      const lang = String(item.setLanguage || "english").toLowerCase() === "japanese" ? "japanese" : "english";
+      const t = decodeHtml(String(item.setName || "")).trim().toLowerCase();
+      return bucket.titleToCode[lang][t] || bucket.titleToCode.english[t] || "";
+    }
+
+    function pickImageFromMap(imgs, cardNumberRaw) {
+      if (!imgs || typeof imgs !== "object") return "";
+      const no = String(cardNumberRaw || "").trim();
+      if (!no) return "";
+      const candidates = new Set([no]);
+      const n = Number(no);
+      if (Number.isFinite(n)) {
+        candidates.add(String(n));
+        candidates.add(String(n).padStart(3, "0"));
+      }
+      const promo = no.match(/^(\d+)([a-zA-Z]+)$/);
+      if (promo) {
+        const base = promo[1];
+        const suffix = promo[2];
+        candidates.add(base);
+        const bn = Number(base);
+        if (Number.isFinite(bn)) {
+          candidates.add(String(bn).padStart(3, "0") + suffix);
+          candidates.add(String(bn) + suffix);
+        }
+      }
+      for (const key of candidates) {
+        if (key && imgs[key]) return String(imgs[key]).trim();
+      }
+      return "";
+    }
+
+    function lookupCardImageForItem(item) {
+      const saved = String(item.imageUrl || "").trim();
+      if (saved) return saved;
+      if (item.type !== "single") return "";
+      const bucket = state.cardImagesForDashboard;
+      if (!bucket) return "";
+      const lang = String(item.setLanguage || "english").toLowerCase() === "japanese" ? "japanese" : "english";
+      const code = resolveItemSetCode(item);
+      if (!code) return "";
+      const imgs = bucket.byLang[lang][code] || bucket.byLang.english[code];
+      return pickImageFromMap(imgs, item.cardNumber);
+    }
+
+    async function loadCardsFromSetsIndex() {
+      if (state.cardIndexLoaded) return;
+      const languages = ["english"]; // Japanese omitted until JP sets catalog is finished
+      const requests = languages.map((language) => fetch(`/api/sets/cards?language=${encodeURIComponent(language)}`));
+      const responses = await Promise.all(requests);
+      const payloads = await Promise.all(responses.map(async (response) => (response.ok ? response.json() : null)));
+      const cards = [];
+
+      for (let langIndex = 0; langIndex < languages.length; langIndex += 1) {
+        const language = languages[langIndex];
+        const payload = payloads[langIndex];
+        if (!payload || !payload.ok || !payload.byCode || typeof payload.byCode !== "object") continue;
+        for (const [setCode, entry] of Object.entries(payload.byCode)) {
+          const cardMap = entry && entry.cards && typeof entry.cards === "object" ? entry.cards : {};
+          const localImages = entry && entry.localImages && typeof entry.localImages === "object" ? entry.localImages : {};
+          const remoteImages = entry && entry.images && typeof entry.images === "object" ? entry.images : {};
+          const imagesByNo = { ...remoteImages, ...localImages };
+          const setTitleRaw = entry && entry.sourceTitle ? String(entry.sourceTitle) : "";
+          const setDisplayName = decodeHtml(setTitleRaw).trim() || String(setCode).toUpperCase();
+          for (const [cardNo, cardNameRaw] of Object.entries(cardMap)) {
+            const cardName = decodeHtml(String(cardNameRaw || "").trim()).trim();
+            if (!cardName) continue;
+            const id = `${language}:${String(setCode).toUpperCase()}:${cardNo}`;
+            const suffix = language === "japanese" ? " JP" : "";
+            const rawImg = imagesByNo[cardNo] ?? imagesByNo[String(cardNo)] ?? "";
+            const imageUrl = typeof rawImg === "string" && rawImg.trim() ? rawImg.trim() : "";
+            cards.push({
+              id,
+              language,
+              card: cardName,
+              setCode: String(setCode).toUpperCase(),
+              cardNo: String(cardNo),
+              setDisplayName,
+              imageUrl,
+              label: `${cardName} · ${setDisplayName} (${String(setCode).toUpperCase()} #${String(cardNo)}${suffix})`
+            });
+          }
+        }
+      }
+
+      cards.sort((a, b) => a.card.localeCompare(b.card) || a.setCode.localeCompare(b.setCode) || a.cardNo.localeCompare(b.cardNo));
+      const byIdMap = {};
+      for (const row of cards) byIdMap[row.id] = row;
+      state.cardIndex = cards;
+      state.cardIndexById = byIdMap;
+      state.cardIndexLoaded = true;
+    }
+
+    function renderAddCardGrid() {
+      const grid = byId("addCardGrid");
+      const searchInput = byId("addCardSearch");
+      if (!grid || !searchInput) return;
+      const query = toQueryText(searchInput.value);
+      const filtered = state.cardIndex
+        .filter((row) => {
+          if (!query) return false;
+          const haystack = toQueryText(`${row.card} ${row.cardNo} ${row.setCode}`);
+          return haystack.includes(query);
+        })
+        .slice(0, 300);
+      const idSet = new Set(filtered.map((r) => r.id));
+      if (state.addCardSelectedId && !idSet.has(state.addCardSelectedId)) {
+        state.addCardSelectedId = "";
+      }
+      if (!filtered.length) {
+        grid.innerHTML = `<div class="add-card-grid-empty">${query ? "No matches — try a card name, card number, or set code." : "Type to search for a card by name, number, or set code."}</div>`;
+        return;
+      }
+      grid.innerHTML = filtered
+        .map((row) => {
+          const sel = row.id === state.addCardSelectedId;
+          const thumb = row.imageUrl
+            ? `<img class="add-card-thumb" src="${escapeAttr(row.imageUrl)}" alt="" loading="lazy" />`
+            : `<div class="add-card-thumb add-card-thumb--ph" aria-hidden="true">No image</div>`;
+          return `<button type="button" class="add-card-tile${sel ? " selected" : ""}" role="option" aria-selected="${sel ? "true" : "false"}" data-card-id="${escapeAttr(row.id)}">${thumb}<div class="add-card-tile-name">${escapeHtml(row.card)}</div><div class="add-card-tile-meta">${escapeHtml(row.setDisplayName)} · ${escapeHtml(row.setCode)} #${escapeHtml(row.cardNo)}${row.language === "japanese" ? " JP" : ""}</div></button>`;
+        })
+        .join("");
+      grid.querySelectorAll(".add-card-tile[data-card-id]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          state.addCardSelectedId = btn.getAttribute("data-card-id") || "";
+          renderAddCardGrid();
+        });
+        btn.addEventListener("dblclick", () => {
+          state.addCardSelectedId = btn.getAttribute("data-card-id") || "";
+          confirmAddCard();
+        });
+      });
+    }
+
+    function openAddCardModal() {
+      const modal = byId("addCardModal");
+      if (!modal) return;
+      state.addCardSelectedId = "";
+      modal.classList.add("open");
+      modal.setAttribute("aria-hidden", "false");
+      const fi = byId("addCardSearch");
+      if (fi) fi.focus();
+      renderAddCardGrid();
+    }
+
+    function closeAddCardModal() {
+      const modal = byId("addCardModal");
+      if (!modal) return;
+      modal.classList.remove("open");
+      modal.setAttribute("aria-hidden", "true");
+      state.addCardSelectedId = "";
+      const s = byId("addCardSearch");
+      if (s) s.value = "";
+      const grid = byId("addCardGrid");
+      if (grid) grid.innerHTML = "";
+    }
+
+    async function confirmAddCard() {
+      const qtyInput = byId("addCardQty");
+      const pickId = String(state.addCardSelectedId || "").trim();
+      if (!pickId) {
+        window.alert("Select a card from the grid first (click its image).");
+        return;
+      }
+      const pick = state.cardIndexById[pickId];
+      if (!pick) {
+        window.alert("Could not resolve the selected card.");
+        return;
+      }
+      const quantity = Math.max(1, Math.floor(Number(qtyInput && qtyInput.value ? qtyInput.value : 1)));
+
+      try {
+        const res = await fetch("/api/items", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "single",
+            name: pick.card,
+            setName: pick.setDisplayName,
+            cardNumber: pick.cardNo,
+            quantity,
+            setCode: pick.setCode || "",
+            setLanguage: pick.language === "japanese" ? "japanese" : "english",
+            imageUrl: pick.imageUrl || "",
+            notes: pick.language === "japanese" ? "Japanese index" : ""
+          })
+        });
+        const payload = res.ok ? await res.json().catch(() => ({})) : null;
+        if (!res.ok) {
+          window.alert(payload && payload.error ? String(payload.error) : `Could not add card (${res.status})`);
+          return;
+        }
+
+        closeAddCardModal();
+        if (qtyInput) qtyInput.value = "1";
+        await loadData();
+        renderAll();
+      } catch {
+        window.alert("Network error while adding the card.");
+      }
+    }
+
+    function formatMoney(value) {
+      return `$${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+
+    function timeAgo(iso) {
+      const at = Date.parse(String(iso || ""));
+      if (!Number.isFinite(at)) return "Unknown";
+      const mins = Math.max(1, Math.floor((Date.now() - at) / 60000));
+      if (mins < 60) return `${mins}m ago`;
+      const hrs = Math.floor(mins / 60);
+      if (hrs < 24) return `${hrs}h ago`;
+      const days = Math.floor(hrs / 24);
+      return `${days}d ago`;
+    }
+
+    async function loadData() {
+      const [dashRes, itemsRes] = await Promise.all([
+        fetch("/api/dashboard"),
+        fetch("/api/items")
+      ]);
+      const dashboard = dashRes.ok ? await dashRes.json() : { kpis: {}, activities: [] };
+      const itemsPayload = itemsRes.ok ? await itemsRes.json() : { items: [] };
+      state.dashboard = dashboard;
+      state.items = Array.isArray(itemsPayload.items) ? itemsPayload.items : [];
+      if (dashboard.lastCollectrImport?.batchId) {
+        lastCollectrImport = dashboard.lastCollectrImport;
+      }
+      collectionCanUndo = Boolean(dashboard.canUndoCollection);
+      collectionUndoCount = Number(dashboard.collectionUndoCount) || 0;
+      updateCollectrDeleteButton();
+      await loadCardImagesForDashboard();
+      void loadSetProgressData();
+    }
+
+    function renderKpis() {
+      const k = state.dashboard?.kpis || {};
+      const pnl = Number(k.unrealizedPnL || 0);
+      byId("kpis").innerHTML = `
+        <div class="kpi">
+          <div class="kpi-label">Market Value</div>
+          <div class="kpi-value">${formatMoney(k.marketValue)}</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Cost Basis</div>
+          <div class="kpi-value">${formatMoney(k.costBasis)}</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Unrealized PnL</div>
+          <div class="kpi-value ${pnl >= 0 ? "up" : "down"}">${formatMoney(pnl)}</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Total Items</div>
+          <div class="kpi-value">${Number(k.totalItems || 0).toLocaleString()}</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Line Items</div>
+          <div class="kpi-value">${Number(k.lineItems || 0).toLocaleString()}</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Stale Pricing</div>
+          <div class="kpi-value">${Number(k.staleCount || 0).toLocaleString()}</div>
+        </div>
+      `;
+    }
+
+    function matches(item) {
+      const q = state.query.toLowerCase();
+      if (state.type === "sets") return false;
+      if (state.type !== "all" && item.type !== state.type) return false;
+      if (!q) return true;
+      return `${item.name} ${item.setName} ${item.cardNumber}`.toLowerCase().includes(q);
+    }
+
+    function bulbapediaSymbolUrl(setCode) {
+      const map = window.BULBA_SYMBOL_FILE_BY_CODE || {};
+      const file = map[String(setCode || "").toUpperCase()];
+      if (!file) return "";
+      return `https://bulbapedia.bulbagarden.net/wiki/Special:FilePath/${encodeURIComponent(file)}`;
+    }
+
+    function getEnglishSetsCatalog() {
+      const fallback = window.ENGLISH_SETS_BY_ERA || {};
+      const api = state.setProgress.catalogByEra || {};
+      const merged = {};
+      for (const [era, list] of Object.entries(fallback)) {
+        merged[era] = (Array.isArray(list) ? list : []).map((row) => ({
+          name: String(row.name || "").trim(),
+          code: String(row.code || "").toUpperCase()
+        }));
+      }
+      for (const [era, list] of Object.entries(api)) {
+        if (!Array.isArray(list)) continue;
+        if (!merged[era]) merged[era] = [];
+        const codes = new Set(merged[era].map((row) => row.code));
+        for (const row of list) {
+          const code = String(row.code || "").toUpperCase();
+          const name = String(row.name || "").trim();
+          if (!code || !name || codes.has(code)) continue;
+          merged[era].push({ name, code });
+          codes.add(code);
+        }
+      }
+      return merged;
+    }
+
+    function buildCatalogTitleToCode() {
+      const map = {};
+      for (const list of Object.values(getEnglishSetsCatalog())) {
+        if (!Array.isArray(list)) continue;
+        for (const row of list) {
+          const title = decodeHtml(row.name).trim().toLowerCase();
+          if (title) map[title] = row.code;
+        }
+      }
+      return map;
+    }
+
+    function orderedEnglishEraEntries(catalog) {
+      const order = window.ENGLISH_ERA_ORDER || [];
+      const seen = new Set();
+      const out = [];
+      for (const era of order) {
+        if (!catalog[era] || !catalog[era].length) continue;
+        out.push([era, catalog[era]]);
+        seen.add(era);
+      }
+      for (const [era, list] of Object.entries(catalog)) {
+        if (seen.has(era) || !list.length) continue;
+        out.push([era, list]);
+      }
+      return out;
+    }
+
+    function slugifySetName(name) {
+      return String(name || "")
+        .toLowerCase()
+        .replace(/['']/g, "")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+    }
+
+    function resolveSetProgressSymbolUrl(setCode, setName) {
+      const code = String(setCode || "").toUpperCase();
+      const byCode = state.setProgress.pokesymbolsByCode || {};
+      if (byCode[code] && byCode[code].symbol) return byCode[code].symbol;
+      const bySlug = state.setProgress.pokesymbolsBySlug || {};
+      const slug = slugifySetName(setName);
+      if (slug && bySlug[slug] && bySlug[slug].symbol) return bySlug[slug].symbol;
+      return bulbapediaSymbolUrl(code);
+    }
+
+    function canonicalCardNumberKey(raw) {
+      const q = String(raw || "")
+        .trim()
+        .replace(/^#/, "");
+      if (!q) return "";
+      const slash = q.match(/^([^/]+)\s*\/\s*.+$/);
+      const primary = slash ? slash[1].trim() : q;
+      if (/^\d+$/.test(primary)) {
+        const n = Number(primary);
+        if (Number.isFinite(n)) return String(n);
+      }
+      return primary.toUpperCase();
+    }
+
+    function getSetTotalCardCount(setCode) {
+      const entry = state.setProgress.manifestByCode[String(setCode || "").toUpperCase()];
+      if (!entry) return 0;
+      const fromField = Number(entry.totalCards);
+      if (Number.isFinite(fromField) && fromField > 0) return fromField;
+      const cards = entry.cards && typeof entry.cards === "object" ? entry.cards : {};
+      return Object.keys(cards).length;
+    }
+
+    function resolveSetCodeForSingle(item, titleToCode) {
+      let code = resolveItemSetCode(item);
+      if (code) return code;
+      const title = decodeHtml(String(item.setName || "")).trim().toLowerCase();
+      if (title && titleToCode[title]) return titleToCode[title];
+      return "";
+    }
+
+    function buildOwnedCardsBySetCode() {
+      const owned = {};
+      const titleToCode = buildCatalogTitleToCode();
+      const singles = state.items.filter((item) => item && item.type === "single");
+      for (const item of singles) {
+        const setCode = resolveSetCodeForSingle(item, titleToCode);
+        if (!setCode) continue;
+        const cardKey =
+          canonicalCardNumberKey(item.cardNumber) ||
+          `item:${String(item.id || item.name || "").trim()}`;
+        if (!owned[setCode]) owned[setCode] = new Set();
+        owned[setCode].add(cardKey);
+      }
+      return owned;
+    }
+
+    let setProgressLoadPromise = null;
+
+    function loadSetProgressData() {
+      if (state.setProgress.loaded) {
+        if (state.type === "sets") renderSetProgress();
+        return Promise.resolve();
+      }
+      if (setProgressLoadPromise) return setProgressLoadPromise;
+      setProgressLoadPromise = (async () => {
+        state.setProgress.loading = true;
+        try {
+          const [catalogRes, cardsRes, symbolsRes] = await Promise.all([
+            fetch("/api/sets/catalog?language=english"),
+            fetch("/api/sets/cards?language=english"),
+            fetch("/api/pokesymbols/by-code")
+          ]);
+          const catalog = catalogRes.ok ? await catalogRes.json() : null;
+          const cards = cardsRes.ok ? await cardsRes.json() : null;
+          const symbols = symbolsRes.ok ? await symbolsRes.json() : null;
+          state.setProgress.catalogByEra =
+            catalog && catalog.catalogByEra && typeof catalog.catalogByEra === "object"
+              ? catalog.catalogByEra
+              : {};
+          state.setProgress.manifestByCode =
+            cards && cards.byCode && typeof cards.byCode === "object" ? cards.byCode : {};
+          state.setProgress.pokesymbolsByCode =
+            symbols && symbols.byCode && typeof symbols.byCode === "object" ? symbols.byCode : {};
+          state.setProgress.pokesymbolsBySlug =
+            symbols && symbols.bySlug && typeof symbols.bySlug === "object" ? symbols.bySlug : {};
+          state.setProgress.loaded = Boolean(
+            window.ENGLISH_SETS_BY_ERA || Object.keys(state.setProgress.manifestByCode).length
+          );
+        } catch {
+          state.setProgress.catalogByEra = {};
+          state.setProgress.manifestByCode = {};
+          state.setProgress.loaded = Boolean(window.ENGLISH_SETS_BY_ERA);
+        } finally {
+          state.setProgress.loading = false;
+          if (state.type === "sets") renderSetProgress();
+        }
+      })();
+      return setProgressLoadPromise.finally(() => {
+        setProgressLoadPromise = null;
+      });
+    }
+
+    function progressTone(percent) {
+      if (percent >= 100) return "complete";
+      if (percent >= 50) return "good";
+      return "low";
+    }
+
+    function setMatchesSearch(setName, setCode) {
+      const q = state.query.toLowerCase().trim();
+      if (!q) return true;
+      return `${setName} ${setCode}`.toLowerCase().includes(q);
+    }
+
+    function renderSetProgress() {
+      if (state.type !== "sets") return;
+      const panel = byId("setProgressPanel");
+      const summaryEl = byId("setProgressSummary");
+      const erasEl = byId("setProgressEras");
+      if (!panel || !summaryEl || !erasEl) return;
+
+      const catalogByEra = getEnglishSetsCatalog();
+      if (!Object.keys(catalogByEra).length) {
+        summaryEl.textContent = "";
+        erasEl.innerHTML = `<div class="empty">${state.setProgress.loading ? "Loading set catalog…" : "Set catalog unavailable."}</div>`;
+        return;
+      }
+
+      const ownedBySet = buildOwnedCardsBySetCode();
+      let totalOwned = 0;
+      let totalNeed = 0;
+      const eraBlocks = [];
+
+      for (const [era, setList] of orderedEnglishEraEntries(catalogByEra)) {
+        const rows = [];
+        const list = Array.isArray(setList) ? setList : [];
+        for (const setEntry of list) {
+          const code = String(setEntry.code || "").toUpperCase();
+          const name = String(setEntry.name || "").trim();
+          if (!code || !name) continue;
+          if (!setMatchesSearch(name, code)) continue;
+          const total = getSetTotalCardCount(code);
+          const owned = ownedBySet[code] ? ownedBySet[code].size : 0;
+          totalOwned += owned;
+          let need = 0;
+          let percent = 0;
+          let statsText;
+          let tone = "low";
+          if (total > 0) {
+            need = Math.max(0, total - owned);
+            percent = owned >= total ? 100 : Math.floor((owned / total) * 100);
+            totalNeed += need;
+            tone = progressTone(percent);
+            statsText =
+              percent >= 100
+                ? `<span class="all-done">I have ALL the cards.</span>`
+                : `I have <span class="owned">${owned.toLocaleString()}</span> cards and need <span class="need">${need.toLocaleString()}</span> more.`;
+          } else {
+            statsText = `I have <span class="owned">${owned.toLocaleString()}</span> cards and need <span class="need">—</span> more.`;
+            percent = 0;
+          }
+          const symbolUrl = resolveSetProgressSymbolUrl(code, name);
+          const icon = symbolUrl
+            ? `<img class="set-progress-icon" src="${escapeAttr(symbolUrl)}" alt="" loading="lazy" />`
+            : `<div class="set-progress-icon set-progress-icon--ph" aria-hidden="true">${escapeHtml(code.slice(0, 3))}</div>`;
+          const barFill =
+            total > 0 && percent > 0
+              ? `<div class="set-progress-bar-fill tone-${tone}" style="width:${percent}%"></div>`
+              : "";
+          rows.push(`
+            <div class="set-progress-row">
+              ${icon}
+              <div>
+                <h3 class="set-progress-name"><a href="/sets.html?set=${escapeAttr(code)}">${escapeHtml(name)}</a></h3>
+                <p class="set-progress-stats">${statsText}</p>
+              </div>
+              <div class="set-progress-bar-wrap">
+                <div class="set-progress-bar" role="progressbar" aria-valuenow="${percent}" aria-valuemin="0" aria-valuemax="100">
+                  ${barFill}
+                </div>
+                <div class="set-progress-pct">[${total > 0 ? `${percent}%` : "—"}]</div>
+              </div>
+            </div>
+          `);
+        }
+        if (!rows.length) continue;
+        eraBlocks.push(`
+          <section class="set-progress-era">
+            <h2 class="set-progress-era-title">${escapeHtml(era)}</h2>
+            <div class="set-progress-list">${rows.join("")}</div>
+          </section>
+        `);
+      }
+
+      summaryEl.innerHTML = `I have <span class="owned">${totalOwned.toLocaleString()}</span> cards from the sets I am collecting and I need <span class="need">${totalNeed.toLocaleString()}</span> more.`;
+
+      if (!eraBlocks.length) {
+        erasEl.innerHTML = `<div class="empty">${state.query.trim() ? "No sets match your search." : "No set catalog data available yet."}</div>`;
+        return;
+      }
+      erasEl.innerHTML = eraBlocks.join("");
+    }
+
+    function renderCollectionView() {
+      const list = byId("itemsList");
+      const panel = byId("setProgressPanel");
+      const collectionPanel = byId("collectionPanel");
+      const toolbarActions = document.querySelector(".collection-toolbar-actions");
+      const addCardBtn = byId("openAddCardBtn");
+      const isSets = state.type === "sets";
+
+      if (collectionPanel) collectionPanel.classList.toggle("collection-panel--sets", isSets);
+      if (toolbarActions) toolbarActions.hidden = false;
+      if (addCardBtn) addCardBtn.hidden = isSets;
+      if (panel) {
+        if (isSets) panel.removeAttribute("hidden");
+        else panel.setAttribute("hidden", "");
+      }
+      if (list) {
+        if (isSets) {
+          list.setAttribute("hidden", "");
+          list.innerHTML = "";
+          list.classList.remove("showcase-grid");
+        } else {
+          list.removeAttribute("hidden");
+        }
+      }
+
+      if (isSets) {
+        renderSetProgress();
+      } else {
+        renderItems();
+      }
+    }
+
+    function collectionCardImageHtml(item) {
+      const imgUrl = lookupCardImageForItem(item);
+      if (imgUrl) {
+        return `<img src="${escapeAttr(imgUrl)}" alt="${escapeAttr(String(item.name || "Card"))}" loading="lazy" />`;
+      }
+      return `<span class="placeholder">No image</span>`;
+    }
+
+    function collectionCardSetsHref(item) {
+      const setCode = resolveItemSetCode(item);
+      if (item.type !== "single" || !setCode) return "";
+      const qs = new URLSearchParams();
+      qs.set("set", setCode);
+      const cardNum = String(item.cardNumber || "").trim();
+      if (cardNum) qs.set("card", cardNum);
+      if (String(item.setLanguage || "english").toLowerCase() === "japanese") qs.set("lang", "ja");
+      return `/sets.html?${qs.toString()}`;
+    }
+
+    function renderItems() {
+      const filtered = state.items.filter(matches);
+      const list = byId("itemsList");
+      if (!filtered.length) {
+        list.innerHTML = `<div class="empty">No collection items found.</div>`;
+        list.classList.remove("showcase-grid");
+        return;
+      }
+      list.classList.add("showcase-grid");
+      list.innerHTML = filtered
+        .map((item) => {
+          const unit = item.manualPrice ?? item.marketPrice ?? 0;
+          const total = Number(unit) * Number(item.quantity || 0);
+          const meta = [item.setName, item.cardNumber].filter(Boolean).join(" · ");
+          const qty = Number(item.quantity) > 1 ? ` ×${item.quantity}` : "";
+          const value =
+            total > 0 ? formatMoney(total) : unit > 0 ? formatMoney(unit) : "";
+          const typeLabel = item.type === "sealed" ? "Sealed" : "Single";
+          const setsHref = collectionCardSetsHref(item);
+          const body = `<div class="showcase-card-thumb">${collectionCardImageHtml(item)}</div>
+            <div class="showcase-card-body">
+              <h3 class="showcase-card-name">${escapeHtml(item.name || "Unnamed Item")}${escapeHtml(qty)}</h3>
+              <p class="showcase-card-meta">${escapeHtml(meta || typeLabel)}</p>
+              ${value ? `<div class="showcase-card-value">${escapeHtml(value)}</div>` : ""}
+            </div>`;
+          const removeBtn = `<button type="button" class="collection-card-remove" data-id="${escapeAttr(String(item.id || ""))}" data-name="${escapeAttr(String(item.name || "Item"))}" aria-label="Remove from collection">×</button>`;
+          if (setsHref) {
+            return `<article class="collection-card showcase-card showcase-card--static">
+              ${removeBtn}
+              <a class="collection-card-link" href="${escapeAttr(setsHref)}" title="View in Sets">${body}</a>
+            </article>`;
+          }
+          return `<article class="collection-card showcase-card showcase-card--static">
+            ${removeBtn}
+            ${body}
+          </article>`;
+        })
+        .join("");
+    }
+
+    function renderAll() {
+      renderKpis();
+      renderCollectionView();
+      syncCollectionFilterTabs();
+    }
+
+    function syncCollectionFilterTabs() {
+      document.querySelectorAll("[data-collection-filter]").forEach((btn) => {
+        const active = (btn.getAttribute("data-collection-filter") || "all") === state.type;
+        btn.classList.toggle("active", active);
+      });
+    }
+
+    function setCollectionFilter(type) {
+      state.type = type || "all";
+      syncCollectionFilterTabs();
+      renderCollectionView();
+      if (state.type === "sets") void loadSetProgressData();
+    }
+
+    byId("topSearch").addEventListener("input", (e) => {
+      state.query = e.target.value || "";
+      byId("nameFilter").value = state.query;
+      renderCollectionView();
+    });
+
+    byId("nameFilter").addEventListener("input", (e) => {
+      state.query = e.target.value || "";
+      byId("topSearch").value = state.query;
+      renderCollectionView();
+    });
+
+    document.querySelectorAll("[data-collection-filter]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        setCollectionFilter(btn.getAttribute("data-collection-filter") || "all");
+      });
+    });
+
+    byId("openAddCardBtn").addEventListener("click", async () => {
+      try {
+        await loadCardsFromSetsIndex();
+        openAddCardModal();
+      } catch {
+        window.alert("Could not load the Sets card catalog. Check that the server is running.");
+      }
+    });
+
+    byId("addCardSearch").addEventListener("input", renderAddCardGrid);
+    byId("addCardCancelBtn").addEventListener("click", closeAddCardModal);
+    byId("addCardConfirmBtn").addEventListener("click", () => {
+      confirmAddCard();
+    });
+
+    const addCardModal = byId("addCardModal");
+    if (addCardModal) {
+      addCardModal.addEventListener("click", (e) => {
+        if (e.target === addCardModal) closeAddCardModal();
+      });
+    }
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && addCardModal && addCardModal.classList.contains("open")) closeAddCardModal();
+    });
+
+    async function removeCollectionItem(rawId, displayName) {
+      const id = String(rawId || "").trim();
+      if (!id) return;
+      if (!window.confirm(`Remove "${displayName || "this item"}" from your collection?`)) return;
+      try {
+        const res = await fetch(`/api/items/${encodeURIComponent(id)}`, { method: "DELETE" });
+        if (!res.ok) {
+          const msg = await res.json().catch(() => ({}));
+          window.alert(msg && msg.error ? String(msg.error) : `Remove failed (${res.status})`);
+          return;
+        }
+        await loadData();
+        renderAll();
+      } catch {
+        window.alert("Network error while removing the item.");
+      }
+    }
+
+    byId("itemsList").addEventListener("click", (e) => {
+      const btn = e.target && e.target.closest ? e.target.closest(".collection-card-remove") : null;
+      if (!btn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const id = btn.getAttribute("data-id");
+      const name = btn.getAttribute("data-name");
+      removeCollectionItem(id, name);
+    });
+
+    const collectrImportUrl = byId("collectrImportUrl");
+    const collectrImportStatus = byId("collectrImportStatus");
+    const collectrPreviewBtn = byId("collectrPreviewBtn");
+    const collectrImportBtn = byId("collectrImportBtn");
+    const collectrReplaceExisting = byId("collectrReplaceExisting");
+    const collectrImportSingles = byId("collectrImportSingles");
+    const collectrImportSealed = byId("collectrImportSealed");
+    const collectrProgress = byId("collectrProgress");
+    const collectrProgressLabel = byId("collectrProgressLabel");
+    const collectrProgressPct = byId("collectrProgressPct");
+    const collectrProgressFill = byId("collectrProgressFill");
+    const collectrPreviewSummary = byId("collectrPreviewSummary");
+    let collectrCatalogCache = null;
+    let collectrCatalogCacheUrl = "";
+    let collectrImportBatchId = "";
+    let lastCollectrImport = null;
+    let collectionCanUndo = false;
+    let collectionUndoCount = 0;
+    const collectrDeleteWrap = byId("collectrDeleteWrap");
+    const collectrDeleteImportBtn = byId("collectrDeleteImportBtn");
+
+    function setCollectrStatus(message, isError = false) {
+      if (!collectrImportStatus) return;
+      collectrImportStatus.textContent = message || "";
+      collectrImportStatus.style.color = isError ? "var(--down)" : "var(--muted)";
+    }
+
+    function setCollectrProgress(percent, label) {
+      const pct = Math.max(0, Math.min(100, Math.round(Number(percent) || 0)));
+      if (collectrProgress) {
+        collectrProgress.classList.add("active");
+        collectrProgress.setAttribute("aria-hidden", "false");
+      }
+      if (collectrProgressLabel && label) collectrProgressLabel.textContent = label;
+      if (collectrProgressPct) collectrProgressPct.textContent = `${pct}%`;
+      if (collectrProgressFill) collectrProgressFill.style.width = `${pct}%`;
+      const track = collectrProgress?.querySelector("[role=progressbar]");
+      if (track) track.setAttribute("aria-valuenow", String(pct));
+    }
+
+    function hideCollectrProgress() {
+      if (collectrProgress) {
+        collectrProgress.classList.remove("active");
+        collectrProgress.setAttribute("aria-hidden", "true");
+      }
+      if (collectrProgressFill) collectrProgressFill.style.width = "0%";
+      if (collectrProgressPct) collectrProgressPct.textContent = "0%";
+    }
+
+    function countCollectrProductTypes(products) {
+      const rows = Array.isArray(products) ? products : [];
+      let cards = 0;
+      let sealed = 0;
+      for (const row of rows) {
+        if (row && row.is_card === false) sealed += 1;
+        else cards += 1;
+      }
+      return { cards, sealed, total: rows.length };
+    }
+
+    function getCollectrImportTypeOptions() {
+      const importSingles = Boolean(collectrImportSingles?.checked);
+      const importSealed = Boolean(collectrImportSealed?.checked);
+      return { importSingles, importSealed };
+    }
+
+    function filterCollectrProductsForImport(products) {
+      const { importSingles, importSealed } = getCollectrImportTypeOptions();
+      if (!importSingles && !importSealed) return [];
+      const rows = Array.isArray(products) ? products : [];
+      if (importSingles && importSealed) return rows;
+      return rows.filter((row) => {
+        const isSealed = row && row.is_card === false;
+        return isSealed ? importSealed : importSingles;
+      });
+    }
+
+    function showCollectrPreviewSummary(catalog) {
+      if (!collectrPreviewSummary || !catalog) return;
+      const filtered = filterCollectrProductsForImport(catalog.products);
+      const counts = countCollectrProductTypes(filtered);
+      const cards = Number(catalog.totalCards) > 0 ? Number(catalog.totalCards) : counts.cards;
+      const sealed = Number(catalog.totalSealed) > 0 ? Number(catalog.totalSealed) : counts.sealed;
+      const handle = catalog.handle || "collector";
+      collectrPreviewSummary.innerHTML = `
+        <div>Ready to import from <strong>@${escapeHtml(handle)}</strong></div>
+        <div><strong>${cards.toLocaleString()}</strong> Cards · <strong>${sealed.toLocaleString()}</strong> Sealed products</div>
+        <div style="color:var(--muted);font-size:12px;">${counts.total.toLocaleString()} Pokémon line items${catalog.filteredOutNonPokemon ? ` (${Number(catalog.filteredOutNonPokemon).toLocaleString()} other TCGs skipped)` : ""}</div>`;
+      collectrPreviewSummary.classList.add("visible");
+    }
+
+    function hideCollectrPreviewSummary() {
+      if (!collectrPreviewSummary) return;
+      collectrPreviewSummary.classList.remove("visible");
+      collectrPreviewSummary.innerHTML = "";
+    }
+
+    function resetCollectrImportField() {
+      if (collectrImportUrl) collectrImportUrl.value = "";
+      collectrCatalogCache = null;
+      collectrCatalogCacheUrl = "";
+      collectrImportBatchId = "";
+      hideCollectrPreviewSummary();
+    }
+
+    function updateCollectrDeleteButton() {
+      if (!collectrDeleteWrap || !collectrDeleteImportBtn) return;
+      const count = Array.isArray(state.items) ? state.items.length : 0;
+      if (collectionCanUndo) {
+        const undoN = collectionUndoCount || count;
+        collectrDeleteImportBtn.textContent = "Undo";
+        collectrDeleteImportBtn.classList.add("collectr-undo-btn");
+        collectrDeleteImportBtn.title = `Restore ${undoN.toLocaleString()} item(s) to your collection`;
+        collectrDeleteWrap.hidden = false;
+        return;
+      }
+      collectrDeleteImportBtn.classList.remove("collectr-undo-btn");
+      if (!count) {
+        collectrDeleteWrap.hidden = true;
+        return;
+      }
+      collectrDeleteImportBtn.textContent = "Delete All";
+      collectrDeleteImportBtn.title = `Remove all ${count.toLocaleString()} item(s) from your collection`;
+      collectrDeleteWrap.hidden = false;
+    }
+
+    function setCollectrActionButtonsDisabled(disabled) {
+      if (collectrDeleteImportBtn) collectrDeleteImportBtn.disabled = disabled;
+      if (collectrImportBtn) collectrImportBtn.disabled = disabled;
+      if (collectrPreviewBtn) collectrPreviewBtn.disabled = disabled;
+    }
+
+    async function deleteAllCollectionItems() {
+      const count = Array.isArray(state.items) ? state.items.length : 0;
+      if (!count) return;
+      if (
+        !window.confirm(
+          `Remove all ${count.toLocaleString()} item(s) from your personal collection? You can use Undo to bring them back.`
+        )
+      ) {
+        return;
+      }
+      setCollectrActionButtonsDisabled(true);
+      try {
+        const res = await fetch("/api/collection/delete-all", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: "{}"
+        });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok || !payload.ok) {
+          setCollectrStatus(payload.error || "Could not clear your collection.", true);
+          return;
+        }
+        lastCollectrImport = null;
+        collectrImportBatchId = "";
+        collectionCanUndo = Boolean(payload.canUndo);
+        collectionUndoCount = Number(payload.deleted) || count;
+        setCollectrStatus(
+          `Removed ${Number(payload.deleted || 0).toLocaleString()} item(s). Click Undo to restore.`
+        );
+        await loadData();
+        renderAll();
+      } catch (err) {
+        setCollectrStatus(err.message || "Delete failed.", true);
+      } finally {
+        setCollectrActionButtonsDisabled(false);
+      }
+    }
+
+    async function undoDeleteAllCollectionItems() {
+      const restoreN = collectionUndoCount || 0;
+      if (!collectionCanUndo) return;
+      if (
+        restoreN &&
+        !window.confirm(
+          `Restore ${restoreN.toLocaleString()} item(s) to your personal collection?`
+        )
+      ) {
+        return;
+      }
+      setCollectrActionButtonsDisabled(true);
+      try {
+        const res = await fetch("/api/collection/undo-delete-all", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: "{}"
+        });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok || !payload.ok) {
+          setCollectrStatus(payload.error || "Could not restore your collection.", true);
+          return;
+        }
+        collectionCanUndo = false;
+        collectionUndoCount = 0;
+        setCollectrStatus(
+          `Restored ${Number(payload.restored || 0).toLocaleString()} item(s) to your collection.`
+        );
+        await loadData();
+        renderAll();
+      } catch (err) {
+        setCollectrStatus(err.message || "Restore failed.", true);
+      } finally {
+        setCollectrActionButtonsDisabled(false);
+      }
+    }
+
+    collectrDeleteImportBtn?.addEventListener("click", () => {
+      if (collectionCanUndo) undoDeleteAllCollectionItems();
+      else deleteAllCollectionItems();
+    });
+
+    [collectrImportSingles, collectrImportSealed].forEach((el) => {
+      el?.addEventListener("change", () => {
+        if (collectrCatalogCache) showCollectrPreviewSummary(collectrCatalogCache);
+      });
+    });
+
+    async function fetchCollectrCatalogInBrowser(url, onProgress) {
+      if (!window.CollectrImportClient?.fetchAllCollectrShowcaseProducts) {
+        throw new Error("Collectr import helper failed to load. Hard refresh the page.");
+      }
+      let fakePct = 0;
+      const tick = setInterval(() => {
+        fakePct = Math.min(92, fakePct + 1);
+        setCollectrProgress(fakePct, "Loading showcase from Collectr (large collections may take several minutes)…");
+      }, 900);
+      try {
+        return await window.CollectrImportClient.fetchAllCollectrShowcaseProducts(url, {
+          maxItems: 25000,
+          onProgress
+        });
+      } finally {
+        clearInterval(tick);
+      }
+    }
+
+    async function uploadCollectrProductsBatches(catalog, replaceExisting, importBatchId, onProgress) {
+      const batchSize = 400;
+      const { importSingles, importSealed } = getCollectrImportTypeOptions();
+      const products = filterCollectrProductsForImport(catalog.products || []);
+      const totalBatches = Math.max(1, Math.ceil(products.length / batchSize));
+      let imported = 0;
+      let skipped = 0;
+      let pricedFromSets = 0;
+      let batchIndex = 0;
+      for (let i = 0; i < products.length; i += batchSize) {
+        const slice = products.slice(i, i + batchSize);
+        const isFinal = i + batchSize >= products.length;
+        batchIndex += 1;
+        if (onProgress) {
+          const processed = Math.min(i + slice.length, products.length);
+          onProgress({
+            phase: "save",
+            batchIndex,
+            totalBatches,
+            processed,
+            total: products.length,
+            percent: Math.round((processed / products.length) * 100)
+          });
+        }
+        const res = await fetch("/api/collectr/import/bulk", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            products: slice,
+            replaceExisting: replaceExisting && i === 0,
+            importSingles,
+            importSealed,
+            profileUrl: catalog.profileUrl,
+            handle: catalog.handle,
+            importBatchId
+          })
+        });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok || !payload.ok) {
+          throw new Error(payload.error || "Import batch failed");
+        }
+        imported += Number(payload.imported) || 0;
+        skipped += Number(payload.skipped) || 0;
+        pricedFromSets += Number(payload.pricedFromSets) || 0;
+        if (isFinal) {
+          await fetch("/api/collectr/import/bulk", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              products: [],
+              handle: catalog.handle,
+              profileUrl: catalog.profileUrl,
+              importBatchId,
+              finalBatch: true,
+              runImported: imported,
+              runSkipped: skipped
+            })
+          }).catch(() => {});
+        }
+      }
+      return { imported, skipped, pricedFromSets, totalFound: products.length };
+    }
+
+    function parseCollectrImportInput(raw) {
+      if (!window.CollectrImportClient?.parseCollectrProfileUrl) {
+        return { ok: false, error: "Collectr import helper failed to load. Hard refresh the page." };
+      }
+      return window.CollectrImportClient.parseCollectrProfileUrl(raw);
+    }
+
+    collectrPreviewBtn?.addEventListener("click", async () => {
+      const url = collectrImportUrl?.value.trim() || "";
+      const parsed = parseCollectrImportInput(url);
+      if (!parsed.ok) {
+        setCollectrStatus(parsed.error || "Enter a Collectr @username or showcase link.", true);
+        return;
+      }
+      hideCollectrPreviewSummary();
+      setCollectrStatus("");
+      setCollectrProgress(0, "Loading showcase from Collectr…");
+      collectrPreviewBtn.disabled = true;
+      collectrImportBtn.disabled = true;
+      try {
+        const catalog = await fetchCollectrCatalogInBrowser(parsed.profileUrl, (progress) => {
+          const loaded = Number(progress.loaded) || 0;
+          const expected = Number(progress.expectedTotal) || 0;
+          const pct = expected > 0 ? Math.min(99, Math.round((loaded / expected) * 100)) : Math.min(95, Math.round(loaded / 50));
+          setCollectrProgress(
+            pct,
+            `Loading showcase… ${loaded.toLocaleString()}${expected ? ` / ${expected.toLocaleString()}` : ""} items`
+          );
+        });
+        if (!catalog.ok) {
+          setCollectrStatus(catalog.error || "Preview failed.", true);
+          hideCollectrProgress();
+          return;
+        }
+        collectrCatalogCache = catalog;
+        collectrCatalogCacheUrl = parsed.handle;
+        setCollectrProgress(100, "Preview complete");
+        showCollectrPreviewSummary(catalog);
+        const counts = countCollectrProductTypes(catalog.products);
+        const cards = Number(catalog.totalCards) > 0 ? Number(catalog.totalCards) : counts.cards;
+        const sealed = Number(catalog.totalSealed) > 0 ? Number(catalog.totalSealed) : counts.sealed;
+        setCollectrStatus(
+          `Preview ready for @${catalog.handle}: ${cards.toLocaleString()} cards and ${sealed.toLocaleString()} sealed products (${counts.total.toLocaleString()} line items loaded).`
+        );
+        setTimeout(() => hideCollectrProgress(), 600);
+      } catch (err) {
+        setCollectrStatus(err.message || "Network error while previewing Collectr.", true);
+        hideCollectrProgress();
+      } finally {
+        collectrPreviewBtn.disabled = false;
+        collectrImportBtn.disabled = false;
+      }
+    });
+
+    collectrImportBtn?.addEventListener("click", async () => {
+      const url = collectrImportUrl?.value.trim() || "";
+      const parsed = parseCollectrImportInput(url);
+      if (!parsed.ok) {
+        setCollectrStatus(parsed.error || "Enter a Collectr @username or showcase link.", true);
+        return;
+      }
+      const profileUrl = parsed.profileUrl;
+      const { importSingles, importSealed } = getCollectrImportTypeOptions();
+      if (!importSingles && !importSealed) {
+        setCollectrStatus("Select at least one import type: Only Singles and/or Only Sealed.", true);
+        return;
+      }
+      const replace = Boolean(collectrReplaceExisting?.checked);
+      const typeNote = importSingles && importSealed ? "" : importSingles ? " (singles only)" : " (sealed only)";
+      const confirmText = replace
+        ? `Replace your entire collection and import from this Collectr showcase${typeNote}?`
+        : `Import from this Collectr showcase into your collection${typeNote}?`;
+      if (!window.confirm(confirmText)) return;
+
+      setCollectrStatus("");
+      collectrPreviewBtn.disabled = true;
+      collectrImportBtn.disabled = true;
+      collectrImportBatchId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      try {
+        let catalog =
+          collectrCatalogCache &&
+          collectrCatalogCacheUrl === parsed.handle &&
+          !collectrCatalogCache.partial
+            ? collectrCatalogCache
+            : null;
+        const fetchWeight = catalog ? 0 : 45;
+
+        if (!catalog) {
+          setCollectrProgress(0, "Fetching catalog from Collectr…");
+          catalog = await fetchCollectrCatalogInBrowser(profileUrl, (progress) => {
+            const loaded = Number(progress.loaded) || 0;
+            const expected = Number(progress.expectedTotal) || 0;
+            const fetchPct = expected > 0 ? (loaded / expected) * fetchWeight : Math.min(fetchWeight - 1, loaded / 80);
+            setCollectrProgress(
+              Math.round(fetchPct),
+              `Fetching from Collectr… ${loaded.toLocaleString()}${expected ? ` / ${expected.toLocaleString()}` : ""}`
+            );
+          });
+          collectrCatalogCache = catalog;
+          collectrCatalogCacheUrl = parsed.handle;
+        }
+
+        if (!catalog.ok) {
+          setCollectrStatus(catalog.error || "Could not load Collectr showcase.", true);
+          hideCollectrProgress();
+          return;
+        }
+
+        showCollectrPreviewSummary(catalog);
+        const products = filterCollectrProductsForImport(catalog.products || []);
+        if (!products.length) {
+          setCollectrStatus("No items match your import type selection.", true);
+          hideCollectrProgress();
+          return;
+        }
+        const useBatches = products.length > 400;
+        const saveStart = fetchWeight;
+        setCollectrProgress(
+          saveStart,
+          useBatches
+            ? `Saving ${products.length.toLocaleString()} items in batches…`
+            : `Saving ${products.length.toLocaleString()} items…`
+        );
+
+        const catalogForImport = { ...catalog, products };
+        const result = await uploadCollectrProductsBatches(catalogForImport, replace, collectrImportBatchId, (progress) => {
+          const savePct =
+            saveStart + Math.round(((progress.processed || 0) / (progress.total || 1)) * (100 - saveStart));
+          const batchNote = useBatches
+            ? ` (batch ${progress.batchIndex} of ${progress.totalBatches})`
+            : "";
+          setCollectrProgress(
+            savePct,
+            `Saving to your collection… ${Number(progress.processed || 0).toLocaleString()} / ${Number(progress.total || 0).toLocaleString()}${batchNote}`
+          );
+        });
+
+        setCollectrProgress(100, "Import complete");
+        const counts = countCollectrProductTypes(products);
+        lastCollectrImport = {
+          batchId: collectrImportBatchId,
+          handle: catalog.handle,
+          itemCount: Number(result.imported) || 0,
+          importedAt: new Date().toISOString()
+        };
+        if (state.dashboard) state.dashboard.lastCollectrImport = lastCollectrImport;
+        updateCollectrDeleteButton();
+        let statusMsg = `Imported ${Number(result.imported || 0).toLocaleString()} Pokémon items from @${catalog.handle} (${counts.cards.toLocaleString()} cards, ${counts.sealed.toLocaleString()} sealed; ${Number(result.skipped || 0).toLocaleString()} skipped).`;
+        const skippedOtherTcgs = Number(catalog.filteredOutNonPokemon) || 0;
+        if (skippedOtherTcgs > 0) {
+          statusMsg += ` ${skippedOtherTcgs.toLocaleString()} Magic/other TCG items were excluded.`;
+        }
+        if (Number(result.pricedFromSets) > 0) {
+          statusMsg += ` ${Number(result.pricedFromSets).toLocaleString()} priced from Sets/TCGplayer links.`;
+        }
+        setCollectrStatus(statusMsg);
+        await loadData();
+        renderAll();
+        resetCollectrImportField();
+        setTimeout(() => hideCollectrProgress(), 1200);
+      } catch (err) {
+        setCollectrStatus(err.message || "Import failed.", true);
+        hideCollectrProgress();
+      } finally {
+        collectrPreviewBtn.disabled = false;
+        collectrImportBtn.disabled = false;
+      }
+    });
+
+    let dashboardReady = false;
+
+    function setCollectionLocked(locked) {
+      document.body.classList.toggle("collection-locked", locked);
+      const gate = byId("collectionGate");
+      if (!gate) return;
+      gate.classList.toggle("open", locked);
+      gate.setAttribute("aria-hidden", locked ? "false" : "true");
+    }
+
+    function bootDashboard() {
+      if (dashboardReady) return;
+      dashboardReady = true;
+      setCollectionLocked(false);
+      resetCollectrImportField();
+      loadData()
+        .then(renderAll)
+        .catch(() => {
+          byId("kpis").innerHTML = `<div class="empty">Could not load dashboard data.</div>`;
+          byId("itemsList").innerHTML = `<div class="empty">Could not load collection items.</div>`;
+        });
+    }
+
+    function applyCollectionAuth({ signedIn }) {
+      if (signedIn) {
+        bootDashboard();
+        return;
+      }
+      dashboardReady = false;
+      setCollectionLocked(true);
+    }
+
+    byId("collectionGateSignIn")?.addEventListener("click", () => {
+      if (window.InfinityAccount) window.InfinityAccount.openSignIn();
+    });
+
+    if (window.InfinityAccount) {
+      window.InfinityAccount.onChange(applyCollectionAuth);
+    } else {
+      setCollectionLocked(true);
+    }
+
+  </script>
+</body>
+</html>
+

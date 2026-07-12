@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scan Your Cards — Infinity Cards</title>
+  <meta name="description" content="Scan Pokémon cards into your collection" />
+  <link rel="stylesheet" href="/scan-your-cards.css" />
+  <link rel="stylesheet" href="/brand-logo.css" />
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0a0f18;
+      --panel: #101825;
+      --border: #26364f;
+      --text: #e9f1ff;
+      --muted: #93a8c7;
+      --accent: #67b2ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, "Segoe UI", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .top-nav {
+      height: 56px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(10, 15, 24, 0.92);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      position: sticky;
+      top: 0;
+      z-index: 4;
+    }
+    .nav-left, .nav-right { display: flex; align-items: center; gap: 14px; }
+    .nav-link {
+      color: var(--muted);
+      font-size: 13px;
+      text-decoration: none;
+    }
+    .nav-link.active, .nav-link:hover { color: var(--text); }
+  </style>
+</head>
+<body>
+  <nav class="top-nav">
+    <div class="nav-left">
+      <a href="/" class="brand" aria-label="Go to homepage">
+        <span class="pokeball-logo" aria-hidden="true"></span>
+      </a>
+      <a href="/" class="nav-link">Home</a>
+      <a href="/sets.html" class="nav-link">Sets</a>
+      <a href="/dashboard.html" class="nav-link">Collection</a>
+      <a href="/showcase" class="nav-link">Showcase</a>
+      <a href="/poke-view.html" class="nav-link">Poke View</a>
+      <a href="/scan-your-cards.html" class="nav-link active">Scan Your Cards</a>
+      <a href="/restock-tracker.html" class="nav-link">Restock Tracker</a>
+    </div>
+    <div class="nav-right">
+      <div data-account-slot></div>
+    </div>
+  </nav>
+
+  <main class="scan-page">
+    <section class="scan-panel">
+      <h1 class="scan-title">Scan Your Cards</h1>
+      <p class="scan-sub">
+        Point your camera at a card or upload a photo. Matches use the Poke Scanner card catalog (~20k English cards with image recognition).
+        You can also search by name below.
+      </p>
+      <p id="scanStatus" class="scan-status">Checking scanner…</p>
+      <div class="scan-model-progress" id="scanModelProgress" aria-hidden="true">
+        <span id="scanModelProgressFill"></span>
+      </div>
+      <p id="scanLoading" class="scan-loading" aria-live="polite"></p>
+
+      <div class="scan-layout">
+        <div>
+          <div class="scan-viewport-wrap">
+            <video id="scanVideo" playsinline muted style="display:none"></video>
+            <img id="scanPreview" class="preview" alt="Captured card" style="display:none" />
+            <div id="scanPlaceholder" class="scan-viewport-placeholder">
+              <span>Camera preview</span>
+              <span style="font-size:12px;">Use Start camera or Upload photo</span>
+            </div>
+            <div class="scan-guide" aria-hidden="true"></div>
+          </div>
+          <div class="scan-controls">
+            <button type="button" class="scan-btn" id="scanStartBtn">Start camera</button>
+            <button type="button" class="scan-btn" id="scanStopBtn">Stop</button>
+            <button type="button" class="scan-btn" id="scanCaptureBtn">Capture</button>
+            <label class="scan-btn ghost" style="cursor:pointer;margin:0;">
+              Upload photo
+              <input id="scanFileInput" type="file" accept="image/*" capture="environment" hidden />
+            </label>
+            <button type="button" class="scan-btn primary" id="scanBtn">Scan card</button>
+          </div>
+          <div class="scan-search-row" style="margin-top:12px;">
+            <label for="scanTextSearch">Or search by name</label>
+            <div style="display:flex;gap:8px;">
+              <input id="scanTextSearch" type="search" placeholder="e.g. Charizard" autocomplete="off" style="flex:1;" />
+              <button type="button" class="scan-btn" id="scanTextSearchBtn">Search</button>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h2 class="scan-results-title">Matches</h2>
+          <div id="scanResults" class="scan-results">
+            <div class="scan-empty">Capture or search to see matches.</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="scanAddPanel" class="scan-add-panel">
+        <p id="scanSelectedSummary" class="scan-sub" style="margin:0;"></p>
+        <div class="scan-add-row">
+          <label>Qty <input id="scanQty" type="number" min="1" value="1" /></label>
+          <button type="button" class="scan-btn primary" id="scanAddBtn">Add to collection</button>
+          <a href="/dashboard.html" class="scan-btn ghost" style="text-decoration:none;display:inline-flex;align-items:center;">Open collection</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/account-ui.js"></script>
+  <script type="module" src="/scan-your-cards.js"></script>
+</body>
+</html>

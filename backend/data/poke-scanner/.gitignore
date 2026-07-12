@@ -1,0 +1,2 @@
+# Copied from Poke Scanner iOS app (~90MB). Run: node backend/scripts/setup-poke-scanner-db.js
+pokemon_app.db

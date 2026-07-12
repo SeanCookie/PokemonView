@@ -1,0 +1,28 @@
+{
+  "name": "pokemonview",
+  "version": "1.0.0",
+  "private": true,
+  "main": "app.js",
+  "scripts": {
+    "build": "node scripts/cf-build.js",
+    "cf:ci": "npm run build && npm run deploy:cloudflare",
+    "localize": "node scripts/localize-catalog.js",
+    "upload:card-images": "node scripts/upload-card-images-to-r2.js",
+    "upload:static-assets": "node scripts/upload-static-assets-to-r2.js",
+    "upload:r2": "node scripts/upload-static-assets-to-r2.js && node scripts/upload-card-images-to-r2.js",
+    "setup:r2": "node scripts/setup-r2-card-images.js",
+    "dev": "node app.js",
+    "start": "node app.js",
+    "deploy:cloudflare": "node scripts/prune-docker-context.js && wrangler deploy --config wrangler.toml"
+  },
+  "dependencies": {
+    "@cloudflare/containers": "^0.0.13",
+    "wrangler": "^4.28.0"
+  },
+  "optionalDependencies": {
+    "playwright-core": "^1.60.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

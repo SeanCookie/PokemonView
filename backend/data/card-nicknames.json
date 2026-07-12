@@ -1,0 +1,50 @@
+{
+  "ok": true,
+  "updatedAt": "2026-07-11T22:06:38.403Z",
+  "nicknames": [
+    {
+      "id": "1783807598402-5645783",
+      "nickname": "Sunbreon",
+      "nicknameKey": "sunbreon",
+      "setCode": "PRE",
+      "cardNumber": "161",
+      "setName": "Prismatic Evolutions",
+      "language": "english",
+      "createdAt": "2026-07-11T22:06:38.402Z",
+      "updatedAt": "2026-07-11T22:06:38.402Z"
+    },
+    {
+      "id": "1783807363560-7884180",
+      "nickname": "Moonbreon",
+      "nicknameKey": "moonbreon",
+      "setCode": "EVS",
+      "cardNumber": "215",
+      "setName": "Evolving Skies",
+      "language": "english",
+      "createdAt": "2026-07-11T22:02:43.560Z",
+      "updatedAt": "2026-07-11T22:02:43.561Z"
+    },
+    {
+      "id": "1780121817818-7750356",
+      "nickname": "MewTube",
+      "nicknameKey": "mewtube",
+      "setCode": "SLG",
+      "cardNumber": "78",
+      "setName": "Shining Legends",
+      "language": "english",
+      "createdAt": "2026-05-30T06:16:57.818Z",
+      "updatedAt": "2026-05-30T06:16:57.818Z"
+    },
+    {
+      "id": "example-bubble-mew",
+      "nickname": "Bubble Mew",
+      "nicknameKey": "bubble mew",
+      "setCode": "PAF",
+      "cardNumber": "232",
+      "setName": "Paldean Fates",
+      "language": "english",
+      "createdAt": "2026-05-20T00:00:00.000Z",
+      "updatedAt": "2026-05-20T00:00:00.000Z"
+    }
+  ]
+}

@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Admin — Infinity Cards</title>
+  <link rel="stylesheet" href="/site-nav.css" />
+  <link rel="stylesheet" href="/admin.css" />
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0a0f18;
+      --panel: #101825;
+      --border: #26364f;
+      --text: #e9f1ff;
+      --muted: #93a8c7;
+      --accent: #67b2ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, "Segoe UI", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+  </style>
+</head>
+<body>
+  <nav class="top-nav">
+    <div class="nav-left">
+      <a href="/" class="brand" aria-label="Go to homepage">
+        <span class="pokeball-logo" aria-hidden="true"></span>
+      </a>
+      <a href="/" class="nav-link">Home</a>
+      <a href="/sets.html" class="nav-link">Sets</a>
+      <a href="/dashboard.html" class="nav-link">Collection</a>
+      <a href="/showcase" class="nav-link">Showcase</a>
+      <a href="/poke-view.html" class="nav-link">Poke View</a>
+      <a href="/scan-your-cards.html" class="nav-link">Scan Your Cards</a>
+      <a href="/restock-tracker.html" class="nav-link">Restock Tracker</a>
+      <a href="/admin.html" class="nav-link active">Admin</a>
+    </div>
+    <div class="nav-right">
+      <div data-account-slot></div>
+    </div>
+  </nav>
+
+  <div id="adminDenied" class="admin-denied" hidden>
+    <h1>Administrator access required</h1>
+    <p>Sign in with an administrator account to use this dashboard.</p>
+    <p><a href="/" class="nav-link">Return home</a></p>
+  </div>
+
+  <main id="adminApp" class="admin-page" hidden>
+    <section class="admin-hero">
+      <h1>Site administration</h1>
+      <p>Manage TCG price cache, restock tracker products, and moderation tools.</p>
+    </section>
+
+    <section class="admin-grid admin-grid--pricing">
+      <article class="admin-card" id="tcgCacheCard">
+        <h2>TCG Price Check cache</h2>
+        <p class="admin-hint">TCGplayer listing prices. Cache saves every <strong>1000</strong> cards during bulk updates. Use <strong>Update all</strong> for every set, or refresh one set below. Failed links appear in the section under the buttons.</p>
+        <div class="admin-stat">
+          <span class="label">Last successful full check</span>
+          <span class="value mono" id="tcgLastSuccess">—</span>
+        </div>
+        <div class="admin-stat">
+          <span class="label">Cache saved at</span>
+          <span class="value mono" id="tcgCacheSaved">—</span>
+        </div>
+        <div class="admin-stat admin-stat--live">
+          <span class="label">Cards in cache <span class="admin-live-dot" aria-hidden="true"></span></span>
+          <span class="value" id="tcgCacheLive">—</span>
+        </div>
+        <div class="admin-stat">
+          <span class="label">Priced successfully</span>
+          <span class="value" id="tcgPricedCount">—</span>
+        </div>
+        <div class="admin-stat">
+          <span class="label">Total TCG links</span>
+          <span class="value" id="tcgTotalLinks">—</span>
+        </div>
+        <div class="admin-stat">
+          <span class="label">Status</span>
+          <span class="value"><span class="admin-badge" id="tcgStatusBadge">idle</span></span>
+        </div>
+        <div class="admin-progress" aria-hidden="true"><span id="tcgProgressBar"></span></div>
+        <p class="admin-stat"><span class="label">TCG progress</span><span class="value" id="tcgProgressText">—</span></p>
+        <div class="admin-set-refresh">
+          <label class="admin-set-refresh-label" for="tcgSetRefreshSelect">Refresh one set
+            <select id="tcgSetRefreshSelect">
+              <option value="">Select a set…</option>
+            </select>
+          </label>
+          <button type="button" class="admin-btn" id="btnTcgSetRefresh">Refresh set prices</button>
+        </div>
+        <div class="admin-actions">
+          <button type="button" class="admin-btn primary" id="btnTcgPriceUpdate">Update all TCG prices</button>
+          <button type="button" class="admin-btn danger" id="btnTcgPriceStop" hidden>Stop price check</button>
+        </div>
+        <section class="admin-fail-links" id="tcgFailLinksSection" hidden>
+          <div class="admin-fail-links-head">
+            <h3>Failed links</h3>
+            <span class="admin-fail-links-count" id="tcgFailLinksCount">0</span>
+            <button type="button" class="admin-btn" id="btnPruneNonPokemonFailLinks">Remove non-Pokémon</button>
+          </div>
+          <p class="admin-hint">These TCGplayer URLs could not be priced automatically. Paste a <strong>TCGplayer</strong> or <strong>PriceCharting</strong> product link with the price you want, then <strong>Save to cache</strong>.</p>
+          <div class="admin-fail-links-list" id="tcgFailLinksList"></div>
+        </section>
+        <p class="admin-status" id="tcgStatusMsg"></p>
+      </article>
+
+      <article class="admin-card" id="pcCacheCard">
+        <h2>PriceCharting details cache</h2>
+        <p class="admin-hint">Sold listings and graded guides. Separate from TCG listing prices. Saves every <strong>1000</strong> cards during refresh.</p>
+        <div class="admin-stat">
+          <span class="label">Last successful refresh</span>
+          <span class="value mono" id="pcLastSuccess">—</span>
+        </div>
+        <div class="admin-stat">
+          <span class="label">Cache saved at</span>
+          <span class="value mono" id="pcCacheSaved">—</span>
+        </div>
+        <div class="admin-stat admin-stat--live">
+          <span class="label">Cards in cache <span class="admin-live-dot" aria-hidden="true"></span></span>
+          <span class="value" id="pcDetailsCacheCount">—</span>
+        </div>
+        <div class="admin-stat">
+          <span class="label">Status</span>
+          <span class="value"><span class="admin-badge" id="pcStatusBadge">idle</span></span>
+        </div>
+        <div class="admin-progress" aria-hidden="true"><span id="pcProgressBar"></span></div>
+        <p class="admin-stat"><span class="label">PriceCharting progress</span><span class="value" id="pcDetailsProgressText">—</span></p>
+        <div class="admin-actions">
+          <button type="button" class="admin-btn primary" id="btnPcDetailsUpdate">Update PriceCharting cache</button>
+          <button type="button" class="admin-btn danger" id="btnPcDetailsStop" hidden>Stop PriceCharting</button>
+        </div>
+        <section class="admin-fail-links" id="pcFailLinksSection" hidden>
+          <div class="admin-fail-links-head">
+            <h3>Failed cards</h3>
+            <span class="admin-fail-links-count" id="pcFailLinksCount">0</span>
+            <button type="button" class="admin-btn" id="btnClearPcFailLinks">Clear all</button>
+          </div>
+          <p class="admin-hint">These cards could not load PriceCharting sold/graded details. Dismiss after fixing or retrying.</p>
+          <div class="admin-fail-links-list" id="pcFailLinksList"></div>
+        </section>
+        <p class="admin-status" id="pcStatusMsg"></p>
+      </article>
+    </section>
+
+    <section class="admin-card" id="restockCacheCard">
+      <h2>Restock Tracker cache</h2>
+      <p class="admin-hint">Re-check tracked product pages for stock status and prices, then save the result to <code>restock-tracker.json</code>. Also runs automatically each hour.</p>
+      <div class="admin-stat">
+        <span class="label">Last cache refresh</span>
+        <span class="value mono" id="restockLastRefresh">—</span>
+      </div>
+      <div class="admin-stat">
+        <span class="label">Tracked products</span>
+        <span class="value" id="restockItemCount">—</span>
+      </div>
+      <div class="admin-stat">
+        <span class="label">Last run summary</span>
+        <span class="value" id="restockLastSummary">—</span>
+      </div>
+      <div class="admin-stat">
+        <span class="label">Status</span>
+        <span class="value"><span class="admin-badge" id="restockStatusBadge">idle</span></span>
+      </div>
+      <div class="admin-progress" aria-hidden="true"><span id="restockProgressBar"></span></div>
+      <p class="admin-stat"><span class="label">Restock progress</span><span class="value" id="restockProgressText">—</span></p>
+      <div class="restock-retailer-picker">
+        <div class="restock-retailer-picker-head">
+          <span class="label">Retailers to refresh</span>
+          <div class="admin-actions">
+            <button type="button" class="admin-btn" id="btnRestockSelectAll">Select all</button>
+            <button type="button" class="admin-btn" id="btnRestockSelectNone">Select none</button>
+          </div>
+        </div>
+        <div class="restock-retailer-list" id="restockRetailerList"></div>
+      </div>
+      <div class="admin-actions">
+        <button type="button" class="admin-btn primary" id="btnRestockRefresh">Refresh restock tracker</button>
+      </div>
+      <p class="admin-status" id="restockRefreshMsg"></p>
+    </section>
+
+    <section class="admin-card">
+      <h2>Add restock tracker product</h2>
+      <p style="margin:0;color:var(--muted);font-size:13px;">Manual products are merged into the public Restock Tracker and kept when imports run.</p>
+      <form class="admin-form" id="restockForm">
+        <label>Product name
+          <input type="text" id="restockName" required placeholder="Pokémon TCG …" />
+        </label>
+        <label>Product URL
+          <input type="url" id="restockUrl" required placeholder="https://…" />
+        </label>
+        <label>Retailer (optional)
+          <input type="text" id="restockRetailer" placeholder="Amazon, Walmart, …" />
+        </label>
+        <label>Status
+          <select id="restockStatus">
+            <option value="unknown">Unknown</option>
+            <option value="in_stock">In stock</option>
+            <option value="out_of_stock">Out of stock</option>
+            <option value="preorder">Pre-order</option>
+          </select>
+        </label>
+        <label>Last known price (optional)
+          <input type="text" id="restockPrice" placeholder="$49.99" />
+        </label>
+        <div class="admin-actions">
+          <button type="submit" class="admin-btn primary">Add to Restock Tracker</button>
+        </div>
+      </form>
+      <p class="admin-status" id="restockFormMsg"></p>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Retailer</th>
+              <th>Status</th>
+              <th>Link</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="manualRestockBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="admin-card">
+      <h2>Hidden card nicknames</h2>
+      <p class="admin-hint">Nicknames are not shown on cards. Search for a card below (same as Sets), click it, then enter the nickname. When someone searches on Sets (e.g. <strong>Bubble Mew</strong>), results include that card.</p>
+      <form class="admin-form" id="nicknameForm">
+        <label>Nickname
+          <input type="text" id="nicknameText" required placeholder="Bubble Mew" maxlength="80" />
+        </label>
+        <label>Language
+          <select id="nicknameLanguage">
+            <option value="english" selected>English</option>
+            <option value="japanese">Japanese</option>
+          </select>
+        </label>
+        <label>Card
+          <input
+            type="search"
+            id="nicknameCardSearch"
+            class="nickname-card-search"
+            placeholder="Search cards…"
+            autocomplete="off"
+            disabled
+          />
+        </label>
+        <div id="nicknameSelectedCard" class="nickname-selected-card" hidden></div>
+        <div id="nicknameCardResults" class="nickname-card-results" hidden>
+          <p class="nickname-card-results-meta" id="nicknameCardResultsMeta"></p>
+          <div class="nickname-card-grid" id="nicknameCardGrid"></div>
+        </div>
+        <input type="hidden" id="nicknameSetCode" />
+        <input type="hidden" id="nicknameCardNumber" />
+        <div class="admin-actions">
+          <button type="submit" class="admin-btn primary" id="nicknameSubmitBtn" disabled>Add nickname</button>
+        </div>
+      </form>
+      <p class="admin-status" id="nicknameFormMsg"></p>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Nickname</th>
+              <th>Card</th>
+              <th>Set</th>
+              <th>Lang</th>
+              <th>Test</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="nicknameBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="admin-card" id="siteOverviewCard">
+      <h2>Site overview</h2>
+      <div class="admin-overview-stats">
+        <div class="admin-stat"><span class="label">Registered users</span><span class="value" id="statUsers">—</span></div>
+        <div class="admin-stat"><span class="label">Collection items</span><span class="value" id="statItems">—</span></div>
+        <div class="admin-stat"><span class="label">Activity log entries</span><span class="value" id="statActivities">—</span></div>
+        <div class="admin-stat"><span class="label">Manual restock products</span><span class="value" id="statManualRestock">—</span></div>
+      </div>
+      <div class="admin-actions">
+        <button type="button" class="admin-btn danger" id="btnClearActivities">Clear activity log</button>
+      </div>
+      <p class="admin-status" id="siteStatusMsg"></p>
+    </section>
+
+    <section class="admin-card">
+      <h2>Users</h2>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Username</th>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Last login</th>
+            </tr>
+          </thead>
+          <tbody id="usersBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="/account-ui.js"></script>
+  <script src="/admin.js"></script>
+</body>
+</html>

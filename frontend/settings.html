@@ -1,0 +1,671 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Account Settings — Infinity Cards</title>
+  <link rel="stylesheet" href="/brand-logo.css" />
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0a0f18;
+      --panel: #101825;
+      --border: #26364f;
+      --text: #e9f1ff;
+      --muted: #93a8c7;
+      --accent: #67b2ff;
+      --danger: #ff5f73;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, "Segoe UI", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    .top-nav {
+      height: 56px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(10, 15, 24, 0.92);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      position: sticky;
+      top: 0;
+      z-index: 4;
+    }
+    .nav-left, .nav-right { display: flex; align-items: center; gap: 14px; }
+    .nav-link {
+      color: var(--muted);
+      font-size: 13px;
+      text-decoration: none;
+    }
+    .nav-link.active, .nav-link:hover { color: var(--text); }
+
+    .page {
+      max-width: 1040px;
+      margin: 18px auto;
+      padding: 0 14px 40px;
+      display: grid;
+      gap: 14px;
+    }
+    .settings-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      align-items: stretch;
+    }
+    @media (max-width: 820px) {
+      .settings-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent), var(--panel);
+      padding: 16px;
+      display: grid;
+      gap: 12px;
+      align-content: start;
+      min-height: 0;
+    }
+    .panel--activity .activity-feed {
+      max-height: 420px;
+      overflow-y: auto;
+    }
+    .title { margin: 0; font-size: 22px; }
+    .panel-title { margin: 0; font-size: 18px; font-weight: 700; }
+    .sub { margin: 0; color: var(--muted); font-size: 13px; }
+    label {
+      display: grid;
+      gap: 4px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    input {
+      height: 38px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #0e1623;
+      color: var(--text);
+      padding: 0 10px;
+      font-size: 14px;
+      font-family: inherit;
+    }
+    input:disabled {
+      opacity: 0.75;
+      cursor: not-allowed;
+    }
+    .btn {
+      height: 38px;
+      border-radius: 8px;
+      border: 1px solid #3d5a8a;
+      background: linear-gradient(180deg, rgba(80, 140, 255, 0.35), rgba(40, 90, 200, 0.2));
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      padding: 0 16px;
+      justify-self: start;
+    }
+    .btn:hover { border-color: #5c7ebe; }
+    .status {
+      min-height: 20px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .status.error { color: var(--danger); }
+    .status.ok { color: #33d18f; }
+    .hint { font-size: 12px; color: var(--muted); margin: 0; line-height: 1.4; }
+    .showcase-avatar-editor {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 14px;
+      align-items: start;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.15);
+    }
+    .showcase-avatar-preview {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      border: 2px solid rgba(103, 178, 255, 0.45);
+      background: linear-gradient(145deg, #1a2b45, #0e1624);
+      display: grid;
+      place-items: center;
+      font-size: 22px;
+      font-weight: 700;
+      color: #cfe3ff;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .showcase-avatar-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .showcase-avatar-fields {
+      display: grid;
+      gap: 8px;
+      min-width: 0;
+    }
+    .showcase-avatar-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+    .btn.secondary {
+      background: #0e1623;
+      border-color: var(--border);
+      font-weight: 500;
+    }
+    .btn-file {
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+    }
+    .btn-file input { display: none; }
+
+    .activity-feed { display: grid; gap: 8px; }
+
+    .activity-item {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #0f1726;
+      padding: 10px;
+      display: grid;
+      gap: 3px;
+    }
+
+    .activity-item-title {
+      font-size: 13px;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .activity-item-meta {
+      font-size: 12px;
+      color: var(--muted);
+      margin: 0;
+    }
+
+    .activity-empty {
+      text-align: center;
+      color: var(--muted);
+      padding: 20px;
+      border: 1px dashed var(--border);
+      border-radius: 10px;
+      background: #0f1726;
+      font-size: 13px;
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+  <nav class="top-nav">
+    <div class="nav-left">
+      <a href="/" class="brand" aria-label="Go to homepage">
+        <span class="pokeball-logo" aria-hidden="true"></span>
+      </a>
+      <a href="/" class="nav-link">Home</a>
+      <a href="/sets.html" class="nav-link">Sets</a>
+      <a href="/dashboard.html" class="nav-link">Collection</a>
+      <a href="/showcase" class="nav-link">Showcase</a>
+      <a href="/poke-view.html" class="nav-link">Poke View</a>
+      <a href="/scan-your-cards.html" class="nav-link">Scan Your Cards</a>
+      <a href="/restock-tracker.html" class="nav-link">Restock Tracker</a>
+      <a href="/settings.html" class="nav-link active">Settings</a>
+    </div>
+    <div class="nav-right">
+      <div data-account-slot></div>
+    </div>
+  </nav>
+
+  <main class="page">
+    <section class="panel">
+      <h1 class="title">Account settings</h1>
+      <p class="sub">Update your display name, email, and username, then save. Change your password below when needed.</p>
+    </section>
+
+    <div class="settings-grid">
+    <section class="panel panel--profile">
+      <h2 class="panel-title">Profile</h2>
+      <form id="profileForm" style="display:grid;gap:12px;" novalidate>
+        <label>
+          Display name
+          <input id="displayName" type="text" name="name" autocomplete="name" maxlength="80" />
+        </label>
+        <label>
+          Email
+          <input id="email" type="email" name="email" autocomplete="email" required />
+        </label>
+        <label>
+          Username
+          <input
+            id="username"
+            type="text"
+            name="username"
+            autocomplete="username"
+            required
+            minlength="3"
+            maxlength="24"
+            pattern="[A-Za-z0-9_]{3,24}"
+            title="3–24 characters: letters, numbers, underscore"
+          />
+        </label>
+        <p class="hint" style="margin:-4px 0 0;">Username: 3–24 characters, letters, numbers, and underscore only.</p>
+        <button type="submit" class="btn">Save profile</button>
+        <p id="profileStatus" class="status" role="status"></p>
+      </form>
+    </section>
+
+    <section class="panel panel--showcase" id="showcase">
+      <h2 class="panel-title">Showcase</h2>
+      <p class="sub">Control your public collector profile. Anyone with your link can browse cards you add in Collection.</p>
+      <p class="hint" id="showcaseUrlHint">Your showcase link loads after you sign in.</p>
+      <div class="showcase-avatar-editor">
+        <div id="showcaseAvatarPreview" class="showcase-avatar-preview" aria-hidden="true">?</div>
+        <div class="showcase-avatar-fields">
+          <p class="hint" style="margin:0;">Showcase avatar (shown on your public profile)</p>
+          <label class="btn secondary btn-file">
+            Upload image
+            <input id="showcaseAvatarFile" type="file" accept="image/png,image/jpeg,image/gif,image/webp" />
+          </label>
+          <label>
+            Image link
+            <input id="showcaseAvatarUrl" type="url" placeholder="https://… (direct image URL)" />
+          </label>
+          <div class="showcase-avatar-row">
+            <button type="button" class="btn secondary" id="showcaseAvatarApplyUrl">Use link</button>
+            <button type="button" class="btn secondary" id="showcaseAvatarClear">Use account photo</button>
+          </div>
+          <p id="showcaseAvatarStatus" class="status" role="status"></p>
+        </div>
+      </div>
+      <form id="showcaseForm" style="display:grid;gap:12px;">
+        <label style="display:flex;align-items:center;gap:8px;color:var(--text);font-size:13px;">
+          <input id="showcasePublic" type="checkbox" checked />
+          Public showcase (anyone with the link can view)
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;color:var(--text);font-size:13px;">
+          <input id="showcaseValues" type="checkbox" checked />
+          Show estimated values on cards
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;color:var(--text);font-size:13px;">
+          <input id="showcaseCost" type="checkbox" />
+          Show cost basis on cards (optional)
+        </label>
+        <label>
+          Bio
+          <textarea id="showcaseBio" rows="3" maxlength="500" placeholder="Tell visitors about your collection…" style="resize:vertical;min-height:72px;border:1px solid var(--border);border-radius:8px;background:#0e1623;color:var(--text);padding:8px 10px;font-family:inherit;font-size:14px;"></textarea>
+        </label>
+        <label>
+          Collectr showcase link (optional)
+          <input id="showcaseCollectrUrl" type="url" placeholder="https://app.getcollectr.com/showcase/profile/@username" />
+        </label>
+        <p class="hint">Saved for reference. Use Collection → Import from Collectr to copy cards into your Infinity Cards inventory.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+          <button type="submit" class="btn">Save showcase settings</button>
+          <a id="showcaseOpenLink" class="btn" href="/showcase" style="display:inline-flex;align-items:center;text-decoration:none;">Open showcase</a>
+        </div>
+        <p id="showcaseStatus" class="status" role="status"></p>
+      </form>
+    </section>
+
+    <section class="panel panel--password">
+      <h2 class="panel-title">Password</h2>
+      <p id="passwordHint" class="hint"></p>
+      <form id="passwordForm" style="display:grid;gap:12px;">
+        <label id="currentPasswordLabel">
+          Current password
+          <input id="currentPassword" type="password" autocomplete="current-password" />
+        </label>
+        <label>
+          New password
+          <input id="newPassword" type="password" autocomplete="new-password" required minlength="8" />
+        </label>
+        <label>
+          Confirm new password
+          <input id="confirmPassword" type="password" autocomplete="new-password" required minlength="8" />
+        </label>
+        <button type="submit" class="btn">Update password</button>
+        <p id="passwordStatus" class="status" role="status"></p>
+      </form>
+    </section>
+
+    <section class="panel panel--activity" id="activity">
+      <h2 class="panel-title">Recent Activity</h2>
+      <p class="sub">Latest changes to your collection, imports, and pricing.</p>
+      <div id="activityFeed" class="activity-feed">
+        <p class="activity-empty">Loading activity…</p>
+      </div>
+    </section>
+    </div>
+  </main>
+
+  <script>
+    const byId = (id) => document.getElementById(id);
+
+    let user = null;
+
+    function setText(el, msg, cls) {
+      el.textContent = msg || "";
+      el.classList.remove("error", "ok");
+      if (cls) el.classList.add(cls);
+    }
+
+    function timeAgo(iso) {
+      const at = Date.parse(iso || "");
+      if (!Number.isFinite(at)) return "Unknown";
+      const mins = Math.max(1, Math.floor((Date.now() - at) / 60000));
+      if (mins < 60) return `${mins}m ago`;
+      const hrs = Math.floor(mins / 60);
+      if (hrs < 24) return `${hrs}h ago`;
+      return `${Math.floor(hrs / 24)}d ago`;
+    }
+
+    async function loadRecentActivity() {
+      const feed = byId("activityFeed");
+      if (!feed) return;
+      try {
+        const res = await fetch("/api/dashboard", { credentials: "same-origin" });
+        const data = res.ok ? await res.json() : {};
+        const acts = Array.isArray(data.activities) ? data.activities : [];
+        if (!acts.length) {
+          feed.innerHTML = `<p class="activity-empty">No recent activity yet.</p>`;
+          return;
+        }
+        feed.innerHTML = acts
+          .slice(0, 20)
+          .map(
+            (act) => `
+          <article class="activity-item">
+            <p class="activity-item-title">${String(act.details || act.action || "Activity").replace(/</g, "&lt;")}</p>
+            <p class="activity-item-meta">${String(act.action || "").toUpperCase()} · ${timeAgo(act.createdAt)}</p>
+          </article>`
+          )
+          .join("");
+      } catch {
+        feed.innerHTML = `<p class="activity-empty">Could not load activity.</p>`;
+      }
+    }
+
+    function initialsFor(name) {
+      const parts = String(name || "")
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
+      if (!parts.length) return "?";
+      if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+      return `${parts[0][0] || ""}${parts[parts.length - 1][0] || ""}`.toUpperCase();
+    }
+
+    function updateShowcaseAvatarPreview(pictureUrl, displayName) {
+      const el = byId("showcaseAvatarPreview");
+      if (!el) return;
+      let url = String(pictureUrl || "").trim();
+      if (url.startsWith("/showcase-avatars/")) {
+        url += `${url.includes("?") ? "&" : "?"}t=${Date.now()}`;
+      }
+      if (url) {
+        el.innerHTML = `<img src="${url.replace(/"/g, "&quot;")}" alt="" />`;
+      } else {
+        el.textContent = initialsFor(displayName);
+      }
+    }
+
+    function applyPasswordUi() {
+      const hasPw = Boolean(user && user.hasPassword);
+      const hint = byId("passwordHint");
+      const curLabel = byId("currentPasswordLabel");
+      const cur = byId("currentPassword");
+      if (hasPw) {
+        hint.textContent = "Enter your current password, then choose a new one.";
+        curLabel.style.display = "";
+        cur.required = true;
+      } else {
+        hint.textContent =
+          "You signed in with Google and have no password yet. Set one here if you want to sign in with email and password too.";
+        curLabel.style.display = "none";
+        cur.required = false;
+        cur.value = "";
+      }
+    }
+
+    async function loadShowcaseSettings() {
+      const status = byId("showcaseStatus");
+      try {
+        const res = await fetch("/api/showcase/me", { credentials: "same-origin" });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok || !payload.ok) {
+          setText(status, payload.error || "Could not load showcase settings.", "error");
+          return;
+        }
+        const showcase = payload.profile?.showcase || {};
+        const profile = payload.profile || {};
+        byId("showcasePublic").checked = showcase.isPublic !== false;
+        byId("showcaseValues").checked = showcase.showValues !== false;
+        byId("showcaseCost").checked = showcase.showCost === true;
+        byId("showcaseBio").value = showcase.bio || "";
+        byId("showcaseCollectrUrl").value = showcase.collectrProfileUrl || "";
+        byId("showcaseAvatarUrl").value =
+          showcase.avatarUrl && !String(showcase.avatarUrl).startsWith("/showcase-avatars/")
+            ? showcase.avatarUrl
+            : "";
+        updateShowcaseAvatarPreview(profile.picture, profile.name || user?.name);
+        const url = payload.profile?.showcaseUrl || "";
+        const hint = byId("showcaseUrlHint");
+        const open = byId("showcaseOpenLink");
+        if (url) {
+          const full = `${window.location.origin}${url}`;
+          hint.innerHTML = `Share link: <a href="${url}" style="color:var(--accent);">${full}</a>`;
+          open.href = url;
+        }
+      } catch {
+        setText(status, "Network error loading showcase.", "error");
+      }
+    }
+
+    async function loadMe() {
+      const res = await fetch("/api/auth/me", { credentials: "same-origin" });
+      const payload = res.ok ? await res.json() : {};
+      if (!payload.signedIn || !payload.user) {
+        window.location.replace("/");
+        return false;
+      }
+      user = payload.user;
+      byId("displayName").value = user.name || "";
+      byId("email").value = user.email || "";
+      byId("username").value = user.username || "";
+      applyPasswordUi();
+      await loadShowcaseSettings();
+      await loadRecentActivity();
+      return true;
+    }
+
+    async function postShowcaseAvatar(body) {
+      const status = byId("showcaseAvatarStatus");
+      setText(status, "Saving avatar…");
+      const res = await fetch("/api/showcase/avatar", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok || !payload.ok) {
+        setText(status, payload.error || "Could not update avatar.", "error");
+        return null;
+      }
+      setText(status, "Avatar updated.", "ok");
+      const profile = payload.profile || {};
+      updateShowcaseAvatarPreview(profile.picture, profile.name || user?.name);
+      if (profile.showcase?.avatarUrl && String(profile.showcase.avatarUrl).startsWith("/showcase-avatars/")) {
+        byId("showcaseAvatarUrl").value = "";
+      }
+      return payload;
+    }
+
+    byId("showcaseAvatarApplyUrl").addEventListener("click", async () => {
+      const url = byId("showcaseAvatarUrl").value.trim();
+      if (!url) {
+        setText(byId("showcaseAvatarStatus"), "Paste an image URL first.", "error");
+        return;
+      }
+      try {
+        await postShowcaseAvatar({ avatarUrl: url });
+      } catch {
+        setText(byId("showcaseAvatarStatus"), "Network error.", "error");
+      }
+    });
+
+    byId("showcaseAvatarClear").addEventListener("click", async () => {
+      try {
+        await postShowcaseAvatar({ clear: true });
+        byId("showcaseAvatarUrl").value = "";
+      } catch {
+        setText(byId("showcaseAvatarStatus"), "Network error.", "error");
+      }
+    });
+
+    byId("showcaseAvatarFile").addEventListener("change", async () => {
+      const input = byId("showcaseAvatarFile");
+      const file = input.files && input.files[0];
+      input.value = "";
+      if (!file) return;
+      if (file.size > 512 * 1024) {
+        setText(byId("showcaseAvatarStatus"), "Image must be 512 KB or smaller.", "error");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          await postShowcaseAvatar({ imageData: reader.result });
+        } catch {
+          setText(byId("showcaseAvatarStatus"), "Network error.", "error");
+        }
+      };
+      reader.onerror = () => {
+        setText(byId("showcaseAvatarStatus"), "Could not read that file.", "error");
+      };
+      reader.readAsDataURL(file);
+    });
+
+    byId("showcaseForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const status = byId("showcaseStatus");
+      setText(status, "Saving…");
+      try {
+        const payloadBody = {
+          isPublic: byId("showcasePublic").checked,
+          showValues: byId("showcaseValues").checked,
+          showCost: byId("showcaseCost").checked,
+          bio: byId("showcaseBio").value.trim(),
+          collectrProfileUrl: byId("showcaseCollectrUrl").value.trim()
+        };
+        const avatarUrlField = byId("showcaseAvatarUrl").value.trim();
+        if (avatarUrlField) payloadBody.avatarUrl = avatarUrlField;
+        const res = await fetch("/api/showcase/settings", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payloadBody)
+        });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok || !payload.ok) {
+          setText(status, payload.error || "Could not save showcase settings.", "error");
+          return;
+        }
+        setText(status, "Showcase settings saved.", "ok");
+        await loadShowcaseSettings();
+      } catch {
+        setText(status, "Network error.", "error");
+      }
+    });
+
+    byId("profileForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const status = byId("profileStatus");
+      const name = byId("displayName").value.trim();
+      const email = byId("email").value.trim();
+      const username = byId("username").value.trim();
+      if (!email || !email.includes("@")) {
+        setText(status, "Enter a valid email.", "error");
+        return;
+      }
+      if (!/^[a-zA-Z0-9_]{3,24}$/.test(username)) {
+        setText(status, "Username must be 3–24 letters, numbers, or underscore.", "error");
+        return;
+      }
+      setText(status, "Saving…");
+      try {
+        const res = await fetch("/api/auth/profile", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, displayName: name, email, username })
+        });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok || !payload.ok) {
+          setText(status, payload.error || "Could not save profile.", "error");
+          return;
+        }
+        user = payload.user;
+        applyPasswordUi();
+        setText(status, "Profile saved.", "ok");
+      } catch {
+        setText(status, "Network error.", "error");
+      }
+    });
+
+    byId("passwordForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const status = byId("passwordStatus");
+      const newPassword = byId("newPassword").value;
+      const confirm = byId("confirmPassword").value;
+      if (newPassword !== confirm) {
+        setText(status, "New passwords do not match.", "error");
+        return;
+      }
+      setText(status, "Updating…");
+      try {
+        const body = { newPassword };
+        if (user.hasPassword) {
+          body.currentPassword = byId("currentPassword").value;
+        }
+        const res = await fetch("/api/auth/password", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok || !payload.ok) {
+          setText(status, payload.error || "Could not update password.", "error");
+          return;
+        }
+        user.hasPassword = true;
+        byId("currentPassword").value = "";
+        byId("newPassword").value = "";
+        byId("confirmPassword").value = "";
+        applyPasswordUi();
+        setText(status, "Password updated.", "ok");
+      } catch {
+        setText(status, "Network error.", "error");
+      }
+    });
+
+    loadMe();
+  </script>
+  <script src="/account-ui.js"></script>
+</body>
+</html>

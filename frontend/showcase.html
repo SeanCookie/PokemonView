@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Showcase — Infinity Cards</title>
+  <link rel="stylesheet" href="/showcase.css" />
+</head>
+<body>
+  <nav class="top-nav">
+    <div class="nav-left">
+      <a href="/" class="brand" aria-label="Go to homepage">
+        <span class="pokeball-logo" aria-hidden="true"></span>
+      </a>
+      <a href="/" class="nav-link">Home</a>
+      <a href="/sets.html" class="nav-link">Sets</a>
+      <a href="/dashboard.html" class="nav-link">Collection</a>
+      <a href="/showcase" class="nav-link active">Showcase</a>
+      <a href="/poke-view.html" class="nav-link">Poke View</a>
+      <a href="/scan-your-cards.html" class="nav-link">Scan Your Cards</a>
+      <a href="/restock-tracker.html" class="nav-link">Restock Tracker</a>
+    </div>
+    <div class="nav-right">
+      <div data-account-slot></div>
+    </div>
+  </nav>
+
+  <main class="page" id="showcaseRoot">
+    <section id="showcaseLanding" class="showcase-landing">
+      <h2>Collector Showcase</h2>
+      <p>Share a public profile of your Infinity Cards collection.</p>
+      <p id="showcaseLandingHint" class="showcase-bio" style="margin: 12px auto; max-width: 48ch;">
+        Sign in and add cards to your collection, then share your profile link.
+      </p>
+      <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top: 14px;">
+        <input
+          id="showcaseUsernameInput"
+          class="showcase-search"
+          placeholder="@username"
+          autocomplete="username"
+          maxlength="24"
+          pattern="[A-Za-z0-9_]{3,24}"
+        />
+        <button type="button" class="showcase-btn primary" id="showcaseGoBtn">View showcase</button>
+        <a id="showcaseMyLink" class="showcase-btn" href="/dashboard.html" hidden>My showcase</a>
+      </div>
+      <p id="showcaseLandingStatus" style="margin-top:10px; font-size:13px; color:#93a8c7;"></p>
+    </section>
+
+    <p id="showcaseOwnerBanner" class="showcase-owner-banner" hidden></p>
+
+    <section id="showcaseHero" class="showcase-hero" hidden></section>
+
+    <section id="showcaseStats" class="showcase-stats" hidden></section>
+
+    <section id="showcaseToolbar" class="showcase-toolbar" hidden>
+      <div class="showcase-tabs" role="tablist" aria-label="Filter collection">
+        <button type="button" class="showcase-tab active" data-showcase-filter="all">All</button>
+        <button type="button" class="showcase-tab" data-showcase-filter="single">Singles</button>
+        <button type="button" class="showcase-tab" data-showcase-filter="sealed">Sealed</button>
+      </div>
+      <input id="showcaseSearch" class="showcase-search" type="search" placeholder="Search this showcase…" />
+    </section>
+
+    <section id="showcaseError" class="showcase-error" hidden></section>
+    <section id="showcaseEmpty" class="showcase-empty" hidden></section>
+    <section id="showcaseGrid" class="showcase-grid" hidden></section>
+  </main>
+
+  <script src="/account-ui.js"></script>
+  <script src="/showcase.js?v=5"></script>
+</body>
+</html>

@@ -1,0 +1,1448 @@
+(() => {
+  const denied = document.getElementById("adminDenied");
+  const app = document.getElementById("adminApp");
+  const tcgLastSuccess = document.getElementById("tcgLastSuccess");
+  const tcgCacheSaved = document.getElementById("tcgCacheSaved");
+  const tcgCacheLive = document.getElementById("tcgCacheLive");
+  const tcgPricedCount = document.getElementById("tcgPricedCount");
+  const tcgTotalLinks = document.getElementById("tcgTotalLinks");
+  const tcgCacheCard = document.getElementById("tcgCacheCard");
+  const tcgStatusBadge = document.getElementById("tcgStatusBadge");
+  const tcgProgressBar = document.getElementById("tcgProgressBar");
+  const tcgProgressText = document.getElementById("tcgProgressText");
+  const pcDetailsCacheCount = document.getElementById("pcDetailsCacheCount");
+  const pcDetailsProgressText = document.getElementById("pcDetailsProgressText");
+  const pcCacheCard = document.getElementById("pcCacheCard");
+  const pcLastSuccess = document.getElementById("pcLastSuccess");
+  const pcCacheSaved = document.getElementById("pcCacheSaved");
+  const pcStatusBadge = document.getElementById("pcStatusBadge");
+  const pcProgressBar = document.getElementById("pcProgressBar");
+  const pcStatusMsg = document.getElementById("pcStatusMsg");
+  const btnPcDetailsUpdate = document.getElementById("btnPcDetailsUpdate");
+  const btnPcDetailsStop = document.getElementById("btnPcDetailsStop");
+  const pcFailLinksSection = document.getElementById("pcFailLinksSection");
+  const pcFailLinksCount = document.getElementById("pcFailLinksCount");
+  const pcFailLinksList = document.getElementById("pcFailLinksList");
+  const btnClearPcFailLinks = document.getElementById("btnClearPcFailLinks");
+  const tcgSetRefreshSelect = document.getElementById("tcgSetRefreshSelect");
+  const btnTcgSetRefresh = document.getElementById("btnTcgSetRefresh");
+  const tcgStatusMsg = document.getElementById("tcgStatusMsg");
+  const btnTcgPriceUpdate = document.getElementById("btnTcgPriceUpdate");
+  const btnTcgPriceStop = document.getElementById("btnTcgPriceStop");
+  const tcgFailLinksSection = document.getElementById("tcgFailLinksSection");
+  const btnPruneNonPokemonFailLinks = document.getElementById("btnPruneNonPokemonFailLinks");
+  const tcgFailLinksCount = document.getElementById("tcgFailLinksCount");
+  const tcgFailLinksList = document.getElementById("tcgFailLinksList");
+  const statUsers = document.getElementById("statUsers");
+  const statItems = document.getElementById("statItems");
+  const statActivities = document.getElementById("statActivities");
+  const statManualRestock = document.getElementById("statManualRestock");
+  const restockCacheCard = document.getElementById("restockCacheCard");
+  const restockLastRefresh = document.getElementById("restockLastRefresh");
+  const restockItemCount = document.getElementById("restockItemCount");
+  const restockLastSummary = document.getElementById("restockLastSummary");
+  const restockStatusBadge = document.getElementById("restockStatusBadge");
+  const restockProgressBar = document.getElementById("restockProgressBar");
+  const restockProgressText = document.getElementById("restockProgressText");
+  const restockRetailerList = document.getElementById("restockRetailerList");
+  const btnRestockSelectAll = document.getElementById("btnRestockSelectAll");
+  const btnRestockSelectNone = document.getElementById("btnRestockSelectNone");
+  const restockRefreshMsg = document.getElementById("restockRefreshMsg");
+  const btnRestockRefresh = document.getElementById("btnRestockRefresh");
+  const btnClearActivities = document.getElementById("btnClearActivities");
+  const siteStatusMsg = document.getElementById("siteStatusMsg");
+  const restockForm = document.getElementById("restockForm");
+  const restockFormMsg = document.getElementById("restockFormMsg");
+  const manualRestockBody = document.getElementById("manualRestockBody");
+  const nicknameForm = document.getElementById("nicknameForm");
+  const nicknameFormMsg = document.getElementById("nicknameFormMsg");
+  const nicknameBody = document.getElementById("nicknameBody");
+  const nicknameSetCode = document.getElementById("nicknameSetCode");
+  const nicknameText = document.getElementById("nicknameText");
+  const nicknameCardNumber = document.getElementById("nicknameCardNumber");
+  const nicknameLanguage = document.getElementById("nicknameLanguage");
+  const nicknameCardSearch = document.getElementById("nicknameCardSearch");
+  const nicknameCardResults = document.getElementById("nicknameCardResults");
+  const nicknameCardResultsMeta = document.getElementById("nicknameCardResultsMeta");
+  const nicknameCardGrid = document.getElementById("nicknameCardGrid");
+  const nicknameSelectedCard = document.getElementById("nicknameSelectedCard");
+  const nicknameSubmitBtn = document.getElementById("nicknameSubmitBtn");
+  const usersBody = document.getElementById("usersBody");
+
+  let tcgPollTimer = null;
+  let pcPollTimer = null;
+  let restockPollTimer = null;
+  let restockRetailerOptions = [];
+  let restockRetailerSelection = null;
+  const nicknameCardIndex = { english: null, japanese: null };
+  let nicknameSelected = null;
+  let nicknameSearchTimer = null;
+  const NICKNAME_CARD_SEARCH_DEBOUNCE_MS = 320;
+  const NICKNAME_CARD_SEARCH_LIMIT = 120;
+
+  function formatDateTime(value) {
+    const text = String(value || "").trim();
+    if (!text) return "—";
+    const d = new Date(text);
+    if (Number.isNaN(d.getTime())) return text;
+    return d.toLocaleString();
+  }
+
+  function setStatus(el, message, type = "") {
+    if (!el) return;
+    el.textContent = message || "";
+    el.classList.remove("ok", "error");
+    if (type) el.classList.add(type);
+  }
+
+  function renderTcgCache(tcg) {
+    if (!tcg) return;
+    tcgLastSuccess.textContent = formatDateTime(tcg.lastSuccessfulAt || tcg.finishedAt);
+    tcgCacheSaved.textContent = formatDateTime(tcg.cacheSavedAt);
+
+    const progress = tcg.progress || {};
+    const totalLinks =
+      Number(tcg.totalLinkCount) > 0
+        ? Number(tcg.totalLinkCount)
+        : Number(progress.total) > 0
+          ? Number(progress.total)
+          : 0;
+    const cached = Number(tcg.cachedCount ?? tcg.cacheEntryCount) || 0;
+    const priced = Number(tcg.pricedInCacheCount) || 0;
+
+    tcgCacheLive.textContent =
+      totalLinks > 0 ? `${cached.toLocaleString()} / ${totalLinks.toLocaleString()}` : cached.toLocaleString();
+    tcgPricedCount.textContent = priced.toLocaleString();
+    tcgTotalLinks.textContent = totalLinks > 0 ? totalLinks.toLocaleString() : "—";
+
+    const tcgBusy = Boolean(tcg.inFlight);
+    const busy = tcgBusy;
+    const status = String(tcg.status || "idle");
+    const phase = String(tcg.phase || "").trim().toLowerCase();
+    const collecting =
+      tcgBusy &&
+      (phase === "collecting" ||
+        (Number(progress.setsTotal) > 0 &&
+          Number(progress.done) === 0 &&
+          Number(progress.ok || 0) === 0 &&
+          Number(progress.fail || 0) === 0 &&
+          Number(progress.skipped || 0) === 0 &&
+          Number(progress.setsDone || 0) < Number(progress.setsTotal || 0)));
+
+    const liveStat = tcgCacheCard?.querySelector(".admin-stat--live");
+    if (liveStat) liveStat.classList.toggle("is-polling", busy);
+
+    const setLabel = tcg.setCode ? ` · ${tcg.setCode}` : "";
+    tcgStatusBadge.textContent = collecting
+      ? `collecting${setLabel}`
+      : tcgBusy
+        ? `running${setLabel}`
+        : status;
+    tcgStatusBadge.className = `admin-badge${
+      tcgBusy || status === "running"
+        ? " running"
+        : status === "error"
+          ? " error"
+          : status === "stopped"
+            ? " stopped"
+            : ""
+    }`;
+
+    const total = Number(progress.total) || Number(tcg.totalLinkCount) || 0;
+    const done = Number(progress.done) || 0;
+    const setsDone = Number(progress.setsDone) || 0;
+    const setsTotal = Number(progress.setsTotal) || 0;
+    const pct = collecting
+      ? setsTotal > 0
+        ? Math.min(100, Math.round((setsDone / setsTotal) * 100))
+        : 0
+      : total > 0
+        ? Math.min(100, Math.round((done / total) * 100))
+        : 0;
+    tcgProgressBar.style.width = `${pct}%`;
+    const skipped = Number(progress.skipped || 0);
+    if (collecting) {
+      tcgProgressText.textContent = setsTotal
+        ? `Collecting links · ${setsDone.toLocaleString()} / ${setsTotal.toLocaleString()} sets (${pct}%) · ${total.toLocaleString()} links so far`
+        : "Collecting TCGplayer links from sets…";
+    } else {
+      tcgProgressText.textContent = total
+        ? `${done.toLocaleString()} / ${total.toLocaleString()} (${pct}%) · ok ${Number(progress.ok || 0).toLocaleString()} · fail ${Number(progress.fail || 0).toLocaleString()}${skipped ? ` · skipped ${skipped.toLocaleString()}` : ""}`
+        : "—";
+    }
+
+    if (totalLinks > 0 && priced > 0 && priced < totalLinks * 0.5 && !tcgBusy) {
+      setStatus(
+        tcgStatusMsg,
+        `Only ${priced.toLocaleString()} of ${totalLinks.toLocaleString()} links are priced in cache. Run “Update all TCG prices” again and keep the server running until priced count catches up.`,
+        "error"
+      );
+    }
+
+    btnTcgPriceUpdate.disabled = tcgBusy;
+    btnTcgPriceUpdate.textContent = tcgBusy ? "Price check running…" : "Update all TCG prices";
+    if (btnTcgSetRefresh) btnTcgSetRefresh.disabled = tcgBusy;
+    if (tcgSetRefreshSelect) tcgSetRefreshSelect.disabled = tcgBusy;
+    if (btnTcgPriceStop) {
+      btnTcgPriceStop.hidden = !busy;
+      btnTcgPriceStop.disabled = !busy;
+    }
+  }
+
+  function renderPcCache(pc) {
+    if (!pcCacheCard || !pc) return;
+    const progress = pc.progress || {};
+    const pcBusy = Boolean(pc.inFlight);
+    if (pcLastSuccess) pcLastSuccess.textContent = formatDateTime(pc.lastSuccessfulAt || pc.finishedAt);
+    if (pcCacheSaved) pcCacheSaved.textContent = formatDateTime(pc.cacheSavedAt);
+    const cached = Number(pc.cacheEntryCount) || 0;
+    if (pcDetailsCacheCount) pcDetailsCacheCount.textContent = cached.toLocaleString();
+
+    const liveStat = pcCacheCard.querySelector(".admin-stat--live");
+    if (liveStat) liveStat.classList.toggle("is-polling", pcBusy);
+
+    const status = String(pc.status || "idle");
+    if (pcStatusBadge) {
+      pcStatusBadge.textContent = pcBusy ? "running" : status;
+      pcStatusBadge.className = `admin-badge${
+        pcBusy || status === "running"
+          ? " running"
+          : status === "error"
+            ? " error"
+            : status === "stopped"
+              ? " stopped"
+              : ""
+      }`;
+    }
+
+    const total = Number(progress.total) || 0;
+    const done = Number(progress.done) || 0;
+    const pct = total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0;
+    if (pcProgressBar) pcProgressBar.style.width = `${pct}%`;
+    const skipped = Number(progress.skipped || 0);
+    if (pcDetailsProgressText) {
+      pcDetailsProgressText.textContent = total
+        ? `${done.toLocaleString()} / ${total.toLocaleString()} (${pct}%) · ok ${Number(progress.ok || 0).toLocaleString()} · fail ${Number(progress.fail || 0).toLocaleString()}${skipped ? ` · skipped ${skipped.toLocaleString()}` : ""}`
+        : pcBusy
+          ? "Starting PriceCharting pass…"
+          : "—";
+    }
+
+    if (btnPcDetailsUpdate) {
+      btnPcDetailsUpdate.disabled = pcBusy;
+      btnPcDetailsUpdate.textContent = pcBusy ? "PriceCharting running…" : "Update PriceCharting cache";
+    }
+    if (btnPcDetailsStop) {
+      btnPcDetailsStop.hidden = !pcBusy;
+      btnPcDetailsStop.disabled = !pcBusy;
+    }
+  }
+
+  function renderSite(site, restock) {
+    statUsers.textContent = Number(site?.userCount || 0).toLocaleString();
+    statItems.textContent = Number(site?.collectionItemCount || 0).toLocaleString();
+    statActivities.textContent = Number(site?.activityCount || 0).toLocaleString();
+    statManualRestock.textContent = Number(restock?.manualItemCount || 0).toLocaleString();
+  }
+
+  function getSelectedRestockRetailers() {
+    if (!restockRetailerList) return [];
+    return [...restockRetailerList.querySelectorAll('input[type="checkbox"][data-retailer]:checked')].map(
+      (input) => input.getAttribute("data-retailer")
+    );
+  }
+
+  function setRestockRetailerChecks(selectedNames) {
+    if (!restockRetailerList) return;
+    const selected = selectedNames == null ? null : new Set(selectedNames);
+    restockRetailerList.querySelectorAll('input[type="checkbox"][data-retailer]').forEach((input) => {
+      const name = input.getAttribute("data-retailer");
+      input.checked = selected == null ? true : selected.has(name);
+    });
+  }
+
+  function renderRestockRetailerPicker(retailers) {
+    if (!restockRetailerList) return;
+    const list = Array.isArray(retailers) ? retailers : [];
+    const previous = getSelectedRestockRetailers();
+    const preserve =
+      restockRetailerSelection != null
+        ? restockRetailerSelection
+        : previous.length
+          ? previous
+          : null;
+    restockRetailerOptions = list;
+    if (!list.length) {
+      restockRetailerList.innerHTML = `<p class="admin-hint" style="margin:0">No retailers found in restock cache yet.</p>`;
+      return;
+    }
+    restockRetailerList.innerHTML = list
+      .map((row) => {
+        const name = String(row.name || "").trim();
+        if (!name) return "";
+        const count = Number(row.count || 0);
+        const id = `restockRetailer_${encodeURIComponent(name).replace(/%/g, "_")}`;
+        return `<label class="restock-retailer-option" for="${id}">
+          <input type="checkbox" id="${id}" data-retailer="${escapeHtml(name)}" checked />
+          <span>${escapeHtml(name)} <span class="count">(${count.toLocaleString()})</span></span>
+        </label>`;
+      })
+      .join("");
+    setRestockRetailerChecks(preserve);
+  }
+
+  function renderRestockCache(restock) {
+    if (!restock) return;
+    if (Array.isArray(restock.retailers)) {
+      renderRestockRetailerPicker(restock.retailers);
+    }
+    if (restockLastRefresh) {
+      restockLastRefresh.textContent = formatDateTime(restock.autoRefreshedAt || restock.lastFinishedAt);
+    }
+    if (restockItemCount) {
+      const tracked = Number(restock.itemCount || 0);
+      const manual = Number(restock.manualItemCount || 0);
+      restockItemCount.textContent =
+        manual > 0
+          ? `${tracked.toLocaleString()} (+${manual.toLocaleString()} manual)`
+          : tracked.toLocaleString();
+    }
+    if (restockLastSummary) {
+      if (restock.lastError) {
+        restockLastSummary.textContent = `Error: ${restock.lastError}`;
+      } else if (restock.lastFinishedAt) {
+        const stamped = Number(restock.lastInStockStamped || 0);
+        const amazon = Number(restock.lastAmazonStatusUpdates || 0);
+        const prices = Number(restock.lastPriceUpdates || 0);
+        const smoke =
+          Number(restock.lastSmokeStatusUpdates || 0) + Number(restock.lastSmokePriceUpdates || 0);
+        const pokene =
+          Number(restock.lastPokeNeStatusUpdates || 0) + Number(restock.lastPokeNePriceUpdates || 0);
+        const selected = Array.isArray(restock.lastSelectedRetailers)
+          ? restock.lastSelectedRetailers.join(", ")
+          : "all";
+        restockLastSummary.textContent = `Retailers: ${selected}. In-stock stamped ${stamped.toLocaleString()}, Amazon ${amazon.toLocaleString()}, prices ${prices.toLocaleString()}, Smoke ${smoke.toLocaleString()}, PokeNE ${pokene.toLocaleString()}`;
+      } else {
+        restockLastSummary.textContent = "—";
+      }
+    }
+
+    const busy = Boolean(restock.inFlight);
+    if (restockStatusBadge) {
+      restockStatusBadge.textContent = busy ? "refreshing" : restock.lastError ? "error" : "idle";
+      restockStatusBadge.classList.remove("running", "error", "stopped");
+      if (busy) restockStatusBadge.classList.add("running");
+      else if (restock.lastError) restockStatusBadge.classList.add("error");
+    }
+
+    const progress = restock.progress || {};
+    const current = Number(progress.current) || 0;
+    const total = Number(progress.total) || 0;
+    const percent = Number.isFinite(Number(progress.percent))
+      ? Math.max(0, Math.min(100, Number(progress.percent)))
+      : total > 0
+        ? Math.round((current / total) * 100)
+        : busy
+          ? 0
+          : 0;
+    if (restockProgressBar) {
+      restockProgressBar.style.width = `${busy || percent > 0 ? percent : 0}%`;
+    }
+    if (restockProgressText) {
+      if (busy) {
+        const counts =
+          total > 0 ? ` (${current.toLocaleString()} / ${total.toLocaleString()})` : "";
+        restockProgressText.textContent = `${progress.label || "Refreshing…"}${counts} · ${percent}%`;
+      } else if (restock.lastError) {
+        restockProgressText.textContent = progress.label || restock.lastError;
+      } else if (percent >= 100 && restock.lastFinishedAt) {
+        restockProgressText.textContent = progress.label || "Refresh complete";
+      } else {
+        restockProgressText.textContent = "—";
+      }
+    }
+
+    if (btnRestockRefresh) {
+      btnRestockRefresh.disabled = busy;
+      btnRestockRefresh.textContent = busy ? "Refresh running…" : "Refresh restock tracker";
+    }
+    if (btnRestockSelectAll) btnRestockSelectAll.disabled = busy;
+    if (btnRestockSelectNone) btnRestockSelectNone.disabled = busy;
+    if (restockRetailerList) {
+      restockRetailerList.querySelectorAll("input").forEach((input) => {
+        input.disabled = busy;
+      });
+    }
+    if (restockCacheCard) {
+      restockCacheCard.classList.toggle("is-busy", busy);
+    }
+  }
+
+  function renderCardNicknames(nicknames) {
+    const list = Array.isArray(nicknames) ? nicknames : [];
+    if (!nicknameBody) return;
+    if (!list.length) {
+      nicknameBody.innerHTML = `<tr><td colspan="6" style="color:var(--muted)">No nicknames yet.</td></tr>`;
+      return;
+    }
+    nicknameBody.innerHTML = list
+      .map((row) => {
+        const searchUrl = `/sets.html?q=${encodeURIComponent(row.nickname || "")}`;
+        const cardLabel = `${escapeHtml(row.setCode)} #${escapeHtml(row.cardNumber)}`;
+        const setLabel = row.setName ? `${escapeHtml(row.setName)} (${escapeHtml(row.setCode)})` : escapeHtml(row.setCode);
+        return `<tr>
+          <td>${escapeHtml(row.nickname)}</td>
+          <td>${cardLabel}</td>
+          <td>${setLabel}</td>
+          <td>${escapeHtml(row.language || "english")}</td>
+          <td><a href="${searchUrl}" target="_blank" rel="noopener noreferrer">Search</a></td>
+          <td><button type="button" class="admin-btn danger" data-remove-nickname-id="${escapeHtml(row.id)}">Remove</button></td>
+        </tr>`;
+      })
+      .join("");
+  }
+
+  async function loadCardNicknames() {
+    const payload = await api("/api/admin/card-nicknames");
+    renderCardNicknames(payload.nicknames);
+    return payload.nicknames;
+  }
+
+  function normalizeSearchText(text) {
+    return String(text || "").toLowerCase();
+  }
+
+  function normalizeCardName(name) {
+    let s = String(name || "").trim();
+    if (!s) return "";
+    for (let pass = 0; pass < 2; pass += 1) {
+      s = s
+        .replace(/&amp;/gi, "&")
+        .replace(/&quot;/gi, "\"")
+        .replace(/&#39;|&apos;/gi, "'")
+        .replace(/&lt;/gi, "<")
+        .replace(/&gt;/gi, ">")
+        .replace(/&#(\d+);/g, (_, num) => {
+          const code = Number(num);
+          return Number.isFinite(code) ? String.fromCharCode(code) : "";
+        })
+        .replace(/&#x([a-f0-9]+);/gi, (_, hex) => {
+          const code = Number.parseInt(hex, 16);
+          return Number.isFinite(code) ? String.fromCharCode(code) : "";
+        });
+    }
+    try {
+      const ta = document.createElement("textarea");
+      ta.innerHTML = s;
+      s = String(ta.value || s).trim();
+    } catch {
+      // keep decoded string
+    }
+    return s.replace(/\s{2,}/g, " ").trim();
+  }
+
+  function compareNicknameCardsBySet(a, b) {
+    const dateA = Date.parse(a.setReleaseDate) || 0;
+    const dateB = Date.parse(b.setReleaseDate) || 0;
+    if (dateB !== dateA) return dateB - dateA;
+    const setCmp = String(a.setCode).localeCompare(String(b.setCode), undefined, { sensitivity: "base" });
+    if (setCmp !== 0) return setCmp;
+    const na = Number(a.cardNo);
+    const nb = Number(b.cardNo);
+    if (Number.isFinite(na) && Number.isFinite(nb) && na !== nb) return na - nb;
+    return String(a.label).localeCompare(String(b.label), undefined, { numeric: true, sensitivity: "base" });
+  }
+
+  async function loadNicknameCardIndex(language = "english") {
+    const lang = String(language || "english").toLowerCase() === "japanese" ? "japanese" : "english";
+    if (nicknameCardIndex[lang] !== null) return nicknameCardIndex[lang];
+
+    const response = await fetch(`/api/sets/cards?language=${encodeURIComponent(lang)}`, {
+      credentials: "same-origin"
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || !payload?.byCode || typeof payload.byCode !== "object") {
+      nicknameCardIndex[lang] = [];
+      return [];
+    }
+
+    const cards = [];
+    for (const [code, entry] of Object.entries(payload.byCode)) {
+      if (!entry || typeof entry !== "object") continue;
+      const setCode = String(code).trim().toUpperCase();
+      const setName = normalizeCardName(entry.sourceTitle || entry.name || setCode);
+      const setReleaseDate = String(entry.releaseDate || "").trim();
+      const cardMap = entry.cards && typeof entry.cards === "object" ? entry.cards : {};
+      const localImages = entry.localImages && typeof entry.localImages === "object" ? entry.localImages : {};
+      const remoteImages = entry.images && typeof entry.images === "object" ? entry.images : {};
+      for (const [cardNo, rawName] of Object.entries(cardMap)) {
+        const name = normalizeCardName(rawName) || `${setName} Card ${cardNo}`;
+        const label = `#${cardNo}`;
+        cards.push({
+          setCode,
+          setName,
+          setReleaseDate,
+          cardNo: String(cardNo),
+          label,
+          name,
+          imageUrl: localImages[cardNo] || remoteImages[cardNo] || "",
+          _haystack: normalizeSearchText(`${name} ${label} ${cardNo} ${setName} ${setCode}`)
+        });
+      }
+    }
+
+    cards.sort(compareNicknameCardsBySet);
+    nicknameCardIndex[lang] = cards;
+    return cards;
+  }
+
+  function getNicknameCardIndex(language = "english") {
+    const lang = String(language || "english").toLowerCase() === "japanese" ? "japanese" : "english";
+    return nicknameCardIndex[lang] || [];
+  }
+
+  function searchNicknameCards(query, language = "english") {
+    const q = normalizeSearchText(String(query || "").trim());
+    if (!q) return [];
+    const matches = [];
+    for (const card of getNicknameCardIndex(language)) {
+      if (card._haystack.includes(q)) matches.push(card);
+    }
+    return matches;
+  }
+
+  function updateNicknameSubmitState() {
+    const ready = Boolean(nicknameSelected?.setCode && nicknameSelected?.cardNo);
+    if (nicknameSubmitBtn) nicknameSubmitBtn.disabled = !ready;
+    if (nicknameSetCode) nicknameSetCode.value = nicknameSelected?.setCode || "";
+    if (nicknameCardNumber) nicknameCardNumber.value = nicknameSelected?.cardNo || "";
+  }
+
+  function renderNicknameSelectedCard() {
+    if (!nicknameSelectedCard) return;
+    if (!nicknameSelected) {
+      nicknameSelectedCard.hidden = true;
+      nicknameSelectedCard.innerHTML = "";
+      return;
+    }
+    const card = nicknameSelected;
+    const thumb = card.imageUrl
+      ? `<img src="${escapeHtml(card.imageUrl)}" alt="${escapeHtml(card.name)}" loading="lazy" />`
+      : `<div class="nickname-card-thumb placeholder">No image</div>`;
+    nicknameSelectedCard.hidden = false;
+    nicknameSelectedCard.innerHTML = `
+      ${thumb}
+      <div class="nickname-selected-card-info">
+        <strong>${escapeHtml(card.name)}</strong>
+        <div class="nickname-selected-card-meta">${escapeHtml(card.setName)} (${escapeHtml(card.setCode)}) · ${escapeHtml(card.label)}</div>
+      </div>
+      <button type="button" class="admin-btn" id="nicknameClearCardBtn">Change card</button>
+    `;
+    document.getElementById("nicknameClearCardBtn")?.addEventListener("click", () => {
+      clearNicknameCardSelection();
+      nicknameCardSearch?.focus();
+    });
+  }
+
+  function clearNicknameCardSelection() {
+    nicknameSelected = null;
+    updateNicknameSubmitState();
+    renderNicknameSelectedCard();
+    if (nicknameCardSearch) nicknameCardSearch.value = "";
+    hideNicknameCardResults();
+    scheduleNicknameCardSearch();
+  }
+
+  function selectNicknameCard(card) {
+    if (!card) return;
+    nicknameSelected = {
+      setCode: card.setCode,
+      setName: card.setName,
+      cardNo: card.cardNo,
+      label: card.label,
+      name: card.name,
+      imageUrl: card.imageUrl
+    };
+    if (nicknameCardSearch) nicknameCardSearch.value = "";
+    hideNicknameCardResults();
+    updateNicknameSubmitState();
+    renderNicknameSelectedCard();
+  }
+
+  function hideNicknameCardResults() {
+    if (nicknameCardResults) nicknameCardResults.hidden = true;
+    if (nicknameCardGrid) nicknameCardGrid.innerHTML = "";
+    if (nicknameCardResultsMeta) nicknameCardResultsMeta.textContent = "";
+  }
+
+  function renderNicknameCardThumb(card) {
+    return card.imageUrl
+      ? `<img class="nickname-card-thumb" src="${escapeHtml(card.imageUrl)}" alt="${escapeHtml(card.name)}" loading="lazy" />`
+      : `<div class="nickname-card-thumb placeholder">No image</div>`;
+  }
+
+  function renderNicknameCardSearchResults() {
+    if (!nicknameCardGrid || !nicknameCardResults) return;
+    const query = String(nicknameCardSearch?.value || "").trim();
+    if (!query) {
+      hideNicknameCardResults();
+      return;
+    }
+    if (nicknameSelected) {
+      hideNicknameCardResults();
+      return;
+    }
+
+    const lang = nicknameLanguage?.value || "english";
+    const matches = searchNicknameCards(query, lang);
+    const display = matches.slice(0, NICKNAME_CARD_SEARCH_LIMIT);
+    const truncated = matches.length > display.length;
+
+    nicknameCardResults.hidden = false;
+    if (nicknameCardResultsMeta) {
+      nicknameCardResultsMeta.textContent = matches.length
+        ? `${matches.length.toLocaleString()} card${matches.length === 1 ? "" : "s"} for “${query}”${truncated ? ` · showing first ${display.length}` : ""}`
+        : `No cards found for “${query}”.`;
+    }
+
+    if (!display.length) {
+      nicknameCardGrid.innerHTML = "";
+      return;
+    }
+
+    nicknameCardGrid.innerHTML = display
+      .map(
+        (card) => `<button
+          type="button"
+          class="nickname-card-tile"
+          data-set-code="${escapeHtml(card.setCode)}"
+          data-card-number="${escapeHtml(card.cardNo)}"
+        >
+          ${renderNicknameCardThumb(card)}
+          <div class="nickname-card-tile-name">${escapeHtml(card.name)}</div>
+          <div class="nickname-card-tile-meta">${escapeHtml(card.setName)} (${escapeHtml(card.setCode)}) · ${escapeHtml(card.label)}</div>
+        </button>`
+      )
+      .join("");
+
+    nicknameCardGrid.querySelectorAll(".nickname-card-tile").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const setCode = btn.getAttribute("data-set-code") || "";
+        const cardNo = btn.getAttribute("data-card-number") || "";
+        const card = getNicknameCardIndex(lang).find((row) => row.setCode === setCode && row.cardNo === cardNo);
+        if (card) selectNicknameCard(card);
+      });
+    });
+  }
+
+  function scheduleNicknameCardSearch() {
+    if (nicknameSearchTimer) clearTimeout(nicknameSearchTimer);
+    nicknameSearchTimer = setTimeout(() => {
+      nicknameSearchTimer = null;
+      renderNicknameCardSearchResults();
+    }, NICKNAME_CARD_SEARCH_DEBOUNCE_MS);
+  }
+
+  async function initNicknameCardPicker() {
+    if (nicknameCardSearch) {
+      nicknameCardSearch.disabled = true;
+      nicknameCardSearch.placeholder = "Loading cards…";
+    }
+    try {
+      await Promise.all([loadNicknameCardIndex("english"), loadNicknameCardIndex("japanese")]);
+      if (nicknameCardSearch) {
+        nicknameCardSearch.disabled = false;
+        nicknameCardSearch.placeholder = "Search cards…";
+      }
+    } catch (err) {
+      if (nicknameCardSearch) {
+        nicknameCardSearch.disabled = true;
+        nicknameCardSearch.placeholder = "Could not load cards";
+      }
+      setStatus(nicknameFormMsg, err.message || "Could not load card catalog.", "error");
+    }
+  }
+
+  function resetNicknameForm() {
+    nicknameForm?.reset();
+    if (nicknameLanguage) nicknameLanguage.value = "english";
+    if (nicknameText) nicknameText.value = "";
+    clearNicknameCardSelection();
+    nicknameText?.focus();
+  }
+
+  function renderManualRestock(items) {
+    const list = Array.isArray(items) ? items : [];
+    if (!list.length) {
+      manualRestockBody.innerHTML = `<tr><td colspan="5" style="color:var(--muted)">No manual products yet.</td></tr>`;
+      return;
+    }
+    manualRestockBody.innerHTML = list
+      .map(
+        (row) => `<tr>
+          <td>${escapeHtml(row.name)}</td>
+          <td>${escapeHtml(row.retailer || "—")}</td>
+          <td>${escapeHtml(row.statusLabel || row.status || "—")}</td>
+          <td><a href="${escapeHtml(row.productUrl)}" target="_blank" rel="noopener noreferrer">Open</a></td>
+          <td><button type="button" class="admin-btn danger" data-remove-id="${escapeHtml(row.id)}">Remove</button></td>
+        </tr>`
+      )
+      .join("");
+  }
+
+  function renderUsers(users) {
+    const list = Array.isArray(users) ? users : [];
+    if (!usersBody) return;
+    if (!list.length) {
+      usersBody.innerHTML = `<tr><td colspan="5" style="color:var(--muted)">No users yet.</td></tr>`;
+      return;
+    }
+    usersBody.innerHTML = list
+      .map(
+        (row) => `<tr>
+          <td>${escapeHtml(row.username || "—")}</td>
+          <td>${escapeHtml(row.name || "—")}</td>
+          <td>${escapeHtml(row.email || "—")}</td>
+          <td>${row.isAdmin ? "admin" : escapeHtml(row.role || "user")}</td>
+          <td>${escapeHtml(formatDateTime(row.lastLoginAt))}</td>
+        </tr>`
+      )
+      .join("");
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  async function api(path, options = {}) {
+    const response = await fetch(path, {
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+      ...options
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const err = new Error(payload.error || `Request failed (${response.status})`);
+      err.status = response.status;
+      err.payload = payload;
+      throw err;
+    }
+    return payload;
+  }
+
+  function escapeHtml(text) {
+    return String(text || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function renderTcgFailLinks(links) {
+    if (!tcgFailLinksSection || !tcgFailLinksList) return;
+    const list = Array.isArray(links) ? links : [];
+    const count = list.length;
+    tcgFailLinksCount.textContent = count.toLocaleString();
+    tcgFailLinksSection.hidden = count === 0;
+    if (!count) {
+      tcgFailLinksList.innerHTML = "";
+      return;
+    }
+    tcgFailLinksList.innerHTML = list
+      .map((row, index) => {
+        const url = String(row.url || "").trim();
+        const productId = Number(row.productId) || 0;
+        const productLabel = productId > 0 ? `Product #${productId}` : "Product ID unknown";
+        const error = String(row.error || "Price fetch failed").trim();
+        const rowId = `fail-link-${index}`;
+        const encodedUrl = encodeURIComponent(url);
+        return `<article class="admin-fail-link-row" data-fail-url="${encodedUrl}" data-fail-product-id="${productId || ""}">
+          <div class="admin-fail-link-meta">
+            <span class="admin-fail-link-product">${escapeHtml(productLabel)}</span>
+            <span class="admin-fail-link-when">${escapeHtml(formatDateTime(row.failedAt))}</span>
+          </div>
+          <div class="admin-fail-link-url"><a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a></div>
+          <div class="admin-fail-link-error">${escapeHtml(error)}</div>
+          <div class="admin-fail-link-fields">
+            <label class="admin-fail-link-price-label">Price link (TCGplayer or PriceCharting)
+              <input type="url" placeholder="https://www.pricecharting.com/game/..." data-fail-price-link />
+            </label>
+            <button type="button" class="admin-btn primary" data-fail-save>Save to cache</button>
+            <button type="button" class="admin-btn" data-fail-dismiss>Dismiss</button>
+          </div>
+          <p class="admin-status" id="${rowId}-msg"></p>
+        </article>`;
+      })
+      .join("");
+
+    function readFailLinkRowContext(rowEl) {
+      const encodedUrl = rowEl?.getAttribute("data-fail-url") || "";
+      let url = "";
+      try {
+        url = decodeURIComponent(encodedUrl);
+      } catch {
+        url = encodedUrl;
+      }
+      const productId = Number(rowEl?.getAttribute("data-fail-product-id") || 0) || null;
+      return { url, productId };
+    }
+
+    tcgFailLinksList.querySelectorAll("[data-fail-save]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const rowEl = btn.closest(".admin-fail-link-row");
+        const { url, productId } = readFailLinkRowContext(rowEl);
+        const priceUrl = String(rowEl?.querySelector("[data-fail-price-link]")?.value || "").trim();
+        const msgEl = rowEl?.querySelector(".admin-status");
+        if (!url) {
+          setStatus(msgEl, "Missing failed link URL.", "error");
+          return;
+        }
+        if (!priceUrl) {
+          setStatus(msgEl, "Paste a TCGplayer or PriceCharting product link.", "error");
+          return;
+        }
+        btn.disabled = true;
+        setStatus(msgEl, "Fetching price from link…", "");
+        try {
+          const saved = await api("/api/admin/tcg-price-check/fail-links/resolve", {
+            method: "POST",
+            body: JSON.stringify({ url, productId, priceUrl })
+          });
+          setStatus(msgEl, `Saved: ${saved.nearMintWithShipping || formatUsd(saved.totalPrice)}`, "ok");
+          await refreshTcgFailLinks();
+          await refreshTcgCacheLive();
+        } catch (err) {
+          setStatus(msgEl, err.message, "error");
+          btn.disabled = false;
+        }
+      });
+    });
+
+    tcgFailLinksList.querySelectorAll("[data-fail-dismiss]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const rowEl = btn.closest(".admin-fail-link-row");
+        const { url, productId } = readFailLinkRowContext(rowEl);
+        const msgEl = rowEl?.querySelector(".admin-status");
+        if (!url && !productId) {
+          setStatus(msgEl, "Missing failed link identity.", "error");
+          return;
+        }
+        btn.disabled = true;
+        setStatus(msgEl, "Dismissing…", "");
+        try {
+          const result = await api("/api/admin/tcg-price-check/fail-links/dismiss", {
+            method: "POST",
+            body: JSON.stringify({ url, productId })
+          });
+          if (!result.removed) {
+            setStatus(msgEl, "Could not dismiss this link. Refresh and try again.", "error");
+            btn.disabled = false;
+            return;
+          }
+          await refreshTcgFailLinks();
+        } catch (err) {
+          setStatus(msgEl, err.message, "error");
+          btn.disabled = false;
+        }
+      });
+    });
+  }
+
+  function formatUsd(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n) || n < 0) return "";
+    return `$${n.toFixed(2)}`;
+  }
+
+  async function refreshTcgFailLinks() {
+    if (!tcgFailLinksSection) return { count: 0, links: [] };
+    try {
+      const payload = await api("/api/admin/tcg-price-check/fail-links");
+      renderTcgFailLinks(payload.links);
+      return payload;
+    } catch {
+      renderTcgFailLinks([]);
+      return { count: 0, links: [] };
+    }
+  }
+
+  function renderPcFailLinks(links) {
+    if (!pcFailLinksSection || !pcFailLinksList) return;
+    const rows = Array.isArray(links) ? links : [];
+    const count = rows.length;
+    if (pcFailLinksCount) pcFailLinksCount.textContent = String(count);
+    pcFailLinksSection.hidden = count === 0;
+    pcFailLinksList.innerHTML = rows
+      .map((row) => {
+        const setCode = escapeHtml(row.setCode || "");
+        const cardNo = escapeHtml(row.cardNo || "");
+        const cardName = escapeHtml(row.cardName || "Unknown card");
+        const setName = escapeHtml(row.setName || "");
+        const error = escapeHtml(row.error || "Failed");
+        return `<div class="admin-fail-link-row" data-set-code="${setCode}" data-card-no="${cardNo}">
+          <div class="admin-fail-link-main">
+            <strong>${cardName}</strong>
+            <span class="mono">${setCode} #${cardNo}${setName ? ` · ${setName}` : ""}</span>
+            <span class="admin-fail-link-error">${error}</span>
+          </div>
+          <div class="admin-fail-link-fields">
+            <button type="button" class="admin-btn" data-pc-fail-dismiss>Dismiss</button>
+            <p class="admin-status"></p>
+          </div>
+        </div>`;
+      })
+      .join("");
+
+    pcFailLinksList.querySelectorAll("[data-pc-fail-dismiss]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const rowEl = btn.closest(".admin-fail-link-row");
+        const setCode = rowEl?.getAttribute("data-set-code") || "";
+        const cardNo = rowEl?.getAttribute("data-card-no") || "";
+        const msgEl = rowEl?.querySelector(".admin-status");
+        btn.disabled = true;
+        setStatus(msgEl, "Dismissing…", "");
+        try {
+          const result = await api("/api/admin/pricecharting-details/fail-links/dismiss", {
+            method: "POST",
+            body: JSON.stringify({ setCode, cardNo })
+          });
+          if (!result.removed) {
+            setStatus(msgEl, "Could not dismiss. Refresh and try again.", "error");
+            btn.disabled = false;
+            return;
+          }
+          await refreshPcFailLinks();
+        } catch (err) {
+          setStatus(msgEl, err.message, "error");
+          btn.disabled = false;
+        }
+      });
+    });
+  }
+
+  async function refreshPcFailLinks() {
+    if (!pcFailLinksSection) return { count: 0, links: [] };
+    try {
+      const payload = await api("/api/admin/pricecharting-details/fail-links");
+      renderPcFailLinks(payload.links);
+      return payload;
+    } catch {
+      renderPcFailLinks([]);
+      return { count: 0, links: [] };
+    }
+  }
+
+  btnClearPcFailLinks?.addEventListener("click", async () => {
+    btnClearPcFailLinks.disabled = true;
+    setStatus(pcStatusMsg, "Clearing failed PriceCharting cards…", "");
+    try {
+      await api("/api/admin/pricecharting-details/fail-links/clear", {
+        method: "POST",
+        body: "{}"
+      });
+      renderPcFailLinks([]);
+      setStatus(pcStatusMsg, "Cleared all failed PriceCharting cards.", "ok");
+    } catch (err) {
+      setStatus(pcStatusMsg, err.message, "error");
+    } finally {
+      btnClearPcFailLinks.disabled = false;
+    }
+  });
+
+  async function loadTcgSetOptions() {
+    if (!tcgSetRefreshSelect) return;
+    try {
+      const payload = await api("/api/admin/tcg-price-check/sets");
+      const sets = Array.isArray(payload.sets) ? payload.sets : [];
+      const current = tcgSetRefreshSelect.value;
+      tcgSetRefreshSelect.innerHTML =
+        `<option value="">Select a set…</option>` +
+        sets
+          .map((row) => {
+            const code = escapeHtml(row.setCode || "");
+            const name = escapeHtml(row.setName || row.setCode || "");
+            return `<option value="${code}" data-set-name="${name}">${name} (${code})</option>`;
+          })
+          .join("");
+      if (current) tcgSetRefreshSelect.value = current;
+    } catch {
+      // keep placeholder
+    }
+  }
+
+  btnPruneNonPokemonFailLinks?.addEventListener("click", async () => {
+    const msgEl = document.getElementById("tcgStatusMsg");
+    btnPruneNonPokemonFailLinks.disabled = true;
+    setStatus(msgEl, "Removing non-Pokémon fail links…", "");
+    try {
+      const result = await api("/api/admin/tcg-price-check/fail-links/prune-non-pokemon", {
+        method: "POST",
+        body: "{}"
+      });
+      renderTcgFailLinks(result.links || []);
+      setStatus(
+        msgEl,
+        `Removed ${result.removed || 0} non-Pokémon link(s); ${result.kept || 0} Pokémon fail(s) remain.`,
+        "ok"
+      );
+    } catch (err) {
+      setStatus(msgEl, err.message, "error");
+    } finally {
+      btnPruneNonPokemonFailLinks.disabled = false;
+    }
+  });
+
+  async function refreshTcgCacheLive() {
+    const payload = await api("/api/admin/tcg-price-check");
+    renderTcgCache({
+      ...payload.meta,
+      inFlight: payload.inFlight,
+      prewarm: payload.prewarm
+    });
+    await refreshTcgFailLinks();
+    const tcgBusy = Boolean(payload.inFlight);
+    return { inFlight: tcgBusy, tcgBusy, meta: payload.meta || {} };
+  }
+
+  async function refreshPcCacheLive() {
+    const payload = await api("/api/admin/pricecharting-details");
+    renderPcCache({
+      ...payload.meta,
+      inFlight: payload.inFlight
+    });
+    await refreshPcFailLinks();
+    const pcBusy = Boolean(payload.inFlight);
+    return { inFlight: pcBusy, pcBusy, meta: payload.meta || {} };
+  }
+
+  function startTcgLivePolling() {
+    if (tcgPollTimer) return;
+    tcgPollTimer = setInterval(() => {
+      refreshTcgCacheLive()
+        .then(({ inFlight, meta }) => {
+          if (!inFlight) {
+            stopTcgLivePolling();
+            loadDashboard()
+              .then(() => {
+                const status = String(tcgStatusBadge?.textContent || "").trim().toLowerCase();
+                if (status === "stopped") {
+                  setStatus(
+                    tcgStatusMsg,
+                    "Price check stopped. Cached prices were saved. Click Update again to resume.",
+                    "ok"
+                  );
+                } else if (status === "error") {
+                  setStatus(
+                    tcgStatusMsg,
+                    meta?.lastError || "Price check failed. Check TCGplayer keys in backend/.env and the server log.",
+                    "error"
+                  );
+                } else {
+                  setStatus(tcgStatusMsg, "TCG price check finished.", "ok");
+                }
+              })
+              .catch(() => {});
+          }
+        })
+        .catch(() => {});
+    }, 1200);
+  }
+
+  function startPcLivePolling() {
+    if (pcPollTimer) return;
+    pcPollTimer = setInterval(() => {
+      refreshPcCacheLive()
+        .then(({ inFlight, meta }) => {
+          if (!inFlight) {
+            stopPcLivePolling();
+            loadDashboard()
+              .then(() => {
+                const status = String(pcStatusBadge?.textContent || "").trim().toLowerCase();
+                if (status === "stopped") {
+                  setStatus(pcStatusMsg, "PriceCharting refresh stopped. Cache saved so far.", "ok");
+                } else if (status === "error") {
+                  setStatus(pcStatusMsg, meta?.lastError || "PriceCharting refresh failed.", "error");
+                } else {
+                  setStatus(pcStatusMsg, "PriceCharting cache update finished.", "ok");
+                }
+              })
+              .catch(() => {});
+          }
+        })
+        .catch(() => {});
+    }, 1200);
+  }
+
+  function stopTcgLivePolling() {
+    if (tcgPollTimer) {
+      clearInterval(tcgPollTimer);
+      tcgPollTimer = null;
+    }
+    const liveStat = tcgCacheCard?.querySelector(".admin-stat--live");
+    if (liveStat) liveStat.classList.remove("is-polling");
+  }
+
+  function stopPcLivePolling() {
+    if (pcPollTimer) {
+      clearInterval(pcPollTimer);
+      pcPollTimer = null;
+    }
+    const liveStat = pcCacheCard?.querySelector(".admin-stat--live");
+    if (liveStat) liveStat.classList.remove("is-polling");
+  }
+
+  function stopRestockLivePolling() {
+    if (restockPollTimer) {
+      clearInterval(restockPollTimer);
+      restockPollTimer = null;
+    }
+  }
+
+  function startRestockLivePolling() {
+    stopRestockLivePolling();
+    restockPollTimer = setInterval(async () => {
+      try {
+        const status = await api("/api/admin/status");
+        renderRestockCache(status.restock);
+        renderSite(status.site, status.restock);
+        if (!status.restock?.inFlight) {
+          stopRestockLivePolling();
+          if (status.restock?.lastError) {
+            setStatus(restockRefreshMsg, status.restock.lastError, "error");
+          } else {
+            setStatus(
+              restockRefreshMsg,
+              "Restock refresh finished and cached to restock-tracker.json.",
+              "ok"
+            );
+          }
+        }
+      } catch {
+        // keep polling; transient errors are fine
+      }
+    }, 2000);
+  }
+
+  async function loadDashboard() {
+    const status = await api("/api/admin/status");
+    const tcg = {
+      ...status.tcgPriceCache,
+      inFlight: status.tcgPriceCache?.inFlight
+    };
+    renderTcgCache(tcg);
+    renderPcCache(status.priceChartingCache || {});
+    renderSite(status.site, status.restock);
+    renderRestockCache(status.restock);
+
+    const manual = await api("/api/admin/restock/manual-items");
+    renderManualRestock(manual.items);
+
+    const users = await api("/api/admin/users");
+    renderUsers(users.users);
+
+    if (status.tcgPriceCache?.inFlight) startTcgLivePolling();
+    else stopTcgLivePolling();
+
+    if (status.priceChartingCache?.inFlight) startPcLivePolling();
+    else stopPcLivePolling();
+
+    if (status.restock?.inFlight) startRestockLivePolling();
+    else stopRestockLivePolling();
+
+    await loadCardNicknames();
+    await refreshTcgFailLinks();
+    await refreshPcFailLinks();
+    await loadTcgSetOptions();
+  }
+
+  function waitForAccountReady() {
+    return new Promise((resolve) => {
+      if (!window.InfinityAccount) {
+        resolve();
+        return;
+      }
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        resolve();
+      };
+      window.InfinityAccount.onChange(finish);
+      setTimeout(finish, 1200);
+    });
+  }
+
+  async function ensureAdmin() {
+    const me = await fetch("/api/auth/me", { credentials: "same-origin" }).then((r) => r.json());
+    if (!me?.signedIn || !me?.user?.isAdmin) {
+      location.replace("/");
+      return false;
+    }
+    if (denied) denied.hidden = true;
+    if (app) app.hidden = false;
+    return true;
+  }
+
+  btnTcgPriceUpdate?.addEventListener("click", async () => {
+    setStatus(tcgStatusMsg, "");
+    try {
+      const started = await api("/api/admin/tcg-price-check/run", { method: "POST", body: "{}" });
+      const total = Number(started?.meta?.totalLinkCount || started?.meta?.progress?.total || 0);
+      setStatus(
+        tcgStatusMsg,
+        total > 0
+          ? `Bulk price check started (${total.toLocaleString()} links). Collecting sets first can take 1–2 minutes.`
+          : "Bulk price check started. Link collection runs first (about 1–2 minutes for all English sets), then pricing.",
+        "ok"
+      );
+      startTcgLivePolling();
+      await loadDashboard();
+    } catch (err) {
+      setStatus(tcgStatusMsg, err.message, "error");
+    }
+  });
+
+  btnTcgPriceStop?.addEventListener("click", async () => {
+    btnTcgPriceStop.disabled = true;
+    setStatus(tcgStatusMsg, "Stopping…", "");
+    try {
+      await api("/api/admin/tcg-price-check/stop", { method: "POST", body: "{}" });
+      setStatus(
+        tcgStatusMsg,
+        "Stop requested. Finishing in-flight TCGplayer requests, then saving cache…",
+        "ok"
+      );
+      startTcgLivePolling();
+    } catch (err) {
+      setStatus(tcgStatusMsg, err.message, "error");
+      btnTcgPriceStop.disabled = false;
+    }
+  });
+
+  btnTcgSetRefresh?.addEventListener("click", async () => {
+    const setCode = String(tcgSetRefreshSelect?.value || "").trim().toUpperCase();
+    if (!setCode) {
+      setStatus(tcgStatusMsg, "Select a set to refresh.", "error");
+      return;
+    }
+    const selected = tcgSetRefreshSelect?.selectedOptions?.[0];
+    const setName = String(selected?.getAttribute("data-set-name") || selected?.textContent || "").trim();
+    setStatus(tcgStatusMsg, "");
+    try {
+      await api("/api/admin/tcg-price-check/run-set", {
+        method: "POST",
+        body: JSON.stringify({ setCode, setName })
+      });
+      setStatus(tcgStatusMsg, `Refreshing TCG prices for ${setCode}…`, "ok");
+      startTcgLivePolling();
+    } catch (err) {
+      setStatus(tcgStatusMsg, err.message, "error");
+    }
+  });
+
+  btnPcDetailsUpdate?.addEventListener("click", async () => {
+    setStatus(pcStatusMsg, "");
+    try {
+      await api("/api/admin/pricecharting-details/run", { method: "POST", body: "{}" });
+      setStatus(pcStatusMsg, "PriceCharting details refresh started.", "ok");
+      startPcLivePolling();
+    } catch (err) {
+      setStatus(pcStatusMsg, err.message, "error");
+    }
+  });
+
+  btnPcDetailsStop?.addEventListener("click", async () => {
+    if (btnPcDetailsStop) btnPcDetailsStop.disabled = true;
+    setStatus(pcStatusMsg, "Stopping…", "");
+    try {
+      await api("/api/admin/pricecharting-details/stop", { method: "POST", body: "{}" });
+      setStatus(pcStatusMsg, "Stop requested. Finishing in-flight PriceCharting requests…", "ok");
+      startPcLivePolling();
+    } catch (err) {
+      setStatus(pcStatusMsg, err.message, "error");
+      if (btnPcDetailsStop) btnPcDetailsStop.disabled = false;
+    }
+  });
+
+  btnRestockSelectAll?.addEventListener("click", () => {
+    restockRetailerSelection = null;
+    setRestockRetailerChecks(null);
+  });
+
+  btnRestockSelectNone?.addEventListener("click", () => {
+    restockRetailerSelection = [];
+    setRestockRetailerChecks([]);
+  });
+
+  restockRetailerList?.addEventListener("change", () => {
+    restockRetailerSelection = getSelectedRestockRetailers();
+  });
+
+  btnRestockRefresh?.addEventListener("click", async () => {
+    setStatus(restockRefreshMsg, "");
+    const retailers = getSelectedRestockRetailers();
+    if (!retailers.length) {
+      setStatus(restockRefreshMsg, "Select at least one retailer to refresh.", "error");
+      return;
+    }
+    restockRetailerSelection = retailers;
+    if (btnRestockRefresh) btnRestockRefresh.disabled = true;
+    try {
+      const allSelected =
+        restockRetailerOptions.length > 0 && retailers.length === restockRetailerOptions.length;
+      await api("/api/admin/restock/refresh", {
+        method: "POST",
+        body: JSON.stringify(allSelected ? {} : { retailers })
+      });
+      setStatus(
+        restockRefreshMsg,
+        allSelected
+          ? "Restock refresh started for all retailers…"
+          : `Restock refresh started for ${retailers.join(", ")}…`,
+        "ok"
+      );
+      startRestockLivePolling();
+      await loadDashboard();
+    } catch (err) {
+      setStatus(restockRefreshMsg, err.message, "error");
+      if (btnRestockRefresh) btnRestockRefresh.disabled = false;
+    }
+  });
+
+  btnClearActivities?.addEventListener("click", async () => {
+    if (!window.confirm("Clear all collection activity log entries?")) return;
+    setStatus(siteStatusMsg, "");
+    try {
+      const result = await api("/api/admin/activities/clear", { method: "POST", body: "{}" });
+      setStatus(siteStatusMsg, `Removed ${result.removed} activity entries.`, "ok");
+      await loadDashboard();
+    } catch (err) {
+      setStatus(siteStatusMsg, err.message, "error");
+    }
+  });
+
+  restockForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    setStatus(restockFormMsg, "");
+    try {
+      await api("/api/admin/restock/manual-items", {
+        method: "POST",
+        body: JSON.stringify({
+          name: document.getElementById("restockName").value,
+          productUrl: document.getElementById("restockUrl").value,
+          retailer: document.getElementById("restockRetailer").value,
+          status: document.getElementById("restockStatus").value,
+          lastPrice: document.getElementById("restockPrice").value
+        })
+      });
+      restockForm.reset();
+      setStatus(restockFormMsg, "Product added to Restock Tracker.", "ok");
+      await loadDashboard();
+    } catch (err) {
+      setStatus(restockFormMsg, err.message, "error");
+    }
+  });
+
+  nicknameLanguage?.addEventListener("change", () => {
+    clearNicknameCardSelection();
+    scheduleNicknameCardSearch();
+  });
+
+  nicknameCardSearch?.addEventListener("input", () => {
+    if (nicknameSelected) return;
+    scheduleNicknameCardSearch();
+  });
+
+  nicknameCardSearch?.addEventListener("focus", () => {
+    if (!nicknameSelected && String(nicknameCardSearch.value || "").trim()) {
+      scheduleNicknameCardSearch();
+    }
+  });
+
+  nicknameForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    setStatus(nicknameFormMsg, "");
+    if (!nicknameSelected?.setCode || !nicknameSelected?.cardNo) {
+      setStatus(nicknameFormMsg, "Search and click a card to link this nickname.", "error");
+      nicknameCardSearch?.focus();
+      return;
+    }
+    try {
+      await api("/api/admin/card-nicknames", {
+        method: "POST",
+        body: JSON.stringify({
+          nickname: nicknameText?.value || "",
+          setCode: nicknameSelected.setCode,
+          cardNumber: nicknameSelected.cardNo,
+          setName: nicknameSelected.setName || "",
+          language: nicknameLanguage?.value || "english"
+        })
+      });
+      resetNicknameForm();
+      setStatus(nicknameFormMsg, "Nickname added.", "ok");
+      await loadCardNicknames();
+    } catch (err) {
+      setStatus(nicknameFormMsg, err.message, "error");
+    }
+  });
+
+  nicknameBody?.addEventListener("click", async (event) => {
+    const btn = event.target.closest("[data-remove-nickname-id]");
+    if (!btn) return;
+    const id = btn.getAttribute("data-remove-nickname-id");
+    if (!id || !window.confirm("Remove this nickname?")) return;
+    setStatus(nicknameFormMsg, "");
+    try {
+      await api(`/api/admin/card-nicknames/${encodeURIComponent(id)}`, { method: "DELETE" });
+      setStatus(nicknameFormMsg, "Nickname removed.", "ok");
+      await loadCardNicknames();
+    } catch (err) {
+      setStatus(nicknameFormMsg, err.message, "error");
+    }
+  });
+
+  manualRestockBody?.addEventListener("click", async (event) => {
+    const btn = event.target.closest("[data-remove-id]");
+    if (!btn) return;
+    const id = btn.getAttribute("data-remove-id");
+    if (!id || !window.confirm("Remove this manual restock product?")) return;
+    setStatus(restockFormMsg, "");
+    try {
+      await api(`/api/admin/restock/manual-items/${encodeURIComponent(id)}`, { method: "DELETE" });
+      setStatus(restockFormMsg, "Product removed.", "ok");
+      await loadDashboard();
+    } catch (err) {
+      setStatus(restockFormMsg, err.message, "error");
+    }
+  });
+
+  async function init() {
+    await waitForAccountReady();
+    const ok = await ensureAdmin();
+    if (!ok) {
+      document.addEventListener(
+        "infinity-auth-change",
+        async () => {
+          if (await ensureAdmin()) {
+            await loadDashboard();
+            await initNicknameCardPicker();
+          }
+        },
+        { once: false }
+      );
+      return;
+    }
+    await loadDashboard();
+    await initNicknameCardPicker();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();

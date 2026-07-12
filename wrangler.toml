@@ -1,0 +1,37 @@
+name = "pokemonview"
+main = "cloudflare/worker.js"
+compatibility_date = "2026-06-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Public site URL — used for OAuth redirects, password-reset links, etc.
+[vars]
+APP_PUBLIC_URL = "https://pokemonview.com"
+DEFAULT_CURRENCY = "USD"
+DEFAULT_REGION = "US"
+
+[[containers]]
+class_name = "PokemonViewContainer"
+image = "./Dockerfile"
+max_instances = 1
+
+[[durable_objects.bindings]]
+name = "POKEMONVIEW"
+class_name = "PokemonViewContainer"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["PokemonViewContainer"]
+
+# Card art (~3 GB) — served at the edge from R2; not baked into the Docker image.
+[[r2_buckets]]
+binding = "CARD_IMAGES"
+bucket_name = "pokemonview-card-images"
+
+# After first deploy, attach your domain in the Cloudflare dashboard
+# (Workers & Pages → pokemonview → Custom domains), or uncomment:
+# [[routes]]
+# pattern = "pokemonview.com"
+# custom_domain = true
+# [[routes]]
+# pattern = "www.pokemonview.com"
+# custom_domain = true

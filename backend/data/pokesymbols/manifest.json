@@ -1,0 +1,1887 @@
+{
+  "source": "https://pokesymbols.com/tcg/sets",
+  "credit": "https://pokesymbols.com — Pokemon Set Symbols",
+  "generatedAt": "2026-06-27T04:41:35.920Z",
+  "setsDownloaded": 194,
+  "setsFailed": 0,
+  "bySlug": {
+    "151": {
+      "name": "151",
+      "code": "MEW",
+      "symbol": "/pokesymbols/symbols/151.png",
+      "logo": "/pokesymbols/logos/151.png"
+    },
+    "chaos-rising": {
+      "name": "Chaos Rising",
+      "code": "CRI",
+      "symbol": "/pokesymbols/symbols/chaos-rising.png",
+      "logo": "/pokesymbols/logos/chaos-rising.png"
+    },
+    "perfect-order": {
+      "name": "Perfect Order",
+      "code": "POR",
+      "symbol": "/pokesymbols/symbols/perfect-order.png",
+      "logo": "/pokesymbols/logos/perfect-order.png"
+    },
+    "ascended-heroes": {
+      "name": "Ascended Heroes",
+      "code": "ASC",
+      "symbol": "/pokesymbols/symbols/ascended-heroes.png",
+      "logo": "/pokesymbols/logos/ascended-heroes.png"
+    },
+    "phantasmal-flames": {
+      "name": "Phantasmal Flames",
+      "code": "PFL",
+      "symbol": "/pokesymbols/symbols/phantasmal-flames.png",
+      "logo": "/pokesymbols/logos/phantasmal-flames.png"
+    },
+    "mega-evolution": {
+      "name": "Mega Evolution",
+      "code": "MEG",
+      "symbol": "/pokesymbols/symbols/mega-evolution.png",
+      "logo": "/pokesymbols/logos/mega-evolution.png"
+    },
+    "mega-evolution-black-star-promos": {
+      "name": "MEP Black Star Promos",
+      "code": "MEP",
+      "symbol": "/pokesymbols/symbols/mega-evolution-black-star-promos.png",
+      "logo": "/pokesymbols/logos/mega-evolution-black-star-promos.png"
+    },
+    "black-bolt": {
+      "name": "Black Bolt",
+      "code": "BLK",
+      "symbol": "/pokesymbols/symbols/black-bolt.png",
+      "logo": "/pokesymbols/logos/black-bolt.png"
+    },
+    "white-flare": {
+      "name": "White Flare",
+      "code": "WHT",
+      "symbol": "/pokesymbols/symbols/white-flare.png",
+      "logo": "/pokesymbols/logos/white-flare.png"
+    },
+    "destined-rivals": {
+      "name": "Destined Rivals",
+      "code": "DRI",
+      "symbol": "/pokesymbols/symbols/destined-rivals.png",
+      "logo": "/pokesymbols/logos/destined-rivals.png"
+    },
+    "journey-together": {
+      "name": "Journey Together",
+      "code": "JTG",
+      "symbol": "/pokesymbols/symbols/journey-together.png",
+      "logo": "/pokesymbols/logos/journey-together.png"
+    },
+    "prismatic-evolutions": {
+      "name": "Prismatic Evolutions",
+      "code": "PRE",
+      "symbol": "/pokesymbols/symbols/prismatic-evolutions.png",
+      "logo": "/pokesymbols/logos/prismatic-evolutions.png"
+    },
+    "mc-donalds-collection-2024": {
+      "name": "McDonald&#x27;s Collection 2024",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/mc-donalds-collection-2024.png",
+      "logo": "/pokesymbols/logos/mc-donalds-collection-2024.png"
+    },
+    "surging-sparks": {
+      "name": "Surging Sparks",
+      "code": "SSP",
+      "symbol": "/pokesymbols/symbols/surging-sparks.png",
+      "logo": "/pokesymbols/logos/surging-sparks.png"
+    },
+    "stellar-crown": {
+      "name": "Stellar Crown",
+      "code": "SCR",
+      "symbol": "/pokesymbols/symbols/stellar-crown.png",
+      "logo": "/pokesymbols/logos/stellar-crown.png"
+    },
+    "shrouded-fable": {
+      "name": "Shrouded Fable",
+      "code": "SFA",
+      "symbol": "/pokesymbols/symbols/shrouded-fable.png",
+      "logo": "/pokesymbols/logos/shrouded-fable.png"
+    },
+    "twilight-masquerade": {
+      "name": "Twilight Masquerade",
+      "code": "TWM",
+      "symbol": "/pokesymbols/symbols/twilight-masquerade.png",
+      "logo": "/pokesymbols/logos/twilight-masquerade.png"
+    },
+    "temporal-forces": {
+      "name": "Temporal Forces",
+      "code": "TEF",
+      "symbol": "/pokesymbols/symbols/temporal-forces.png",
+      "logo": "/pokesymbols/logos/temporal-forces.png"
+    },
+    "paldean-fates": {
+      "name": "Paldean Fates",
+      "code": "PAF",
+      "symbol": "/pokesymbols/symbols/paldean-fates.png",
+      "logo": "/pokesymbols/logos/paldean-fates.png"
+    },
+    "pokemon-trading-card-game-classic-blastoise": {
+      "name": "Pokémon Trading Card Game Classic (Blastoise)",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/pokemon-trading-card-game-classic-blastoise.png",
+      "logo": "/pokesymbols/logos/pokemon-trading-card-game-classic-blastoise.png"
+    },
+    "pokemon-trading-card-game-classic-charizard": {
+      "name": "Pokémon Trading Card Game Classic (Charizard)",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/pokemon-trading-card-game-classic-charizard.png",
+      "logo": "/pokesymbols/logos/pokemon-trading-card-game-classic-charizard.png"
+    },
+    "pokemon-trading-card-game-classic-venusaur": {
+      "name": "Pokémon Trading Card Game Classic (Venusaur)",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/pokemon-trading-card-game-classic-venusaur.png",
+      "logo": "/pokesymbols/logos/pokemon-trading-card-game-classic-venusaur.png"
+    },
+    "paradox-rift": {
+      "name": "Paradox Rift",
+      "code": "PAR",
+      "symbol": "/pokesymbols/symbols/paradox-rift.png",
+      "logo": "/pokesymbols/logos/paradox-rift.png"
+    },
+    "obsidian-flames": {
+      "name": "Obsidian Flames",
+      "code": "OBF",
+      "symbol": "/pokesymbols/symbols/obsidian-flames.png",
+      "logo": "/pokesymbols/logos/obsidian-flames.png"
+    },
+    "mc-donalds-collection-2023": {
+      "name": "McDonald&#x27;s Collection 2023",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/mc-donalds-collection-2023.png",
+      "logo": "/pokesymbols/logos/mc-donalds-collection-2023.png"
+    },
+    "paldea-evolved": {
+      "name": "Paldea Evolved",
+      "code": "PAL",
+      "symbol": "/pokesymbols/symbols/paldea-evolved.png",
+      "logo": "/pokesymbols/logos/paldea-evolved.png"
+    },
+    "scarlet-and-violet": {
+      "name": "Scarlet &amp; Violet",
+      "code": "SVI",
+      "symbol": "/pokesymbols/symbols/scarlet-and-violet.png",
+      "logo": "/pokesymbols/logos/scarlet-and-violet.png"
+    },
+    "scarlet-and-violet-energies": {
+      "name": "Scarlet &amp; Violet Energies",
+      "code": "SVE",
+      "symbol": "/pokesymbols/symbols/scarlet-and-violet-energies.png",
+      "logo": "/pokesymbols/logos/scarlet-and-violet-energies.png"
+    },
+    "crown-zenith": {
+      "name": "Crown Zenith",
+      "code": "CRZ",
+      "symbol": "/pokesymbols/symbols/crown-zenith.png",
+      "logo": "/pokesymbols/logos/crown-zenith.png"
+    },
+    "crown-zenith-galarian-gallery": {
+      "name": "Crown Zenith Galarian Gallery",
+      "code": "CRZ",
+      "symbol": "/pokesymbols/symbols/crown-zenith-galarian-gallery.png",
+      "logo": "/pokesymbols/logos/crown-zenith-galarian-gallery.png"
+    },
+    "scarlet-and-violet-black-star-promos": {
+      "name": "Scarlet &amp; Violet Black Star Promos",
+      "code": "PR-SV",
+      "symbol": "/pokesymbols/symbols/scarlet-and-violet-black-star-promos.png",
+      "logo": "/pokesymbols/logos/scarlet-and-violet-black-star-promos.png"
+    },
+    "silver-tempest": {
+      "name": "Silver Tempest",
+      "code": "SIT",
+      "symbol": "/pokesymbols/symbols/silver-tempest.png",
+      "logo": "/pokesymbols/logos/silver-tempest.png"
+    },
+    "silver-tempest-trainer-gallery": {
+      "name": "Silver Tempest Trainer Gallery",
+      "code": "SIT",
+      "symbol": "/pokesymbols/symbols/silver-tempest-trainer-gallery.png",
+      "logo": "/pokesymbols/logos/silver-tempest-trainer-gallery.png"
+    },
+    "lost-origin": {
+      "name": "Lost Origin",
+      "code": "LOR",
+      "symbol": "/pokesymbols/symbols/lost-origin.png",
+      "logo": "/pokesymbols/logos/lost-origin.png"
+    },
+    "lost-origin-trainer-gallery": {
+      "name": "Lost Origin Trainer Gallery",
+      "code": "LOR",
+      "symbol": "/pokesymbols/symbols/lost-origin-trainer-gallery.png",
+      "logo": "/pokesymbols/logos/lost-origin-trainer-gallery.png"
+    },
+    "mc-donalds-collection-2022": {
+      "name": "McDonald&#x27;s Collection 2022",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/mc-donalds-collection-2022.png",
+      "logo": "/pokesymbols/logos/mc-donalds-collection-2022.png"
+    },
+    "pokemon-go": {
+      "name": "Pokémon GO",
+      "code": "PGO",
+      "symbol": "/pokesymbols/symbols/pokemon-go.png",
+      "logo": "/pokesymbols/logos/pokemon-go.png"
+    },
+    "astral-radiance": {
+      "name": "Astral Radiance",
+      "code": "ASR",
+      "symbol": "/pokesymbols/symbols/astral-radiance.png",
+      "logo": "/pokesymbols/logos/astral-radiance.png"
+    },
+    "astral-radiance-trainer-gallery": {
+      "name": "Astral Radiance Trainer Gallery",
+      "code": "ASR",
+      "symbol": "/pokesymbols/symbols/astral-radiance-trainer-gallery.png",
+      "logo": "/pokesymbols/logos/astral-radiance-trainer-gallery.png"
+    },
+    "brilliant-stars": {
+      "name": "Brilliant Stars",
+      "code": "BRS",
+      "symbol": "/pokesymbols/symbols/brilliant-stars.png",
+      "logo": "/pokesymbols/logos/brilliant-stars.png"
+    },
+    "brilliant-stars-trainer-gallery": {
+      "name": "Brilliant Stars Trainer Gallery",
+      "code": "BRS",
+      "symbol": "/pokesymbols/symbols/brilliant-stars-trainer-gallery.png",
+      "logo": "/pokesymbols/logos/brilliant-stars-trainer-gallery.png"
+    },
+    "fusion-strike": {
+      "name": "Fusion Strike",
+      "code": "FST",
+      "symbol": "/pokesymbols/symbols/fusion-strike.png",
+      "logo": "/pokesymbols/logos/fusion-strike.png"
+    },
+    "celebrations": {
+      "name": "Celebrations",
+      "code": "CEL",
+      "symbol": "/pokesymbols/symbols/celebrations.png",
+      "logo": "/pokesymbols/logos/celebrations.png"
+    },
+    "celebrations-classic-collection": {
+      "name": "Celebrations: Classic Collection",
+      "code": "CEL",
+      "symbol": "/pokesymbols/symbols/celebrations-classic-collection.png",
+      "logo": "/pokesymbols/logos/celebrations-classic-collection.png"
+    },
+    "evolving-skies": {
+      "name": "Evolving Skies",
+      "code": "EVS",
+      "symbol": "/pokesymbols/symbols/evolving-skies.png",
+      "logo": "/pokesymbols/logos/evolving-skies.png"
+    },
+    "chilling-reign": {
+      "name": "Chilling Reign",
+      "code": "CRE",
+      "symbol": "/pokesymbols/symbols/chilling-reign.png",
+      "logo": "/pokesymbols/logos/chilling-reign.png"
+    },
+    "battle-styles": {
+      "name": "Battle Styles",
+      "code": "BST",
+      "symbol": "/pokesymbols/symbols/battle-styles.png",
+      "logo": "/pokesymbols/logos/battle-styles.png"
+    },
+    "shining-fates": {
+      "name": "Shining Fates",
+      "code": "SHF",
+      "symbol": "/pokesymbols/symbols/shining-fates.png",
+      "logo": "/pokesymbols/logos/shining-fates.png"
+    },
+    "shining-fates-shiny-vault": {
+      "name": "Shining Fates Shiny Vault",
+      "code": "SHF",
+      "symbol": "/pokesymbols/symbols/shining-fates-shiny-vault.png",
+      "logo": "/pokesymbols/logos/shining-fates-shiny-vault.png"
+    },
+    "mc-donalds-collection-2021": {
+      "name": "McDonald&#x27;s Collection 2021",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/mc-donalds-collection-2021.png",
+      "logo": "/pokesymbols/logos/mc-donalds-collection-2021.png"
+    },
+    "vivid-voltage": {
+      "name": "Vivid Voltage",
+      "code": "VIV",
+      "symbol": "/pokesymbols/symbols/vivid-voltage.png",
+      "logo": "/pokesymbols/logos/vivid-voltage.png"
+    },
+    "champions-path": {
+      "name": "Champion&#x27;s Path",
+      "code": "CPA",
+      "symbol": "/pokesymbols/symbols/champions-path.png",
+      "logo": "/pokesymbols/logos/champions-path.png"
+    },
+    "pokemon-futsal-collection": {
+      "name": "Pokémon Futsal Collection",
+      "code": "FUT20",
+      "symbol": "/pokesymbols/symbols/pokemon-futsal-collection.png",
+      "logo": "/pokesymbols/logos/pokemon-futsal-collection.png"
+    },
+    "darkness-ablaze": {
+      "name": "Darkness Ablaze",
+      "code": "DAA",
+      "symbol": "/pokesymbols/symbols/darkness-ablaze.png",
+      "logo": "/pokesymbols/logos/darkness-ablaze.png"
+    },
+    "rebel-clash": {
+      "name": "Rebel Clash",
+      "code": "RCL",
+      "symbol": "/pokesymbols/symbols/rebel-clash.png",
+      "logo": "/pokesymbols/logos/rebel-clash.png"
+    },
+    "sword-and-shield": {
+      "name": "Sword &amp; Shield",
+      "code": "SSH",
+      "symbol": "/pokesymbols/symbols/sword-and-shield.png",
+      "logo": "/pokesymbols/logos/sword-and-shield.png"
+    },
+    "swsh-black-star-promos": {
+      "name": "SWSH Black Star Promos",
+      "code": "PR-SW",
+      "symbol": "/pokesymbols/symbols/swsh-black-star-promos.png",
+      "logo": "/pokesymbols/logos/swsh-black-star-promos.png"
+    },
+    "cosmic-eclipse": {
+      "name": "Cosmic Eclipse",
+      "code": "CEC",
+      "symbol": "/pokesymbols/symbols/cosmic-eclipse.png",
+      "logo": "/pokesymbols/logos/cosmic-eclipse.png"
+    },
+    "mc-donalds-collection-2019": {
+      "name": "McDonald&#x27;s Collection 2019",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/mc-donalds-collection-2019.png",
+      "logo": "/pokesymbols/logos/mc-donalds-collection-2019.png"
+    },
+    "hidden-fates": {
+      "name": "Hidden Fates",
+      "code": "HIF",
+      "symbol": "/pokesymbols/symbols/hidden-fates.png",
+      "logo": "/pokesymbols/logos/hidden-fates.png"
+    },
+    "hidden-fates-shiny-vault": {
+      "name": "Hidden Fates Shiny Vault",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/hidden-fates-shiny-vault.png",
+      "logo": "/pokesymbols/logos/hidden-fates-shiny-vault.png"
+    },
+    "unified-minds": {
+      "name": "Unified Minds",
+      "code": "UNM",
+      "symbol": "/pokesymbols/symbols/unified-minds.png",
+      "logo": "/pokesymbols/logos/unified-minds.png"
+    },
+    "unbroken-bonds": {
+      "name": "Unbroken Bonds",
+      "code": "UNB",
+      "symbol": "/pokesymbols/symbols/unbroken-bonds.png",
+      "logo": "/pokesymbols/logos/unbroken-bonds.png"
+    },
+    "detective-pikachu": {
+      "name": "Detective Pikachu",
+      "code": "DET",
+      "symbol": "/pokesymbols/symbols/detective-pikachu.png",
+      "logo": "/pokesymbols/logos/detective-pikachu.png"
+    },
+    "team-up": {
+      "name": "Team Up",
+      "code": "TEU",
+      "symbol": "/pokesymbols/symbols/team-up.png",
+      "logo": "/pokesymbols/logos/team-up.png"
+    },
+    "lost-thunder": {
+      "name": "Lost Thunder",
+      "code": "LOT",
+      "symbol": "/pokesymbols/symbols/lost-thunder.png",
+      "logo": "/pokesymbols/logos/lost-thunder.png"
+    },
+    "mc-donalds-collection-2018": {
+      "name": "McDonald&#x27;s Collection 2018",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/mc-donalds-collection-2018.png",
+      "logo": "/pokesymbols/logos/mc-donalds-collection-2018.png"
+    },
+    "dragon-majesty": {
+      "name": "Dragon Majesty",
+      "code": "DRM",
+      "symbol": "/pokesymbols/symbols/dragon-majesty.png",
+      "logo": "/pokesymbols/logos/dragon-majesty.png"
+    },
+    "celestial-storm": {
+      "name": "Celestial Storm",
+      "code": "CES",
+      "symbol": "/pokesymbols/symbols/celestial-storm.png",
+      "logo": "/pokesymbols/logos/celestial-storm.png"
+    },
+    "forbidden-light": {
+      "name": "Forbidden Light",
+      "code": "FLI",
+      "symbol": "/pokesymbols/symbols/forbidden-light.png",
+      "logo": "/pokesymbols/logos/forbidden-light.png"
+    },
+    "ultra-prism": {
+      "name": "Ultra Prism",
+      "code": "UPR",
+      "symbol": "/pokesymbols/symbols/ultra-prism.png",
+      "logo": "/pokesymbols/logos/ultra-prism.png"
+    },
+    "mc-donalds-collection-2017": {
+      "name": "McDonald&#x27;s Collection 2017",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/mc-donalds-collection-2017.png",
+      "logo": "/pokesymbols/logos/mc-donalds-collection-2017.png"
+    },
+    "crimson-invasion": {
+      "name": "Crimson Invasion",
+      "code": "CIN",
+      "symbol": "/pokesymbols/symbols/crimson-invasion.png",
+      "logo": "/pokesymbols/logos/crimson-invasion.png"
+    },
+    "shining-legends": {
+      "name": "Shining Legends",
+      "code": "SLG",
+      "symbol": "/pokesymbols/symbols/shining-legends.png",
+      "logo": "/pokesymbols/logos/shining-legends.png"
+    },
+    "burning-shadows": {
+      "name": "Burning Shadows",
+      "code": "BUS",
+      "symbol": "/pokesymbols/symbols/burning-shadows.png",
+      "logo": "/pokesymbols/logos/burning-shadows.png"
+    },
+    "guardians-rising": {
+      "name": "Guardians Rising",
+      "code": "GRI",
+      "symbol": "/pokesymbols/symbols/guardians-rising.png",
+      "logo": "/pokesymbols/logos/guardians-rising.png"
+    },
+    "sun-and-moon-trainer-kit-alolan-raichu": {
+      "name": "Sun &amp; Moon Trainer Kit Alolan Raichu",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/sun-and-moon-trainer-kit-alolan-raichu.png",
+      "logo": "/pokesymbols/logos/sun-and-moon-trainer-kit-alolan-raichu.png"
+    },
+    "sun-and-moon-trainer-kit-lycanroc": {
+      "name": "Sun &amp; Moon Trainer Kit Lycanroc",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/sun-and-moon-trainer-kit-lycanroc.png",
+      "logo": "/pokesymbols/logos/sun-and-moon-trainer-kit-lycanroc.png"
+    },
+    "sm-black-star-promos": {
+      "name": "SM Black Star Promos",
+      "code": "PR-SM",
+      "symbol": "/pokesymbols/symbols/sm-black-star-promos.png",
+      "logo": "/pokesymbols/logos/sm-black-star-promos.png"
+    },
+    "sun-and-moon": {
+      "name": "Sun &amp; Moon",
+      "code": "SUM",
+      "symbol": "/pokesymbols/symbols/sun-and-moon.png",
+      "logo": "/pokesymbols/logos/sun-and-moon.png"
+    },
+    "evolutions": {
+      "name": "Evolutions",
+      "code": "EVO",
+      "symbol": "/pokesymbols/symbols/evolutions.png",
+      "logo": "/pokesymbols/logos/evolutions.png"
+    },
+    "mc-donalds-collection-2016": {
+      "name": "McDonald&#x27;s Collection 2016",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/mc-donalds-collection-2016.png",
+      "logo": "/pokesymbols/logos/mc-donalds-collection-2016.png"
+    },
+    "steam-siege": {
+      "name": "Steam Siege",
+      "code": "STS",
+      "symbol": "/pokesymbols/symbols/steam-siege.png",
+      "logo": "/pokesymbols/logos/steam-siege.png"
+    },
+    "fates-collide": {
+      "name": "Fates Collide",
+      "code": "FCO",
+      "symbol": "/pokesymbols/symbols/fates-collide.png",
+      "logo": "/pokesymbols/logos/fates-collide.png"
+    },
+    "xy-trainer-kit-pikachu-libre": {
+      "name": "XY Trainer Kit Pikachu Libre",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/xy-trainer-kit-pikachu-libre.png",
+      "logo": "/pokesymbols/logos/xy-trainer-kit-pikachu-libre.png"
+    },
+    "xy-trainer-kit-suicune": {
+      "name": "XY Trainer Kit Suicune",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/xy-trainer-kit-suicune.png",
+      "logo": "/pokesymbols/logos/xy-trainer-kit-suicune.png"
+    },
+    "generations": {
+      "name": "Generations",
+      "code": "GEN",
+      "symbol": "/pokesymbols/symbols/generations.png",
+      "logo": "/pokesymbols/logos/generations.png"
+    },
+    "breakpoint": {
+      "name": "BREAKpoint",
+      "code": "BKP",
+      "symbol": "/pokesymbols/symbols/breakpoint.png",
+      "logo": "/pokesymbols/logos/breakpoint.png"
+    },
+    "mc-donalds-collection-2015": {
+      "name": "McDonald&#x27;s Collection 2015",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/mc-donalds-collection-2015.png",
+      "logo": "/pokesymbols/logos/mc-donalds-collection-2015.png"
+    },
+    "breakthrough": {
+      "name": "BREAKthrough",
+      "code": "BKT",
+      "symbol": "/pokesymbols/symbols/breakthrough.png",
+      "logo": "/pokesymbols/logos/breakthrough.png"
+    },
+    "ancient-origins": {
+      "name": "Ancient Origins",
+      "code": "AOR",
+      "symbol": "/pokesymbols/symbols/ancient-origins.png",
+      "logo": "/pokesymbols/logos/ancient-origins.png"
+    },
+    "roaring-skies": {
+      "name": "Roaring Skies",
+      "code": "ROS",
+      "symbol": "/pokesymbols/symbols/roaring-skies.png",
+      "logo": "/pokesymbols/logos/roaring-skies.png"
+    },
+    "xy-trainer-kit-latias": {
+      "name": "XY Trainer Kit Latias",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/xy-trainer-kit-latias.png",
+      "logo": "/pokesymbols/logos/xy-trainer-kit-latias.png"
+    },
+    "xy-trainer-kit-latios": {
+      "name": "XY Trainer Kit Latios",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/xy-trainer-kit-latios.png",
+      "logo": "/pokesymbols/logos/xy-trainer-kit-latios.png"
+    },
+    "double-crisis": {
+      "name": "Double Crisis",
+      "code": "DCR",
+      "symbol": "/pokesymbols/symbols/double-crisis.png",
+      "logo": "/pokesymbols/logos/double-crisis.png"
+    },
+    "primal-clash": {
+      "name": "Primal Clash",
+      "code": "PRC",
+      "symbol": "/pokesymbols/symbols/primal-clash.png",
+      "logo": "/pokesymbols/logos/primal-clash.png"
+    },
+    "xy-trainer-kit-bisharp": {
+      "name": "XY Trainer Kit Bisharp",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/xy-trainer-kit-bisharp.png",
+      "logo": "/pokesymbols/logos/xy-trainer-kit-bisharp.png"
+    },
+    "xy-trainer-kit-wigglytuff": {
+      "name": "XY Trainer Kit Wigglytuff",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/xy-trainer-kit-wigglytuff.png",
+      "logo": "/pokesymbols/logos/xy-trainer-kit-wigglytuff.png"
+    },
+    "phantom-forces": {
+      "name": "Phantom Forces",
+      "code": "PHF",
+      "symbol": "/pokesymbols/symbols/phantom-forces.png",
+      "logo": "/pokesymbols/logos/phantom-forces.png"
+    },
+    "furious-fists": {
+      "name": "Furious Fists",
+      "code": "FFI",
+      "symbol": "/pokesymbols/symbols/furious-fists.png",
+      "logo": "/pokesymbols/logos/furious-fists.png"
+    },
+    "mc-donalds-collection-2014": {
+      "name": "McDonald&#x27;s Collection 2014",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/mc-donalds-collection-2014.png",
+      "logo": "/pokesymbols/logos/mc-donalds-collection-2014.png"
+    },
+    "flashfire": {
+      "name": "Flashfire",
+      "code": "FLF",
+      "symbol": "/pokesymbols/symbols/flashfire.png",
+      "logo": "/pokesymbols/logos/flashfire.png"
+    },
+    "xy-trainer-kit-noivern": {
+      "name": "XY Trainer Kit Noivern",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/xy-trainer-kit-noivern.png",
+      "logo": "/pokesymbols/logos/xy-trainer-kit-noivern.png"
+    },
+    "xy-trainer-kit-sylveon": {
+      "name": "XY Trainer Kit Sylveon",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/xy-trainer-kit-sylveon.png",
+      "logo": "/pokesymbols/logos/xy-trainer-kit-sylveon.png"
+    },
+    "xy": {
+      "name": "XY",
+      "code": "XY",
+      "symbol": "/pokesymbols/symbols/xy.png",
+      "logo": "/pokesymbols/logos/xy.png"
+    },
+    "kalos-starter-set": {
+      "name": "Kalos Starter Set",
+      "code": "KSS",
+      "symbol": "/pokesymbols/symbols/kalos-starter-set.png",
+      "logo": "/pokesymbols/logos/kalos-starter-set.png"
+    },
+    "legendary-treasures": {
+      "name": "Legendary Treasures",
+      "code": "LTR",
+      "symbol": "/pokesymbols/symbols/legendary-treasures.png",
+      "logo": "/pokesymbols/logos/legendary-treasures.png"
+    },
+    "xy-black-star-promos": {
+      "name": "XY Black Star Promos",
+      "code": "PR-XY",
+      "symbol": "/pokesymbols/symbols/xy-black-star-promos.png",
+      "logo": "/pokesymbols/logos/xy-black-star-promos.png"
+    },
+    "plasma-blast": {
+      "name": "Plasma Blast",
+      "code": "PLB",
+      "symbol": "/pokesymbols/symbols/plasma-blast.png",
+      "logo": "/pokesymbols/logos/plasma-blast.png"
+    },
+    "plasma-freeze": {
+      "name": "Plasma Freeze",
+      "code": "PLF",
+      "symbol": "/pokesymbols/symbols/plasma-freeze.png",
+      "logo": "/pokesymbols/logos/plasma-freeze.png"
+    },
+    "plasma-storm": {
+      "name": "Plasma Storm",
+      "code": "PLS",
+      "symbol": "/pokesymbols/symbols/plasma-storm.png",
+      "logo": "/pokesymbols/logos/plasma-storm.png"
+    },
+    "boundaries-crossed": {
+      "name": "Boundaries Crossed",
+      "code": "BCR",
+      "symbol": "/pokesymbols/symbols/boundaries-crossed.png",
+      "logo": "/pokesymbols/logos/boundaries-crossed.png"
+    },
+    "dragon-vault": {
+      "name": "Dragon Vault",
+      "code": "DRV",
+      "symbol": "/pokesymbols/symbols/dragon-vault.png",
+      "logo": "/pokesymbols/logos/dragon-vault.png"
+    },
+    "dragons-exalted": {
+      "name": "Dragons Exalted",
+      "code": "DRX",
+      "symbol": "/pokesymbols/symbols/dragons-exalted.png",
+      "logo": "/pokesymbols/logos/dragons-exalted.png"
+    },
+    "mc-donalds-collection-2012": {
+      "name": "McDonald&#x27;s Collection 2012",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/mc-donalds-collection-2012.png",
+      "logo": "/pokesymbols/logos/mc-donalds-collection-2012.png"
+    },
+    "dark-explorers": {
+      "name": "Dark Explorers",
+      "code": "DEX",
+      "symbol": "/pokesymbols/symbols/dark-explorers.png",
+      "logo": "/pokesymbols/logos/dark-explorers.png"
+    },
+    "next-destinies": {
+      "name": "Next Destinies",
+      "code": "NXD",
+      "symbol": "/pokesymbols/symbols/next-destinies.png",
+      "logo": "/pokesymbols/logos/next-destinies.png"
+    },
+    "noble-victories": {
+      "name": "Noble Victories",
+      "code": "NVI",
+      "symbol": "/pokesymbols/symbols/noble-victories.png",
+      "logo": "/pokesymbols/logos/noble-victories.png"
+    },
+    "black-and-white-trainer-kit-excadrill": {
+      "name": "Black &amp; White Trainer Kit Excadrill",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/black-and-white-trainer-kit-excadrill.png",
+      "logo": "/pokesymbols/logos/black-and-white-trainer-kit-excadrill.png"
+    },
+    "black-and-white-trainer-kit-zoroark": {
+      "name": "Black &amp; White Trainer Kit Zoroark",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/black-and-white-trainer-kit-zoroark.png",
+      "logo": "/pokesymbols/logos/black-and-white-trainer-kit-zoroark.png"
+    },
+    "emerging-powers": {
+      "name": "Emerging Powers",
+      "code": "EPO",
+      "symbol": "/pokesymbols/symbols/emerging-powers.png",
+      "logo": "/pokesymbols/logos/emerging-powers.png"
+    },
+    "mc-donalds-collection-2011": {
+      "name": "McDonald&#x27;s Collection 2011",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/mc-donalds-collection-2011.png",
+      "logo": "/pokesymbols/logos/mc-donalds-collection-2011.png"
+    },
+    "black-and-white": {
+      "name": "Black &amp; White",
+      "code": "BLW",
+      "symbol": "/pokesymbols/symbols/black-and-white.png",
+      "logo": "/pokesymbols/logos/black-and-white.png"
+    },
+    "bw-black-star-promos": {
+      "name": "BW Black Star Promos",
+      "code": "PR-BLW",
+      "symbol": "/pokesymbols/symbols/bw-black-star-promos.png",
+      "logo": "/pokesymbols/logos/bw-black-star-promos.png"
+    },
+    "call-of-legends": {
+      "name": "Call of Legends",
+      "code": "CL",
+      "symbol": "/pokesymbols/symbols/call-of-legends.png",
+      "logo": "/pokesymbols/logos/call-of-legends.png"
+    },
+    "hs-triumphant": {
+      "name": "HS-Triumphant",
+      "code": "TM",
+      "symbol": "/pokesymbols/symbols/hs-triumphant.png",
+      "logo": "/pokesymbols/logos/hs-triumphant.png"
+    },
+    "hs-undaunted": {
+      "name": "HS-Undaunted",
+      "code": "UD",
+      "symbol": "/pokesymbols/symbols/hs-undaunted.png",
+      "logo": "/pokesymbols/logos/hs-undaunted.png"
+    },
+    "hs-trainer-kit-gyarados": {
+      "name": "HS Trainer Kit Gyarados",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/hs-trainer-kit-gyarados.png",
+      "logo": "/pokesymbols/logos/hs-trainer-kit-gyarados.png"
+    },
+    "hs-trainer-kit-raichu": {
+      "name": "HS Trainer Kit Raichu",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/hs-trainer-kit-raichu.png",
+      "logo": "/pokesymbols/logos/hs-trainer-kit-raichu.png"
+    },
+    "hs-unleashed": {
+      "name": "HS-Unleashed",
+      "code": "UL",
+      "symbol": "/pokesymbols/symbols/hs-unleashed.png",
+      "logo": "/pokesymbols/logos/hs-unleashed.png"
+    },
+    "heart-gold-and-soul-silver": {
+      "name": "HeartGold &amp; SoulSilver",
+      "code": "HS",
+      "symbol": "/pokesymbols/symbols/heart-gold-and-soul-silver.png",
+      "logo": "/pokesymbols/logos/heart-gold-and-soul-silver.png"
+    },
+    "hgss-black-star-promos": {
+      "name": "HGSS Black Star Promos",
+      "code": "PR-HS",
+      "symbol": "/pokesymbols/symbols/hgss-black-star-promos.png",
+      "logo": "/pokesymbols/logos/hgss-black-star-promos.png"
+    },
+    "pokemon-rumble": {
+      "name": "Pokémon Rumble",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/pokemon-rumble.png",
+      "logo": "/pokesymbols/logos/pokemon-rumble.png"
+    },
+    "arceus": {
+      "name": "Arceus",
+      "code": "AR",
+      "symbol": "/pokesymbols/symbols/arceus.png",
+      "logo": "/pokesymbols/logos/arceus.png"
+    },
+    "supreme-victors": {
+      "name": "Supreme Victors",
+      "code": "SV",
+      "symbol": "/pokesymbols/symbols/supreme-victors.png",
+      "logo": "/pokesymbols/logos/supreme-victors.png"
+    },
+    "rising-rivals": {
+      "name": "Rising Rivals",
+      "code": "RR",
+      "symbol": "/pokesymbols/symbols/rising-rivals.png",
+      "logo": "/pokesymbols/logos/rising-rivals.png"
+    },
+    "pop-series-9": {
+      "name": "POP Series 9",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/pop-series-9.png",
+      "logo": "/pokesymbols/logos/pop-series-9.png"
+    },
+    "platinum": {
+      "name": "Platinum",
+      "code": "PL",
+      "symbol": "/pokesymbols/symbols/platinum.png",
+      "logo": "/pokesymbols/logos/platinum.png"
+    },
+    "stormfront": {
+      "name": "Stormfront",
+      "code": "SF",
+      "symbol": "/pokesymbols/symbols/stormfront.png",
+      "logo": "/pokesymbols/logos/stormfront.png"
+    },
+    "pop-series-8": {
+      "name": "POP Series 8",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/pop-series-8.png",
+      "logo": "/pokesymbols/logos/pop-series-8.png"
+    },
+    "legends-awakened": {
+      "name": "Legends Awakened",
+      "code": "LA",
+      "symbol": "/pokesymbols/symbols/legends-awakened.png",
+      "logo": "/pokesymbols/logos/legends-awakened.png"
+    },
+    "majestic-dawn": {
+      "name": "Majestic Dawn",
+      "code": "MD",
+      "symbol": "/pokesymbols/symbols/majestic-dawn.png",
+      "logo": "/pokesymbols/logos/majestic-dawn.png"
+    },
+    "pop-series-7": {
+      "name": "POP Series 7",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/pop-series-7.png",
+      "logo": "/pokesymbols/logos/pop-series-7.png"
+    },
+    "great-encounters": {
+      "name": "Great Encounters",
+      "code": "GE",
+      "symbol": "/pokesymbols/symbols/great-encounters.png",
+      "logo": "/pokesymbols/logos/great-encounters.png"
+    },
+    "secret-wonders": {
+      "name": "Secret Wonders",
+      "code": "SW",
+      "symbol": "/pokesymbols/symbols/secret-wonders.png",
+      "logo": "/pokesymbols/logos/secret-wonders.png"
+    },
+    "diamond-and-pearl-trainer-kit-lucario": {
+      "name": "Diamond &amp; Pearl Trainer Kit Lucario",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/diamond-and-pearl-trainer-kit-lucario.png",
+      "logo": "/pokesymbols/logos/diamond-and-pearl-trainer-kit-lucario.png"
+    },
+    "diamond-and-pearl-trainer-kit-manaphy": {
+      "name": "Diamond &amp; Pearl Trainer Kit Manaphy",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/diamond-and-pearl-trainer-kit-manaphy.png",
+      "logo": "/pokesymbols/logos/diamond-and-pearl-trainer-kit-manaphy.png"
+    },
+    "pop-series-6": {
+      "name": "POP Series 6",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/pop-series-6.png",
+      "logo": "/pokesymbols/logos/pop-series-6.png"
+    },
+    "mysterious-treasures": {
+      "name": "Mysterious Treasures",
+      "code": "MT",
+      "symbol": "/pokesymbols/symbols/mysterious-treasures.png",
+      "logo": "/pokesymbols/logos/mysterious-treasures.png"
+    },
+    "diamond-and-pearl": {
+      "name": "Diamond &amp; Pearl",
+      "code": "DP",
+      "symbol": "/pokesymbols/symbols/diamond-and-pearl.png",
+      "logo": "/pokesymbols/logos/diamond-and-pearl.png"
+    },
+    "dp-black-star-promos": {
+      "name": "DP Black Star Promos",
+      "code": "PR-DPP",
+      "symbol": "/pokesymbols/symbols/dp-black-star-promos.png",
+      "logo": "/pokesymbols/logos/dp-black-star-promos.png"
+    },
+    "pop-series-5": {
+      "name": "POP Series 5",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/pop-series-5.png",
+      "logo": "/pokesymbols/logos/pop-series-5.png"
+    },
+    "power-keepers": {
+      "name": "Power Keepers",
+      "code": "PK",
+      "symbol": "/pokesymbols/symbols/power-keepers.png",
+      "logo": "/pokesymbols/logos/power-keepers.png"
+    },
+    "dragon-frontiers": {
+      "name": "Dragon Frontiers",
+      "code": "DF",
+      "symbol": "/pokesymbols/symbols/dragon-frontiers.png",
+      "logo": "/pokesymbols/logos/dragon-frontiers.png"
+    },
+    "crystal-guardians": {
+      "name": "Crystal Guardians",
+      "code": "CG",
+      "symbol": "/pokesymbols/symbols/crystal-guardians.png",
+      "logo": "/pokesymbols/logos/crystal-guardians.png"
+    },
+    "pop-series-4": {
+      "name": "POP Series 4",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/pop-series-4.png",
+      "logo": "/pokesymbols/logos/pop-series-4.png"
+    },
+    "holon-phantoms": {
+      "name": "Holon Phantoms",
+      "code": "HP",
+      "symbol": "/pokesymbols/symbols/holon-phantoms.png",
+      "logo": "/pokesymbols/logos/holon-phantoms.png"
+    },
+    "pop-series-3": {
+      "name": "POP Series 3",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/pop-series-3.png",
+      "logo": "/pokesymbols/logos/pop-series-3.png"
+    },
+    "ex-trainer-kit-2-minun": {
+      "name": "EX Trainer Kit 2 Minun",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/ex-trainer-kit-2-minun.png",
+      "logo": "/pokesymbols/logos/ex-trainer-kit-2-minun.png"
+    },
+    "ex-trainer-kit-2-plusle": {
+      "name": "EX Trainer Kit 2 Plusle",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/ex-trainer-kit-2-plusle.png",
+      "logo": "/pokesymbols/logos/ex-trainer-kit-2-plusle.png"
+    },
+    "legend-maker": {
+      "name": "Legend Maker",
+      "code": "LM",
+      "symbol": "/pokesymbols/symbols/legend-maker.png",
+      "logo": "/pokesymbols/logos/legend-maker.png"
+    },
+    "delta-species": {
+      "name": "Delta Species",
+      "code": "DS",
+      "symbol": "/pokesymbols/symbols/delta-species.png",
+      "logo": "/pokesymbols/logos/delta-species.png"
+    },
+    "pop-series-2": {
+      "name": "POP Series 2",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/pop-series-2.png",
+      "logo": "/pokesymbols/logos/pop-series-2.png"
+    },
+    "unseen-forces": {
+      "name": "Unseen Forces",
+      "code": "UF",
+      "symbol": "/pokesymbols/symbols/unseen-forces.png",
+      "logo": "/pokesymbols/logos/unseen-forces.png"
+    },
+    "emerald": {
+      "name": "Emerald",
+      "code": "EM",
+      "symbol": "/pokesymbols/symbols/emerald.png",
+      "logo": "/pokesymbols/logos/emerald.png"
+    },
+    "deoxys": {
+      "name": "Deoxys",
+      "code": "DX",
+      "symbol": "/pokesymbols/symbols/deoxys.png",
+      "logo": "/pokesymbols/logos/deoxys.png"
+    },
+    "team-rocket-returns": {
+      "name": "Team Rocket Returns",
+      "code": "TRR",
+      "symbol": "/pokesymbols/symbols/team-rocket-returns.png",
+      "logo": "/pokesymbols/logos/team-rocket-returns.png"
+    },
+    "fire-red-and-leaf-green": {
+      "name": "FireRed &amp; LeafGreen",
+      "code": "RG",
+      "symbol": "/pokesymbols/symbols/fire-red-and-leaf-green.png",
+      "logo": "/pokesymbols/logos/fire-red-and-leaf-green.png"
+    },
+    "pop-series-1": {
+      "name": "POP Series 1",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/pop-series-1.png",
+      "logo": "/pokesymbols/logos/pop-series-1.png"
+    },
+    "ex-trainer-kit-latias": {
+      "name": "EX Trainer Kit Latias",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/ex-trainer-kit-latias.png",
+      "logo": "/pokesymbols/logos/ex-trainer-kit-latias.png"
+    },
+    "ex-trainer-kit-latios": {
+      "name": "EX Trainer Kit Latios",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/ex-trainer-kit-latios.png",
+      "logo": "/pokesymbols/logos/ex-trainer-kit-latios.png"
+    },
+    "hidden-legends": {
+      "name": "Hidden Legends",
+      "code": "HL",
+      "symbol": "/pokesymbols/symbols/hidden-legends.png",
+      "logo": "/pokesymbols/logos/hidden-legends.png"
+    },
+    "team-magma-vs-team-aqua": {
+      "name": "Team Magma vs Team Aqua",
+      "code": "MA",
+      "symbol": "/pokesymbols/symbols/team-magma-vs-team-aqua.png",
+      "logo": "/pokesymbols/logos/team-magma-vs-team-aqua.png"
+    },
+    "dragon": {
+      "name": "Dragon",
+      "code": "DR",
+      "symbol": "/pokesymbols/symbols/dragon.png",
+      "logo": "/pokesymbols/logos/dragon.png"
+    },
+    "nintendo-black-star-promos": {
+      "name": "Nintendo Black Star Promos",
+      "code": "PR-NP",
+      "symbol": "/pokesymbols/symbols/nintendo-black-star-promos.png",
+      "logo": "/pokesymbols/logos/nintendo-black-star-promos.png"
+    },
+    "sandstorm": {
+      "name": "Sandstorm",
+      "code": "SS",
+      "symbol": "/pokesymbols/symbols/sandstorm.png",
+      "logo": "/pokesymbols/logos/sandstorm.png"
+    },
+    "ruby-and-sapphire": {
+      "name": "Ruby &amp; Sapphire",
+      "code": "RS",
+      "symbol": "/pokesymbols/symbols/ruby-and-sapphire.png",
+      "logo": "/pokesymbols/logos/ruby-and-sapphire.png"
+    },
+    "skyridge": {
+      "name": "Skyridge",
+      "code": "SK",
+      "symbol": "/pokesymbols/symbols/skyridge.png",
+      "logo": "/pokesymbols/logos/skyridge.png"
+    },
+    "aquapolis": {
+      "name": "Aquapolis",
+      "code": "AQ",
+      "symbol": "/pokesymbols/symbols/aquapolis.png",
+      "logo": "/pokesymbols/logos/aquapolis.png"
+    },
+    "best-of-game": {
+      "name": "Best of Game",
+      "code": "BP",
+      "symbol": "/pokesymbols/symbols/best-of-game.png",
+      "logo": "/pokesymbols/logos/best-of-game.png"
+    },
+    "expedition-base-set": {
+      "name": "Expedition Base Set",
+      "code": "EX",
+      "symbol": "/pokesymbols/symbols/expedition-base-set.png",
+      "logo": "/pokesymbols/logos/expedition-base-set.png"
+    },
+    "legendary-collection": {
+      "name": "Legendary Collection",
+      "code": "LC",
+      "symbol": "/pokesymbols/symbols/legendary-collection.png",
+      "logo": "/pokesymbols/logos/legendary-collection.png"
+    },
+    "neo-destiny": {
+      "name": "Neo Destiny",
+      "code": "N4",
+      "symbol": "/pokesymbols/symbols/neo-destiny.png",
+      "logo": "/pokesymbols/logos/neo-destiny.png"
+    },
+    "neo-revelation": {
+      "name": "Neo Revelation",
+      "code": "N3",
+      "symbol": "/pokesymbols/symbols/neo-revelation.png",
+      "logo": "/pokesymbols/logos/neo-revelation.png"
+    },
+    "southern-islands": {
+      "name": "Southern Islands",
+      "code": "N/A",
+      "symbol": "/pokesymbols/symbols/southern-islands.png",
+      "logo": "/pokesymbols/logos/southern-islands.png"
+    },
+    "neo-discovery": {
+      "name": "Neo Discovery",
+      "code": "N2",
+      "symbol": "/pokesymbols/symbols/neo-discovery.png",
+      "logo": "/pokesymbols/logos/neo-discovery.png"
+    },
+    "neo-genesis": {
+      "name": "Neo Genesis",
+      "code": "N1",
+      "symbol": "/pokesymbols/symbols/neo-genesis.png",
+      "logo": "/pokesymbols/logos/neo-genesis.png"
+    },
+    "gym-challenge": {
+      "name": "Gym Challenge",
+      "code": "G2",
+      "symbol": "/pokesymbols/symbols/gym-challenge.png",
+      "logo": "/pokesymbols/logos/gym-challenge.png"
+    },
+    "gym-heroes": {
+      "name": "Gym Heroes",
+      "code": "G1",
+      "symbol": "/pokesymbols/symbols/gym-heroes.png",
+      "logo": "/pokesymbols/logos/gym-heroes.png"
+    },
+    "team-rocket": {
+      "name": "Team Rocket",
+      "code": "TR",
+      "symbol": "/pokesymbols/symbols/team-rocket.png",
+      "logo": "/pokesymbols/logos/team-rocket.png"
+    },
+    "base-set-2": {
+      "name": "Base Set 2",
+      "code": "B2",
+      "symbol": "/pokesymbols/symbols/base-set-2.png",
+      "logo": "/pokesymbols/logos/base-set-2.png"
+    },
+    "fossil": {
+      "name": "Fossil",
+      "code": "FO",
+      "symbol": "/pokesymbols/symbols/fossil.png",
+      "logo": "/pokesymbols/logos/fossil.png"
+    },
+    "wizards-black-star-promos": {
+      "name": "Wizards Black Star Promos",
+      "code": "PR",
+      "symbol": "/pokesymbols/symbols/wizards-black-star-promos.png",
+      "logo": "/pokesymbols/logos/wizards-black-star-promos.png"
+    },
+    "jungle": {
+      "name": "Jungle",
+      "code": "JU",
+      "symbol": "/pokesymbols/symbols/jungle.png",
+      "logo": "/pokesymbols/logos/jungle.png"
+    },
+    "base": {
+      "name": "Base",
+      "code": "BS",
+      "symbol": "/pokesymbols/symbols/base.png",
+      "logo": "/pokesymbols/logos/base.png"
+    }
+  },
+  "byCode": {
+    "CRI": {
+      "slug": "chaos-rising",
+      "symbol": "/pokesymbols/symbols/chaos-rising.png",
+      "logo": "/pokesymbols/logos/chaos-rising.png"
+    },
+    "POR": {
+      "slug": "perfect-order",
+      "symbol": "/pokesymbols/symbols/perfect-order.png",
+      "logo": "/pokesymbols/logos/perfect-order.png"
+    },
+    "ASC": {
+      "slug": "ascended-heroes",
+      "symbol": "/pokesymbols/symbols/ascended-heroes.png",
+      "logo": "/pokesymbols/logos/ascended-heroes.png"
+    },
+    "PFL": {
+      "slug": "phantasmal-flames",
+      "symbol": "/pokesymbols/symbols/phantasmal-flames.png",
+      "logo": "/pokesymbols/logos/phantasmal-flames.png"
+    },
+    "MEG": {
+      "slug": "mega-evolution",
+      "symbol": "/pokesymbols/symbols/mega-evolution.png",
+      "logo": "/pokesymbols/logos/mega-evolution.png"
+    },
+    "MEP": {
+      "slug": "mega-evolution-black-star-promos",
+      "symbol": "/pokesymbols/symbols/mega-evolution-black-star-promos.png",
+      "logo": "/pokesymbols/logos/mega-evolution-black-star-promos.png"
+    },
+    "BLK": {
+      "slug": "black-bolt",
+      "symbol": "/pokesymbols/symbols/black-bolt.png",
+      "logo": "/pokesymbols/logos/black-bolt.png"
+    },
+    "WHT": {
+      "slug": "white-flare",
+      "symbol": "/pokesymbols/symbols/white-flare.png",
+      "logo": "/pokesymbols/logos/white-flare.png"
+    },
+    "DRI": {
+      "slug": "destined-rivals",
+      "symbol": "/pokesymbols/symbols/destined-rivals.png",
+      "logo": "/pokesymbols/logos/destined-rivals.png"
+    },
+    "JTG": {
+      "slug": "journey-together",
+      "symbol": "/pokesymbols/symbols/journey-together.png",
+      "logo": "/pokesymbols/logos/journey-together.png"
+    },
+    "PRE": {
+      "slug": "prismatic-evolutions",
+      "symbol": "/pokesymbols/symbols/prismatic-evolutions.png",
+      "logo": "/pokesymbols/logos/prismatic-evolutions.png"
+    },
+    "SSP": {
+      "slug": "surging-sparks",
+      "symbol": "/pokesymbols/symbols/surging-sparks.png",
+      "logo": "/pokesymbols/logos/surging-sparks.png"
+    },
+    "SCR": {
+      "slug": "stellar-crown",
+      "symbol": "/pokesymbols/symbols/stellar-crown.png",
+      "logo": "/pokesymbols/logos/stellar-crown.png"
+    },
+    "SFA": {
+      "slug": "shrouded-fable",
+      "symbol": "/pokesymbols/symbols/shrouded-fable.png",
+      "logo": "/pokesymbols/logos/shrouded-fable.png"
+    },
+    "TWM": {
+      "slug": "twilight-masquerade",
+      "symbol": "/pokesymbols/symbols/twilight-masquerade.png",
+      "logo": "/pokesymbols/logos/twilight-masquerade.png"
+    },
+    "TEF": {
+      "slug": "temporal-forces",
+      "symbol": "/pokesymbols/symbols/temporal-forces.png",
+      "logo": "/pokesymbols/logos/temporal-forces.png"
+    },
+    "PAF": {
+      "slug": "paldean-fates",
+      "symbol": "/pokesymbols/symbols/paldean-fates.png",
+      "logo": "/pokesymbols/logos/paldean-fates.png"
+    },
+    "PAR": {
+      "slug": "paradox-rift",
+      "symbol": "/pokesymbols/symbols/paradox-rift.png",
+      "logo": "/pokesymbols/logos/paradox-rift.png"
+    },
+    "MEW": {
+      "slug": "151",
+      "symbol": "/pokesymbols/symbols/151.png",
+      "logo": "/pokesymbols/logos/151.png"
+    },
+    "OBF": {
+      "slug": "obsidian-flames",
+      "symbol": "/pokesymbols/symbols/obsidian-flames.png",
+      "logo": "/pokesymbols/logos/obsidian-flames.png"
+    },
+    "PAL": {
+      "slug": "paldea-evolved",
+      "symbol": "/pokesymbols/symbols/paldea-evolved.png",
+      "logo": "/pokesymbols/logos/paldea-evolved.png"
+    },
+    "SVI": {
+      "slug": "scarlet-and-violet",
+      "symbol": "/pokesymbols/symbols/scarlet-and-violet.png",
+      "logo": "/pokesymbols/logos/scarlet-and-violet.png"
+    },
+    "SVE": {
+      "slug": "scarlet-and-violet-energies",
+      "symbol": "/pokesymbols/symbols/scarlet-and-violet-energies.png",
+      "logo": "/pokesymbols/logos/scarlet-and-violet-energies.png"
+    },
+    "CRZ": {
+      "slug": "crown-zenith-galarian-gallery",
+      "symbol": "/pokesymbols/symbols/crown-zenith-galarian-gallery.png",
+      "logo": "/pokesymbols/logos/crown-zenith-galarian-gallery.png"
+    },
+    "PR-SV": {
+      "slug": "scarlet-and-violet-black-star-promos",
+      "symbol": "/pokesymbols/symbols/scarlet-and-violet-black-star-promos.png",
+      "logo": "/pokesymbols/logos/scarlet-and-violet-black-star-promos.png"
+    },
+    "SIT": {
+      "slug": "silver-tempest-trainer-gallery",
+      "symbol": "/pokesymbols/symbols/silver-tempest-trainer-gallery.png",
+      "logo": "/pokesymbols/logos/silver-tempest-trainer-gallery.png"
+    },
+    "LOR": {
+      "slug": "lost-origin-trainer-gallery",
+      "symbol": "/pokesymbols/symbols/lost-origin-trainer-gallery.png",
+      "logo": "/pokesymbols/logos/lost-origin-trainer-gallery.png"
+    },
+    "PGO": {
+      "slug": "pokemon-go",
+      "symbol": "/pokesymbols/symbols/pokemon-go.png",
+      "logo": "/pokesymbols/logos/pokemon-go.png"
+    },
+    "ASR": {
+      "slug": "astral-radiance-trainer-gallery",
+      "symbol": "/pokesymbols/symbols/astral-radiance-trainer-gallery.png",
+      "logo": "/pokesymbols/logos/astral-radiance-trainer-gallery.png"
+    },
+    "BRS": {
+      "slug": "brilliant-stars-trainer-gallery",
+      "symbol": "/pokesymbols/symbols/brilliant-stars-trainer-gallery.png",
+      "logo": "/pokesymbols/logos/brilliant-stars-trainer-gallery.png"
+    },
+    "FST": {
+      "slug": "fusion-strike",
+      "symbol": "/pokesymbols/symbols/fusion-strike.png",
+      "logo": "/pokesymbols/logos/fusion-strike.png"
+    },
+    "CEL": {
+      "slug": "celebrations-classic-collection",
+      "symbol": "/pokesymbols/symbols/celebrations-classic-collection.png",
+      "logo": "/pokesymbols/logos/celebrations-classic-collection.png"
+    },
+    "EVS": {
+      "slug": "evolving-skies",
+      "symbol": "/pokesymbols/symbols/evolving-skies.png",
+      "logo": "/pokesymbols/logos/evolving-skies.png"
+    },
+    "CRE": {
+      "slug": "chilling-reign",
+      "symbol": "/pokesymbols/symbols/chilling-reign.png",
+      "logo": "/pokesymbols/logos/chilling-reign.png"
+    },
+    "BST": {
+      "slug": "battle-styles",
+      "symbol": "/pokesymbols/symbols/battle-styles.png",
+      "logo": "/pokesymbols/logos/battle-styles.png"
+    },
+    "SHF": {
+      "slug": "shining-fates-shiny-vault",
+      "symbol": "/pokesymbols/symbols/shining-fates-shiny-vault.png",
+      "logo": "/pokesymbols/logos/shining-fates-shiny-vault.png"
+    },
+    "VIV": {
+      "slug": "vivid-voltage",
+      "symbol": "/pokesymbols/symbols/vivid-voltage.png",
+      "logo": "/pokesymbols/logos/vivid-voltage.png"
+    },
+    "CPA": {
+      "slug": "champions-path",
+      "symbol": "/pokesymbols/symbols/champions-path.png",
+      "logo": "/pokesymbols/logos/champions-path.png"
+    },
+    "FUT20": {
+      "slug": "pokemon-futsal-collection",
+      "symbol": "/pokesymbols/symbols/pokemon-futsal-collection.png",
+      "logo": "/pokesymbols/logos/pokemon-futsal-collection.png"
+    },
+    "DAA": {
+      "slug": "darkness-ablaze",
+      "symbol": "/pokesymbols/symbols/darkness-ablaze.png",
+      "logo": "/pokesymbols/logos/darkness-ablaze.png"
+    },
+    "RCL": {
+      "slug": "rebel-clash",
+      "symbol": "/pokesymbols/symbols/rebel-clash.png",
+      "logo": "/pokesymbols/logos/rebel-clash.png"
+    },
+    "SSH": {
+      "slug": "sword-and-shield",
+      "symbol": "/pokesymbols/symbols/sword-and-shield.png",
+      "logo": "/pokesymbols/logos/sword-and-shield.png"
+    },
+    "PR-SW": {
+      "slug": "swsh-black-star-promos",
+      "symbol": "/pokesymbols/symbols/swsh-black-star-promos.png",
+      "logo": "/pokesymbols/logos/swsh-black-star-promos.png"
+    },
+    "CEC": {
+      "slug": "cosmic-eclipse",
+      "symbol": "/pokesymbols/symbols/cosmic-eclipse.png",
+      "logo": "/pokesymbols/logos/cosmic-eclipse.png"
+    },
+    "HIF": {
+      "slug": "hidden-fates",
+      "symbol": "/pokesymbols/symbols/hidden-fates.png",
+      "logo": "/pokesymbols/logos/hidden-fates.png"
+    },
+    "UNM": {
+      "slug": "unified-minds",
+      "symbol": "/pokesymbols/symbols/unified-minds.png",
+      "logo": "/pokesymbols/logos/unified-minds.png"
+    },
+    "UNB": {
+      "slug": "unbroken-bonds",
+      "symbol": "/pokesymbols/symbols/unbroken-bonds.png",
+      "logo": "/pokesymbols/logos/unbroken-bonds.png"
+    },
+    "DET": {
+      "slug": "detective-pikachu",
+      "symbol": "/pokesymbols/symbols/detective-pikachu.png",
+      "logo": "/pokesymbols/logos/detective-pikachu.png"
+    },
+    "TEU": {
+      "slug": "team-up",
+      "symbol": "/pokesymbols/symbols/team-up.png",
+      "logo": "/pokesymbols/logos/team-up.png"
+    },
+    "LOT": {
+      "slug": "lost-thunder",
+      "symbol": "/pokesymbols/symbols/lost-thunder.png",
+      "logo": "/pokesymbols/logos/lost-thunder.png"
+    },
+    "DRM": {
+      "slug": "dragon-majesty",
+      "symbol": "/pokesymbols/symbols/dragon-majesty.png",
+      "logo": "/pokesymbols/logos/dragon-majesty.png"
+    },
+    "CES": {
+      "slug": "celestial-storm",
+      "symbol": "/pokesymbols/symbols/celestial-storm.png",
+      "logo": "/pokesymbols/logos/celestial-storm.png"
+    },
+    "FLI": {
+      "slug": "forbidden-light",
+      "symbol": "/pokesymbols/symbols/forbidden-light.png",
+      "logo": "/pokesymbols/logos/forbidden-light.png"
+    },
+    "UPR": {
+      "slug": "ultra-prism",
+      "symbol": "/pokesymbols/symbols/ultra-prism.png",
+      "logo": "/pokesymbols/logos/ultra-prism.png"
+    },
+    "CIN": {
+      "slug": "crimson-invasion",
+      "symbol": "/pokesymbols/symbols/crimson-invasion.png",
+      "logo": "/pokesymbols/logos/crimson-invasion.png"
+    },
+    "SLG": {
+      "slug": "shining-legends",
+      "symbol": "/pokesymbols/symbols/shining-legends.png",
+      "logo": "/pokesymbols/logos/shining-legends.png"
+    },
+    "BUS": {
+      "slug": "burning-shadows",
+      "symbol": "/pokesymbols/symbols/burning-shadows.png",
+      "logo": "/pokesymbols/logos/burning-shadows.png"
+    },
+    "GRI": {
+      "slug": "guardians-rising",
+      "symbol": "/pokesymbols/symbols/guardians-rising.png",
+      "logo": "/pokesymbols/logos/guardians-rising.png"
+    },
+    "PR-SM": {
+      "slug": "sm-black-star-promos",
+      "symbol": "/pokesymbols/symbols/sm-black-star-promos.png",
+      "logo": "/pokesymbols/logos/sm-black-star-promos.png"
+    },
+    "SUM": {
+      "slug": "sun-and-moon",
+      "symbol": "/pokesymbols/symbols/sun-and-moon.png",
+      "logo": "/pokesymbols/logos/sun-and-moon.png"
+    },
+    "EVO": {
+      "slug": "evolutions",
+      "symbol": "/pokesymbols/symbols/evolutions.png",
+      "logo": "/pokesymbols/logos/evolutions.png"
+    },
+    "STS": {
+      "slug": "steam-siege",
+      "symbol": "/pokesymbols/symbols/steam-siege.png",
+      "logo": "/pokesymbols/logos/steam-siege.png"
+    },
+    "FCO": {
+      "slug": "fates-collide",
+      "symbol": "/pokesymbols/symbols/fates-collide.png",
+      "logo": "/pokesymbols/logos/fates-collide.png"
+    },
+    "GEN": {
+      "slug": "generations",
+      "symbol": "/pokesymbols/symbols/generations.png",
+      "logo": "/pokesymbols/logos/generations.png"
+    },
+    "BKP": {
+      "slug": "breakpoint",
+      "symbol": "/pokesymbols/symbols/breakpoint.png",
+      "logo": "/pokesymbols/logos/breakpoint.png"
+    },
+    "BKT": {
+      "slug": "breakthrough",
+      "symbol": "/pokesymbols/symbols/breakthrough.png",
+      "logo": "/pokesymbols/logos/breakthrough.png"
+    },
+    "AOR": {
+      "slug": "ancient-origins",
+      "symbol": "/pokesymbols/symbols/ancient-origins.png",
+      "logo": "/pokesymbols/logos/ancient-origins.png"
+    },
+    "ROS": {
+      "slug": "roaring-skies",
+      "symbol": "/pokesymbols/symbols/roaring-skies.png",
+      "logo": "/pokesymbols/logos/roaring-skies.png"
+    },
+    "DCR": {
+      "slug": "double-crisis",
+      "symbol": "/pokesymbols/symbols/double-crisis.png",
+      "logo": "/pokesymbols/logos/double-crisis.png"
+    },
+    "PRC": {
+      "slug": "primal-clash",
+      "symbol": "/pokesymbols/symbols/primal-clash.png",
+      "logo": "/pokesymbols/logos/primal-clash.png"
+    },
+    "PHF": {
+      "slug": "phantom-forces",
+      "symbol": "/pokesymbols/symbols/phantom-forces.png",
+      "logo": "/pokesymbols/logos/phantom-forces.png"
+    },
+    "FFI": {
+      "slug": "furious-fists",
+      "symbol": "/pokesymbols/symbols/furious-fists.png",
+      "logo": "/pokesymbols/logos/furious-fists.png"
+    },
+    "FLF": {
+      "slug": "flashfire",
+      "symbol": "/pokesymbols/symbols/flashfire.png",
+      "logo": "/pokesymbols/logos/flashfire.png"
+    },
+    "XY": {
+      "slug": "xy",
+      "symbol": "/pokesymbols/symbols/xy.png",
+      "logo": "/pokesymbols/logos/xy.png"
+    },
+    "KSS": {
+      "slug": "kalos-starter-set",
+      "symbol": "/pokesymbols/symbols/kalos-starter-set.png",
+      "logo": "/pokesymbols/logos/kalos-starter-set.png"
+    },
+    "LTR": {
+      "slug": "legendary-treasures",
+      "symbol": "/pokesymbols/symbols/legendary-treasures.png",
+      "logo": "/pokesymbols/logos/legendary-treasures.png"
+    },
+    "PR-XY": {
+      "slug": "xy-black-star-promos",
+      "symbol": "/pokesymbols/symbols/xy-black-star-promos.png",
+      "logo": "/pokesymbols/logos/xy-black-star-promos.png"
+    },
+    "PLB": {
+      "slug": "plasma-blast",
+      "symbol": "/pokesymbols/symbols/plasma-blast.png",
+      "logo": "/pokesymbols/logos/plasma-blast.png"
+    },
+    "PLF": {
+      "slug": "plasma-freeze",
+      "symbol": "/pokesymbols/symbols/plasma-freeze.png",
+      "logo": "/pokesymbols/logos/plasma-freeze.png"
+    },
+    "PLS": {
+      "slug": "plasma-storm",
+      "symbol": "/pokesymbols/symbols/plasma-storm.png",
+      "logo": "/pokesymbols/logos/plasma-storm.png"
+    },
+    "BCR": {
+      "slug": "boundaries-crossed",
+      "symbol": "/pokesymbols/symbols/boundaries-crossed.png",
+      "logo": "/pokesymbols/logos/boundaries-crossed.png"
+    },
+    "DRV": {
+      "slug": "dragon-vault",
+      "symbol": "/pokesymbols/symbols/dragon-vault.png",
+      "logo": "/pokesymbols/logos/dragon-vault.png"
+    },
+    "DRX": {
+      "slug": "dragons-exalted",
+      "symbol": "/pokesymbols/symbols/dragons-exalted.png",
+      "logo": "/pokesymbols/logos/dragons-exalted.png"
+    },
+    "DEX": {
+      "slug": "dark-explorers",
+      "symbol": "/pokesymbols/symbols/dark-explorers.png",
+      "logo": "/pokesymbols/logos/dark-explorers.png"
+    },
+    "NXD": {
+      "slug": "next-destinies",
+      "symbol": "/pokesymbols/symbols/next-destinies.png",
+      "logo": "/pokesymbols/logos/next-destinies.png"
+    },
+    "NVI": {
+      "slug": "noble-victories",
+      "symbol": "/pokesymbols/symbols/noble-victories.png",
+      "logo": "/pokesymbols/logos/noble-victories.png"
+    },
+    "EPO": {
+      "slug": "emerging-powers",
+      "symbol": "/pokesymbols/symbols/emerging-powers.png",
+      "logo": "/pokesymbols/logos/emerging-powers.png"
+    },
+    "BLW": {
+      "slug": "black-and-white",
+      "symbol": "/pokesymbols/symbols/black-and-white.png",
+      "logo": "/pokesymbols/logos/black-and-white.png"
+    },
+    "PR-BLW": {
+      "slug": "bw-black-star-promos",
+      "symbol": "/pokesymbols/symbols/bw-black-star-promos.png",
+      "logo": "/pokesymbols/logos/bw-black-star-promos.png"
+    },
+    "CL": {
+      "slug": "call-of-legends",
+      "symbol": "/pokesymbols/symbols/call-of-legends.png",
+      "logo": "/pokesymbols/logos/call-of-legends.png"
+    },
+    "TM": {
+      "slug": "hs-triumphant",
+      "symbol": "/pokesymbols/symbols/hs-triumphant.png",
+      "logo": "/pokesymbols/logos/hs-triumphant.png"
+    },
+    "UD": {
+      "slug": "hs-undaunted",
+      "symbol": "/pokesymbols/symbols/hs-undaunted.png",
+      "logo": "/pokesymbols/logos/hs-undaunted.png"
+    },
+    "UL": {
+      "slug": "hs-unleashed",
+      "symbol": "/pokesymbols/symbols/hs-unleashed.png",
+      "logo": "/pokesymbols/logos/hs-unleashed.png"
+    },
+    "HS": {
+      "slug": "heart-gold-and-soul-silver",
+      "symbol": "/pokesymbols/symbols/heart-gold-and-soul-silver.png",
+      "logo": "/pokesymbols/logos/heart-gold-and-soul-silver.png"
+    },
+    "PR-HS": {
+      "slug": "hgss-black-star-promos",
+      "symbol": "/pokesymbols/symbols/hgss-black-star-promos.png",
+      "logo": "/pokesymbols/logos/hgss-black-star-promos.png"
+    },
+    "AR": {
+      "slug": "arceus",
+      "symbol": "/pokesymbols/symbols/arceus.png",
+      "logo": "/pokesymbols/logos/arceus.png"
+    },
+    "SV": {
+      "slug": "supreme-victors",
+      "symbol": "/pokesymbols/symbols/supreme-victors.png",
+      "logo": "/pokesymbols/logos/supreme-victors.png"
+    },
+    "RR": {
+      "slug": "rising-rivals",
+      "symbol": "/pokesymbols/symbols/rising-rivals.png",
+      "logo": "/pokesymbols/logos/rising-rivals.png"
+    },
+    "PL": {
+      "slug": "platinum",
+      "symbol": "/pokesymbols/symbols/platinum.png",
+      "logo": "/pokesymbols/logos/platinum.png"
+    },
+    "SF": {
+      "slug": "stormfront",
+      "symbol": "/pokesymbols/symbols/stormfront.png",
+      "logo": "/pokesymbols/logos/stormfront.png"
+    },
+    "LA": {
+      "slug": "legends-awakened",
+      "symbol": "/pokesymbols/symbols/legends-awakened.png",
+      "logo": "/pokesymbols/logos/legends-awakened.png"
+    },
+    "MD": {
+      "slug": "majestic-dawn",
+      "symbol": "/pokesymbols/symbols/majestic-dawn.png",
+      "logo": "/pokesymbols/logos/majestic-dawn.png"
+    },
+    "GE": {
+      "slug": "great-encounters",
+      "symbol": "/pokesymbols/symbols/great-encounters.png",
+      "logo": "/pokesymbols/logos/great-encounters.png"
+    },
+    "SW": {
+      "slug": "secret-wonders",
+      "symbol": "/pokesymbols/symbols/secret-wonders.png",
+      "logo": "/pokesymbols/logos/secret-wonders.png"
+    },
+    "MT": {
+      "slug": "mysterious-treasures",
+      "symbol": "/pokesymbols/symbols/mysterious-treasures.png",
+      "logo": "/pokesymbols/logos/mysterious-treasures.png"
+    },
+    "DP": {
+      "slug": "diamond-and-pearl",
+      "symbol": "/pokesymbols/symbols/diamond-and-pearl.png",
+      "logo": "/pokesymbols/logos/diamond-and-pearl.png"
+    },
+    "PR-DPP": {
+      "slug": "dp-black-star-promos",
+      "symbol": "/pokesymbols/symbols/dp-black-star-promos.png",
+      "logo": "/pokesymbols/logos/dp-black-star-promos.png"
+    },
+    "PK": {
+      "slug": "power-keepers",
+      "symbol": "/pokesymbols/symbols/power-keepers.png",
+      "logo": "/pokesymbols/logos/power-keepers.png"
+    },
+    "DF": {
+      "slug": "dragon-frontiers",
+      "symbol": "/pokesymbols/symbols/dragon-frontiers.png",
+      "logo": "/pokesymbols/logos/dragon-frontiers.png"
+    },
+    "CG": {
+      "slug": "crystal-guardians",
+      "symbol": "/pokesymbols/symbols/crystal-guardians.png",
+      "logo": "/pokesymbols/logos/crystal-guardians.png"
+    },
+    "HP": {
+      "slug": "holon-phantoms",
+      "symbol": "/pokesymbols/symbols/holon-phantoms.png",
+      "logo": "/pokesymbols/logos/holon-phantoms.png"
+    },
+    "LM": {
+      "slug": "legend-maker",
+      "symbol": "/pokesymbols/symbols/legend-maker.png",
+      "logo": "/pokesymbols/logos/legend-maker.png"
+    },
+    "DS": {
+      "slug": "delta-species",
+      "symbol": "/pokesymbols/symbols/delta-species.png",
+      "logo": "/pokesymbols/logos/delta-species.png"
+    },
+    "UF": {
+      "slug": "unseen-forces",
+      "symbol": "/pokesymbols/symbols/unseen-forces.png",
+      "logo": "/pokesymbols/logos/unseen-forces.png"
+    },
+    "EM": {
+      "slug": "emerald",
+      "symbol": "/pokesymbols/symbols/emerald.png",
+      "logo": "/pokesymbols/logos/emerald.png"
+    },
+    "DX": {
+      "slug": "deoxys",
+      "symbol": "/pokesymbols/symbols/deoxys.png",
+      "logo": "/pokesymbols/logos/deoxys.png"
+    },
+    "TRR": {
+      "slug": "team-rocket-returns",
+      "symbol": "/pokesymbols/symbols/team-rocket-returns.png",
+      "logo": "/pokesymbols/logos/team-rocket-returns.png"
+    },
+    "RG": {
+      "slug": "fire-red-and-leaf-green",
+      "symbol": "/pokesymbols/symbols/fire-red-and-leaf-green.png",
+      "logo": "/pokesymbols/logos/fire-red-and-leaf-green.png"
+    },
+    "HL": {
+      "slug": "hidden-legends",
+      "symbol": "/pokesymbols/symbols/hidden-legends.png",
+      "logo": "/pokesymbols/logos/hidden-legends.png"
+    },
+    "MA": {
+      "slug": "team-magma-vs-team-aqua",
+      "symbol": "/pokesymbols/symbols/team-magma-vs-team-aqua.png",
+      "logo": "/pokesymbols/logos/team-magma-vs-team-aqua.png"
+    },
+    "DR": {
+      "slug": "dragon",
+      "symbol": "/pokesymbols/symbols/dragon.png",
+      "logo": "/pokesymbols/logos/dragon.png"
+    },
+    "PR-NP": {
+      "slug": "nintendo-black-star-promos",
+      "symbol": "/pokesymbols/symbols/nintendo-black-star-promos.png",
+      "logo": "/pokesymbols/logos/nintendo-black-star-promos.png"
+    },
+    "SS": {
+      "slug": "sandstorm",
+      "symbol": "/pokesymbols/symbols/sandstorm.png",
+      "logo": "/pokesymbols/logos/sandstorm.png"
+    },
+    "RS": {
+      "slug": "ruby-and-sapphire",
+      "symbol": "/pokesymbols/symbols/ruby-and-sapphire.png",
+      "logo": "/pokesymbols/logos/ruby-and-sapphire.png"
+    },
+    "SK": {
+      "slug": "skyridge",
+      "symbol": "/pokesymbols/symbols/skyridge.png",
+      "logo": "/pokesymbols/logos/skyridge.png"
+    },
+    "AQ": {
+      "slug": "aquapolis",
+      "symbol": "/pokesymbols/symbols/aquapolis.png",
+      "logo": "/pokesymbols/logos/aquapolis.png"
+    },
+    "BP": {
+      "slug": "best-of-game",
+      "symbol": "/pokesymbols/symbols/best-of-game.png",
+      "logo": "/pokesymbols/logos/best-of-game.png"
+    },
+    "EX": {
+      "slug": "expedition-base-set",
+      "symbol": "/pokesymbols/symbols/expedition-base-set.png",
+      "logo": "/pokesymbols/logos/expedition-base-set.png"
+    },
+    "LC": {
+      "slug": "legendary-collection",
+      "symbol": "/pokesymbols/symbols/legendary-collection.png",
+      "logo": "/pokesymbols/logos/legendary-collection.png"
+    },
+    "N4": {
+      "slug": "neo-destiny",
+      "symbol": "/pokesymbols/symbols/neo-destiny.png",
+      "logo": "/pokesymbols/logos/neo-destiny.png"
+    },
+    "N3": {
+      "slug": "neo-revelation",
+      "symbol": "/pokesymbols/symbols/neo-revelation.png",
+      "logo": "/pokesymbols/logos/neo-revelation.png"
+    },
+    "N2": {
+      "slug": "neo-discovery",
+      "symbol": "/pokesymbols/symbols/neo-discovery.png",
+      "logo": "/pokesymbols/logos/neo-discovery.png"
+    },
+    "N1": {
+      "slug": "neo-genesis",
+      "symbol": "/pokesymbols/symbols/neo-genesis.png",
+      "logo": "/pokesymbols/logos/neo-genesis.png"
+    },
+    "G2": {
+      "slug": "gym-challenge",
+      "symbol": "/pokesymbols/symbols/gym-challenge.png",
+      "logo": "/pokesymbols/logos/gym-challenge.png"
+    },
+    "G1": {
+      "slug": "gym-heroes",
+      "symbol": "/pokesymbols/symbols/gym-heroes.png",
+      "logo": "/pokesymbols/logos/gym-heroes.png"
+    },
+    "TR": {
+      "slug": "team-rocket",
+      "symbol": "/pokesymbols/symbols/team-rocket.png",
+      "logo": "/pokesymbols/logos/team-rocket.png"
+    },
+    "B2": {
+      "slug": "base-set-2",
+      "symbol": "/pokesymbols/symbols/base-set-2.png",
+      "logo": "/pokesymbols/logos/base-set-2.png"
+    },
+    "FO": {
+      "slug": "fossil",
+      "symbol": "/pokesymbols/symbols/fossil.png",
+      "logo": "/pokesymbols/logos/fossil.png"
+    },
+    "PR": {
+      "slug": "wizards-black-star-promos",
+      "symbol": "/pokesymbols/symbols/wizards-black-star-promos.png",
+      "logo": "/pokesymbols/logos/wizards-black-star-promos.png"
+    },
+    "JU": {
+      "slug": "jungle",
+      "symbol": "/pokesymbols/symbols/jungle.png",
+      "logo": "/pokesymbols/logos/jungle.png"
+    },
+    "BS": {
+      "slug": "base",
+      "symbol": "/pokesymbols/symbols/base.png",
+      "logo": "/pokesymbols/logos/base.png"
+    }
+  },
+  "failed": []
+}

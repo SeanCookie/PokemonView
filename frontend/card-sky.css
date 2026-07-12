@@ -1,0 +1,80 @@
+/* Shared flying-card background (English catalog images). */
+
+.card-sky {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  perspective: 1000px;
+}
+
+.flying-card {
+  position: absolute;
+  width: clamp(64px, 8.5vw, 128px);
+  aspect-ratio: 63 / 88;
+  object-fit: cover;
+  border-radius: 13px;
+  border: 1px solid rgba(230, 240, 255, 0.5);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.35) inset,
+    0 0 1px rgba(255, 255, 255, 0.35) inset,
+    0 16px 36px rgba(0, 0, 0, 0.38),
+    0 0 28px rgba(100, 170, 255, 0.28);
+  filter: saturate(1.07) contrast(1.06) brightness(1.04);
+  opacity: 0;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  animation-name: infinity-fly-card;
+  animation-timing-function: cubic-bezier(0.42, 0, 0.58, 1);
+  animation-iteration-count: infinite;
+  animation-duration: var(--dur, 12s);
+  animation-delay: var(--delay, 0s);
+}
+
+/* Home recycler: hold first keyframe until image is ready — cards rise in from below viewport. */
+.flying-card.flying-card--recycle {
+  animation-iteration-count: 1;
+  animation-fill-mode: backwards;
+  visibility: hidden;
+}
+
+.flying-card.flying-card--recycle.flying-card--ready {
+  visibility: visible;
+}
+
+@keyframes infinity-fly-card {
+  0% {
+    opacity: 0;
+    transform: translate3d(var(--x-start), 118vh, 0) rotate(var(--rot-start));
+  }
+  2% {
+    opacity: 1;
+  }
+  98% {
+    opacity: 1;
+    transform: translate3d(var(--x-end), -32vh, 0) rotate(var(--rot-end));
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--x-end), -32vh, 0) rotate(var(--rot-end));
+  }
+}
+
+/* Fixed sky is the first body child; keep in-flow page content above it (nav keeps its own z-index). */
+body > main {
+  position: relative;
+  z-index: 1;
+}
+
+#cardSky.card-sky-frozen .flying-card {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flying-card {
+    animation: none;
+    opacity: 0.35;
+  }
+}

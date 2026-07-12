@@ -1,0 +1,4359 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Infinity Cards Poke View</title>
+  <link rel="stylesheet" href="/brand-logo.css" />
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0a0f18;
+      --panel: #101825;
+      --border: #2a3340;
+      --text: #e9f1ff;
+      --muted: #93a8c7;
+      --terminal: #0a0d14;
+      --terminal-soft: #121722;
+      --up: #089981;
+      --down: #f23645;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, "Segoe UI", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    .top-nav {
+      height: 56px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(10, 15, 24, 0.92);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      position: sticky;
+      top: 0;
+      z-index: 8;
+    }
+    .nav-left, .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .nav-link {
+      color: var(--muted);
+      font-size: 13px;
+      text-decoration: none;
+    }
+    .nav-link.active, .nav-link:hover { color: var(--text); }
+    .page {
+      margin: 12px;
+      display: grid;
+      gap: 10px;
+    }
+    .terminal {
+      border: 1px solid #2a2e39;
+      border-radius: 10px;
+      background: #131722;
+      overflow: hidden;
+      height: calc(100vh - 92px);
+      display: grid;
+      grid-template-rows: 1fr;
+    }
+    .terminal-main {
+      --watchlist-width: 320px;
+      --chart-scale-width: 78px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 8px minmax(240px, var(--watchlist-width));
+      min-height: 0;
+      overflow: hidden;
+    }
+    .chart-stack {
+      display: grid;
+      grid-template-rows: 1fr auto;
+      min-width: 0;
+      min-height: 0;
+    }
+    .chart-canvas-wrap {
+      width: 100%;
+      height: 100%;
+      min-height: 420px;
+      min-width: 0;
+      position: relative;
+      cursor: default;
+      touch-action: none;
+    }
+    .chart-canvas-wrap.panning {
+      cursor: grabbing;
+    }
+    .chart-canvas-wrap.axis-time {
+      cursor: ew-resize;
+    }
+    .chart-canvas-wrap.axis-price {
+      cursor: ns-resize;
+    }
+    .chart-area {
+      position: relative;
+      background: #131722;
+      min-height: 0;
+      min-width: 0;
+      display: grid;
+      grid-template-columns: 42px minmax(0, 1fr);
+    }
+    .chart-toolbar {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 8px 3px;
+      border-right: 1px solid #2a2e39;
+      background: #131722;
+      z-index: 3;
+      overflow-y: auto;
+    }
+    .chart-tool-btn {
+      width: 34px;
+      height: 34px;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      background: transparent;
+      color: #787b86;
+      font-size: 15px;
+      line-height: 1;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      padding: 0;
+      font-family: inherit;
+    }
+    .chart-tool-btn:hover {
+      color: #d1d4dc;
+      background: rgba(255, 255, 255, 0.06);
+    }
+    .chart-tool-btn.active {
+      color: #d1d4dc;
+      background: rgba(41, 98, 255, 0.22);
+      border-color: rgba(41, 98, 255, 0.45);
+    }
+    .chart-tool-btn.magnet-on {
+      color: #089981;
+      border-color: rgba(8, 153, 129, 0.45);
+    }
+    .chart-tool-btn.cursor-crosshair-on {
+      color: #d1d4dc;
+    }
+    .chart-tool-divider {
+      height: 1px;
+      margin: 4px 2px;
+      background: #2a2e39;
+    }
+    #chartDrawCanvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 4;
+      touch-action: none;
+    }
+    #chartContainer {
+      width: 100%;
+      height: 100%;
+      display: block;
+      position: relative;
+      z-index: 0;
+    }
+    .chart-symbol-header {
+      position: absolute;
+      top: 6px;
+      left: 8px;
+      z-index: 5;
+      pointer-events: none;
+      display: flex;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 10px;
+      max-width: calc(100% - 96px);
+      line-height: 1.35;
+    }
+    .chart-symbol-header[hidden] {
+      display: none;
+    }
+    .chart-symbol-title {
+      font: 600 12px Inter, "Segoe UI", Arial, sans-serif;
+      color: #d1d4dc;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+    .chart-symbol-stats {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 8px;
+      font: 11px ui-monospace, Consolas, "Segoe UI", monospace;
+      color: #787b86;
+    }
+    .chart-symbol-stats[hidden] {
+      display: none;
+    }
+    .chart-stat {
+      white-space: nowrap;
+    }
+    .chart-stat-v {
+      font-weight: 600;
+      margin-left: 1px;
+    }
+    .chart-stat-h .chart-stat-v {
+      color: #089981;
+    }
+    .chart-stat-l .chart-stat-v {
+      color: #f23645;
+    }
+    .chart-stat-psa {
+      margin-left: 4px;
+    }
+    .chart-stat-psa-sep {
+      color: #787b86;
+      font-weight: 500;
+      margin: 0 2px;
+    }
+    .chart-stat-psa-v {
+      color: #42a5f5;
+      font-weight: 600;
+    }
+    .chart-stat-psa[hidden] {
+      display: none;
+    }
+    .chart-stat-hover .chart-stat-v {
+      color: #ffffff;
+    }
+    .chart-resizer {
+      border-left: 1px solid #1e2631;
+      border-right: 1px solid #1e2631;
+      background: #0a1018;
+      cursor: col-resize;
+      position: relative;
+      touch-action: none;
+    }
+    .chart-resizer::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 2px;
+      height: 44px;
+      border-radius: 2px;
+      background: #334257;
+    }
+    .chart-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+      color: #93a8c7;
+      font: 13px Inter, Segoe UI, Arial, sans-serif;
+      pointer-events: none;
+      background: rgba(19, 23, 34, 0.72);
+    }
+    .chart-overlay[hidden] {
+      display: none;
+    }
+    .watchlist {
+      background: #0a0f18;
+      display: grid;
+      grid-template-rows: 38px minmax(0, 1fr) auto;
+      min-height: 0;
+    }
+    .watchlist-head {
+      border-bottom: 1px solid #1f2836;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 10px;
+      font-size: 12px;
+      color: #c5d6f3;
+    }
+    .watchlist-add-btn {
+      width: 20px;
+      height: 20px;
+      border: 1px solid #2f3d50;
+      border-radius: 6px;
+      background: #121a27;
+      color: #cfe0ff;
+      font-size: 14px;
+      line-height: 1;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      padding: 0;
+    }
+    .watchlist-add-btn:hover {
+      border-color: #4f6584;
+      background: #182334;
+    }
+    .watchlist-remove-btn {
+      width: 20px;
+      height: 20px;
+      border: 1px solid #4a2b33;
+      border-radius: 6px;
+      background: #2a151b;
+      color: #ffd9e0;
+      font-size: 14px;
+      line-height: 1;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      padding: 0;
+    }
+    .watchlist-remove-btn:hover {
+      border-color: #74424d;
+      background: #3a1c24;
+    }
+    .watchlist-reset-btn {
+      height: 20px;
+      padding: 0 7px;
+      border: 1px solid #2f3d50;
+      border-radius: 6px;
+      background: #121a27;
+      color: #9db2d4;
+      font-size: 10px;
+      font-weight: 600;
+      font-family: inherit;
+      line-height: 1;
+      cursor: pointer;
+    }
+    .watchlist-reset-btn.hidden {
+      display: none;
+    }
+    .watchlist-reset-btn:hover {
+      border-color: #4f6584;
+      background: #182334;
+      color: #e9f1ff;
+    }
+    .watchlist-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(5, 9, 15, 0.75);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 30;
+      padding: 16px;
+    }
+    .watchlist-modal.open {
+      display: flex;
+    }
+    .watchlist-modal-panel {
+      width: min(920px, 100%);
+      border: 1px solid #2c394d;
+      border-radius: 12px;
+      background: #0f1520;
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+    }
+    .watchlist-modal-title {
+      margin: 0;
+      font-size: 15px;
+    }
+    .watchlist-modal-sub {
+      margin: 0;
+      color: #9ab0d1;
+      font-size: 12px;
+    }
+    .watchlist-input {
+      width: 100%;
+      border: 1px solid #2f3d50;
+      border-radius: 8px;
+      background: #121a27;
+      color: #e4eeff;
+      padding: 8px 10px;
+      font-size: 13px;
+      font-family: inherit;
+    }
+    .watchlist-card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+      gap: 10px;
+      max-height: min(420px, 52vh);
+      overflow: auto;
+      padding: 4px 2px 8px;
+      align-content: start;
+    }
+    .watchlist-card-tile {
+      margin: 0;
+      padding: 6px;
+      border: 1px solid #2f3d50;
+      border-radius: 10px;
+      background: #121a27;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      text-align: left;
+      font: inherit;
+      color: inherit;
+      transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+    }
+    .watchlist-card-tile:hover {
+      border-color: #4a5f7a;
+      background: #161f2e;
+    }
+    .watchlist-card-tile.selected {
+      border-color: #5a7ab0;
+      background: #18263a;
+      box-shadow: inset 0 0 0 1px rgba(90, 122, 176, 0.45);
+    }
+    .watchlist-card-tile-visual {
+      width: 100%;
+      aspect-ratio: 63 / 88;
+      border-radius: 6px;
+      background: #0a0f18;
+      border: 1px solid #1b2432;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+    }
+    .watchlist-card-tile-visual img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+    .watchlist-card-tile-ph {
+      font-size: 11px;
+      font-weight: 700;
+      color: #5c6d8a;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 6px;
+      text-align: center;
+      line-height: 1.2;
+    }
+    .watchlist-card-tile-label {
+      font-size: 10px;
+      line-height: 1.25;
+      color: #9ab0d1;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      min-height: 2.5em;
+    }
+    .watchlist-card-grid-empty {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 28px 12px;
+      color: #7f95b7;
+      font-size: 13px;
+    }
+    .watchlist-source-tabs {
+      display: none;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+    }
+    .watchlist-source-tabs.visible {
+      display: grid;
+    }
+    .watchlist-source-tab {
+      border: 1px solid #2f3d50;
+      border-radius: 8px;
+      background: #121a27;
+      color: #9ab0d1;
+      padding: 7px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .watchlist-source-tab:hover {
+      border-color: #4a5f7a;
+      color: #cfe0ff;
+      background: #161f2e;
+    }
+    .watchlist-source-tab.active {
+      border-color: #5a7ab0;
+      background: #18263a;
+      color: #e9f1ff;
+      box-shadow: inset 0 0 0 1px rgba(90, 122, 176, 0.35);
+    }
+    .watchlist-modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+    .watchlist-action-btn {
+      border: 1px solid #3a4b62;
+      border-radius: 8px;
+      background: #152133;
+      color: #d6e4fc;
+      padding: 7px 10px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .watchlist-action-btn.primary {
+      background: #203557;
+      border-color: #476896;
+      color: #ffffff;
+    }
+    .watchlist table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+    }
+    .watchlist th {
+      text-align: right;
+      color: #7f95b7;
+      font-weight: 500;
+      padding: 8px 8px 6px;
+      border-bottom: 1px solid #1b2432;
+    }
+    .watchlist th:first-child, .watchlist td:first-child {
+      text-align: left;
+      padding-left: 10px;
+    }
+    .watchlist td {
+      padding: 6px 8px;
+      border-bottom: 1px solid #151d29;
+      text-align: right;
+      color: #d7e4fb;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .watchlist tbody tr {
+      cursor: pointer;
+    }
+    .watchlist tbody tr:hover {
+      background: #121a27;
+    }
+    .watchlist tbody tr.active {
+      background: #18263a;
+      box-shadow: inset 2px 0 0 #4f6f98;
+    }
+    .watchlist table {
+      table-layout: fixed;
+    }
+    .watchlist th:nth-child(2),
+    .watchlist th:nth-child(3),
+    .watchlist th:nth-child(4),
+    .watchlist td:nth-child(2),
+    .watchlist td:nth-child(3),
+    .watchlist td:nth-child(4) {
+      width: 62px;
+    }
+    .watchlist td:first-child {
+      max-width: 0;
+      overflow: hidden;
+    }
+    .watch-card {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .watch-metrics-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      line-height: 1.2;
+    }
+    .watch-metric-line {
+      white-space: nowrap;
+    }
+    .watch-metric-psa {
+      color: #42a5f5;
+      font-size: 11px;
+    }
+    .watch-metric-psa.muted {
+      color: #5a7a9a;
+    }
+    .watchlist .up { color: var(--up); }
+    .watchlist .down { color: var(--down); }
+    .watchlist .muted { color: #9ab0d1; }
+    .watchlist-footer {
+      border-top: 1px solid #1f2836;
+      padding: 8px 10px;
+    }
+    .watchlist-psa10-btn {
+      width: 100%;
+      border: 1px solid #2f3d50;
+      border-radius: 6px;
+      background: #121a27;
+      color: #9ab0d1;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      padding: 7px 10px;
+      cursor: pointer;
+    }
+    .watchlist-psa10-btn:hover:not(:disabled) {
+      border-color: #4f6584;
+      background: #182334;
+      color: #cfe0ff;
+    }
+    .watchlist-psa10-btn.active {
+      border-color: #42a5f5;
+      background: #15263d;
+      color: #e3f2fd;
+      box-shadow: inset 0 0 0 1px rgba(66, 165, 245, 0.25);
+    }
+    .watchlist-psa10-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .chart-bottom-bar {
+      display: grid;
+      grid-template-columns: 42px minmax(0, 1fr) minmax(var(--chart-scale-width), max-content);
+      align-items: center;
+      gap: 0;
+      min-height: 30px;
+      padding: 2px 0;
+      border-top: 1px solid #2a2e39;
+      background: #131722;
+      flex-shrink: 0;
+      cursor: grab;
+    }
+    .chart-bottom-bar-spacer {
+      width: 42px;
+    }
+    .chart-bottom-bar-main {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      padding-left: 6px;
+    }
+    .chart-hover-date {
+      flex: 0 0 auto;
+      min-width: 96px;
+      font-size: 11px;
+      line-height: 1.2;
+      color: #787b86;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    .chart-hover-date[hidden] {
+      display: none;
+    }
+    .chart-bottom-bar.panning {
+      cursor: grabbing;
+    }
+    .chart-range-tabs {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1px;
+    }
+    .chart-range-btn {
+      border: none;
+      background: transparent;
+      color: #787b86;
+      font-size: 11px;
+      font-weight: 500;
+      font-family: inherit;
+      padding: 5px 9px;
+      cursor: pointer;
+      border-radius: 2px;
+      line-height: 1.2;
+    }
+    .chart-range-btn:hover {
+      color: #d1d4dc;
+      background: rgba(255, 255, 255, 0.06);
+    }
+    .chart-range-btn.active {
+      color: #d1d4dc;
+      background: rgba(255, 255, 255, 0.1);
+    }
+    .chart-bar-clock-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      min-width: var(--chart-scale-width);
+      width: max-content;
+      max-width: 220px;
+      padding-right: 8px;
+      padding-left: 4px;
+      font-size: 11px;
+      line-height: 1.2;
+      color: #787b86;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    @media (max-width: 1260px) {
+      .terminal-main { grid-template-columns: minmax(240px, 1fr) 8px minmax(220px, var(--watchlist-width)); }
+    }
+    @media (max-width: 1080px) {
+      .terminal {
+        height: calc(100vh - 100px);
+      }
+      .terminal-main {
+        grid-template-columns: 1fr;
+      }
+      .chart-resizer {
+        display: none;
+      }
+      .watchlist {
+        display: none;
+      }
+    }
+    @media (max-width: 760px) {
+      .nav-right { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="top-nav">
+    <div class="nav-left">
+      <a href="/" class="brand" aria-label="Go to homepage">
+        <span class="pokeball-logo" aria-hidden="true"></span>
+      </a>
+      <a href="/" class="nav-link">Home</a>
+      <a href="/sets.html" class="nav-link">Sets</a>
+      <a href="/dashboard.html" class="nav-link">Collection</a>
+      <a href="/showcase" class="nav-link">Showcase</a>
+      <a href="/poke-view.html" class="nav-link active">Poke View</a>
+      <a href="/scan-your-cards.html" class="nav-link">Scan Your Cards</a>
+      <a href="/restock-tracker.html" class="nav-link">Restock Tracker</a>
+    </div>
+    <div class="nav-right">
+      <div data-account-slot></div>
+    </div>
+  </nav>
+
+  <main class="page">
+    <section class="terminal">
+      <div class="terminal-main">
+        <div class="chart-stack">
+          <section class="chart-area">
+            <aside class="chart-toolbar" aria-label="Drawing tools">
+              <button type="button" class="chart-tool-btn active cursor-crosshair-on" id="chartCursorBtn" data-chart-tool="cursor" title="Crosshair mode (click for pan cursor)">✛</button>
+              <button type="button" class="chart-tool-btn" data-chart-tool="trendline" title="Trend line">╱</button>
+              <button type="button" class="chart-tool-btn" data-chart-tool="ray" title="Ray">↗</button>
+              <button type="button" class="chart-tool-btn" data-chart-tool="hline" title="Horizontal line">─</button>
+              <button type="button" class="chart-tool-btn" data-chart-tool="vline" title="Vertical line">│</button>
+              <button type="button" class="chart-tool-btn" data-chart-tool="channel" title="Parallel channel">⫽</button>
+              <button type="button" class="chart-tool-btn" data-chart-tool="fib" title="Fibonacci retracement">φ</button>
+              <button type="button" class="chart-tool-btn" data-chart-tool="brush" title="Brush">✎</button>
+              <button type="button" class="chart-tool-btn" data-chart-tool="text" title="Text">T</button>
+              <button type="button" class="chart-tool-btn" data-chart-tool="measure" title="Measure">↔</button>
+              <button type="button" class="chart-tool-btn" data-chart-tool="zoom" title="Zoom to selection">▭</button>
+              <div class="chart-tool-divider" aria-hidden="true"></div>
+              <button type="button" class="chart-tool-btn" id="chartMagnetBtn" title="Magnet mode (snap to OHLC)">🧲</button>
+              <button type="button" class="chart-tool-btn" id="chartUndoBtn" title="Undo last drawing">↶</button>
+              <button type="button" class="chart-tool-btn" id="chartClearBtn" title="Clear all drawings">⌫</button>
+            </aside>
+            <div class="chart-canvas-wrap">
+            <div id="chartContainer" aria-label="Poke View chart"></div>
+            <canvas id="chartDrawCanvas" aria-hidden="true"></canvas>
+            <div id="chartSymbolHeader" class="chart-symbol-header" hidden aria-live="polite">
+              <span id="chartSymbolTitle" class="chart-symbol-title"></span>
+              <span id="chartSymbolStats" class="chart-symbol-stats" hidden>
+                <span class="chart-stat chart-stat-h">H<span class="chart-stat-v">--</span><span class="chart-stat-psa" hidden><span class="chart-stat-psa-sep">/</span><span class="chart-stat-psa-v">--</span></span></span>
+                <span class="chart-stat chart-stat-l">L<span class="chart-stat-v">--</span><span class="chart-stat-psa" hidden><span class="chart-stat-psa-sep">/</span><span class="chart-stat-psa-v">--</span></span></span>
+                <span class="chart-stat chart-stat-hover"><span class="chart-stat-v">--</span></span>
+              </span>
+            </div>
+            <div id="chartOverlay" class="chart-overlay" hidden></div>
+            </div>
+          </section>
+          <div class="chart-bottom-bar" aria-label="Chart range and local time">
+            <div class="chart-bottom-bar-spacer" aria-hidden="true"></div>
+            <div class="chart-bottom-bar-main">
+              <div class="chart-range-tabs" role="tablist" aria-label="Visible range">
+                <button type="button" class="chart-range-btn" data-range="1D" aria-pressed="false">1D</button>
+                <button type="button" class="chart-range-btn" data-range="1W" aria-pressed="false">1W</button>
+                <button type="button" class="chart-range-btn" data-range="1M" aria-pressed="false">1M</button>
+                <button type="button" class="chart-range-btn" data-range="3M" aria-pressed="false">3M</button>
+                <button type="button" class="chart-range-btn" data-range="6M" aria-pressed="false">6M</button>
+                <button type="button" class="chart-range-btn" data-range="YTD" aria-pressed="false">YTD</button>
+                <button type="button" class="chart-range-btn" data-range="1Y" aria-pressed="false">1Y</button>
+                <button type="button" class="chart-range-btn" data-range="ALL" aria-pressed="false">All</button>
+              </div>
+            </div>
+            <div class="chart-bar-clock-wrap">
+              <div id="chartHoverDate" class="chart-hover-date" hidden aria-live="polite"></div>
+              <div
+                id="pokeViewFooterClock"
+                aria-live="polite"
+                title="Local time"
+              ></div>
+            </div>
+          </div>
+        </div>
+        <div id="chartResizer" class="chart-resizer" aria-label="Resize chart and watchlist" role="separator"></div>
+
+        <aside class="watchlist">
+          <header class="watchlist-head">
+            <span>Watchlist</span>
+            <div style="display:flex; gap:6px; align-items:center;">
+              <button id="resetLayoutBtn" class="watchlist-reset-btn" type="button" title="Reset chart and watchlist panel widths">Reset</button>
+              <button id="watchlistAddBtn" class="watchlist-add-btn" type="button" aria-label="Add card to watchlist">+</button>
+              <button id="watchlistRemoveBtn" class="watchlist-remove-btn" type="button" aria-label="Remove selected card from watchlist">-</button>
+            </div>
+          </header>
+          <div style="overflow:auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Cards</th>
+                  <th>Last</th>
+                  <th>Chg</th>
+                  <th>Chg%</th>
+                </tr>
+              </thead>
+              <tbody id="watchlistBody"></tbody>
+            </table>
+          </div>
+          <div class="watchlist-footer">
+            <button
+              id="watchlistPsa10Btn"
+              class="watchlist-psa10-btn"
+              type="button"
+              aria-pressed="false"
+              disabled
+              title="No PSA 10 price history for this card"
+            >
+              PSA 10
+            </button>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </main>
+  <div id="watchlistModal" class="watchlist-modal" aria-hidden="true">
+    <section class="watchlist-modal-panel">
+      <h3 class="watchlist-modal-title">Add Card To Watchlist</h3>
+      <p class="watchlist-modal-sub" id="watchlistModalSub">Click a card to select, double-click or use Add Card</p>
+      <div id="watchlistSourceTabs" class="watchlist-source-tabs" role="tablist" aria-label="Card source">
+        <button
+          type="button"
+          class="watchlist-source-tab active"
+          id="watchlistSourceCatalogBtn"
+          data-source="catalog"
+          role="tab"
+          aria-selected="true"
+        >
+          Sets catalog
+        </button>
+        <button
+          type="button"
+          class="watchlist-source-tab"
+          id="watchlistSourceCollectionBtn"
+          data-source="collection"
+          role="tab"
+          aria-selected="false"
+        >
+          My collection
+        </button>
+      </div>
+      <input id="watchlistSearchInput" class="watchlist-input" placeholder="Search card name, set code, or nickname..." />
+      <div id="watchlistCardGrid" class="watchlist-card-grid" role="listbox" aria-label="Choose a card"></div>
+      <div class="watchlist-modal-actions">
+        <button id="watchlistCancelBtn" class="watchlist-action-btn" type="button">Cancel</button>
+        <button id="watchlistAddConfirmBtn" class="watchlist-action-btn primary" type="button">Add Card</button>
+      </div>
+    </section>
+  </div>
+  <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+  <script>
+    (function () {
+      const chartContainer = document.getElementById("chartContainer");
+      const chartOverlay = document.getElementById("chartOverlay");
+      const chartSymbolHeader = document.getElementById("chartSymbolHeader");
+      const chartSymbolTitle = document.getElementById("chartSymbolTitle");
+      const chartSymbolStats = document.getElementById("chartSymbolStats");
+      const chartHoverDate = document.getElementById("chartHoverDate");
+      const drawCanvas = document.getElementById("chartDrawCanvas");
+      const chartWrap = document.querySelector(".chart-canvas-wrap");
+      const chartBottomBar = document.querySelector(".chart-bottom-bar");
+      const terminalMain = document.querySelector(".terminal-main");
+      const chartResizer = document.getElementById("chartResizer");
+      const resetLayoutBtn = document.getElementById("resetLayoutBtn");
+      const watchlistBody = document.getElementById("watchlistBody");
+      const watchlistAddBtn = document.getElementById("watchlistAddBtn");
+      const watchlistRemoveBtn = document.getElementById("watchlistRemoveBtn");
+      const watchlistModal = document.getElementById("watchlistModal");
+      const watchlistSearchInput = document.getElementById("watchlistSearchInput");
+      const watchlistCardGrid = document.getElementById("watchlistCardGrid");
+      const watchlistSourceTabs = document.getElementById("watchlistSourceTabs");
+      const watchlistSourceCatalogBtn = document.getElementById("watchlistSourceCatalogBtn");
+      const watchlistSourceCollectionBtn = document.getElementById("watchlistSourceCollectionBtn");
+      const watchlistModalSub = document.getElementById("watchlistModalSub");
+      const watchlistCancelBtn = document.getElementById("watchlistCancelBtn");
+      const watchlistAddConfirmBtn = document.getElementById("watchlistAddConfirmBtn");
+      const watchlistPsa10Btn = document.getElementById("watchlistPsa10Btn");
+      const pokeViewFooterClock = document.getElementById("pokeViewFooterClock");
+
+      function formatChartBarLocalTime() {
+        const d = new Date();
+        const time = d.toLocaleTimeString(undefined, {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false
+        });
+        const zone =
+          new Intl.DateTimeFormat(undefined, { timeZoneName: "short" })
+            .formatToParts(d)
+            .find((p) => p.type === "timeZoneName")?.value || "";
+        return zone ? `${time} ${zone}` : time;
+      }
+
+      function startFooterLocalClock() {
+        if (!pokeViewFooterClock) return;
+        const tick = () => {
+          pokeViewFooterClock.textContent = formatChartBarLocalTime();
+        };
+        tick();
+        window.setInterval(tick, 1000);
+      }
+
+      const TIMEFRAME_CONFIG = {
+        "3m": { count: 180, seed: 3, volatility: 0.005, drift: 0.0002 },
+        "15m": { count: 150, seed: 15, volatility: 0.008, drift: 0.0004 },
+        "1h": { count: 130, seed: 60, volatility: 0.012, drift: 0.0007 },
+        "4h": { count: 110, seed: 240, volatility: 0.017, drift: 0.0011 }
+      };
+      const USE_FAKE_CHART_DATA = false;
+
+      const state = {
+        timeframe: "3m",
+        candles: [],
+        historyCandlesFull: [],
+        historyCandlesPsa10Full: [],
+        hasPsa10History: false,
+        showPsa10Overlay: false,
+        chartMessage: "Select a card from the watchlist to load its chart",
+        watchlist: [],
+        selectedWatchlistId: null,
+        cardIndex: [],
+        cardIndexById: {},
+        cardIndexLoaded: false,
+        cardNicknames: [],
+        cardNicknamesLoaded: false,
+        collectionPickerCards: [],
+        collectionPickerById: {},
+        collectionPickerLoaded: false,
+        watchlistPickerSource: "catalog",
+        watchlistWidth: 320,
+        activeRequestId: 0,
+        livePollTimer: null,
+        watchlistPickerSelectedId: null,
+        chartTool: "cursor",
+        cursorCrosshairEnabled: true,
+        chartDrawingsById: {},
+        chartDraft: null,
+        hoverDrawPoint: null,
+        chartVisibleCount: null,
+        chartScroll: 0,
+        priceExpand: 0.07,
+        priceScaleManual: null,
+        chartMagnet: false,
+        axisDrag: null,
+        hoverChart: null,
+        hoverPrice: null,
+        zoomBoxDraft: null,
+        activeRangePreset: "ALL",
+        applyChartViewportOnNextDraw: false,
+        applyChartPriceScaleOnNextDraw: false,
+        timeScaleOverrideMs: null,
+        placeholderCandles: null
+      };
+
+      let lwChart = null;
+      let lwCandleSeries = null;
+      let lwPsa10CandleSeries = null;
+      let lwVolumeSeries = null;
+      let lwResizeObserver = null;
+      let lwPriceScaleRedrawBound = false;
+      let lwDrawingRedrawBound = false;
+      let lwCrosshairHoverBound = false;
+      let watchlistSaveTimer = null;
+      let watchlistAuthBooted = false;
+      let watchlistEverSignedIn = false;
+      let watchlistSaveInFlight = null;
+
+      function toQueryText(value) {
+        return String(value || "").toLowerCase().trim();
+      }
+
+      function escapeHtml(value) {
+        return String(value || "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      function pickCardImageSrc(local, remote) {
+        const l = String(local || "").trim();
+        const r = String(remote || "").trim();
+        if (l.startsWith("/card-images/") || l.startsWith("/card-images-japanese/")) return l;
+        if (r.startsWith("/card-images/") || r.startsWith("/card-images-japanese/")) return r;
+        return "";
+      }
+
+      function cardNumberLookupKeys(raw) {
+        const no = String(raw || "").trim().replace(/^#/, "");
+        if (!no) return [];
+        const keys = new Set([no, no.toUpperCase()]);
+        const stripped = no.replace(/^0+/, "") || no;
+        if (stripped !== no) keys.add(stripped);
+        const n = Number(stripped);
+        if (Number.isFinite(n)) {
+          keys.add(String(n));
+          keys.add(String(n).padStart(3, "0"));
+        }
+        const promo = no.match(/^(\d+)([a-zA-Z]+)$/);
+        if (promo) {
+          const base = promo[1];
+          const suffix = promo[2];
+          keys.add(base);
+          const bn = Number(base);
+          if (Number.isFinite(bn)) {
+            keys.add(String(bn).padStart(3, "0") + suffix);
+            keys.add(String(bn) + suffix);
+          }
+        }
+        return [...keys];
+      }
+
+      function lookupCardImageMap(images, cardNo) {
+        if (!images || typeof images !== "object") return "";
+        for (const key of cardNumberLookupKeys(cardNo)) {
+          const url = images[key];
+          if (url) return String(url).trim();
+        }
+        return "";
+      }
+
+      function buildLocalCardImageUrl(setCode, cardNo) {
+        const code = String(setCode || "").trim().toUpperCase();
+        const no = String(cardNo || "").trim();
+        if (!code || !no) return "";
+        return `/card-images/${encodeURIComponent(code)}/${encodeURIComponent(no)}.jpg`;
+      }
+
+      function resolveWatchlistCardImage(setCode, cardNo, localImages, images) {
+        const fromLocal = lookupCardImageMap(localImages, cardNo);
+        const fromRemote = lookupCardImageMap(images, cardNo);
+        const picked = pickCardImageSrc(fromLocal, fromRemote);
+        if (picked) return picked;
+        return buildLocalCardImageUrl(setCode, cardNo);
+      }
+
+      function formatNumber(value, digits = 2) {
+        const n = Number(value);
+        if (!Number.isFinite(n)) return "--";
+        return n.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits });
+      }
+
+      function applyPanelWidths() {
+        if (!terminalMain) return;
+        const hostWidth = terminalMain.clientWidth || 0;
+        const maxWidth = Math.max(240, Math.floor(hostWidth * 0.55));
+        const width = Math.min(maxWidth, Math.max(220, state.watchlistWidth));
+        terminalMain.style.setProperty("--watchlist-width", `${width}px`);
+      }
+
+      function updateResetButtonVisibility() {
+        if (!resetLayoutBtn) return;
+        const isDefault = Math.abs(Number(state.watchlistWidth) - 320) < 0.5;
+        resetLayoutBtn.classList.toggle("hidden", isDefault);
+      }
+
+      async function loadCardsFromSetsIndex() {
+        if (state.cardIndexLoaded) {
+          const total = state.cardIndex.length;
+          const withImg = state.cardIndex.reduce((acc, item) => acc + (item.imageUrl ? 1 : 0), 0);
+          if (total > 0 && withImg / total >= 0.25) return;
+        }
+        const response = await fetch("/api/sets/cards?language=english", { cache: "no-store" });
+        const payload = response.ok ? await response.json() : null;
+        const cards = [];
+
+        if (payload && payload.ok && payload.byCode && typeof payload.byCode === "object") {
+          for (const [setCode, entry] of Object.entries(payload.byCode)) {
+            const cardMap = entry && entry.cards && typeof entry.cards === "object" ? entry.cards : {};
+            const localImages =
+              entry && entry.localImages && typeof entry.localImages === "object" ? entry.localImages : {};
+            const images = entry && entry.images && typeof entry.images === "object" ? entry.images : {};
+            const setName = String(entry?.sourceTitle || entry?.title || "").trim();
+            for (const [cardNo, cardNameRaw] of Object.entries(cardMap)) {
+              const cardName = String(cardNameRaw || "").trim();
+              if (!cardName) continue;
+              const id = `english:${String(setCode).toUpperCase()}:${cardNo}`;
+              const imageUrl = resolveWatchlistCardImage(setCode, cardNo, localImages, images);
+              cards.push({
+                id,
+                card: cardName,
+                setCode: String(setCode).toUpperCase(),
+                cardNo: String(cardNo),
+                setName,
+                language: "english",
+                label: `${cardName} (${String(setCode).toUpperCase()} #${String(cardNo)})`,
+                imageUrl
+              });
+            }
+          }
+        }
+
+        cards.sort((a, b) => a.card.localeCompare(b.card) || a.setCode.localeCompare(b.setCode) || a.cardNo.localeCompare(b.cardNo));
+        const byId = {};
+        for (const item of cards) byId[item.id] = item;
+        state.cardIndex = cards;
+        state.cardIndexById = byId;
+        state.cardIndexLoaded = true;
+      }
+
+      function normalizeNicknameQuery(text) {
+        return String(text || "")
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, " ")
+          .trim();
+      }
+
+      function nicknameQueryMatchesText(nicknameKey, queryKey) {
+        if (!nicknameKey || !queryKey) return false;
+        if (nicknameKey === queryKey) return true;
+        if (queryKey.length < 3) return false;
+        return nicknameKey.includes(queryKey) || queryKey.includes(nicknameKey);
+      }
+
+      function cardNumberMatchesTarget(cardNo, targetNo) {
+        const left = cardNumberLookupKeys(cardNo);
+        const right = new Set(cardNumberLookupKeys(targetNo));
+        return left.some((key) => right.has(key));
+      }
+
+      function getNicknameEntriesForQuery(query) {
+        const queryKey = normalizeNicknameQuery(query);
+        if (!queryKey) return [];
+        const exact = [];
+        const partial = [];
+        for (const entry of state.cardNicknames || []) {
+          const nickKey = normalizeNicknameQuery(entry.nickname);
+          if (!nickKey) continue;
+          if (nickKey === queryKey) exact.push(entry);
+          else if (nicknameQueryMatchesText(nickKey, queryKey)) partial.push(entry);
+        }
+        return [...exact, ...partial];
+      }
+
+      function findWatchlistCardForNicknameEntry(entry) {
+        if (!entry) return null;
+        if ((entry.language || "english") !== "english") return null;
+        const setCode = String(entry.setCode || "").toUpperCase();
+        return (
+          state.cardIndex.find(
+            (item) => item.setCode === setCode && cardNumberMatchesTarget(item.cardNo, entry.cardNumber)
+          ) || null
+        );
+      }
+
+      async function loadCardNicknames() {
+        if (state.cardNicknamesLoaded) return;
+        try {
+          const response = await fetch("/api/card-nicknames", { cache: "no-store" });
+          if (!response.ok) {
+            state.cardNicknames = [];
+            return;
+          }
+          const payload = await response.json();
+          state.cardNicknames = Array.isArray(payload?.nicknames) ? payload.nicknames : [];
+        } catch {
+          state.cardNicknames = [];
+        } finally {
+          state.cardNicknamesLoaded = true;
+        }
+      }
+
+      function filterWatchlistCards(query) {
+        const q = String(query || "").trim();
+        if (!q) return state.cardIndex.slice(0, 300);
+
+        const seen = new Set();
+        const matches = [];
+
+        for (const entry of getNicknameEntriesForQuery(q)) {
+          const card = findWatchlistCardForNicknameEntry(entry);
+          if (!card || seen.has(card.id)) continue;
+          seen.add(card.id);
+          matches.push(card);
+        }
+
+        const queryKey = toQueryText(q);
+        for (const item of state.cardIndex) {
+          if (seen.has(item.id)) continue;
+          if (toQueryText(`${item.card} ${item.setCode} ${item.cardNo}`).includes(queryKey)) {
+            seen.add(item.id);
+            matches.push(item);
+          }
+        }
+
+        return matches.slice(0, 300);
+      }
+
+      function findCatalogCardForSetAndNumber(setCode, cardNo) {
+        const code = String(setCode || "").trim().toUpperCase();
+        const no = String(cardNo || "").trim();
+        if (!code || !no) return null;
+        const directId = `english:${code}:${no}`;
+        if (state.cardIndexById[directId]) return state.cardIndexById[directId];
+        return (
+          state.cardIndex.find(
+            (item) => item.setCode === code && cardNumberMatchesTarget(item.cardNo, no)
+          ) || null
+        );
+      }
+
+      function collectionItemToPickerCard(item) {
+        if (!item || String(item.type || "") !== "single") return null;
+        if (String(item.setLanguage || "english").toLowerCase() === "japanese") return null;
+        const setCode = String(item.setCode || "").trim().toUpperCase();
+        const cardNo = String(item.cardNumber || "").trim();
+        if (!setCode || !cardNo) return null;
+        const fromCatalog = findCatalogCardForSetAndNumber(setCode, cardNo);
+        if (fromCatalog) {
+          return {
+            ...fromCatalog,
+            imageUrl: fromCatalog.imageUrl || String(item.imageUrl || "").trim()
+          };
+        }
+        const cardName = String(item.name || "").trim() || "Card";
+        const setName = String(item.setName || "").trim();
+        return {
+          id: `english:${setCode}:${cardNo}`,
+          card: cardName,
+          setCode,
+          cardNo,
+          setName,
+          language: "english",
+          label: `${cardName} (${setCode} #${cardNo})`,
+          imageUrl: String(item.imageUrl || "").trim()
+        };
+      }
+
+      function getPickerCardById(id) {
+        const key = String(id || "").trim();
+        if (!key) return null;
+        return state.cardIndexById[key] || state.collectionPickerById[key] || null;
+      }
+
+      async function loadCollectionPickerCards({ force = false } = {}) {
+        if (!isWatchlistAccountSignedIn()) {
+          state.collectionPickerCards = [];
+          state.collectionPickerById = {};
+          state.collectionPickerLoaded = true;
+          return;
+        }
+        if (state.collectionPickerLoaded && !force) return;
+        try {
+          const response = await fetch("/api/items?type=single&syncPrices=0", {
+            credentials: "same-origin",
+            cache: "no-store"
+          });
+          if (!response.ok) {
+            state.collectionPickerCards = [];
+            state.collectionPickerById = {};
+            return;
+          }
+          const payload = await response.json().catch(() => ({}));
+          const items = Array.isArray(payload?.items) ? payload.items : [];
+          const byId = {};
+          const cards = [];
+          for (const item of items) {
+            const card = collectionItemToPickerCard(item);
+            if (!card || byId[card.id]) continue;
+            byId[card.id] = card;
+            cards.push(card);
+          }
+          cards.sort(
+            (a, b) =>
+              a.card.localeCompare(b.card) ||
+              a.setCode.localeCompare(b.setCode) ||
+              a.cardNo.localeCompare(b.cardNo)
+          );
+          state.collectionPickerCards = cards;
+          state.collectionPickerById = byId;
+        } catch {
+          state.collectionPickerCards = [];
+          state.collectionPickerById = {};
+        } finally {
+          state.collectionPickerLoaded = true;
+        }
+      }
+
+      function filterCollectionPickerCards(query) {
+        const cards = state.collectionPickerCards || [];
+        if (!cards.length) return [];
+        const q = String(query || "").trim();
+        if (!q) return cards.slice(0, 120);
+        const queryKey = toQueryText(q);
+        return cards
+          .filter((item) =>
+            toQueryText(`${item.card} ${item.setCode} ${item.cardNo} ${item.setName || ""}`).includes(queryKey)
+          )
+          .slice(0, 120);
+      }
+
+      function bindPickerTileImageFallback(root) {
+        if (!root) return;
+        root.querySelectorAll("img").forEach((img) => {
+          img.addEventListener(
+            "error",
+            () => {
+              const wrap = img.closest(".watchlist-card-tile-visual");
+              const tile = img.closest(".watchlist-card-tile");
+              const id = tile ? tile.getAttribute("data-id") : "";
+              const item = id ? getPickerCardById(id) : null;
+              const ph = document.createElement("div");
+              ph.className = "watchlist-card-tile-ph";
+              ph.textContent =
+                item && item.card ? `${item.card.slice(0, 22)}${item.card.length > 22 ? "…" : ""}` : "Card";
+              img.remove();
+              if (wrap) wrap.appendChild(ph);
+            },
+            { once: true }
+          );
+        });
+      }
+
+      function renderPickerTilesHtml(cards) {
+        return cards
+          .map((item) => {
+            const sel = item.id === state.watchlistPickerSelectedId ? " selected" : "";
+            const imgUrl = String(item.imageUrl || "").trim();
+            const shortName = `${item.card.slice(0, 18)}${item.card.length > 18 ? "…" : ""}`;
+            const visual = imgUrl
+              ? `<img src="${escapeHtml(imgUrl)}" alt="" loading="eager" decoding="async" />`
+              : `<div class="watchlist-card-tile-ph">${escapeHtml(shortName)}</div>`;
+            return `<button type="button" class="watchlist-card-tile${sel}" data-id="${escapeHtml(item.id)}" role="option" aria-selected="${item.id === state.watchlistPickerSelectedId ? "true" : "false"}">
+              <div class="watchlist-card-tile-visual">${visual}</div>
+              <div class="watchlist-card-tile-label">${escapeHtml(item.label)}</div>
+            </button>`;
+          })
+          .join("");
+      }
+
+      function syncPickerSelectionUi() {
+        const selectedId = state.watchlistPickerSelectedId;
+        if (!watchlistCardGrid) return;
+        watchlistCardGrid.querySelectorAll(".watchlist-card-tile").forEach((node) => {
+          const on = node.getAttribute("data-id") === selectedId;
+          node.classList.toggle("selected", on);
+          node.setAttribute("aria-selected", on ? "true" : "false");
+        });
+      }
+
+      function selectPickerCard(id) {
+        if (!id || !getPickerCardById(id)) return;
+        state.watchlistPickerSelectedId = id;
+        syncPickerSelectionUi();
+      }
+
+      function syncWatchlistSourceTabsUi() {
+        const signedIn = isWatchlistAccountSignedIn();
+        const source = state.watchlistPickerSource === "collection" && signedIn ? "collection" : "catalog";
+        state.watchlistPickerSource = source;
+        if (watchlistSourceTabs) {
+          watchlistSourceTabs.classList.toggle("visible", signedIn);
+        }
+        [watchlistSourceCatalogBtn, watchlistSourceCollectionBtn].forEach((btn) => {
+          if (!btn) return;
+          const on = btn.getAttribute("data-source") === source;
+          btn.classList.toggle("active", on);
+          btn.setAttribute("aria-selected", on ? "true" : "false");
+        });
+        if (watchlistModalSub) {
+          watchlistModalSub.textContent =
+            source === "collection"
+              ? "Browse singles from your personal collection"
+              : "Click a card to select, double-click or use Add Card";
+        }
+        if (watchlistSearchInput) {
+          watchlistSearchInput.placeholder =
+            source === "collection"
+              ? "Search your collection..."
+              : "Search card name, set code, or nickname...";
+        }
+        if (watchlistCardGrid) {
+          watchlistCardGrid.setAttribute(
+            "aria-label",
+            source === "collection" ? "Choose a card from your collection" : "Choose a card from Sets"
+          );
+        }
+      }
+
+      function setWatchlistPickerSource(source) {
+        const next = source === "collection" && isWatchlistAccountSignedIn() ? "collection" : "catalog";
+        state.watchlistPickerSource = next;
+        state.watchlistPickerSelectedId = null;
+        syncWatchlistSourceTabsUi();
+        renderCardPickerOptions();
+      }
+
+      function renderCardPickerOptions() {
+        if (!watchlistCardGrid) return;
+        syncWatchlistSourceTabsUi();
+        const query = watchlistSearchInput ? watchlistSearchInput.value : "";
+        const usingCollection = state.watchlistPickerSource === "collection" && isWatchlistAccountSignedIn();
+        const filtered = usingCollection ? filterCollectionPickerCards(query) : filterWatchlistCards(query);
+
+        if (!filtered.length) {
+          state.watchlistPickerSelectedId = null;
+          const emptyMsg = usingCollection
+            ? state.collectionPickerCards.length
+              ? "No matching collection cards."
+              : "No singles in your collection yet."
+            : "No matching cards.";
+          watchlistCardGrid.innerHTML = `<div class="watchlist-card-grid-empty" role="option">${emptyMsg}</div>`;
+          return;
+        }
+
+        if (!filtered.some((item) => item.id === state.watchlistPickerSelectedId)) {
+          state.watchlistPickerSelectedId = filtered[0].id;
+        }
+
+        watchlistCardGrid.innerHTML = renderPickerTilesHtml(filtered);
+        bindPickerTileImageFallback(watchlistCardGrid);
+        syncPickerSelectionUi();
+      }
+
+      function openWatchlistModal() {
+        if (!watchlistModal) return;
+        if (!isWatchlistAccountSignedIn()) state.watchlistPickerSource = "catalog";
+        syncWatchlistSourceTabsUi();
+        watchlistModal.classList.add("open");
+        watchlistModal.setAttribute("aria-hidden", "false");
+        if (watchlistSearchInput) watchlistSearchInput.focus();
+      }
+
+      function closeWatchlistModal() {
+        if (!watchlistModal) return;
+        watchlistModal.classList.remove("open");
+        watchlistModal.setAttribute("aria-hidden", "true");
+        state.watchlistPickerSelectedId = null;
+        state.watchlistPickerSource = "catalog";
+        if (watchlistSearchInput) watchlistSearchInput.value = "";
+      }
+
+      function formatWatchlistMoveClass(change) {
+        const hasChange = Number.isFinite(change);
+        return hasChange ? (change >= 0 ? "up" : "down") : "muted";
+      }
+
+      function formatWatchlistMoveText(change, digits = 2) {
+        const hasChange = Number.isFinite(change);
+        if (!hasChange) return "--";
+        const sign = change >= 0 ? "+" : "";
+        return `${sign}${formatNumber(change, digits)}`;
+      }
+
+      function formatWatchlistPctText(changePct) {
+        const hasChange = Number.isFinite(changePct);
+        if (!hasChange) return "--";
+        const sign = changePct >= 0 ? "+" : "";
+        return `${sign}${formatNumber(changePct, 2)}%`;
+      }
+
+      function renderWatchlist() {
+        if (!watchlistBody) return;
+        if (!state.watchlist.length) {
+          watchlistBody.innerHTML = `<tr><td colspan="4" class="muted" style="text-align:center; padding:12px;">No cards yet. Click + to add one.</td></tr>`;
+          return;
+        }
+        const showPsa = state.showPsa10Overlay;
+        watchlistBody.innerHTML = state.watchlist.map((item) => {
+          const hasChange = Number.isFinite(item.change);
+          const moveClass = formatWatchlistMoveClass(item.change);
+          const sign = hasChange && item.change >= 0 ? "+" : "";
+          const activeClass = item.id === state.selectedWatchlistId ? "active" : "";
+          const lastCell = showPsa
+            ? `<div class="watch-metrics-stack">
+                <div class="watch-metric-line">${Number.isFinite(item.last) ? formatNumber(item.last, 2) : "--"}</div>
+                <div class="watch-metric-line watch-metric-psa">${Number.isFinite(item.psaLast) ? formatNumber(item.psaLast, 2) : "--"}</div>
+              </div>`
+            : `${Number.isFinite(item.last) ? formatNumber(item.last, 2) : "--"}`;
+          const changeCell = showPsa
+            ? `<div class="watch-metrics-stack">
+                <div class="watch-metric-line ${moveClass}">${hasChange ? `${sign}${formatNumber(item.change, 2)}` : "--"}</div>
+                <div class="watch-metric-line watch-metric-psa ${formatWatchlistMoveClass(item.psaChange)}">${formatWatchlistMoveText(item.psaChange)}</div>
+              </div>`
+            : `<span class="${moveClass}">${hasChange ? `${sign}${formatNumber(item.change, 2)}` : "--"}</span>`;
+          const pctCell = showPsa
+            ? `<div class="watch-metrics-stack">
+                <div class="watch-metric-line ${moveClass}">${hasChange ? `${sign}${formatNumber(item.changePct, 2)}%` : "--"}</div>
+                <div class="watch-metric-line watch-metric-psa ${formatWatchlistMoveClass(item.psaChangePct)}">${formatWatchlistPctText(item.psaChangePct)}</div>
+              </div>`
+            : `<span class="${moveClass}">${hasChange ? `${sign}${formatNumber(item.changePct, 2)}%` : "--"}</span>`;
+          return `
+            <tr class="${activeClass}" data-watch-id="${escapeHtml(item.id)}">
+              <td title="${escapeHtml(item.card)}"><span class="watch-card">${escapeHtml(item.card)}</span></td>
+              <td>${lastCell}</td>
+              <td>${changeCell}</td>
+              <td>${pctCell}</td>
+            </tr>
+          `;
+        }).join("");
+        watchlistBody.querySelectorAll("tr[data-watch-id]").forEach((row) => {
+          row.addEventListener("click", () => {
+            const id = row.getAttribute("data-watch-id");
+            if (id) selectWatchlistCard(id);
+          });
+        });
+      }
+
+      function addWatchlistCard() {
+        const selectedId = state.watchlistPickerSelectedId;
+        const selected = selectedId ? getPickerCardById(selectedId) : null;
+        if (!selected) return;
+        const id = selected.id;
+        if (!state.watchlist.some((item) => item.id === id)) {
+          state.watchlist.push({
+            id,
+            card: selected.label,
+            cardName: selected.card,
+            setCode: selected.setCode,
+            cardNo: selected.cardNo,
+            setName: selected.setName || "",
+            language: selected.language || "english",
+            last: null,
+            change: null,
+            changePct: null,
+            psaLast: null,
+            psaChange: null,
+            psaChangePct: null
+          });
+        }
+        renderWatchlist();
+        closeWatchlistModal();
+        scheduleSaveWatchlist({ immediate: true });
+        selectWatchlistCard(id);
+      }
+
+      function removeSelectedWatchlistCard() {
+        if (!state.watchlist.length) return;
+        if (!state.selectedWatchlistId) {
+          window.alert("Select a card in the watchlist first.");
+          return;
+        }
+
+        const currentIndex = state.watchlist.findIndex((item) => item.id === state.selectedWatchlistId);
+        if (currentIndex === -1) {
+          stopLivePolling();
+          state.selectedWatchlistId = null;
+          resetChartHistoryState();
+          state.chartMessage = "Select a card from the watchlist to load its chart";
+          renderWatchlist();
+          drawChart();
+          return;
+        }
+
+        state.watchlist.splice(currentIndex, 1);
+        scheduleSaveWatchlist({ immediate: true });
+        if (!state.watchlist.length) {
+          stopLivePolling();
+          state.selectedWatchlistId = null;
+          resetChartHistoryState();
+          state.chartMessage = "Select a card from the watchlist to load its chart";
+          renderWatchlist();
+          drawChart();
+          return;
+        }
+
+        const fallback = state.watchlist[Math.max(0, currentIndex - 1)];
+        selectWatchlistCard(fallback.id);
+      }
+
+      function stopLivePolling() {
+        if (state.livePollTimer) {
+          clearInterval(state.livePollTimer);
+          state.livePollTimer = null;
+        }
+      }
+
+      function getWatchlistItem(id) {
+        return state.watchlist.find((item) => item.id === id) || null;
+      }
+
+      function isWatchlistAccountSignedIn() {
+        return Boolean(window.InfinityAccount && window.InfinityAccount.isSignedIn());
+      }
+
+      function toWatchlistMetric(value) {
+        if (value === null || value === undefined || value === "") return null;
+        const n = Number(value);
+        return Number.isFinite(n) ? n : null;
+      }
+
+      function serializeWatchlistEntry(item) {
+        return {
+          id: String(item?.id || "").trim(),
+          card: String(item?.card || "").trim(),
+          cardName: String(item?.cardName || "").trim(),
+          setCode: String(item?.setCode || "").trim().toUpperCase(),
+          cardNo: String(item?.cardNo || "").trim(),
+          setName: String(item?.setName || "").trim(),
+          language: String(item?.language || "english").trim().toLowerCase() || "english",
+          last: toWatchlistMetric(item?.last),
+          change: toWatchlistMetric(item?.change),
+          changePct: toWatchlistMetric(item?.changePct),
+          psaLast: toWatchlistMetric(item?.psaLast),
+          psaChange: toWatchlistMetric(item?.psaChange),
+          psaChangePct: toWatchlistMetric(item?.psaChangePct)
+        };
+      }
+
+      function hydrateWatchlistEntry(saved) {
+        return serializeWatchlistEntry(saved);
+      }
+
+      function scheduleSaveWatchlist({ immediate = false } = {}) {
+        if (!isWatchlistAccountSignedIn()) return;
+        if (watchlistSaveTimer) {
+          clearTimeout(watchlistSaveTimer);
+          watchlistSaveTimer = null;
+        }
+        if (immediate) {
+          void persistWatchlist();
+          return;
+        }
+        watchlistSaveTimer = setTimeout(() => {
+          watchlistSaveTimer = null;
+          void persistWatchlist();
+        }, 400);
+      }
+
+      async function persistWatchlist() {
+        if (!isWatchlistAccountSignedIn()) return false;
+        if (watchlistSaveInFlight) return watchlistSaveInFlight;
+        watchlistSaveInFlight = (async () => {
+          try {
+            const response = await fetch("/api/poke-view/watchlist", {
+              method: "PUT",
+              credentials: "same-origin",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ cards: state.watchlist.map(serializeWatchlistEntry) })
+            });
+            if (!response.ok) return false;
+            const payload = await response.json().catch(() => null);
+            return Boolean(payload?.ok);
+          } catch {
+            return false;
+          } finally {
+            watchlistSaveInFlight = null;
+          }
+        })();
+        return watchlistSaveInFlight;
+      }
+
+      function mergeWatchlistEntries(serverCards, localCards) {
+        const byId = new Map();
+        for (const raw of Array.isArray(serverCards) ? serverCards : []) {
+          const row = hydrateWatchlistEntry(raw);
+          if (row.id) byId.set(row.id, row);
+        }
+        for (const raw of Array.isArray(localCards) ? localCards : []) {
+          const row = hydrateWatchlistEntry(raw);
+          if (!row.id) continue;
+          const existing = byId.get(row.id);
+          if (!existing) {
+            byId.set(row.id, row);
+            continue;
+          }
+          byId.set(row.id, {
+            ...existing,
+            card: row.card || existing.card,
+            cardName: row.cardName || existing.cardName,
+            setName: row.setName || existing.setName,
+            last: row.last != null ? row.last : existing.last,
+            change: row.change != null ? row.change : existing.change,
+            changePct: row.changePct != null ? row.changePct : existing.changePct,
+            psaLast: row.psaLast != null ? row.psaLast : existing.psaLast,
+            psaChange: row.psaChange != null ? row.psaChange : existing.psaChange,
+            psaChangePct: row.psaChangePct != null ? row.psaChangePct : existing.psaChangePct
+          });
+        }
+        return [...byId.values()];
+      }
+
+      async function loadSavedWatchlist({ mergeLocal = false } = {}) {
+        if (!isWatchlistAccountSignedIn()) return false;
+        try {
+          const response = await fetch("/api/poke-view/watchlist", {
+            credentials: "same-origin",
+            cache: "no-store"
+          });
+          if (!response.ok) return false;
+          const payload = await response.json();
+          if (!payload?.ok || !Array.isArray(payload.cards)) return false;
+
+          const localSnapshot = state.watchlist.map(serializeWatchlistEntry);
+          stopLivePolling();
+          state.watchlist = mergeLocal
+            ? mergeWatchlistEntries(payload.cards, localSnapshot)
+            : payload.cards.map(hydrateWatchlistEntry);
+
+          if (mergeLocal && state.watchlist.length) {
+            await persistWatchlist();
+          }
+
+          const keepSelected =
+            state.selectedWatchlistId && state.watchlist.some((item) => item.id === state.selectedWatchlistId);
+          if (!keepSelected) {
+            state.selectedWatchlistId = state.watchlist[0]?.id || null;
+          }
+          renderWatchlist();
+          updatePsa10ToggleUi();
+
+          if (state.selectedWatchlistId) {
+            selectWatchlistCard(state.selectedWatchlistId);
+          } else {
+            resetChartHistoryState();
+            state.chartMessage = "Select a card from the watchlist to load its chart";
+            syncChartSymbolHeader();
+            drawChart();
+          }
+          return true;
+        } catch {
+          return false;
+        }
+      }
+
+      async function handleWatchlistAuthChange({ signedIn } = {}) {
+        if (signedIn) {
+          watchlistEverSignedIn = true;
+          state.collectionPickerLoaded = false;
+          const hadLocalCards = state.watchlist.length > 0;
+          await loadSavedWatchlist({ mergeLocal: hadLocalCards });
+          return;
+        }
+        if (!watchlistEverSignedIn) return;
+        watchlistEverSignedIn = false;
+        if (watchlistSaveTimer) {
+          clearTimeout(watchlistSaveTimer);
+          watchlistSaveTimer = null;
+        }
+        await persistWatchlist();
+        stopLivePolling();
+        state.watchlist = [];
+        state.selectedWatchlistId = null;
+        state.collectionPickerCards = [];
+        state.collectionPickerById = {};
+        state.collectionPickerLoaded = false;
+        state.watchlistPickerSource = "catalog";
+        resetChartHistoryState();
+        state.chartMessage = "Select a card from the watchlist to load its chart";
+        syncChartSymbolHeader();
+        renderWatchlist();
+        updatePsa10ToggleUi();
+        drawChart();
+      }
+
+      function bootWatchlistAuthSync() {
+        if (watchlistAuthBooted) return;
+        watchlistAuthBooted = true;
+        if (window.InfinityAccount) {
+          window.InfinityAccount.onChange((detail) => {
+            void handleWatchlistAuthChange(detail || {});
+          });
+        }
+      }
+
+      function flushWatchlistOnUnload() {
+        if (!isWatchlistAccountSignedIn() || !state.watchlist.length) return;
+        try {
+          const body = JSON.stringify({ cards: state.watchlist.map(serializeWatchlistEntry) });
+          fetch("/api/poke-view/watchlist", {
+            method: "PUT",
+            credentials: "same-origin",
+            headers: { "Content-Type": "application/json" },
+            body,
+            keepalive: true
+          });
+        } catch {
+          /* ignore */
+        }
+      }
+
+      function seedFromText(text) {
+        let hash = 2166136261;
+        const value = String(text || "");
+        for (let i = 0; i < value.length; i += 1) {
+          hash ^= value.charCodeAt(i);
+          hash = Math.imul(hash, 16777619);
+        }
+        return Math.abs(hash >>> 0);
+      }
+
+      function desiredHistoryBarsForPreset(key, stepMs) {
+        const s = Math.max(1, Number(stepMs) || barDurationMs());
+        if (key === "1D") return Math.ceil((24 * 60 * 60 * 1000) / s) + 1;
+        if (key === "1W") return Math.ceil((7 * 24 * 60 * 60 * 1000) / s) + 1;
+        if (key === "1M") return Math.ceil((30 * 24 * 60 * 60 * 1000) / s) + 1;
+        if (key === "3M") return Math.ceil((90 * 24 * 60 * 60 * 1000) / s) + 1;
+        if (key === "6M") return Math.ceil((180 * 24 * 60 * 60 * 1000) / s) + 1;
+        // For longer presets we keep existing history size (we don't want huge arrays at minute bars).
+        return 0;
+      }
+
+      function desiredHistoryBars() {
+        const cfg = TIMEFRAME_CONFIG[state.timeframe] || TIMEFRAME_CONFIG["3m"];
+        const stepMs = cfg.seed * 60 * 1000;
+        return Math.max(cfg.count, desiredHistoryBarsForPreset(state.activeRangePreset, stepMs) || 0);
+      }
+
+      function generateCandlesFromPrice(seedInput, basePrice, options = null) {
+        const cfg = TIMEFRAME_CONFIG[state.timeframe] || TIMEFRAME_CONFIG["3m"];
+        const cardSeed = seedFromText(seedInput);
+        const rand = mulberry32(cfg.seed + cardSeed);
+        const candles = [];
+        const stepMs = Math.max(1, Number(options?.stepMs) || barDurationMs());
+        const totalBars = Math.max(10, Math.floor(Number(options?.count) || desiredHistoryBars()));
+        const startTs = Number.isFinite(Number(options?.startTs))
+          ? Number(options.startTs)
+          : Date.now() - (totalBars - 1) * stepMs;
+        let close = Math.max(2, Number(basePrice) || 40 + (cardSeed % 240));
+
+        for (let i = 0; i < totalBars; i += 1) {
+          const open = close;
+          const move = (rand() - 0.5 + cfg.drift) * cfg.volatility;
+          close = Math.max(2, open * (1 + move));
+          const high = Math.max(open, close) * (1 + rand() * cfg.volatility * 0.5);
+          const low = Math.min(open, close) * (1 - rand() * cfg.volatility * 0.5);
+          const volume = 500 + rand() * 1800 + Math.abs(close - open) * 2;
+          candles.push({ open, high, low, close, volume, ts: startTs + i * stepMs });
+        }
+
+        // Anchor the tail close near live price.
+        if (candles.length) {
+          const lastIndex = candles.length - 1;
+          const prevClose = candles[lastIndex].open;
+          candles[lastIndex].close = Math.max(2, Number(basePrice) || prevClose);
+          candles[lastIndex].high = Math.max(candles[lastIndex].high, prevClose, candles[lastIndex].close);
+          candles[lastIndex].low = Math.min(candles[lastIndex].low, prevClose, candles[lastIndex].close);
+        }
+
+        return candles;
+      }
+
+      function appendLivePoint(price) {
+        const n = Number(price);
+        if (!Number.isFinite(n) || n <= 0) return;
+        const nextClose = Math.max(2, n);
+        if (!state.candles.length) {
+          state.candles = generateCandlesFromPrice(state.selectedWatchlistId || "live", nextClose);
+          return;
+        }
+        const prev = state.candles[state.candles.length - 1];
+        const open = Number.isFinite(prev?.close) ? prev.close : nextClose;
+        const wiggle = Math.max(0.01, nextClose * 0.006);
+        const high = Math.max(open, nextClose) + Math.random() * wiggle;
+        const low = Math.max(0.5, Math.min(open, nextClose) - Math.random() * wiggle);
+        const volume = 600 + Math.random() * 1600 + Math.abs(nextClose - open) * 8;
+        const nextTsRaw = Number(prev?.ts);
+        const nextTs = Number.isFinite(nextTsRaw) ? nextTsRaw + barDurationMs() : Date.now();
+        state.candles.push({ open, high, low, close: nextClose, volume, ts: nextTs });
+
+        const maxPoints = desiredHistoryBars();
+        if (state.candles.length > maxPoints) {
+          state.candles = state.candles.slice(state.candles.length - maxPoints);
+        }
+        if (state.chartVisibleCount != null) {
+          const n = state.candles.length;
+          state.chartScroll = Math.max(0, n - state.chartVisibleCount);
+        }
+      }
+
+      async function fetchLiveCardSnapshot(watchItem) {
+        const params = new URLSearchParams({
+          card: watchItem.cardName || watchItem.card || "",
+          cardName: watchItem.cardName || watchItem.card || "",
+          setCode: watchItem.setCode || "",
+          cardNo: watchItem.cardNo || ""
+        });
+        const setName = String(watchItem.setName || "").trim();
+        if (setName) params.set("setName", setName);
+        const response = await fetch(`/api/providers/pricecharting/live-card?${params.toString()}`);
+        const payload = response.ok ? await response.json() : null;
+        if (!response.ok || !payload?.ok || !payload.live) {
+          throw new Error(payload?.error || "Could not fetch PriceCharting live data");
+        }
+        return payload.live;
+      }
+
+      function pickPrimaryPriceChartingSeries(series) {
+        const pcSeries = (Array.isArray(series) ? series : []).filter(
+          (row) => String(row?.source || "").trim() === "pricecharting"
+        );
+        if (!pcSeries.length) return null;
+        const preferKeys = ["used", "manualonly"];
+        for (const key of preferKeys) {
+          const row = pcSeries.find(
+            (entry) =>
+              String(entry?.variantKey || "").trim() === key &&
+              Array.isArray(entry.points) &&
+              entry.points.length
+          );
+          if (row) return row;
+        }
+        const preferLabels = ["Ungraded"];
+        for (const label of preferLabels) {
+          const row = pcSeries.find((entry) => {
+            const text = String(entry?.label || "").trim().toLowerCase();
+            return text.includes(label.toLowerCase()) && Array.isArray(entry.points) && entry.points.length;
+          });
+          if (row) return row;
+        }
+        return (
+          pcSeries
+            .slice()
+            .sort(
+              (a, b) =>
+                (Array.isArray(b.points) ? b.points.length : 0) - (Array.isArray(a.points) ? a.points.length : 0)
+            )[0] || null
+        );
+      }
+
+      function pickPsa10PriceChartingSeries(series) {
+        const pcSeries = (Array.isArray(series) ? series : []).filter(
+          (row) => String(row?.source || "").trim() === "pricecharting"
+        );
+        if (!pcSeries.length) return null;
+        const preferKeys = ["manualonly", "graded"];
+        for (const key of preferKeys) {
+          const row = pcSeries.find(
+            (entry) =>
+              String(entry?.variantKey || "").trim() === key &&
+              Array.isArray(entry.points) &&
+              entry.points.length
+          );
+          if (row) return row;
+        }
+        return (
+          pcSeries.find((entry) => {
+            const text = String(entry?.label || "").trim().toLowerCase();
+            return text === "psa 10" && Array.isArray(entry.points) && entry.points.length;
+          }) || null
+        );
+      }
+
+      function marketHistoryPointsToCandles(points) {
+        const sorted = (Array.isArray(points) ? points : [])
+          .filter((p) => Number.isFinite(Number(p?.ts)) && Number(p?.price) > 0)
+          .sort((a, b) => Number(a.ts) - Number(b.ts));
+        return sorted.map((p, i) => {
+          const price = Number(p.price);
+          const prev = i > 0 ? Number(sorted[i - 1].price) : price;
+          const open = prev;
+          const close = price;
+          const high = Math.max(open, close) * 1.002;
+          const low = Math.max(0, Math.min(open, close) * 0.998);
+          return { open, high, low, close, volume: 1, ts: Number(p.ts) };
+        });
+      }
+
+      function startOfUtcDayMs(ms) {
+        const d = new Date(Number(ms) || Date.now());
+        return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+      }
+
+      function presetRangeBoundsMs(key, candles) {
+        const now = Date.now();
+        if (!Array.isArray(candles) || !candles.length || key === "ALL") {
+          const lastTs = Number(candles?.[candles.length - 1]?.ts) || now;
+          const firstTs = Number(candles?.[0]?.ts) || lastTs;
+          return { startMs: firstTs, endMs: lastTs };
+        }
+        const endMs = now;
+        let startMs = presetStartMs(key, endMs);
+        if (key !== "YTD") startMs = startOfUtcDayMs(startMs);
+        return { startMs, endMs };
+      }
+
+      function filterCandlesByPreset(candles, key) {
+        if (!Array.isArray(candles) || !candles.length) return [];
+        if (key === "ALL") return candles.slice();
+        const { startMs, endMs } = presetRangeBoundsMs(key, candles);
+        return candles.filter((c) => {
+          const ts = Number(c.ts);
+          return Number.isFinite(ts) && ts >= startMs && ts <= endMs;
+        });
+      }
+
+      function computeRangeChange(candles) {
+        if (!Array.isArray(candles) || !candles.length) {
+          return { last: null, change: null, changePct: null };
+        }
+        const first = Number(candles[0].close);
+        const last = Number(candles[candles.length - 1].close);
+        if (!Number.isFinite(last) || last <= 0) {
+          return { last: null, change: null, changePct: null };
+        }
+        if (!Number.isFinite(first) || candles.length < 2) {
+          return { last, change: 0, changePct: 0 };
+        }
+        const change = last - first;
+        const changePct = first > 0 ? (change / first) * 100 : 0;
+        return { last, change, changePct };
+      }
+
+      function syncSelectedWatchlistMetrics() {
+        const item = getWatchlistItem(state.selectedWatchlistId);
+        if (!item || !state.historyCandlesFull.length) return;
+        const rangeCandles = filterCandlesByPreset(state.historyCandlesFull, state.activeRangePreset);
+        const metrics = computeRangeChange(rangeCandles);
+        if (metrics.last != null) item.last = metrics.last;
+        item.change = metrics.change;
+        item.changePct = metrics.changePct;
+
+        if (state.historyCandlesPsa10Full.length) {
+          const psaRange = filterCandlesByPreset(state.historyCandlesPsa10Full, state.activeRangePreset);
+          const psaMetrics = computeRangeChange(psaRange);
+          if (psaMetrics.last != null) item.psaLast = psaMetrics.last;
+          item.psaChange = psaMetrics.change;
+          item.psaChangePct = psaMetrics.changePct;
+        } else {
+          item.psaLast = null;
+          item.psaChange = null;
+          item.psaChangePct = null;
+        }
+        scheduleSaveWatchlist();
+      }
+
+      function resetChartHistoryState() {
+        state.candles = [];
+        state.historyCandlesFull = [];
+        state.historyCandlesPsa10Full = [];
+        state.hasPsa10History = false;
+        updatePsa10ToggleUi();
+      }
+
+      function applyHistoryToChart(fullCandles, psa10Candles = []) {
+        state.historyCandlesFull = Array.isArray(fullCandles) ? fullCandles.slice() : [];
+        state.historyCandlesPsa10Full = Array.isArray(psa10Candles) ? psa10Candles.slice() : [];
+        state.hasPsa10History = state.historyCandlesPsa10Full.length > 0;
+        if (!state.hasPsa10History) state.showPsa10Overlay = false;
+        state.candles = state.historyCandlesFull.slice();
+        syncSelectedWatchlistMetrics();
+        state.applyChartViewportOnNextDraw = true;
+        state.applyChartPriceScaleOnNextDraw = true;
+        updatePsa10ToggleUi();
+      }
+
+      function updatePsa10ToggleUi() {
+        if (!watchlistPsa10Btn) return;
+        const available = state.hasPsa10History;
+        watchlistPsa10Btn.disabled = !available;
+        watchlistPsa10Btn.setAttribute("aria-pressed", state.showPsa10Overlay ? "true" : "false");
+        watchlistPsa10Btn.classList.toggle("active", state.showPsa10Overlay);
+        watchlistPsa10Btn.title = available
+          ? state.showPsa10Overlay
+            ? "Hide PSA 10 prices on chart"
+            : "Show PSA 10 prices on chart"
+          : "No PSA 10 price history for this card";
+      }
+
+      function togglePsa10Overlay() {
+        if (!state.hasPsa10History) return;
+        state.showPsa10Overlay = !state.showPsa10Overlay;
+        if (state.showPsa10Overlay) {
+          state.applyChartPriceScaleOnNextDraw = true;
+        }
+        updatePsa10ToggleUi();
+        renderWatchlist();
+        drawChart();
+      }
+
+      async function loadMarketHistoryCandles(item) {
+        const params = new URLSearchParams({
+          setCode: String(item.setCode || "").trim().toUpperCase(),
+          cardNo: String(item.cardNo || "").trim(),
+          cardName: String(item.cardName || item.card || "").trim(),
+          range: "all",
+          source: "pricecharting"
+        });
+        const setName = String(item.setName || "").trim();
+        if (setName) params.set("setName", setName);
+
+        const response = await fetch(`/api/sets/market-history?${params.toString()}`);
+        const payload = response.ok ? await response.json() : null;
+        if (!payload?.ok || !Array.isArray(payload.series) || !payload.series.length) {
+          throw new Error(payload?.error || "No PriceCharting market history for this card");
+        }
+        const primary = pickPrimaryPriceChartingSeries(payload.series);
+        if (!primary || !Array.isArray(primary.points) || !primary.points.length) {
+          throw new Error("No PriceCharting price history points for this card");
+        }
+        const psa10Series = pickPsa10PriceChartingSeries(payload.series);
+        item.historyLabel = String(primary.label || "Ungraded").trim();
+        const productUrl = String(primary.productUrl || item.priceChartingUrl || "").trim();
+        if (productUrl) item.priceChartingUrl = productUrl;
+        return {
+          raw: marketHistoryPointsToCandles(primary.points),
+          psa10:
+            psa10Series && Array.isArray(psa10Series.points) && psa10Series.points.length
+              ? marketHistoryPointsToCandles(psa10Series.points)
+              : []
+        };
+      }
+
+      function updateLivePriceOnCandles(price) {
+        const n = Number(price);
+        if (!Number.isFinite(n) || n <= 0) return;
+        const touch = (bar) => {
+          if (!bar) return;
+          const open = Number(bar.open);
+          bar.close = n;
+          bar.high = Math.max(Number(bar.high), open, n);
+          bar.low = Math.min(Number(bar.low), open, n);
+        };
+        if (state.candles.length) touch(state.candles[state.candles.length - 1]);
+        if (state.historyCandlesFull.length) touch(state.historyCandlesFull[state.historyCandlesFull.length - 1]);
+      }
+
+      function updateChartOverlay() {
+        if (!chartOverlay) return;
+        const msg = String(state.chartMessage || "").trim();
+        chartOverlay.textContent = msg;
+        chartOverlay.hidden = !msg;
+      }
+
+      async function refreshLivePriceOnly() {
+        const item = getWatchlistItem(state.selectedWatchlistId);
+        if (!item || !state.historyCandlesFull.length) return;
+        try {
+          const live = await fetchLiveCardSnapshot(item);
+          updateLivePriceOnCandles(Number(live.marketPrice || 0));
+          syncSelectedWatchlistMetrics();
+          renderWatchlist();
+          drawChart();
+        } catch {
+          /* polling should not clear the chart */
+        }
+      }
+
+      function mulberry32(seed) {
+        return function () {
+          let t = seed += 0x6D2B79F5;
+          t = Math.imul(t ^ (t >>> 15), t | 1);
+          t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+
+      function movingAverage(data, windowSize) {
+        const result = [];
+        let running = 0;
+        for (let i = 0; i < data.length; i += 1) {
+          running += data[i].close;
+          if (i >= windowSize) running -= data[i - windowSize].close;
+          if (i >= windowSize - 1) result.push(running / windowSize);
+          else result.push(null);
+        }
+        return result;
+      }
+
+      const CHART_PAD = { top: 24, left: 10, right: 78, bottom: 28 };
+
+      const CHART_THEME = {
+        bg: "#131722",
+        scaleBg: "#131722",
+        grid: "rgba(42, 46, 57, 0.55)",
+        border: "#2a2e39",
+        tick: "rgba(54, 58, 69, 0.95)",
+        text: "#d1d4dc",
+        textMuted: "#787b86",
+        up: "#089981",
+        down: "#f23645",
+        ma: "#ff9800",
+        crosshair: "rgba(235, 237, 240, 0.4)",
+        drawing: "rgba(41, 98, 255, 0.82)",
+        volumeUp: "rgba(8, 153, 129, 0.45)",
+        volumeDown: "rgba(242, 54, 69, 0.45)",
+        placeholderVol: "rgba(42, 46, 57, 0.35)",
+        chipBg: "#363a45",
+        chipBorder: "#4e535c",
+        chipText: "#f0f3f6",
+        draft: "rgba(255, 152, 0, 0.9)",
+        zoomBox: "rgba(41, 98, 255, 0.75)"
+      };
+
+      function resetChartView() {
+        state.chartScroll = 0;
+        state.chartVisibleCount = null;
+        state.priceExpand = 0.07;
+        state.priceScaleManual = null;
+        state.activeRangePreset = "ALL";
+        state.timeScaleOverrideMs = null;
+        updateRangeTabButtons();
+      }
+
+      function clampPriceAxisMinZero(minV, maxV) {
+        let lo = Number(minV);
+        let hi = Number(maxV);
+        if (!Number.isFinite(lo) || !Number.isFinite(hi)) return { min: minV, max: maxV };
+        if (lo < 0) lo = 0;
+        if (hi <= lo) {
+          const prevSpan = Math.max(1e-9, Number(maxV) - Number(minV));
+          hi = lo + Math.max(1e-6, prevSpan);
+        }
+        return { min: lo, max: hi };
+      }
+
+      function clampChartPrice(value) {
+        const n = Number(value);
+        if (!Number.isFinite(n)) return 0;
+        return Math.max(0, n);
+      }
+
+      function zoomPriceRangeAroundAnchor(minV, maxV, anchor, factor) {
+        const span = maxV - minV || 1;
+        let newSpan = span * factor;
+        const minSpan = Math.max(1e-9, span * 0.04);
+        const maxSpan = Math.max(span, Math.abs(maxV - minV)) * 80;
+        newSpan = Math.max(minSpan, Math.min(maxSpan, newSpan));
+        const t = Math.max(0, Math.min(1, (anchor - minV) / span));
+        const rawMin = anchor - t * newSpan;
+        const rawMax = anchor + (1 - t) * newSpan;
+        const c = clampPriceAxisMinZero(rawMin, rawMax);
+        return { min: c.min, max: c.max };
+      }
+
+      function visibleBarRange(totalBars) {
+        const n = Math.max(0, Math.floor(totalBars));
+        if (!n) return { from: 0, count: 0 };
+        let count = state.chartVisibleCount;
+        if (count == null || count > n) count = n;
+        count = Math.max(1, Math.floor(count));
+        let from = Math.floor(state.chartScroll);
+        from = Math.max(0, Math.min(from, Math.max(0, n - count)));
+        return { from, count };
+      }
+
+      function ensureScrollableTimeWindow(layoutLike) {
+        const n = chartBarTotal();
+        if (n <= 1) return;
+        const current = state.chartVisibleCount == null ? n : Math.max(1, Math.floor(state.chartVisibleCount));
+        if (current < n) return;
+        const base = Math.max(10, Math.floor((layoutLike?.count || n) * 0.9));
+        const next = Math.max(10, Math.min(n - 1, base));
+        state.chartVisibleCount = next;
+        state.chartScroll = Math.max(0, n - next);
+      }
+
+      function getVisibleWindow(candles) {
+        const n = candles.length;
+        if (!n) return { from: 0, count: 0, slice: [], total: 0 };
+        const { from, count } = visibleBarRange(n);
+        return { from, count, slice: candles.slice(from, from + count), total: n };
+      }
+
+      const EMPTY_CHART_PLACEHOLDER_BARS = 120;
+      const EMPTY_SHELL_PRICE_LO = 48;
+      const EMPTY_SHELL_PRICE_HI = 212;
+
+      function chartBarTotal() {
+        return state.candles.length || EMPTY_CHART_PLACEHOLDER_BARS;
+      }
+
+      function updateRangeTabButtons() {
+        document.querySelectorAll(".chart-range-btn").forEach((btn) => {
+          const k = btn.getAttribute("data-range");
+          const on = state.activeRangePreset === k;
+          btn.classList.toggle("active", on);
+          btn.setAttribute("aria-pressed", on ? "true" : "false");
+        });
+      }
+
+      function applyChartRangePreset(key) {
+        const n0 = chartBarTotal();
+        if (!n0) return;
+        state.activeRangePreset = key;
+
+        const endTs = getBarTimestamp(n0 - 1, n0);
+        let startTs = null;
+        let spanMs = null;
+        if (key === "1D") {
+          spanMs = 24 * 60 * 60 * 1000;
+          startTs = endTs - spanMs;
+        } else if (key === "1W") {
+          spanMs = 7 * 24 * 60 * 60 * 1000;
+          startTs = endTs - spanMs;
+        } else if (key === "1M") {
+          spanMs = 30 * 24 * 60 * 60 * 1000;
+          startTs = endTs - spanMs;
+        } else if (key === "YTD") {
+          startTs = new Date(2026, 0, 1).getTime();
+          spanMs = Math.max(0, endTs - startTs);
+        } else if (key === "1Y") {
+          spanMs = 365 * 24 * 60 * 60 * 1000;
+          startTs = endTs - spanMs;
+        }
+
+        // Force each preset to span the exact requested calendar range on the x-axis.
+        if (spanMs != null && spanMs > 0) {
+          const sourceCount = state.candles.length || n0;
+          const targetCount = Math.max(60, Math.min(900, sourceCount));
+          const stepMs = Math.max(60 * 1000, Math.floor(spanMs / Math.max(1, targetCount - 1)));
+          state.timeScaleOverrideMs = stepMs;
+
+          if (state.candles.length) {
+            const lastClose = Number(state.candles[state.candles.length - 1]?.close) || 0;
+            state.candles = generateCandlesFromPrice(state.selectedWatchlistId || "live", lastClose, {
+              count: targetCount,
+              stepMs,
+              startTs: endTs - (targetCount - 1) * stepMs
+            });
+          }
+        } else {
+          state.timeScaleOverrideMs = null;
+        }
+
+        const n = chartBarTotal();
+        if (startTs != null) {
+          if (state.candles.length) {
+            let idx = 0;
+            for (let i = 0; i < state.candles.length; i += 1) {
+              const ts = Number(state.candles[i]?.ts);
+              if (Number.isFinite(ts) && ts >= startTs) {
+                idx = i;
+                break;
+              }
+            }
+            const nn = state.candles.length;
+            const cnt = Math.max(10, Math.min(nn, nn - idx));
+            state.chartVisibleCount = cnt >= nn ? null : cnt;
+            state.chartScroll = cnt >= nn ? 0 : Math.max(0, nn - cnt);
+          } else {
+            const stepMs = barDurationMs();
+            const bars = Math.max(10, Math.min(n, Math.ceil((endTs - startTs) / Math.max(1, stepMs)) + 1));
+            state.chartVisibleCount = bars >= n ? null : bars;
+            state.chartScroll = bars >= n ? 0 : Math.max(0, n - bars);
+          }
+        } else {
+          state.chartVisibleCount = null;
+          state.chartScroll = 0;
+        }
+
+        updateRangeTabButtons();
+        drawChart();
+      }
+
+      function emptyShellPriceRange() {
+        const br = EMPTY_SHELL_PRICE_HI - EMPTY_SHELL_PRICE_LO || 1;
+        const ex = Math.max(0.02, Math.min(0.48, state.priceExpand));
+        const pm = state.priceScaleManual;
+        if (pm && Number.isFinite(pm.min) && Number.isFinite(pm.max) && pm.max > pm.min) {
+          const c = clampPriceAxisMinZero(pm.min, pm.max);
+          if (c.min !== pm.min || c.max !== pm.max) {
+            state.priceScaleManual = { min: c.min, max: c.max };
+          }
+          return { minPrice: c.min, maxPrice: c.max };
+        }
+        const c = clampPriceAxisMinZero(EMPTY_SHELL_PRICE_LO - br * ex, EMPTY_SHELL_PRICE_HI + br * ex);
+        return { minPrice: c.min, maxPrice: c.max };
+      }
+
+      function computeChartLayout(width, height) {
+        const padTop = CHART_PAD.top;
+        const padLeft = CHART_PAD.left;
+        const padRight = CHART_PAD.right;
+        const padBottom = CHART_PAD.bottom;
+        const volumeHeight = 0;
+        const priceHeight = height - padTop - padBottom;
+        const priceBottom = padTop + priceHeight;
+        const chartLeft = padLeft;
+        const chartWidth = width - padLeft - padRight;
+        return {
+          width,
+          height,
+          padTop,
+          padLeft,
+          padRight,
+          padBottom,
+          volumeHeight,
+          priceHeight,
+          priceBottom,
+          chartLeft,
+          chartWidth,
+          volumeTop: priceBottom
+        };
+      }
+
+      function barToX(barIdx, layout, from, count) {
+        if (count <= 0) return layout.chartLeft;
+        const step = layout.chartWidth / count;
+        return layout.chartLeft + (barIdx - from + 0.5) * step;
+      }
+
+      function xToBarIndex(x, layout, from, count) {
+        if (count <= 0) return from;
+        const step = layout.chartWidth / count;
+        return from + (x - layout.chartLeft) / step - 0.5;
+      }
+
+      function hitChartZone(lx, ly, layout) {
+        const { width, height, padTop, padLeft, padRight, padBottom, priceBottom } = layout;
+        const chartBottom = height - padBottom;
+        if (ly >= priceBottom && ly < chartBottom && lx >= padLeft && lx < width - padRight) return "time";
+        if (lx >= width - padRight + 1 && lx < width - 1 && ly >= padTop && ly <= chartBottom) return "price";
+        if (lx >= padLeft && lx < width - padRight && ly >= padTop && ly <= priceBottom) return "main";
+        return "none";
+      }
+
+      function barDurationMs() {
+        if (Number.isFinite(state.timeScaleOverrideMs) && state.timeScaleOverrideMs > 0) return state.timeScaleOverrideMs;
+        const cfg = TIMEFRAME_CONFIG[state.timeframe] || TIMEFRAME_CONFIG["3m"];
+        return cfg.seed * 60 * 1000;
+      }
+
+      function getBarTimestamp(globalBarIndex, totalBars) {
+        const n = Math.max(1, Math.floor(totalBars));
+        const clamped = Math.max(0, Math.min(n - 1, Math.round(globalBarIndex)));
+        const ts = Number(state.candles?.[clamped]?.ts);
+        if (Number.isFinite(ts)) return ts;
+        return Date.now() - (n - 1 - clamped) * barDurationMs();
+      }
+
+      function formatCalendarAxisLabel(ts, visibleSpanMs) {
+        const d = new Date(ts);
+        if (visibleSpanMs > 1000 * 60 * 60 * 24 * 365 * 2) {
+          return d.getFullYear().toString();
+        }
+        if (visibleSpanMs > 1000 * 60 * 60 * 24 * 90) {
+          return d.toLocaleDateString(undefined, { month: "short", year: "numeric" });
+        }
+        if (visibleSpanMs > 1000 * 60 * 60 * 24 * 2) {
+          return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+        }
+        return d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+      }
+
+      function formatCrosshairTimeLabel(ts) {
+        const d = new Date(ts);
+        return d.toLocaleString(undefined, {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit"
+        });
+      }
+
+      function buildTimeAxisTicks(from, count, totalBars) {
+        const ticks = [];
+        if (count <= 0) return ticks;
+        const minGapBars = Math.max(1, Math.floor(count / 10));
+        for (let i = 0; i < count; i += minGapBars) {
+          ticks.push(from + i);
+        }
+        const end = from + count - 1;
+        if (!ticks.length || ticks[ticks.length - 1] !== end) ticks.push(end);
+        return ticks.map((bi) => {
+          const ts = getBarTimestamp(bi, totalBars);
+          const span = (count - 1) * barDurationMs();
+          return { bi, ts, label: formatCalendarAxisLabel(ts, span) };
+        });
+      }
+
+      function formatTimeAxisLabelForBar(globalBarIndex, totalBars) {
+        const ts = getBarTimestamp(globalBarIndex, totalBars);
+        const span = (Math.max(1, totalBars) - 1) * barDurationMs();
+        return formatCalendarAxisLabel(ts, span);
+      }
+
+      function formatTimeAxisLabel(globalBarIndex) {
+        return formatTimeAxisLabelForBar(globalBarIndex, state.candles.length);
+      }
+
+      function formatPriceAxisLabel(price) {
+        const n = Number(price);
+        if (!Number.isFinite(n)) return "—";
+        if (n < 0) return "";
+        if (n === 0) return "0";
+        const a = Math.abs(n);
+        if (a >= 10000) return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        if (a >= 100) return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        if (a >= 1) return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return n.toFixed(4);
+      }
+
+      function drawAxisLabelChip(ctx, text, cx, cy, align) {
+        const T = CHART_THEME;
+        ctx.font = "11px ui-monospace, Consolas, 'Segoe UI', monospace";
+        const padX = 6;
+        const w = ctx.measureText(text).width + padX * 2;
+        const h = 18;
+        let x = cx;
+        if (align === "right") x = cx - w;
+        else if (align === "center") x = cx - w / 2;
+        ctx.fillStyle = T.chipBg;
+        ctx.strokeStyle = T.chipBorder;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        if (typeof ctx.roundRect === "function") ctx.roundRect(x, cy - h / 2, w, h, 2);
+        else ctx.rect(x, cy - h / 2, w, h);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = T.chipText;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(text, x + w / 2, cy);
+      }
+
+      function drawChartEmptyShell(ctx, width, height) {
+        const layout = computeChartLayout(width, height);
+        const padTop = layout.padTop;
+        const padLeft = layout.padLeft;
+        const padRight = layout.padRight;
+        const padBottom = layout.padBottom;
+        const priceBottom = layout.priceBottom;
+        const priceHeight = layout.priceHeight;
+        const chartWidth = layout.chartWidth;
+        const volumeHeight = layout.volumeHeight;
+        const chartBottom = height - padBottom;
+        const nVirt = EMPTY_CHART_PLACEHOLDER_BARS;
+        const { from, count } = visibleBarRange(nVirt);
+        const fake = generateCandlesFromPrice("__empty__", 120, { count: nVirt });
+        let dataMin = Infinity;
+        let dataMax = -Infinity;
+        for (const c of fake) {
+          dataMin = Math.min(dataMin, c.low);
+          dataMax = Math.max(dataMax, c.high);
+        }
+        const range = dataMax - dataMin || 1;
+        const ex = Math.max(0.02, Math.min(0.48, state.priceExpand));
+        let minPrice = dataMin - range * ex;
+        let maxPrice = dataMax + range * ex;
+        const pm = state.priceScaleManual;
+        if (pm && Number.isFinite(pm.min) && Number.isFinite(pm.max) && pm.max > pm.min) {
+          minPrice = pm.min;
+          maxPrice = pm.max;
+        }
+        const cc = clampPriceAxisMinZero(minPrice, maxPrice);
+        minPrice = cc.min;
+        maxPrice = cc.max;
+        const xStep = count > 0 ? chartWidth / count : chartWidth;
+        const candleWidth = Math.max(2, xStep * 0.65);
+
+        state._lastLayout = {
+          ...layout,
+          from,
+          count,
+          minPrice,
+          maxPrice,
+          emptyShell: true,
+          xStep,
+          candleWidth,
+          maxVolume: 1
+        };
+
+        const T = CHART_THEME;
+        ctx.fillStyle = T.bg;
+        ctx.fillRect(0, 0, width, height);
+
+        ctx.strokeStyle = T.grid;
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= 6; i += 1) {
+          const y = padTop + (priceHeight / 6) * i;
+          ctx.beginPath();
+          ctx.moveTo(padLeft, y);
+          ctx.lineTo(width - padRight, y);
+          ctx.stroke();
+        }
+        for (let i = 0; i <= 8; i += 1) {
+          const x = padLeft + (chartWidth / 8) * i;
+          ctx.beginPath();
+          ctx.moveTo(x, padTop);
+          ctx.lineTo(x, priceBottom);
+          ctx.stroke();
+        }
+
+        // Fake candles in empty state.
+        for (let i = 0; i < count; i += 1) {
+          const c = fake[from + i];
+          if (!c) continue;
+          const g = from + i;
+          const x = barToX(g, layout, from, count);
+          const openY = priceBottom - ((c.open - minPrice) / (maxPrice - minPrice || 1)) * priceHeight;
+          const closeY = priceBottom - ((c.close - minPrice) / (maxPrice - minPrice || 1)) * priceHeight;
+          const highY = priceBottom - ((c.high - minPrice) / (maxPrice - minPrice || 1)) * priceHeight;
+          const lowY = priceBottom - ((c.low - minPrice) / (maxPrice - minPrice || 1)) * priceHeight;
+          const up = c.close >= c.open;
+          const color = up ? T.up : T.down;
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(x, highY);
+          ctx.lineTo(x, lowY);
+          ctx.stroke();
+          ctx.fillStyle = color;
+          const bodyTop = Math.min(openY, closeY);
+          const bodyHeight = Math.max(1, Math.abs(closeY - openY));
+          ctx.fillRect(x - candleWidth / 2, bodyTop, candleWidth, bodyHeight);
+        }
+
+        ctx.fillStyle = T.scaleBg;
+        ctx.fillRect(width - padRight, padTop, padRight, chartBottom - padTop);
+        ctx.fillRect(0, layout.volumeTop, width - padRight, chartBottom - layout.volumeTop);
+
+        ctx.strokeStyle = T.border;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(width - padRight + 0.5, padTop);
+        ctx.lineTo(width - padRight + 0.5, chartBottom);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(padLeft, priceBottom + 0.5);
+        ctx.lineTo(width - padRight, priceBottom + 0.5);
+        ctx.stroke();
+
+        ctx.font = "11px ui-monospace, Consolas, 'Segoe UI', monospace";
+        ctx.textAlign = "right";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = T.text;
+        for (let i = 0; i <= 6; i += 1) {
+          const ratio = 1 - i / 6;
+          const price = minPrice + (maxPrice - minPrice) * ratio;
+          const yy = padTop + (priceHeight / 6) * i;
+          ctx.strokeStyle = T.tick;
+          ctx.beginPath();
+          ctx.moveTo(width - padRight - 6, yy);
+          ctx.lineTo(width - padRight, yy);
+          ctx.stroke();
+          ctx.fillText(formatPriceAxisLabel(price), width - 5, yy);
+        }
+
+        ctx.fillStyle = T.textMuted;
+        ctx.font = "10px Inter, Segoe UI, Arial, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        const timeTicks = buildTimeAxisTicks(from, count, nVirt);
+        for (const tick of timeTicks) {
+          const bi = tick.bi;
+          const x = barToX(bi, layout, from, count);
+          const lab = tick.label;
+          ctx.strokeStyle = T.tick;
+          ctx.beginPath();
+          ctx.moveTo(x, chartBottom - 16);
+          ctx.lineTo(x, chartBottom - 22);
+          ctx.stroke();
+          ctx.fillText(lab, x, chartBottom - 8);
+        }
+
+        if (volumeHeight > 4) {
+          ctx.fillStyle = T.placeholderVol;
+          for (let i = 0; i < count; i += 3) {
+            const g = from + i;
+            const x = barToX(g, layout, from, count);
+            ctx.fillRect(x - candleWidth / 2, layout.volumeTop + 2, candleWidth, volumeHeight - 4);
+          }
+        }
+
+        ctx.fillStyle = T.textMuted;
+        ctx.font = "13px Inter, Segoe UI, Arial, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(
+          state.chartMessage || "Select a card from the watchlist to load its chart",
+          padLeft + chartWidth / 2,
+          padTop + priceHeight / 2
+        );
+      }
+
+      function drawChart() {
+        if (!canvas) return;
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+        const width = Math.max(320, Math.floor(rect.width));
+        const height = Math.max(280, Math.floor(rect.height));
+        canvas.width = Math.floor(width * dpr);
+        canvas.height = Math.floor(height * dpr);
+
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, width, height);
+
+        const { candles } = state;
+        if (!candles.length) {
+          drawChartEmptyShell(ctx, width, height);
+          return;
+        }
+
+        const layout = computeChartLayout(width, height);
+        const { from, count, slice } = getVisibleWindow(candles);
+        const padTop = layout.padTop;
+        const padLeft = layout.padLeft;
+        const padRight = layout.padRight;
+        const priceBottom = layout.priceBottom;
+        const priceHeight = layout.priceHeight;
+        const chartWidth = layout.chartWidth;
+        const volumeHeight = layout.volumeHeight;
+
+        let dataMin = Infinity;
+        let dataMax = -Infinity;
+        let maxVolume = 0;
+        for (const c of slice) {
+          dataMin = Math.min(dataMin, c.low);
+          dataMax = Math.max(dataMax, c.high);
+          maxVolume = Math.max(maxVolume, c.volume);
+        }
+        const dataRange = dataMax - dataMin || 1;
+        const ex = Math.max(0.02, Math.min(0.48, state.priceExpand));
+        let minPrice;
+        let maxPrice;
+        const pm = state.priceScaleManual;
+        if (
+          pm &&
+          Number.isFinite(pm.min) &&
+          Number.isFinite(pm.max) &&
+          pm.max > pm.min
+        ) {
+          minPrice = pm.min;
+          maxPrice = pm.max;
+        } else {
+          minPrice = dataMin - dataRange * ex;
+          maxPrice = dataMax + dataRange * ex;
+        }
+        {
+          const c = clampPriceAxisMinZero(minPrice, maxPrice);
+          minPrice = c.min;
+          maxPrice = c.max;
+          if (
+            pm &&
+            Number.isFinite(pm.min) &&
+            Number.isFinite(pm.max) &&
+            (c.min !== pm.min || c.max !== pm.max)
+          ) {
+            state.priceScaleManual = { min: c.min, max: c.max };
+          }
+        }
+
+        const xStep = count > 0 ? chartWidth / count : chartWidth;
+        const candleWidth = Math.max(2, xStep * 0.68);
+
+        const yForPrice = (price) => {
+          const ratio = (price - minPrice) / (maxPrice - minPrice || 1);
+          return priceBottom - ratio * priceHeight;
+        };
+
+        state._lastLayout = {
+          ...layout,
+          from,
+          count,
+          minPrice,
+          maxPrice,
+          yForPrice,
+          xStep,
+          candleWidth,
+          maxVolume
+        };
+
+        const T = CHART_THEME;
+        ctx.fillStyle = T.bg;
+        ctx.fillRect(0, 0, width, height);
+
+        ctx.strokeStyle = T.grid;
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= 6; i += 1) {
+          const y = padTop + (priceHeight / 6) * i;
+          ctx.beginPath();
+          ctx.moveTo(padLeft, y);
+          ctx.lineTo(width - padRight, y);
+          ctx.stroke();
+        }
+        for (let i = 0; i <= 8; i += 1) {
+          const x = padLeft + (chartWidth / 8) * i;
+          ctx.beginPath();
+          ctx.moveTo(x, padTop);
+          ctx.lineTo(x, priceBottom);
+          ctx.stroke();
+        }
+
+        for (let i = 0; i < count; i += 1) {
+          const c = slice[i];
+          const g = from + i;
+          const x = barToX(g, layout, from, count);
+          const openY = yForPrice(c.open);
+          const closeY = yForPrice(c.close);
+          const highY = yForPrice(c.high);
+          const lowY = yForPrice(c.low);
+          const up = c.close >= c.open;
+          const color = up ? T.up : T.down;
+
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(x, highY);
+          ctx.lineTo(x, lowY);
+          ctx.stroke();
+
+          ctx.fillStyle = color;
+          const bodyTop = Math.min(openY, closeY);
+          const bodyHeight = Math.max(1, Math.abs(closeY - openY));
+          ctx.fillRect(x - candleWidth / 2, bodyTop, candleWidth, bodyHeight);
+
+          if (volumeHeight > 4) {
+            const barX = x - candleWidth / 2;
+            const barY = layout.volumeTop + (1 - c.volume / (maxVolume || 1)) * (volumeHeight - 2);
+            const barH = (c.volume / (maxVolume || 1)) * (volumeHeight - 2);
+            ctx.fillStyle = up ? T.volumeUp : T.volumeDown;
+            ctx.fillRect(barX, barY, candleWidth, barH);
+          }
+        }
+
+        const ma = movingAverage(candles, 20);
+        ctx.strokeStyle = T.ma;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        let started = false;
+        for (let i = 0; i < count; i += 1) {
+          const g = from + i;
+          const v = ma[g];
+          if (v == null) continue;
+          const x = barToX(g, layout, from, count);
+          const y = yForPrice(v);
+          if (!started) {
+            ctx.moveTo(x, y);
+            started = true;
+          } else {
+            ctx.lineTo(x, y);
+          }
+        }
+        ctx.stroke();
+
+        const drawSeg = (i0, p0, i1, p1, dash, extendRay) => {
+          let x0 = barToX(i0, layout, from, count);
+          let y0 = yForPrice(p0);
+          let x1 = barToX(i1, layout, from, count);
+          let y1 = yForPrice(p1);
+          const dx = x1 - x0;
+          const dy = y1 - y0;
+          if (extendRay && (Math.abs(dx) > 1e-6 || Math.abs(dy) > 1e-6)) {
+            const big = 4000;
+            if (Math.abs(dx) > 1e-6) {
+              const tR = (width - padRight - x0) / dx;
+              const tL = (padLeft - x0) / dx;
+              const tMax = Math.max(tR, tL, 0) + big / Math.abs(dx);
+              const tMin = Math.min(tR, tL, 0) - big / Math.abs(dx);
+              x1 = x0 + tMax * dx;
+              y1 = y0 + tMax * dy;
+              x0 = x0 + tMin * dx;
+              y0 = y0 + tMin * dy;
+            }
+          }
+          ctx.beginPath();
+          ctx.setLineDash(dash || []);
+          ctx.moveTo(x0, y0);
+          ctx.lineTo(x1, y1);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        };
+
+        ctx.strokeStyle = T.drawing;
+        ctx.lineWidth = 1.25;
+        for (const d of state.chartDrawings) {
+          ctx.strokeStyle = T.drawing;
+          if (d.type === "trendline") drawSeg(d.i0, d.p0, d.i1, d.p1, [], false);
+          else if (d.type === "ray") drawSeg(d.i0, d.p0, d.i1, d.p1, [], true);
+          else if (d.type === "hline") {
+            const y = yForPrice(d.price);
+            ctx.beginPath();
+            ctx.moveTo(padLeft, y);
+            ctx.lineTo(width - padRight, y);
+            ctx.stroke();
+          } else if (d.type === "vline") {
+            const x = barToX(d.i, layout, from, count);
+            ctx.beginPath();
+            ctx.moveTo(x, padTop);
+            ctx.lineTo(x, priceBottom);
+            ctx.stroke();
+          } else if (d.type === "brush" && d.points && d.points.length > 1) {
+            ctx.beginPath();
+            const p0 = d.points[0];
+            ctx.moveTo(barToX(p0.i, layout, from, count), yForPrice(p0.p));
+            for (let k = 1; k < d.points.length; k += 1) {
+              const p = d.points[k];
+              ctx.lineTo(barToX(p.i, layout, from, count), yForPrice(p.p));
+            }
+            ctx.stroke();
+          } else if (d.type === "text") {
+            ctx.fillStyle = T.text;
+            ctx.font = "12px Inter, Segoe UI, Arial, sans-serif";
+            ctx.textAlign = "left";
+            ctx.fillText(d.text || "Text", barToX(d.i, layout, from, count) + 4, yForPrice(d.p));
+          } else if (d.type === "measure") {
+            drawSeg(d.i0, d.p0, d.i1, d.p1, [4, 3], false);
+            const xm = (barToX(d.i0, layout, from, count) + barToX(d.i1, layout, from, count)) / 2;
+            const ym = (yForPrice(d.p0) + yForPrice(d.p1)) / 2;
+            const bars = Math.abs(d.i1 - d.i0);
+            const pct = Number(d.p0) !== 0 ? ((d.p1 - d.p0) / Math.abs(d.p0)) * 100 : 0;
+            ctx.fillStyle = T.textMuted;
+            ctx.font = "10px Inter, Segoe UI, Arial, sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText(`${bars.toFixed(1)} bars · ${pct.toFixed(2)}%`, xm, ym - 6);
+          } else if (d.type === "channel") {
+            const off = d.offset || (maxPrice - minPrice) * 0.04;
+            drawSeg(d.i0, d.p0, d.i1, d.p1, [], false);
+            drawSeg(d.i0, d.p0 + off, d.i1, d.p1 + off, [3, 3], false);
+          } else if (d.type === "fib" && d.i0 != null && d.i1 != null) {
+            const lo = Math.min(d.p0, d.p1);
+            const hi = Math.max(d.p0, d.p1);
+            const diff = hi - lo || 1;
+            const levels = [0, 0.382, 0.5, 0.618, 1];
+            ctx.setLineDash([3, 3]);
+            levels.forEach((lv) => {
+              const pr = hi - diff * lv;
+              const y = yForPrice(pr);
+              ctx.strokeStyle =
+                lv === 0 || lv === 1 ? "rgba(209, 212, 220, 0.35)" : "rgba(120, 123, 134, 0.28)";
+              ctx.beginPath();
+              ctx.moveTo(padLeft, y);
+              ctx.lineTo(width - padRight, y);
+              ctx.stroke();
+            });
+            ctx.setLineDash([]);
+          }
+        }
+
+        if (state.chartDraft) {
+          ctx.strokeStyle = T.draft;
+          ctx.lineWidth = 1.25;
+          const d = state.chartDraft;
+          if (d.type === "trendline" || d.type === "ray") drawSeg(d.i0, d.p0, d.i1, d.p1, [5, 4], d.type === "ray");
+          else if (d.type === "brush" && d.points && d.points.length) {
+            ctx.beginPath();
+            ctx.moveTo(barToX(d.points[0].i, layout, from, count), yForPrice(d.points[0].p));
+            for (let k = 1; k < d.points.length; k += 1) {
+              const p = d.points[k];
+              ctx.lineTo(barToX(p.i, layout, from, count), yForPrice(p.p));
+            }
+            ctx.stroke();
+          } else if (d.type === "zoombox") {
+            ctx.strokeStyle = T.zoomBox;
+            ctx.setLineDash([4, 3]);
+            ctx.strokeRect(d.x0, d.y0, d.x1 - d.x0, d.y1 - d.y0);
+            ctx.setLineDash([]);
+          }
+        }
+
+        if (state.chartDraft && state.chartDraft.type === "measure" && state.hoverChart) {
+          const hz = hitChartZone(state.hoverChart.x, state.hoverChart.y, layout);
+          if (hz === "main") {
+            const biM = xToBarIndex(state.hoverChart.x, layout, from, count);
+            const prM =
+              minPrice +
+              ((priceBottom - state.hoverChart.y) / (priceHeight || 1)) * (maxPrice - minPrice);
+            ctx.strokeStyle = T.draft;
+            ctx.globalAlpha = 0.65;
+            drawSeg(state.chartDraft.i0, state.chartDraft.p0, biM, prM, [4, 3], false);
+            ctx.globalAlpha = 1;
+          }
+        }
+
+        const chartBottom = height - layout.padBottom;
+        let crosshairMain = null;
+        if (state.hoverChart && hitChartZone(state.hoverChart.x, state.hoverChart.y, layout) === "main") {
+          crosshairMain = state.hoverChart;
+        }
+
+        ctx.fillStyle = T.scaleBg;
+        ctx.fillRect(width - padRight, padTop, padRight, chartBottom - padTop);
+        ctx.fillRect(0, layout.volumeTop, width - padRight, chartBottom - layout.volumeTop);
+
+        ctx.strokeStyle = T.border;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(width - padRight + 0.5, padTop);
+        ctx.lineTo(width - padRight + 0.5, chartBottom);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(padLeft, priceBottom + 0.5);
+        ctx.lineTo(width - padRight, priceBottom + 0.5);
+        ctx.stroke();
+
+        ctx.font = "11px ui-monospace, Consolas, 'Segoe UI', monospace";
+        ctx.textAlign = "right";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = T.text;
+        for (let i = 0; i <= 6; i += 1) {
+          const ratio = 1 - i / 6;
+          const price = minPrice + (maxPrice - minPrice) * ratio;
+          const yy = padTop + (priceHeight / 6) * i;
+          ctx.strokeStyle = T.tick;
+          ctx.beginPath();
+          ctx.moveTo(width - padRight - 6, yy);
+          ctx.lineTo(width - padRight, yy);
+          ctx.stroke();
+          ctx.fillText(formatPriceAxisLabel(price), width - 5, yy);
+        }
+
+        ctx.fillStyle = T.textMuted;
+        ctx.font = "10px Inter, Segoe UI, Arial, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        const timeTicks = buildTimeAxisTicks(from, count, candles.length);
+        for (const tick of timeTicks) {
+          const bi = tick.bi;
+          const x = barToX(bi, layout, from, count);
+          const lab = tick.label;
+          ctx.strokeStyle = T.tick;
+          ctx.beginPath();
+          ctx.moveTo(x, chartBottom - 16);
+          ctx.lineTo(x, chartBottom - 22);
+          ctx.stroke();
+          ctx.fillText(lab, x, chartBottom - 8);
+        }
+
+        if (crosshairMain) {
+          const biC = Math.max(
+            0,
+            Math.min(candles.length - 1, Math.round(xToBarIndex(crosshairMain.x, layout, from, count)))
+          );
+          const prC =
+            minPrice + ((priceBottom - crosshairMain.y) / (priceHeight || 1)) * (maxPrice - minPrice);
+          const chipX = Math.max(padLeft + 48, Math.min(width - padRight - 48, crosshairMain.x));
+          drawAxisLabelChip(ctx, formatCrosshairTimeLabel(getBarTimestamp(biC, candles.length)), chipX, chartBottom - 10, "center");
+          drawAxisLabelChip(ctx, formatPriceAxisLabel(prC), width - 5, crosshairMain.y, "right");
+        }
+      }
+
+      async function refreshSelectedCardLiveData({ requestId = null, showLoading = false } = {}) {
+        const selectedId = state.selectedWatchlistId;
+        if (!selectedId) return;
+        const item = getWatchlistItem(selectedId);
+        if (!item) return;
+
+        if (USE_FAKE_CHART_DATA) {
+          const base = Number(item.last) > 0 ? Number(item.last) : 120;
+          state.candles = generateCandlesFromPrice(item.id || selectedId, base);
+          state.chartMessage = "";
+          applyChartRangePreset(state.activeRangePreset);
+          renderWatchlist();
+          return;
+        }
+
+        try {
+          if (showLoading || !state.historyCandlesFull.length) {
+            state.chartMessage = "Loading Price History";
+            resetChartHistoryState();
+            updateChartOverlay();
+            drawChart();
+            const loaded = await loadMarketHistoryCandles(item);
+            if (requestId != null && requestId !== state.activeRequestId) return;
+            applyHistoryToChart(loaded.raw, loaded.psa10);
+            if (!state.candles.length) {
+              throw new Error("No chart data in the selected time range");
+            }
+          }
+
+          try {
+            const live = await fetchLiveCardSnapshot(item);
+            if (requestId != null && requestId !== state.activeRequestId) return;
+            updateLivePriceOnCandles(Number(live.marketPrice || 0));
+            if (live.productUrl) item.priceChartingUrl = live.productUrl;
+            if (live.setName && item.cardName) {
+              item.card = `${item.cardName} (${live.setName}${item.cardNo ? ` #${item.cardNo}` : ""})`;
+              syncChartSymbolHeader();
+            }
+          } catch (liveErr) {
+            if (!state.candles.length) throw liveErr;
+          }
+
+          syncSelectedWatchlistMetrics();
+          state.chartMessage = "";
+          renderWatchlist();
+          drawChart();
+        } catch (err) {
+          if (requestId != null && requestId !== state.activeRequestId) return;
+          state.chartMessage = err.message || "PriceCharting chart data unavailable";
+          resetChartHistoryState();
+          drawChart();
+        }
+      }
+
+      function selectWatchlistCard(id) {
+        stopLivePolling();
+        resetChartView();
+        state.selectedWatchlistId = id;
+        state.activeRequestId += 1;
+        const requestId = state.activeRequestId;
+        resetChartHistoryState();
+        state.chartMessage = USE_FAKE_CHART_DATA ? "" : "Loading Price History";
+        state.applyChartPriceScaleOnNextDraw = true;
+        syncChartSymbolHeader();
+        renderWatchlist();
+        drawChart();
+        refreshSelectedCardLiveData({ requestId, showLoading: true });
+        if (!USE_FAKE_CHART_DATA) {
+          state.livePollTimer = setInterval(() => {
+            if (state.selectedWatchlistId !== id) return;
+            refreshLivePriceOnly();
+          }, 30000);
+        }
+      }
+      if (watchlistAddBtn) {
+        watchlistAddBtn.addEventListener("click", async () => {
+          try {
+            await Promise.all([
+              loadCardsFromSetsIndex(),
+              loadCardNicknames(),
+              loadCollectionPickerCards({ force: true })
+            ]);
+            renderCardPickerOptions();
+            openWatchlistModal();
+          } catch {
+            window.alert("Could not load cards from Sets index.");
+          }
+        });
+      }
+      if (watchlistRemoveBtn) {
+        watchlistRemoveBtn.addEventListener("click", removeSelectedWatchlistCard);
+      }
+      if (watchlistPsa10Btn) {
+        watchlistPsa10Btn.addEventListener("click", togglePsa10Overlay);
+      }
+      if (watchlistSearchInput) {
+        watchlistSearchInput.addEventListener("input", renderCardPickerOptions);
+      }
+      if (watchlistCancelBtn) {
+        watchlistCancelBtn.addEventListener("click", closeWatchlistModal);
+      }
+      if (watchlistAddConfirmBtn) {
+        watchlistAddConfirmBtn.addEventListener("click", addWatchlistCard);
+      }
+
+      function bindWatchlistPickerGrid(root) {
+        if (!root) return;
+        root.addEventListener("click", (event) => {
+          const tile = event.target.closest(".watchlist-card-tile");
+          if (!tile || !root.contains(tile)) return;
+          const id = tile.getAttribute("data-id");
+          if (id) selectPickerCard(id);
+        });
+        root.addEventListener("dblclick", (event) => {
+          const tile = event.target.closest(".watchlist-card-tile");
+          if (!tile || !root.contains(tile)) return;
+          const id = tile.getAttribute("data-id");
+          if (!id) return;
+          selectPickerCard(id);
+          addWatchlistCard();
+        });
+      }
+      bindWatchlistPickerGrid(watchlistCardGrid);
+      if (watchlistSourceCatalogBtn) {
+        watchlistSourceCatalogBtn.addEventListener("click", () => setWatchlistPickerSource("catalog"));
+      }
+      if (watchlistSourceCollectionBtn) {
+        watchlistSourceCollectionBtn.addEventListener("click", () => setWatchlistPickerSource("collection"));
+      }
+      if (watchlistModal) {
+        watchlistModal.addEventListener("click", (event) => {
+          if (event.target === watchlistModal) closeWatchlistModal();
+        });
+      }
+      if (chartResizer && terminalMain) {
+        chartResizer.addEventListener("pointerdown", (event) => {
+          if (window.matchMedia("(max-width: 1080px)").matches) return;
+          event.preventDefault();
+          chartResizer.setPointerCapture(event.pointerId);
+          const startX = event.clientX;
+          const startWidth = state.watchlistWidth;
+          document.body.style.cursor = "col-resize";
+          document.body.style.userSelect = "none";
+
+          const onMove = (moveEvent) => {
+            const deltaX = moveEvent.clientX - startX;
+            state.watchlistWidth = startWidth - deltaX;
+            applyPanelWidths();
+            updateResetButtonVisibility();
+            if (typeof requestAnimationFrame === "function") {
+              requestAnimationFrame(() => {
+                syncLightweightChartSize();
+                drawChart();
+              });
+              return;
+            }
+            drawChart();
+          };
+
+          const onUp = () => {
+            document.body.style.cursor = "";
+            document.body.style.userSelect = "";
+            chartResizer.removeEventListener("pointermove", onMove);
+            chartResizer.removeEventListener("pointerup", onUp);
+            chartResizer.removeEventListener("pointercancel", onUp);
+          };
+
+          chartResizer.addEventListener("pointermove", onMove);
+          chartResizer.addEventListener("pointerup", onUp);
+          chartResizer.addEventListener("pointercancel", onUp);
+        });
+      }
+      function activeDrawingList() {
+        const id = state.selectedWatchlistId || "__none__";
+        if (!state.chartDrawingsById[id]) state.chartDrawingsById[id] = [];
+        return state.chartDrawingsById[id];
+      }
+
+      function normalizeLwTime(time) {
+        if (time == null) return null;
+        if (typeof time === "number" && Number.isFinite(time)) return time;
+        if (typeof time === "object" && time.year) {
+          return Math.floor(Date.UTC(time.year, time.month - 1, time.day) / 1000);
+        }
+        return null;
+      }
+
+      function candleAtLwTime(time) {
+        const tSec = normalizeLwTime(time);
+        if (tSec == null) return null;
+        return nearestCandleAtLwTime(getDisplayCandles(), tSec);
+      }
+
+      function psa10CandleAtLwTime(time) {
+        const tSec = normalizeLwTime(time);
+        if (tSec == null || !state.showPsa10Overlay || !state.historyCandlesPsa10Full.length) return null;
+        return nearestCandleAtLwTime(state.historyCandlesPsa10Full, tSec);
+      }
+
+      function nearestCandleAtLwTime(candles, tSec) {
+        const arr = Array.isArray(candles) ? candles : [];
+        if (!arr.length || tSec == null) return null;
+        let best = null;
+        let bestD = Infinity;
+        for (const c of arr) {
+          const d = Math.abs(toLwTimeSec(c) - tSec);
+          if (d < bestD) {
+            bestD = d;
+            best = c;
+          }
+        }
+        return best;
+      }
+
+      function selectedChartDisplayName() {
+        const item = getWatchlistItem(state.selectedWatchlistId);
+        if (!item) return "";
+        return String(item.card || item.cardName || "").trim();
+      }
+
+      function syncChartSymbolHeader() {
+        if (!chartSymbolHeader || !chartSymbolTitle) return;
+        const name = selectedChartDisplayName();
+        if (!name) {
+          chartSymbolHeader.hidden = true;
+          chartSymbolTitle.textContent = "";
+          if (chartSymbolStats) chartSymbolStats.hidden = true;
+          return;
+        }
+        chartSymbolTitle.textContent = name;
+        chartSymbolHeader.hidden = false;
+      }
+
+      function updateChartSymbolHover({ high, low, price, psaHigh = null, psaLow = null }) {
+        syncChartSymbolHeader();
+        if (!chartSymbolStats) return;
+        if (!Number.isFinite(high) || !Number.isFinite(low) || !Number.isFinite(price) || price < 0) {
+          chartSymbolStats.hidden = true;
+          return;
+        }
+        const showPsa =
+          state.showPsa10Overlay &&
+          Number.isFinite(psaHigh) &&
+          Number.isFinite(psaLow) &&
+          psaHigh >= 0 &&
+          psaLow >= 0;
+        const hiNode = chartSymbolStats.querySelector(".chart-stat-h .chart-stat-v");
+        const loNode = chartSymbolStats.querySelector(".chart-stat-l .chart-stat-v");
+        const hiPsaWrap = chartSymbolStats.querySelector(".chart-stat-h .chart-stat-psa");
+        const loPsaWrap = chartSymbolStats.querySelector(".chart-stat-l .chart-stat-psa");
+        const hiPsaNode = chartSymbolStats.querySelector(".chart-stat-h .chart-stat-psa-v");
+        const loPsaNode = chartSymbolStats.querySelector(".chart-stat-l .chart-stat-psa-v");
+        const hoverNode = chartSymbolStats.querySelector(".chart-stat-hover .chart-stat-v");
+        if (hiNode) hiNode.textContent = formatPriceAxisLabel(high);
+        if (loNode) loNode.textContent = formatPriceAxisLabel(low);
+        if (hiPsaNode) hiPsaNode.textContent = formatPriceAxisLabel(psaHigh);
+        if (loPsaNode) loPsaNode.textContent = formatPriceAxisLabel(psaLow);
+        if (hiPsaWrap) hiPsaWrap.hidden = !showPsa;
+        if (loPsaWrap) loPsaWrap.hidden = !showPsa;
+        if (hoverNode) hoverNode.textContent = formatPriceAxisLabel(price);
+        chartSymbolStats.hidden = false;
+      }
+
+      function inferChartCandleStepMs(candles) {
+        const arr = Array.isArray(candles) ? candles : [];
+        if (arr.length < 2) return null;
+        const sampleCount = Math.min(arr.length - 1, 24);
+        const deltas = [];
+        for (let i = arr.length - sampleCount; i < arr.length; i += 1) {
+          const dt = Number(arr[i].ts) - Number(arr[i - 1].ts);
+          if (Number.isFinite(dt) && dt > 0) deltas.push(dt);
+        }
+        if (!deltas.length) return null;
+        deltas.sort((a, b) => a - b);
+        return deltas[Math.floor(deltas.length / 2)];
+      }
+
+      function isMonthlyChartGranularity(stepMs) {
+        const dayMs = 24 * 60 * 60 * 1000;
+        return Number.isFinite(stepMs) && stepMs >= 20 * dayMs;
+      }
+
+      function formatChartDateLabel(time) {
+        const tSec = normalizeLwTime(time);
+        if (tSec == null) return "";
+        const d = new Date(tSec * 1000);
+        const stepMs = inferChartCandleStepMs(getDisplayCandles());
+        if (isMonthlyChartGranularity(stepMs)) {
+          const month = d.toLocaleDateString(undefined, { month: "short" });
+          const year = String(d.getFullYear()).slice(-2);
+          return `${month} '${year}`;
+        }
+        return d.toLocaleDateString(undefined, {
+          month: "short",
+          day: "numeric",
+          year: "numeric"
+        });
+      }
+
+      function formatChartHoverDate(time) {
+        return formatChartDateLabel(time);
+      }
+
+      function hideChartHoverLegend() {
+        state.hoverPrice = null;
+        if (chartSymbolStats) chartSymbolStats.hidden = true;
+        if (chartHoverDate) chartHoverDate.hidden = true;
+      }
+
+      function updateChartHoverDate(time) {
+        if (!chartHoverDate) return;
+        const label = formatChartHoverDate(time);
+        if (!label) {
+          chartHoverDate.hidden = true;
+          chartHoverDate.textContent = "";
+          return;
+        }
+        chartHoverDate.textContent = label;
+        chartHoverDate.hidden = false;
+      }
+
+      function lwCrosshairModeId(enabled) {
+        const modes = window.LightweightCharts?.CrosshairMode;
+        if (enabled) return modes?.Normal ?? 0;
+        return modes?.Hidden ?? 2;
+      }
+
+      function syncCursorCrosshairMode() {
+        const crosshairOn = state.chartTool === "cursor" && state.cursorCrosshairEnabled;
+        if (lwChart && typeof lwChart.applyOptions === "function") {
+          try {
+            lwChart.applyOptions({ crosshair: { mode: lwCrosshairModeId(crosshairOn) } });
+          } catch {
+            /* ignore */
+          }
+        }
+        const cursorBtn = document.getElementById("chartCursorBtn");
+        if (cursorBtn) {
+          cursorBtn.classList.toggle("cursor-crosshair-on", crosshairOn);
+          cursorBtn.textContent = crosshairOn ? "✛" : "↖";
+          cursorBtn.title = crosshairOn
+            ? "Crosshair mode (click for pan cursor)"
+            : "Pan cursor (click for crosshair mode)";
+        }
+        if (chartWrap && state.chartTool === "cursor") {
+          chartWrap.style.cursor = crosshairOn ? "crosshair" : "default";
+        }
+      }
+
+      function bindChartCrosshairHover(chart) {
+        if (!chart || lwCrosshairHoverBound) return;
+
+        const processChartHover = (x, y, time) => {
+          if (state.chartTool !== "cursor") {
+            hideChartHoverLegend();
+            return;
+          }
+          const tSec = normalizeLwTime(time);
+          if (tSec == null) {
+            hideChartHoverLegend();
+            return;
+          }
+          applyCrosshairAtPoint({ x, y, t: tSec }, time);
+          renderChartDrawingsOverlay();
+        };
+
+        chart.subscribeCrosshairMove((param) => {
+          if (state.chartTool !== "cursor" || !state.cursorCrosshairEnabled) return;
+          if (!param?.time || param.point == null) {
+            hideChartHoverLegend();
+            renderChartDrawingsOverlay();
+            return;
+          }
+          processChartHover(param.point.x, param.point.y, param.time);
+        });
+
+        if (chartContainer) {
+          chartContainer.addEventListener("mousemove", (ev) => {
+            if (state.chartTool !== "cursor" || state.cursorCrosshairEnabled) return;
+            const rect = chartContainer.getBoundingClientRect();
+            const x = ev.clientX - rect.left;
+            const y = ev.clientY - rect.top;
+            const t = xToLwTime(x);
+            if (t == null) {
+              hideChartHoverLegend();
+              return;
+            }
+            processChartHover(x, y, t);
+          });
+          chartContainer.addEventListener("mouseleave", () => {
+            if (state.chartTool === "cursor") hideChartHoverLegend();
+          });
+        }
+
+        lwCrosshairHoverBound = true;
+      }
+
+      function lwTimeToX(tSec) {
+        if (!lwChart || tSec == null) return null;
+        const coord = lwChart.timeScale().timeToCoordinate(tSec);
+        return coord == null ? null : Number(coord);
+      }
+
+      function xToLwTime(x) {
+        if (!lwChart) return null;
+        const direct = normalizeLwTime(lwChart.timeScale().coordinateToTime(x));
+        if (direct != null) return direct;
+        return nearestTimeForX(x);
+      }
+
+      function nearestTimeForX(x) {
+        if (!state.candles.length) return null;
+        let best = null;
+        let bestDist = Infinity;
+        for (const c of state.candles) {
+          const ts = toLwTimeSec(c);
+          const cx = lwTimeToX(ts);
+          if (cx == null) continue;
+          const d = Math.abs(cx - x);
+          if (d < bestDist) {
+            bestDist = d;
+            best = ts;
+          }
+        }
+        return best;
+      }
+
+      function yToLwPriceSafe(y, height) {
+        let p = yToLwPrice(y);
+        if (p != null) return p;
+        if (!lwCandleSeries || !Number.isFinite(height)) return null;
+        const clamped = Math.max(0, Math.min(height - 1, y));
+        p = yToLwPrice(clamped);
+        if (p != null) return p;
+        return yToLwPrice(Math.max(0, height * 0.5));
+      }
+
+      function chartInteractionRect() {
+        const surface = chartContainer || drawCanvas || chartWrap;
+        return surface ? surface.getBoundingClientRect() : null;
+      }
+
+      function chartPointFromEvent(ev) {
+        const rect = chartInteractionRect();
+        if (!rect || !lwChart || rect.width < 1 || rect.height < 1) return null;
+        const x = ev.clientX - rect.left;
+        const y = ev.clientY - rect.top;
+        const t = xToLwTime(x);
+        const rawP = yToLwPriceSafe(y, rect.height);
+        if (t == null || rawP == null) return null;
+        return { x, y, t, p: magnetPriceAtTime(t, rawP) };
+      }
+
+      function applyCrosshairAtPoint(pt, time) {
+        if (!pt) return;
+        const tSec = time != null ? normalizeLwTime(time) : pt.t;
+        if (tSec == null) return;
+        updateChartHoverDate(tSec);
+        const rawPrice = yToLwPriceSafe(pt.y, chartInteractionRect()?.height || 0);
+        if (!Number.isFinite(rawPrice)) {
+          hideChartHoverLegend();
+          return;
+        }
+        const price =
+          state.chartMagnet ? magnetPriceAtTime(tSec, rawPrice) : clampChartPrice(rawPrice);
+        const fromState = candleAtLwTime(tSec);
+        const high = Number(fromState?.high);
+        const low = Number(fromState?.low);
+        if (price < 0 || !Number.isFinite(high) || !Number.isFinite(low)) {
+          state.hoverPrice = null;
+          if (chartSymbolStats) chartSymbolStats.hidden = true;
+          return;
+        }
+        const psaState = psa10CandleAtLwTime(tSec);
+        const psaHigh = psaState ? Number(psaState.high) : null;
+        const psaLow = psaState ? Number(psaState.low) : null;
+        state.hoverPrice = { price, y: pt.y, x: pt.x, high, low };
+        updateChartSymbolHover({ high, low, price, psaHigh, psaLow });
+      }
+
+      function lwPriceToY(price) {
+        if (!lwCandleSeries) return null;
+        const coord = lwCandleSeries.priceToCoordinate(price);
+        return coord == null ? null : Number(coord);
+      }
+
+      function yToLwPrice(y) {
+        if (!lwCandleSeries) return null;
+        const p = lwCandleSeries.coordinateToPrice(y);
+        return p == null ? null : Number(p);
+      }
+
+      function drawingTimeFromLegacy(d, keyI, keyT) {
+        if (Number.isFinite(d[keyT])) return d[keyT];
+        if (Number.isFinite(d[keyI]) && state.candles.length) {
+          const idx = Math.max(0, Math.min(state.candles.length - 1, Math.round(d[keyI])));
+          return toLwTimeSec(state.candles[idx]);
+        }
+        return null;
+      }
+
+      function magnetPriceAtTime(tSec, price) {
+        if (!state.chartMagnet || !state.candles.length) return clampChartPrice(price);
+        let best = null;
+        let bestD = Infinity;
+        for (const c of state.candles) {
+          const ts = toLwTimeSec(c);
+          const d = Math.abs(ts - tSec);
+          if (d < bestD) {
+            bestD = d;
+            best = c;
+          }
+        }
+        if (!best) return clampChartPrice(price);
+        const snaps = [best.open, best.high, best.low, best.close];
+        let nearest = price;
+        let nearestD = Infinity;
+        for (const s of snaps) {
+          const n = Number(s);
+          if (!Number.isFinite(n)) continue;
+          const dd = Math.abs(n - price);
+          if (dd < nearestD) {
+            nearestD = dd;
+            nearest = n;
+          }
+        }
+        return clampChartPrice(nearest);
+      }
+
+      function setChartTool(tool) {
+        state.chartTool = tool || "cursor";
+        state.chartDraft = null;
+        state.axisDrag = null;
+        hideChartHoverLegend();
+        updateChartToolUi();
+        syncCursorCrosshairMode();
+        renderChartDrawingsOverlay();
+      }
+
+      function toggleCursorCrosshairMode() {
+        state.cursorCrosshairEnabled = !state.cursorCrosshairEnabled;
+        hideChartHoverLegend();
+        syncCursorCrosshairMode();
+        updateChartToolUi();
+        renderChartDrawingsOverlay();
+      }
+
+      function updateChartToolUi() {
+        document.querySelectorAll("[data-chart-tool]").forEach((btn) => {
+          const tool = btn.getAttribute("data-chart-tool");
+          btn.classList.toggle("active", tool === state.chartTool);
+        });
+        const magnetBtn = document.getElementById("chartMagnetBtn");
+        if (magnetBtn) magnetBtn.classList.toggle("magnet-on", Boolean(state.chartMagnet));
+        const drawMode = state.chartTool !== "cursor";
+        if (drawCanvas) {
+          drawCanvas.style.pointerEvents = drawMode ? "auto" : "none";
+        }
+        if (chartContainer) {
+          chartContainer.style.pointerEvents = drawMode ? "none" : "auto";
+        }
+        if (chartWrap) {
+          if (drawMode) chartWrap.style.cursor = "crosshair";
+          else if (state.cursorCrosshairEnabled) chartWrap.style.cursor = "crosshair";
+          else chartWrap.style.cursor = "default";
+        }
+        syncCursorCrosshairMode();
+      }
+
+      function drawOverlaySegment(ctx, t0, p0, t1, p1, dash, extendRay, width) {
+        let x0 = lwTimeToX(t0);
+        let y0 = lwPriceToY(p0);
+        let x1 = lwTimeToX(t1);
+        let y1 = lwPriceToY(p1);
+        if (x0 == null || y0 == null || x1 == null || y1 == null) return;
+        const dx = x1 - x0;
+        const dy = y1 - y0;
+        if (extendRay && (Math.abs(dx) > 1e-6 || Math.abs(dy) > 1e-6)) {
+          const big = 4000;
+          if (Math.abs(dx) > 1e-6) {
+            const tR = (width - x0) / dx;
+            const tL = (0 - x0) / dx;
+            const tMax = Math.max(tR, tL, 0) + big / Math.abs(dx);
+            const tMin = Math.min(tR, tL, 0) - big / Math.abs(dx);
+            x1 = x0 + tMax * dx;
+            y1 = y0 + tMax * dy;
+            x0 = x0 + tMin * dx;
+            y0 = y0 + tMin * dy;
+          }
+        }
+        ctx.beginPath();
+        ctx.setLineDash(dash || []);
+        ctx.moveTo(x0, y0);
+        ctx.lineTo(x1, y1);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      function renderChartDrawingsOverlay() {
+        if (!drawCanvas) return;
+        const rect = drawCanvas.getBoundingClientRect();
+        const width = Math.max(1, Math.floor(rect.width));
+        const height = Math.max(1, Math.floor(rect.height));
+        const dpr = window.devicePixelRatio || 1;
+        drawCanvas.width = Math.floor(width * dpr);
+        drawCanvas.height = Math.floor(height * dpr);
+        const ctx = drawCanvas.getContext("2d");
+        if (!ctx) return;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, width, height);
+        if (!lwChart || !lwCandleSeries || !state.candles.length) return;
+
+        const T = CHART_THEME;
+        ctx.lineWidth = 1.25;
+        const drawings = activeDrawingList();
+        for (const d of drawings) {
+          ctx.strokeStyle = T.drawing;
+          ctx.fillStyle = T.text;
+          if (d.type === "trendline") {
+            const t0 = drawingTimeFromLegacy(d, "i0", "t0");
+            const t1 = drawingTimeFromLegacy(d, "i1", "t1");
+            if (t0 != null && t1 != null) drawOverlaySegment(ctx, t0, d.p0, t1, d.p1, [], false, width);
+          } else if (d.type === "ray") {
+            const t0 = drawingTimeFromLegacy(d, "i0", "t0");
+            const t1 = drawingTimeFromLegacy(d, "i1", "t1");
+            if (t0 != null && t1 != null) drawOverlaySegment(ctx, t0, d.p0, t1, d.p1, [], true, width);
+          } else if (d.type === "hline") {
+            const y = lwPriceToY(d.price);
+            if (y == null) continue;
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(width, y);
+            ctx.stroke();
+          } else if (d.type === "vline") {
+            const t = drawingTimeFromLegacy(d, "i", "t");
+            const x = t != null ? lwTimeToX(t) : null;
+            if (x == null) continue;
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, height);
+            ctx.stroke();
+          } else if (d.type === "brush" && Array.isArray(d.points) && d.points.length > 1) {
+            ctx.beginPath();
+            d.points.forEach((pt, idx) => {
+              const t = drawingTimeFromLegacy(pt, "i", "t");
+              const x = t != null ? lwTimeToX(t) : null;
+              const y = lwPriceToY(pt.p);
+              if (x == null || y == null) return;
+              if (idx === 0) ctx.moveTo(x, y);
+              else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+          } else if (d.type === "text") {
+            const t = drawingTimeFromLegacy(d, "i", "t");
+            const x = t != null ? lwTimeToX(t) : null;
+            const y = lwPriceToY(d.p);
+            if (x == null || y == null) continue;
+            ctx.font = "12px Inter, Segoe UI, Arial, sans-serif";
+            ctx.textAlign = "left";
+            ctx.fillText(d.text || "Text", x + 4, y);
+          } else if (d.type === "measure") {
+            const t0 = drawingTimeFromLegacy(d, "i0", "t0");
+            const t1 = drawingTimeFromLegacy(d, "i1", "t1");
+            if (t0 == null || t1 == null) continue;
+            drawOverlaySegment(ctx, t0, d.p0, t1, d.p1, [4, 3], false, width);
+            const x0 = lwTimeToX(t0);
+            const x1 = lwTimeToX(t1);
+            const y0 = lwPriceToY(d.p0);
+            const y1 = lwPriceToY(d.p1);
+            if (x0 == null || x1 == null || y0 == null || y1 == null) continue;
+            const days = Math.abs(t1 - t0) / 86400;
+            const pct = Number(d.p0) !== 0 ? ((d.p1 - d.p0) / Math.abs(d.p0)) * 100 : 0;
+            ctx.fillStyle = T.textMuted;
+            ctx.font = "10px Inter, Segoe UI, Arial, sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText(`${days.toFixed(1)}d · ${pct.toFixed(2)}%`, (x0 + x1) / 2, (y0 + y1) / 2 - 6);
+          } else if (d.type === "channel") {
+            const t0 = drawingTimeFromLegacy(d, "i0", "t0");
+            const t1 = drawingTimeFromLegacy(d, "i1", "t1");
+            const off = Number(d.offset) || 0;
+            if (t0 == null || t1 == null) continue;
+            drawOverlaySegment(ctx, t0, d.p0, t1, d.p1, [], false, width);
+            drawOverlaySegment(ctx, t0, d.p0 + off, t1, d.p1 + off, [3, 3], false, width);
+          } else if (d.type === "fib") {
+            const t0 = drawingTimeFromLegacy(d, "i0", "t0");
+            const t1 = drawingTimeFromLegacy(d, "i1", "t1");
+            if (t0 == null || t1 == null) continue;
+            const lo = Math.min(d.p0, d.p1);
+            const hi = Math.max(d.p0, d.p1);
+            const diff = hi - lo || 1;
+            const levels = [0, 0.382, 0.5, 0.618, 1];
+            ctx.setLineDash([3, 3]);
+            levels.forEach((lv) => {
+              const pr = hi - diff * lv;
+              const y = lwPriceToY(pr);
+              if (y == null) return;
+              ctx.strokeStyle = lv === 0 || lv === 1 ? "rgba(209, 212, 220, 0.35)" : "rgba(120, 123, 134, 0.28)";
+              ctx.beginPath();
+              ctx.moveTo(0, y);
+              ctx.lineTo(width, y);
+              ctx.stroke();
+            });
+            ctx.setLineDash([]);
+          }
+        }
+
+        if (state.chartDraft) {
+          ctx.strokeStyle = T.draft;
+          const d = state.chartDraft;
+          if (d.type === "trendline" || d.type === "ray") {
+            drawOverlaySegment(ctx, d.t0, d.p0, d.t1, d.p1, [5, 4], d.type === "ray", width);
+          } else if (d.type === "brush" && d.points && d.points.length) {
+            ctx.beginPath();
+            d.points.forEach((pt, idx) => {
+              const x = lwTimeToX(pt.t);
+              const y = lwPriceToY(pt.p);
+              if (x == null || y == null) return;
+              if (idx === 0) ctx.moveTo(x, y);
+              else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+          } else if (d.type === "zoombox") {
+            ctx.strokeStyle = T.zoomBox;
+            ctx.setLineDash([4, 3]);
+            ctx.strokeRect(d.x0, d.y0, d.x1 - d.x0, d.y1 - d.y0);
+            ctx.setLineDash([]);
+          } else if (d.type === "measure" && state.hoverDrawPoint) {
+            ctx.globalAlpha = 0.65;
+            drawOverlaySegment(ctx, d.t0, d.p0, state.hoverDrawPoint.t, state.hoverDrawPoint.p, [4, 3], false, width);
+            ctx.globalAlpha = 1;
+          }
+        }
+      }
+
+      function initChartDrawingLayer() {
+        document.querySelectorAll("[data-chart-tool]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const tool = btn.getAttribute("data-chart-tool") || "cursor";
+            if (tool === "cursor" && state.chartTool === "cursor") {
+              toggleCursorCrosshairMode();
+              return;
+            }
+            setChartTool(tool);
+          });
+        });
+        const magnetBtn = document.getElementById("chartMagnetBtn");
+        if (magnetBtn) {
+          magnetBtn.addEventListener("click", () => {
+            state.chartMagnet = !state.chartMagnet;
+            updateChartToolUi();
+          });
+        }
+        const undoBtn = document.getElementById("chartUndoBtn");
+        if (undoBtn) {
+          undoBtn.addEventListener("click", () => {
+            const list = activeDrawingList();
+            if (list.length) list.pop();
+            renderChartDrawingsOverlay();
+          });
+        }
+        const clearBtn = document.getElementById("chartClearBtn");
+        if (clearBtn) {
+          clearBtn.addEventListener("click", () => {
+            const list = activeDrawingList();
+            list.length = 0;
+            state.chartDraft = null;
+            renderChartDrawingsOverlay();
+          });
+        }
+        if (!drawCanvas) return;
+
+        drawCanvas.addEventListener("pointermove", (ev) => {
+          const pt = chartPointFromEvent(ev);
+          if (pt) state.hoverDrawPoint = pt;
+          if (state.axisDrag && state.axisDrag.kind === "draw" && state.chartDraft && pt) {
+            const d = state.chartDraft;
+            if (d.type === "brush" && d.points) {
+              const last = d.points[d.points.length - 1];
+              if (!last || Math.hypot(pt.t - last.t, pt.p - last.p) > 0.001) {
+                d.points.push({ t: pt.t, p: pt.p });
+              }
+            } else if (d.type === "zoombox") {
+              d.x1 = pt.x;
+              d.y1 = pt.y;
+            } else if (d.type === "trendline" || d.type === "ray") {
+              d.t1 = pt.t;
+              d.p1 = pt.p;
+            }
+          }
+          renderChartDrawingsOverlay();
+        });
+
+        drawCanvas.addEventListener("pointerleave", () => {
+          state.hoverDrawPoint = null;
+          hideChartHoverLegend();
+          renderChartDrawingsOverlay();
+        });
+
+        drawCanvas.addEventListener("pointerdown", (ev) => {
+          if (state.chartTool === "cursor") return;
+          ev.preventDefault();
+          ev.stopPropagation();
+          if (!state.candles.length) return;
+          const pt = chartPointFromEvent(ev);
+          if (!pt) return;
+          const tool = state.chartTool;
+
+          if (tool === "hline") {
+            activeDrawingList().push({ type: "hline", price: pt.p });
+            renderChartDrawingsOverlay();
+            return;
+          }
+          if (tool === "vline") {
+            activeDrawingList().push({ type: "vline", t: pt.t });
+            renderChartDrawingsOverlay();
+            return;
+          }
+          if (tool === "text") {
+            const t = window.prompt("Label", "Note");
+            if (t) activeDrawingList().push({ type: "text", t: pt.t, p: pt.p, text: t });
+            renderChartDrawingsOverlay();
+            return;
+          }
+          if (tool === "measure") {
+            const d = state.chartDraft;
+            if (!d || d.type !== "measure") {
+              state.chartDraft = { type: "measure", t0: pt.t, p0: pt.p };
+            } else {
+              activeDrawingList().push({ type: "measure", t0: d.t0, p0: d.p0, t1: pt.t, p1: pt.p });
+              state.chartDraft = null;
+            }
+            renderChartDrawingsOverlay();
+            return;
+          }
+          if (tool === "trendline" || tool === "ray" || tool === "channel" || tool === "fib") {
+            state.axisDrag = { kind: "draw", drawTool: tool };
+            state.chartDraft = {
+              type: tool === "ray" ? "ray" : "trendline",
+              t0: pt.t,
+              p0: pt.p,
+              t1: pt.t,
+              p1: pt.p
+            };
+            drawCanvas.setPointerCapture(ev.pointerId);
+            renderChartDrawingsOverlay();
+            return;
+          }
+          if (tool === "brush") {
+            state.axisDrag = { kind: "draw", drawTool: "brush" };
+            state.chartDraft = { type: "brush", points: [{ t: pt.t, p: pt.p }] };
+            drawCanvas.setPointerCapture(ev.pointerId);
+            renderChartDrawingsOverlay();
+            return;
+          }
+          if (tool === "zoom") {
+            state.axisDrag = { kind: "draw", drawTool: "zoom" };
+            state.chartDraft = { type: "zoombox", x0: pt.x, y0: pt.y, x1: pt.x, y1: pt.y };
+            drawCanvas.setPointerCapture(ev.pointerId);
+            renderChartDrawingsOverlay();
+          }
+        });
+
+        const finishDraw = (ev) => {
+          if (!state.axisDrag || state.axisDrag.kind !== "draw") return;
+          const d = state.chartDraft;
+          const dt = state.axisDrag.drawTool;
+          const list = activeDrawingList();
+          if (d && (d.type === "trendline" || d.type === "ray")) {
+            if (dt === "fib") list.push({ type: "fib", t0: d.t0, p0: d.p0, t1: d.t1, p1: d.p1 });
+            else if (dt === "channel") {
+              const span = Math.abs(d.p1 - d.p0) * 0.35 || 1;
+              list.push({ type: "channel", t0: d.t0, p0: d.p0, t1: d.t1, p1: d.p1, offset: span });
+            } else if (dt === "ray") list.push({ type: "ray", t0: d.t0, p0: d.p0, t1: d.t1, p1: d.p1 });
+            else list.push({ type: "trendline", t0: d.t0, p0: d.p0, t1: d.t1, p1: d.p1 });
+          } else if (d && d.type === "brush" && d.points && d.points.length > 1) {
+            list.push({ type: "brush", points: d.points.slice() });
+          } else if (d && d.type === "zoombox" && lwChart) {
+            const x0 = Math.min(d.x0, d.x1);
+            const x1 = Math.max(d.x0, d.x1);
+            if (x1 - x0 > 12) {
+              const tA = xToLwTime(x0);
+              const tB = xToLwTime(x1);
+              if (tA != null && tB != null) {
+                lwChart.timeScale().setVisibleRange({ from: Math.min(tA, tB), to: Math.max(tA, tB) });
+              }
+            }
+          }
+          state.chartDraft = null;
+          state.axisDrag = null;
+          try {
+            drawCanvas.releasePointerCapture(ev.pointerId);
+          } catch {
+            /* ignore */
+          }
+          renderChartDrawingsOverlay();
+        };
+
+        drawCanvas.addEventListener("pointerup", finishDraw);
+        drawCanvas.addEventListener("pointercancel", finishDraw);
+        updateChartToolUi();
+      }
+
+      function getDisplayCandles() {
+        if (state.historyCandlesFull.length) return state.historyCandlesFull;
+        if (state.candles.length) return state.candles;
+        if (!USE_FAKE_CHART_DATA) return [];
+        if (!state.placeholderCandles || !state.placeholderCandles.length) {
+          state.placeholderCandles = generateCandlesFromPrice("__placeholder__", 120, { count: 280 });
+        }
+        return state.placeholderCandles;
+      }
+
+      function ensureLightweightChart() {
+        if (!chartContainer || !window.LightweightCharts) return null;
+        if (lwChart) return lwChart;
+
+        lwChart = window.LightweightCharts.createChart(chartContainer, {
+          width: chartContainer.clientWidth || 300,
+          height: chartContainer.clientHeight || 300,
+          layout: {
+            background: { color: "#131722" },
+            textColor: "#d1d4dc",
+            fontSize: 11,
+            attributionLogo: false
+          },
+          grid: {
+            vertLines: { color: "rgba(42, 46, 57, 0.55)" },
+            horzLines: { color: "rgba(42, 46, 57, 0.55)" }
+          },
+          rightPriceScale: {
+            borderColor: "#2a2e39",
+            scaleMargins: { top: 0.08, bottom: 0 }
+          },
+          timeScale: {
+            borderColor: "#2a2e39",
+            timeVisible: true,
+            secondsVisible: false
+          },
+          crosshair: {
+            mode: 2
+          },
+          localization: {
+            priceFormatter: (price) => formatPriceAxisLabel(Number(price)),
+            timeFormatter: (time) => formatChartDateLabel(time)
+          }
+        });
+
+        const candleOpts = {
+          upColor: "#089981",
+          downColor: "#f23645",
+          borderUpColor: "#089981",
+          borderDownColor: "#f23645",
+          wickUpColor: "#089981",
+          wickDownColor: "#f23645",
+          priceLineVisible: false,
+          autoscaleInfoProvider: lwCandleAutoscaleInfoProvider
+        };
+
+        // v4/v5 compatibility for Lightweight Charts series API.
+        if (typeof lwChart.addCandlestickSeries === "function") {
+          lwCandleSeries = lwChart.addCandlestickSeries(candleOpts);
+        } else if (typeof lwChart.addSeries === "function" && window.LightweightCharts.CandlestickSeries) {
+          lwCandleSeries = lwChart.addSeries(window.LightweightCharts.CandlestickSeries, candleOpts);
+        } else {
+          return null;
+        }
+
+        try {
+          lwChart.priceScale("right").applyOptions({
+            scaleMargins: { top: 0.08, bottom: 0 },
+            autoScale: true
+          });
+        } catch {
+          /* ignore */
+        }
+
+        lwVolumeSeries = null;
+
+        bindPriceScaleRedraw(lwChart);
+        bindChartCrosshairHover(lwChart);
+
+        if (!lwDrawingRedrawBound) {
+          try {
+            lwChart.timeScale().subscribeVisibleTimeRangeChange(() => {
+              renderChartDrawingsOverlay();
+            });
+            lwDrawingRedrawBound = true;
+          } catch {
+            /* ignore */
+          }
+        }
+
+        if (typeof ResizeObserver !== "undefined") {
+          lwResizeObserver = new ResizeObserver(() => {
+            if (!lwChart || !chartContainer) return;
+            lwChart.applyOptions({
+              width: chartContainer.clientWidth || 300,
+              height: chartContainer.clientHeight || 300
+            });
+          });
+          lwResizeObserver.observe(chartContainer);
+        }
+        syncCursorCrosshairMode();
+        return lwChart;
+      }
+
+      function lwCandleAutoscaleInfoProvider(original) {
+        const info = typeof original === "function" ? original() : null;
+        const rawMin = Number(info?.priceRange?.minValue);
+        const rawMax = Number(info?.priceRange?.maxValue);
+        const minValue = Math.max(0, Number.isFinite(rawMin) ? rawMin : 0);
+        const maxValue = Math.max(minValue + 1e-6, Number.isFinite(rawMax) ? rawMax : minValue + 1);
+        return {
+          priceRange: { minValue, maxValue },
+          margins: info?.margins
+        };
+      }
+
+      function destroyPsa10CandleSeries(chart) {
+        if (!lwPsa10CandleSeries || !chart) return;
+        try {
+          chart.removeSeries(lwPsa10CandleSeries);
+        } catch {
+          /* ignore */
+        }
+        lwPsa10CandleSeries = null;
+      }
+
+      function hidePsa10CandleSeries() {
+        if (!lwPsa10CandleSeries) return false;
+        try {
+          lwPsa10CandleSeries.applyOptions({ visible: false });
+        } catch {
+          /* ignore */
+        }
+        return true;
+      }
+
+      function ensurePsa10CandleSeries(chart) {
+        if (lwPsa10CandleSeries) return lwPsa10CandleSeries;
+        if (!chart) return null;
+        const psa10Opts = {
+          upColor: "rgba(8, 153, 129, 0.5)",
+          downColor: "rgba(242, 54, 69, 0.5)",
+          borderUpColor: "#42a5f5",
+          borderDownColor: "#42a5f5",
+          wickUpColor: "#42a5f5",
+          wickDownColor: "#42a5f5",
+          priceLineVisible: false,
+          autoscaleInfoProvider: lwCandleAutoscaleInfoProvider
+        };
+        if (typeof chart.addCandlestickSeries === "function") {
+          lwPsa10CandleSeries = chart.addCandlestickSeries(psa10Opts);
+        } else if (typeof chart.addSeries === "function" && window.LightweightCharts.CandlestickSeries) {
+          lwPsa10CandleSeries = chart.addSeries(window.LightweightCharts.CandlestickSeries, psa10Opts);
+        }
+        return lwPsa10CandleSeries;
+      }
+
+      function syncPsa10Overlay(chart) {
+        if (!chart) return;
+        const shouldShow = state.showPsa10Overlay && state.historyCandlesPsa10Full.length > 0;
+        if (!shouldShow) {
+          hidePsa10CandleSeries();
+          return;
+        }
+        const psa10Series = ensurePsa10CandleSeries(chart);
+        if (!psa10Series) return;
+        const psa10Data = candlesToLwData(state.historyCandlesPsa10Full);
+        psa10Series.applyOptions({ visible: true });
+        psa10Series.setData(psa10Data);
+      }
+
+      function refreshChartSeriesData(chart, candleData) {
+        if (!chart || !lwCandleSeries) return;
+        lwCandleSeries.setData(candleData);
+        syncPsa10Overlay(chart);
+      }
+
+      function candlesToLwData(bars) {
+        return bars.map((c) => ({
+          time: toLwTimeSec(c),
+          open: clampChartPrice(c.open),
+          high: clampChartPrice(c.high),
+          low: clampChartPrice(c.low),
+          close: clampChartPrice(c.close)
+        }));
+      }
+
+      function syncLightweightChartSize() {
+        if (!lwChart || !chartContainer) return;
+        const width = Math.max(300, chartContainer.clientWidth || 300);
+        const height = Math.max(280, chartContainer.clientHeight || 280);
+        if (typeof lwChart.resize === "function") {
+          lwChart.resize(width, height);
+        } else {
+          lwChart.applyOptions({ width, height });
+        }
+      }
+
+      function toLwTimeSec(c) {
+        const ts = Number(c?.ts);
+        return Math.floor((Number.isFinite(ts) ? ts : Date.now()) / 1000);
+      }
+
+      function rangeStartEpochSec(key, endSec) {
+        if (key === "1D") return endSec - 24 * 60 * 60;
+        if (key === "1W") return endSec - 7 * 24 * 60 * 60;
+        if (key === "1M") return endSec - 30 * 24 * 60 * 60;
+        if (key === "3M") return endSec - 90 * 24 * 60 * 60;
+        if (key === "6M") return endSec - 180 * 24 * 60 * 60;
+        if (key === "YTD") return Math.floor(Date.UTC(2026, 0, 1) / 1000);
+        if (key === "1Y") return endSec - 365 * 24 * 60 * 60;
+        return endSec - 24 * 60 * 60;
+      }
+
+      function presetStartMs(key, endMs) {
+        if (key === "ALL") return 0;
+        if (key === "1D") return endMs - 24 * 60 * 60 * 1000;
+        if (key === "1W") return endMs - 7 * 24 * 60 * 60 * 1000;
+        if (key === "1M") return endMs - 30 * 24 * 60 * 60 * 1000;
+        if (key === "3M") return endMs - 90 * 24 * 60 * 60 * 1000;
+        if (key === "6M") return endMs - 180 * 24 * 60 * 60 * 1000;
+        if (key === "YTD") return Date.UTC(2026, 0, 1);
+        if (key === "1Y") return endMs - 365 * 24 * 60 * 60 * 1000;
+        return endMs - 24 * 60 * 60 * 1000;
+      }
+
+      function rebuildCandlesForPreset(key) {
+        const hasLive = state.candles.length > 0;
+        const endMsRaw = hasLive ? Number(state.candles[state.candles.length - 1]?.ts) : Date.now();
+        const endMs = Number.isFinite(endMsRaw) ? endMsRaw : Date.now();
+        let startMs = presetStartMs(key, endMs);
+        if (!Number.isFinite(startMs) || startMs >= endMs) startMs = endMs - 24 * 60 * 60 * 1000;
+        const spanMs = Math.max(1, endMs - startMs);
+        const count = key === "YTD" || key === "1Y" ? 320 : 240;
+        const stepMs = Math.max(60 * 1000, Math.floor(spanMs / Math.max(1, count - 1)));
+        const basePrice = hasLive
+          ? Number(state.candles[state.candles.length - 1]?.close) || 120
+          : 120;
+        const seed = hasLive ? (state.selectedWatchlistId || "live") : "__placeholder__";
+        const built = generateCandlesFromPrice(seed, basePrice, { count, stepMs, startTs: startMs });
+        if (hasLive) state.candles = built;
+        else state.placeholderCandles = built;
+      }
+
+      function applyChartRangePreset(key) {
+        state.activeRangePreset = key;
+        if (state.historyCandlesFull.length) {
+          state.candles = state.historyCandlesFull.slice();
+        } else if (USE_FAKE_CHART_DATA) {
+          rebuildCandlesForPreset(key);
+        }
+        syncSelectedWatchlistMetrics();
+        updateRangeTabButtons();
+        state.applyChartViewportOnNextDraw = true;
+        drawChart();
+        renderWatchlist();
+      }
+
+      function bindPriceScaleRedraw(chart) {
+        if (!chart || lwPriceScaleRedrawBound || typeof chart.priceScale !== "function") return;
+        let priceScale;
+        try {
+          priceScale = chart.priceScale("right");
+        } catch {
+          return;
+        }
+        if (priceScale && typeof priceScale.subscribeVisiblePriceRangeChange === "function") {
+          priceScale.subscribeVisiblePriceRangeChange(() => {
+            renderChartDrawingsOverlay();
+          });
+        }
+        lwPriceScaleRedrawBound = true;
+      }
+
+      function applyChartTimeScaleForPreset(chart, key, candles) {
+        if (!chart || typeof chart.timeScale !== "function") return;
+        const bars = Array.isArray(candles) ? candles : [];
+        if (!bars.length) return;
+
+        const timeScale = chart.timeScale();
+
+        if (key === "ALL") {
+          if (typeof timeScale.fitContent === "function") timeScale.fitContent();
+          return;
+        }
+
+        const inWindow = filterCandlesByPreset(bars, key);
+        const count = Math.max(1, inWindow.length);
+        const chartWidth = chartContainer?.clientWidth || 300;
+        const plotWidth = Math.max(100, chartWidth - 90);
+        const barSpacing = Math.min(56, Math.max(8, Math.floor(plotWidth / count) - 1));
+        try {
+          timeScale.applyOptions({
+            barSpacing,
+            minBarSpacing: 4,
+            rightOffset: 6
+          });
+        } catch {
+          /* ignore */
+        }
+
+        const { startMs, endMs } = presetRangeBoundsMs(key, bars);
+        const fromSec = Math.floor(startMs / 1000);
+        const toSec = Math.floor(endMs / 1000);
+        if (typeof timeScale.setVisibleRange === "function") {
+          try {
+            timeScale.setVisibleRange({ from: fromSec, to: toSec });
+          } catch {
+            if (typeof timeScale.fitContent === "function") timeScale.fitContent();
+          }
+        } else if (typeof timeScale.fitContent === "function") {
+          timeScale.fitContent();
+        }
+      }
+
+      function resetLightweightPriceScale(chart) {
+        if (!chart || typeof chart.priceScale !== "function") return;
+        try {
+          const priceScale = chart.priceScale("right");
+          if (!priceScale) return;
+          if (typeof priceScale.setAutoScale === "function") {
+            priceScale.setAutoScale(true);
+          } else if (typeof priceScale.applyOptions === "function") {
+            priceScale.applyOptions({
+              autoScale: true,
+              scaleMargins: { top: 0.08, bottom: 0 }
+            });
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+
+      function drawChart() {
+        const chart = ensureLightweightChart();
+        if (!chart || !lwCandleSeries) return;
+        syncLightweightChartSize();
+
+        const bars = getDisplayCandles();
+        if (!bars.length) {
+          lwCandleSeries.setData([]);
+          destroyPsa10CandleSeries(chart);
+          hideChartHoverLegend();
+          syncChartSymbolHeader();
+          updateChartOverlay();
+          renderChartDrawingsOverlay();
+          return;
+        }
+
+        const candleData = candlesToLwData(bars);
+        const needsScaleReset = state.applyChartPriceScaleOnNextDraw;
+
+        if (needsScaleReset) {
+          resetLightweightPriceScale(chart);
+        }
+
+        refreshChartSeriesData(chart, candleData);
+
+        if (needsScaleReset) {
+          resetLightweightPriceScale(chart);
+          refreshChartSeriesData(chart, candleData);
+          state.applyChartPriceScaleOnNextDraw = false;
+        }
+
+        if (state.applyChartViewportOnNextDraw) {
+          applyChartTimeScaleForPreset(chart, state.activeRangePreset, bars);
+          state.applyChartViewportOnNextDraw = false;
+        }
+        updateChartOverlay();
+        renderChartDrawingsOverlay();
+      }
+
+      if (resetLayoutBtn) {
+        resetLayoutBtn.addEventListener("click", () => {
+          state.watchlistWidth = 320;
+          resetChartView();
+          applyPanelWidths();
+          updateResetButtonVisibility();
+          drawChart();
+        });
+      }
+      window.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          closeWatchlistModal();
+          state.chartDraft = null;
+          state.axisDrag = null;
+          setChartTool("cursor");
+        }
+      });
+
+      window.addEventListener("resize", () => {
+        applyPanelWidths();
+        drawChart();
+      });
+      applyPanelWidths();
+      updateResetButtonVisibility();
+      document.querySelectorAll(".chart-range-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const r = btn.getAttribute("data-range");
+          if (r) applyChartRangePreset(r);
+        });
+      });
+      updateRangeTabButtons();
+      updatePsa10ToggleUi();
+      renderWatchlist();
+      initChartDrawingLayer();
+      syncChartSymbolHeader();
+      applyChartRangePreset(state.activeRangePreset);
+      startFooterLocalClock();
+      window.__pokeViewBootWatchlistAuth = bootWatchlistAuthSync;
+      window.addEventListener("beforeunload", flushWatchlistOnUnload);
+    })();
+  </script>
+  <script src="/account-ui.js"></script>
+  <script>
+    queueMicrotask(() => {
+      window.__pokeViewBootWatchlistAuth?.();
+    });
+  </script>
+</body>
+</html>
+

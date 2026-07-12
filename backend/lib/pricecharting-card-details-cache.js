@@ -1,0 +1,300 @@
+const fsp = require("fs/promises");
+const path = require("path");
+const { fetchPriceChartingCardDetailsForCard } = require("./pricecharting-market-history");
+
+const DATA_DIR = path.join(__dirname, "..", "data");
+const CACHE_FILE = path.join(DATA_DIR, "pricecharting-card-details-cache.json");
+const SET_CARD_LIST_FILE = path.join(DATA_DIR, "set-card-lists.json");
+const CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 30;
+const CACHE_VERSION = 2;
+const PERSIST_DEBOUNCE_MS = 500;
+
+const memCache = new Map();
+let persistTimer = null;
+let persistChain = Promise.resolve();
+let cacheMeta = {
+  savedAt: null,
+  entryCount: 0
+};
+
+function decodeHtmlName(text) {
+  return String(text || "")
+    .replace(/&#038;/g, "&")
+    .replace(/&#8217;/g, "'")
+    .replace(/&amp;/g, "&")
+    .trim();
+}
+
+function cacheKeyForCard(setCode = "", cardNo = "") {
+  const code = String(setCode || "").trim().toUpperCase();
+  const no = String(cardNo || "").trim();
+  if (!code || !no) return "";
+  return `${code}:${no}`;
+}
+
+function cacheValueValid(value) {
+  return Boolean(value && typeof value === "object" && value.ok === true);
+}
+
+function readCachedCardDetails(setCode = "", cardNo = "") {
+  const key = cacheKeyForCard(setCode, cardNo);
+  if (!key) return null;
+  const row = memCache.get(key);
+  if (!row || row.expiresAt <= Date.now() || !cacheValueValid(row.value)) {
+    if (row) memCache.delete(key);
+    return null;
+  }
+  return { ...row.value, cached: true };
+}
+
+function writeCachedCardDetails(setCode = "", cardNo = "", value) {
+  const key = cacheKeyForCard(setCode, cardNo);
+  if (!key || !cacheValueValid(value)) return false;
+  memCache.set(key, {
+    value: {
+      ok: true,
+      productUrl: String(value.productUrl || ""),
+      soldListings: Array.isArray(value.soldListings) ? value.soldListings : [],
+      gradedGuides: Array.isArray(value.gradedGuides) ? value.gradedGuides : []
+    },
+    expiresAt: Date.now() + CACHE_TTL_MS
+  });
+  cacheMeta.entryCount = memCache.size;
+  schedulePersistPriceChartingCardDetailsCache();
+  return true;
+}
+
+function buildCacheFilePayload() {
+  const now = Date.now();
+  const entries = [];
+  for (const [key, row] of memCache.entries()) {
+    if (!row || row.expiresAt <= now || !cacheValueValid(row.value)) continue;
+    entries.push({
+      key,
+      expiresAt: row.expiresAt,
+      value: row.value
+    });
+  }
+  return {
+    version: CACHE_VERSION,
+    savedAt: new Date().toISOString(),
+    meta: {
+      entryCount: entries.length
+    },
+    entries
+  };
+}
+
+function schedulePersistPriceChartingCardDetailsCache() {
+  if (persistTimer) return;
+  persistTimer = setTimeout(() => {
+    persistTimer = null;
+    void enqueuePersistPriceChartingCardDetailsCacheNow();
+  }, PERSIST_DEBOUNCE_MS);
+}
+
+function enqueuePersistPriceChartingCardDetailsCacheNow() {
+  persistChain = persistChain
+    .then(() => persistPriceChartingCardDetailsCacheNow())
+    .catch(() => {});
+  return persistChain;
+}
+
+async function persistPriceChartingCardDetailsCacheNow() {
+  if (persistTimer) {
+    clearTimeout(persistTimer);
+    persistTimer = null;
+  }
+  const payload = buildCacheFilePayload();
+  cacheMeta.savedAt = payload.savedAt;
+  cacheMeta.entryCount = payload.meta.entryCount;
+  await fsp.mkdir(DATA_DIR, { recursive: true });
+  await fsp.writeFile(CACHE_FILE, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+}
+
+async function loadPersistedPriceChartingCardDetailsCache() {
+  try {
+    const raw = await fsp.readFile(CACHE_FILE, "utf8");
+    const parsed = JSON.parse(raw);
+    const fileVersion = Number(parsed?.version) || 0;
+    if (fileVersion !== CACHE_VERSION) {
+      console.log(
+        `[pricing-cache] skipping stale PriceCharting card details cache (v${fileVersion} -> v${CACHE_VERSION})`
+      );
+      return;
+    }
+    const rows = Array.isArray(parsed?.entries) ? parsed.entries : [];
+    const revivedExpiresAt = Date.now() + CACHE_TTL_MS;
+    let restored = 0;
+    for (const row of rows) {
+      const key = String(row?.key || "").trim();
+      const value = row?.value && typeof row.value === "object" ? row.value : null;
+      if (!key || !cacheValueValid(value)) continue;
+      memCache.set(key, { value, expiresAt: revivedExpiresAt });
+      restored += 1;
+    }
+    cacheMeta.savedAt = String(parsed?.savedAt || "").trim() || null;
+    cacheMeta.entryCount = restored;
+    if (restored > 0) {
+      console.log(`[pricing-cache] restored ${restored} persisted PriceCharting card detail caches`);
+    }
+  } catch {
+    // no cache file yet
+  }
+}
+
+function getPriceChartingCardDetailsCacheMeta() {
+  const now = Date.now();
+  let valid = 0;
+  for (const row of memCache.values()) {
+    if (row && row.expiresAt > now && cacheValueValid(row.value)) valid += 1;
+  }
+  return {
+    cacheVersion: CACHE_VERSION,
+    cacheSavedAt: cacheMeta.savedAt,
+    cacheEntryCount: valid
+  };
+}
+
+async function getOrFetchPriceChartingCardDetails(
+  { setCode = "", setName = "", cardNo = "", cardName = "" } = {},
+  { forceRefresh = false, cacheOnly = false } = {}
+) {
+  if (!forceRefresh) {
+    const cached = readCachedCardDetails(setCode, cardNo);
+    if (cached) return cached;
+  }
+  if (cacheOnly) {
+    return {
+      ok: false,
+      pending: true,
+      cached: false,
+      productUrl: "",
+      soldListings: [],
+      gradedGuides: []
+    };
+  }
+  const fresh = await fetchPriceChartingCardDetailsForCard({
+    setCode,
+    setName,
+    cardNo,
+    cardName
+  });
+  if (fresh?.ok) {
+    writeCachedCardDetails(setCode, cardNo, fresh);
+  }
+  return { ...fresh, cached: false };
+}
+
+async function collectEnglishCardsForPriceChartingPrewarm() {
+  const raw = await fsp.readFile(SET_CARD_LIST_FILE, "utf8");
+  const parsed = JSON.parse(raw);
+  const byCode = parsed?.byCode && typeof parsed.byCode === "object" ? parsed.byCode : {};
+  const cards = [];
+  for (const [setCode, entry] of Object.entries(byCode)) {
+    const cardMap = entry?.cards && typeof entry.cards === "object" ? entry.cards : {};
+    const setName = String(entry?.sourceTitle || "").trim();
+    for (const [cardNo, cardName] of Object.entries(cardMap)) {
+      const code = String(setCode || "").trim().toUpperCase();
+      const no = String(cardNo || "").trim();
+      if (!code || !no) continue;
+      cards.push({
+        setCode: code,
+        setName,
+        cardNo: no,
+        cardName: decodeHtmlName(cardName)
+      });
+    }
+  }
+  return cards;
+}
+
+async function refreshPriceChartingCardDetailsBatch(
+  cards,
+  {
+    concurrency = 1,
+    max = 100_000,
+    skipValidCached = false,
+    persistEvery = 1000,
+    onProgress,
+    onFail,
+    shouldCancel = () => false
+  } = {}
+) {
+  const list = (Array.isArray(cards) ? cards : []).slice(0, max);
+  if (!list.length) return { ok: 0, fail: 0, skipped: 0, total: 0, cancelled: false };
+
+  let cursor = 0;
+  let ok = 0;
+  let fail = 0;
+  let skipped = 0;
+  let processed = 0;
+
+  const reportProgress = () => {
+    if (typeof onProgress !== "function") return;
+    onProgress({
+      total: list.length,
+      done: ok + fail + skipped,
+      ok,
+      fail,
+      skipped,
+      ...getPriceChartingCardDetailsCacheMeta()
+    });
+  };
+
+  const workers = Array.from({ length: Math.min(concurrency, list.length) }, async () => {
+    while (cursor < list.length) {
+      if (shouldCancel()) break;
+      const card = list[cursor];
+      cursor += 1;
+      try {
+        if (skipValidCached && readCachedCardDetails(card.setCode, card.cardNo)) {
+          skipped += 1;
+        } else {
+          const result = await getOrFetchPriceChartingCardDetails(card, { forceRefresh: true });
+          if (result?.ok) {
+            ok += 1;
+          } else {
+            fail += 1;
+            if (typeof onFail === "function") {
+              onFail(card, result?.error || "PriceCharting details fetch failed");
+            }
+          }
+        }
+      } catch (err) {
+        fail += 1;
+        if (typeof onFail === "function") {
+          onFail(card, err?.message || "PriceCharting details fetch failed");
+        }
+      }
+      processed += 1;
+      if (persistEvery > 0 && processed % persistEvery === 0) {
+        await enqueuePersistPriceChartingCardDetailsCacheNow();
+      }
+      if (processed % 10 === 0 || processed === list.length) reportProgress();
+    }
+  });
+
+  await Promise.all(workers);
+  reportProgress();
+  await persistPriceChartingCardDetailsCacheNow();
+  return {
+    ok,
+    fail,
+    skipped,
+    total: list.length,
+    cancelled: shouldCancel()
+  };
+}
+
+module.exports = {
+  loadPersistedPriceChartingCardDetailsCache,
+  persistPriceChartingCardDetailsCacheNow,
+  enqueuePersistPriceChartingCardDetailsCacheNow,
+  getPriceChartingCardDetailsCacheMeta,
+  readCachedCardDetails,
+  writeCachedCardDetails,
+  getOrFetchPriceChartingCardDetails,
+  collectEnglishCardsForPriceChartingPrewarm,
+  refreshPriceChartingCardDetailsBatch
+};

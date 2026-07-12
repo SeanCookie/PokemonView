@@ -1,0 +1,98 @@
+# Secrets — never commit
+backend/.env
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+node_modules/
+backend/node_modules/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*~
+
+# Logs and temp
+*.log
+npm-debug.log*
+.cache/
+
+# Archives (deploy zips, accidental copies — use folders under backend/data/ instead)
+**/*.zip
+
+# Generated deploy staging folders
+deploy/staging-*/
+
+# Corrupt JSON backups from interrupted writes
+backend/data/**/*.corrupt-*.bak
+
+# Playwright browser downloads (optional dependency)
+.playwright/
+ms-playwright/
+
+# Local test entry (not part of production app)
+app-test.js
+
+# Dev / import tooling (not part of production deploy)
+backend/scripts/
+DEPLOY-*.md
+
+# Root scripts — only noop-build.js is tracked for PaaS build step
+scripts/*
+!scripts/noop-build.js
+!scripts/cf-build.js
+!scripts/localize-catalog.js
+!scripts/backfill-missing-set-images.js
+!scripts/prune-docker-context.js
+!scripts/setup-r2-card-images.js
+!scripts/upload-card-images-to-r2.js
+!scripts/upload-static-assets-to-r2.js
+!scripts/split-set-card-details.js
+
+# Runtime caches (rebuilt on server)
+backend/data/tcg-link-prices-cache.json
+backend/data/tcg-link-price-fail-links.json
+backend/data/tcg-price-ledger.json
+backend/data/pricecharting-card-details-cache.json
+backend/data/pricecharting-market-history-cache.json
+backend/data/pricecharting-index-cache/
+
+# Japanese card images (catalog tab disabled)
+backend/data/card-images-japanese/
+
+# Restock vendor snapshots (import tooling only; restock-tracker.json is kept)
+backend/data/amazon-pokemon-store*
+backend/data/walmart-*
+backend/data/derium-*
+backend/data/trollandtoad-*
+backend/data/pokene-*
+backend/data/smoke-and-mirrors-*
+backend/data/wholesale-gaming-*
+backend/data/nowinstock-*
+backend/data/target-*
+
+# Import job status (dev metadata)
+backend/data/set-card-import-status.json
+backend/data/set-card-details-import-status.json
+backend/data/set-card-details/by-code/
+
+# User-uploaded showcase avatars
+backend/data/showcase-avatars/*
+!backend/data/showcase-avatars/.gitkeep
+
+# Poke scanner DB (large; optional feature)
+backend/data/poke-scanner/*.db
+
+# Card images (local/R2; not uploaded to GitHub)
+backend/data/card-images/*
+!backend/data/card-images/README.md
+
+# Live user store (use empty template in repo)
+backend/data/store.json
+
+
+backend/data/store.json.local-backup
+
