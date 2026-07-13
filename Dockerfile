@@ -38,5 +38,5 @@ ENV PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 EXPOSE 8080
 
-# Absolute node path in case start({ env }) replaces PATH.
-CMD ["/usr/local/bin/node", "app.js"]
+# Absolute paths in case start({ env }) replaces PATH or cwd is not /app.
+CMD ["/usr/local/bin/node", "/app/app.js"]

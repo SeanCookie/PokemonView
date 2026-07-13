@@ -53,8 +53,8 @@ function containerEnvFromBindings(bindings) {
 export class PokemonViewContainer extends Container {
   defaultPort = 8080;
   sleepAfter = "30m";
-  // Absolute path — survives env replacement that clears PATH.
-  entrypoint = ["/usr/local/bin/node", "app.js"];
+  // Absolute paths — survives env replacement / non-/app cwd.
+  entrypoint = ["/usr/local/bin/node", "/app/app.js"];
   enableInternet = true;
 
   constructor(ctx, env) {

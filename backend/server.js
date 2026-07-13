@@ -9311,6 +9311,12 @@ function shouldDeferHeavyStartup() {
   return !env.PORT || String(process.env.PORT) !== String(env.PORT);
 }
 
+async function bootstrapAfterListen() {
+  // Used by app.js when the HTTP port is already bound (Cloudflare Containers cold start).
+  await bootstrapServer({ hosted: shouldDeferHeavyStartup() });
+  onServerListening();
+}
+
 async function startProductionServer() {
   // GoDaddy PaaS injects PORT — never override with backend/.env when already set.
   if (!process.env.PORT && env.PORT) {
@@ -9336,18 +9342,19 @@ async function startProductionServer() {
   });
 
   // Listen first so the platform health check passes; warm catalogs in the background.
-  bootstrapServer({ hosted: shouldDeferHeavyStartup() })
-    .then(() => onServerListening())
-    .catch((err) => {
-      // eslint-disable-next-line no-console
-      console.error("[startup] Bootstrap failed:", err);
-    });
+  bootstrapAfterListen().catch((err) => {
+    // eslint-disable-next-line no-console
+    console.error("[startup] Bootstrap failed:", err);
+  });
 
   return server;
 }
 
 handleRequest.handleRequest = handleRequest;
 handleRequest.startProductionServer = startProductionServer;
+handleRequest.bootstrapAfterListen = bootstrapAfterListen;
+handleRequest.bootstrapServer = bootstrapServer;
+handleRequest.onServerListening = onServerListening;
 handleRequest.isPassengerRuntime = isPassengerRuntime;
 module.exports = handleRequest;
 
