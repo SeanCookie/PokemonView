@@ -117,9 +117,9 @@
         shuffle(cards);
       }
     } else {
-      /** Fewer layers than before = less decode / layout work. */
-      const slotCount = narrow ? 72 : 102;
-      const maxDistinct = Math.min(pool.length, narrow ? 28 : 44);
+      /** Fewer layers = less decode / layout work. */
+      const slotCount = narrow ? 40 : 56;
+      const maxDistinct = Math.min(pool.length, narrow ? 20 : 32);
       const effectivePool = pool.slice(0, Math.max(1, maxDistinct));
       cards = [];
       for (let i = 0; i < slotCount; i += 1) {
@@ -244,27 +244,28 @@
     const narrow = window.innerWidth < 900;
     const homeSky = Boolean(opts.homeSky);
     let pool = uniq;
-    /** Home: full catalog, shuffled deck — every card gets a turn before repeats. */
+    /** Home: small shuffled deck — reuse cached images instead of walking the full catalog. */
     let homeDeck = null;
     let homeDeckIndex = 0;
     if (catalogSearch) {
       const maxUnique = narrow ? 12 : 16;
       pool = uniq.slice(0, Math.min(uniq.length, maxUnique));
     } else if (homeSky) {
-      homeDeck = shuffle(uniq);
+      const maxDistinct = Math.min(uniq.length, narrow ? 36 : 56);
+      homeDeck = shuffle(uniq.slice(0, maxDistinct));
       pool = homeDeck;
     } else {
       const maxDistinct = Math.min(uniq.length, narrow ? 28 : 44);
       pool = uniq.slice(0, Math.max(1, maxDistinct));
     }
     const maxActive = catalogSearch
-      ? Math.min(narrow ? 10 : 14, pool.length)
+      ? Math.min(narrow ? 8 : 12, pool.length)
       : homeSky
-        ? Math.min(narrow ? 28 : 36, pool.length)
-        : Math.min(narrow ? 20 : 28, pool.length);
+        ? Math.min(narrow ? 12 : 16, pool.length)
+        : Math.min(narrow ? 16 : 22, pool.length);
     const inUse = new Set();
-    const durMinSec = catalogSearch ? 11 : 7;
-    const durRangeSec = catalogSearch ? 8 : 9;
+    const durMinSec = catalogSearch ? 12 : 9;
+    const durRangeSec = catalogSearch ? 8 : 8;
 
     function pickUrl() {
       if (homeSky && homeDeck && homeDeck.length) {
@@ -307,11 +308,11 @@
       const img = document.createElement("img");
       img.className = "flying-card flying-card--recycle";
       img.alt = "";
-      img.loading = "eager";
+      img.loading = "lazy";
       img.decoding = "async";
       img.referrerPolicy = "no-referrer";
       if ("fetchPriority" in img) {
-        img.fetchPriority = Math.random() < 0.42 ? "high" : "low";
+        img.fetchPriority = "low";
       }
       img.style.setProperty("--x-start", xs);
       img.style.setProperty("--x-end", xe);

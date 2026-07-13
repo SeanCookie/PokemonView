@@ -11,21 +11,17 @@
 
 .flying-card {
   position: absolute;
-  width: clamp(64px, 8.5vw, 128px);
+  width: clamp(56px, 7.2vw, 104px);
   aspect-ratio: 63 / 88;
   object-fit: cover;
-  border-radius: 13px;
-  border: 1px solid rgba(230, 240, 255, 0.5);
-  box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.35) inset,
-    0 0 1px rgba(255, 255, 255, 0.35) inset,
-    0 16px 36px rgba(0, 0, 0, 0.38),
-    0 0 28px rgba(100, 170, 255, 0.28);
-  filter: saturate(1.07) contrast(1.06) brightness(1.04);
+  border-radius: 12px;
+  border: 1px solid rgba(230, 240, 255, 0.45);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.36);
   opacity: 0;
-  will-change: transform, opacity;
+  will-change: transform;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+  contain: layout style paint;
   animation-name: infinity-fly-card;
   animation-timing-function: cubic-bezier(0.42, 0, 0.58, 1);
   animation-iteration-count: infinite;
