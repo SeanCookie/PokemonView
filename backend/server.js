@@ -51,6 +51,7 @@ const {
   fetchPriceChartingMarketHistoryForCard,
   fetchPriceChartingUngradedPriceForCard,
   fetchPriceChartingUngradedPriceFromProductUrl,
+  fetchPriceChartingCardDetailsFromProductUrl,
   comparePriceChartingSeries
 } = require("./lib/pricecharting-market-history");
 const {
@@ -59,7 +60,9 @@ const {
   getPriceChartingCardDetailsCacheMeta,
   collectEnglishCardsForPriceChartingPrewarm,
   refreshPriceChartingCardDetailsBatch,
-  enqueuePersistPriceChartingCardDetailsCacheNow
+  enqueuePersistPriceChartingCardDetailsCacheNow,
+  writeCachedCardDetails,
+  persistPriceChartingCardDetailsCacheNow
 } = require("./lib/pricecharting-card-details-cache");
 const { loadPersistedPriceChartingMarketHistoryCache } = require("./lib/pricecharting-market-history-cache");
 const { requestPasswordReset, completePasswordReset, isEmailConfigured } = require("./lib/password-reset");
@@ -268,6 +271,7 @@ const sessions = new Map();
 let restockRefreshTimer = null;
 let restockRefreshKickoffTimer = null;
 let restockRefreshInFlight = false;
+let restockRefreshCancelRequested = false;
 let restockRefreshMeta = {
   lastStartedAt: null,
   lastFinishedAt: null,
@@ -6229,11 +6233,24 @@ function restockRetailerAllowed(retailerName, selectedSet) {
   return selectedSet.has(String(retailerName || "").trim());
 }
 
+function isRestockRefreshCancelled() {
+  return restockRefreshCancelRequested;
+}
+
+function clearRestockRefreshCancelFlag() {
+  restockRefreshCancelRequested = false;
+}
+
+function requestRestockRefreshCancel() {
+  restockRefreshCancelRequested = true;
+}
+
 async function refreshRestockTrackerHourlyTick(options = {}) {
   if (restockRefreshInFlight) {
     return;
   }
   restockRefreshInFlight = true;
+  clearRestockRefreshCancelFlag();
   const selectedRetailers = normalizeRestockRetailerSelection(options.retailers);
   const selectedSet = selectedRetailers ? new Set(selectedRetailers) : null;
   const startedAt = new Date().toISOString();
@@ -6287,6 +6304,7 @@ async function refreshRestockTrackerHourlyTick(options = {}) {
     // Stamp lastAvailable immediately for selected in-stock items.
     let inStockStamped = 0;
     for (let i = 0; i < stampTargets.length; i += 1) {
+      if (isRestockRefreshCancelled()) break;
       const item = stampTargets[i];
       if (String(item.status || "").toLowerCase() === "in_stock") {
         item.lastAvailable = nowIso;
@@ -6318,9 +6336,12 @@ async function refreshRestockTrackerHourlyTick(options = {}) {
     let smokePriceCount = 0;
     let pokeNeStatusCount = 0;
     let pokeNePriceCount = 0;
+    let amazonStatusCount = 0;
+    let priceCount = 0;
+    let stopped = isRestockRefreshCancelled();
 
     // Smoke & Mirrors / PokeNE: use retailer catalog APIs (HTML scrapes are unreliable).
-    if (restockRetailerAllowed("Smoke & Mirrors Hobby", selectedSet)) {
+    if (!stopped && restockRetailerAllowed("Smoke & Mirrors Hobby", selectedSet)) {
       try {
         setRestockRefreshProgress({
           phase: "smoke",
@@ -6349,9 +6370,10 @@ async function refreshRestockTrackerHourlyTick(options = {}) {
       } catch (err) {
         console.warn(`[restock-hourly] Smoke & Mirrors catalog refresh failed: ${err.message}`);
       }
+      stopped = isRestockRefreshCancelled();
     }
 
-    if (restockRetailerAllowed("PokeNE", selectedSet)) {
+    if (!stopped && restockRetailerAllowed("PokeNE", selectedSet)) {
       try {
         setRestockRefreshProgress({
           phase: "pokene",
@@ -6380,12 +6402,11 @@ async function refreshRestockTrackerHourlyTick(options = {}) {
       } catch (err) {
         console.warn(`[restock-hourly] PokeNE catalog refresh failed: ${err.message}`);
       }
+      stopped = isRestockRefreshCancelled();
     }
 
     // Re-verify Amazon in-stock listings to catch sellouts and price changes.
-    let amazonStatusCount = 0;
-    let priceCount = 0;
-    if (restockRetailerAllowed("Amazon", selectedSet)) {
+    if (!stopped && restockRetailerAllowed("Amazon", selectedSet)) {
       try {
         setRestockRefreshProgress({
           phase: "amazon",
@@ -6397,6 +6418,7 @@ async function refreshRestockTrackerHourlyTick(options = {}) {
         const amazonStatusUpdates = await refreshAmazonItems(items, {
           verifyStatuses: ["in_stock"],
           delayMs: 250,
+          shouldCancel: isRestockRefreshCancelled,
           onProgress: ({ current, total, name }) => {
             const pct = total > 0 ? 36 + Math.round((current / total) * 24) : 36;
             setRestockRefreshProgress({
@@ -6417,6 +6439,7 @@ async function refreshRestockTrackerHourlyTick(options = {}) {
       } catch (err) {
         console.warn(`[restock-hourly] Amazon status check failed: ${err.message}`);
       }
+      stopped = isRestockRefreshCancelled();
     }
 
     // Re-check tracked product pages (best-effort by retailer) for status + price drift.
@@ -6432,7 +6455,7 @@ async function refreshRestockTrackerHourlyTick(options = {}) {
     const pageRetailersToRun = selectedSet
       ? pageScrapeRetailers.filter((name) => selectedSet.has(name))
       : pageScrapeRetailers;
-    if (pageRetailersToRun.length) {
+    if (!stopped && pageRetailersToRun.length) {
       try {
         setRestockRefreshProgress({
           phase: "prices",
@@ -6447,6 +6470,7 @@ async function refreshRestockTrackerHourlyTick(options = {}) {
           delayMs: 120,
           onlyRetailers: pageRetailersToRun,
           skipRetailers: ["Smoke & Mirrors Hobby", "PokeNE"],
+          shouldCancel: isRestockRefreshCancelled,
           onProgress: ({ current, total, name, retailer }) => {
             const pct = total > 0 ? 60 + Math.round((current / total) * 35) : 60;
             const who = retailer ? `${retailer} ` : "";
@@ -6465,11 +6489,12 @@ async function refreshRestockTrackerHourlyTick(options = {}) {
       } catch (err) {
         console.warn(`[restock-hourly] price refresh failed: ${err.message}`);
       }
+      stopped = isRestockRefreshCancelled();
     }
 
     setRestockRefreshProgress({
       phase: "saving",
-      label: "Saving restock cache…",
+      label: stopped ? "Saving restock cache (stopped)…" : "Saving restock cache…",
       current: 1,
       total: 1,
       percent: 97
@@ -6497,17 +6522,19 @@ async function refreshRestockTrackerHourlyTick(options = {}) {
       itemCount: items.length
     };
     setRestockRefreshProgress({
-      phase: "done",
-      label: selectedRetailers
-        ? `Refresh complete (${selectedRetailers.join(", ")})`
-        : "Refresh complete",
+      phase: stopped ? "stopped" : "done",
+      label: stopped
+        ? "Refresh stopped"
+        : selectedRetailers
+          ? `Refresh complete (${selectedRetailers.join(", ")})`
+          : "Refresh complete",
       current: 1,
       total: 1,
-      percent: 100
+      percent: stopped ? restockRefreshMeta.progress?.percent || 97 : 100
     });
 
     console.log(
-      `[restock-hourly] done: inStock=${inStockStamped}, amazonStatus=${amazonStatusCount}, priceUpdates=${priceCount}, smoke=${smokeStatusCount}/${smokePriceCount}, pokene=${pokeNeStatusCount}/${pokeNePriceCount}` +
+      `[restock-hourly] ${stopped ? "stopped" : "done"}: inStock=${inStockStamped}, amazonStatus=${amazonStatusCount}, priceUpdates=${priceCount}, smoke=${smokeStatusCount}/${smokePriceCount}, pokene=${pokeNeStatusCount}/${pokeNePriceCount}` +
         (selectedRetailers ? `, retailers=${selectedRetailers.join("|")}` : "")
     );
 
@@ -6523,6 +6550,7 @@ async function refreshRestockTrackerHourlyTick(options = {}) {
     console.warn(`[restock-hourly] skipped: ${err.message}`);
   } finally {
     restockRefreshInFlight = false;
+    clearRestockRefreshCancelFlag();
   }
 }
 
@@ -9021,6 +9049,61 @@ async function route(req, res) {
     return;
   }
 
+  if (pathname === "/api/admin/pricecharting-details/fail-links/resolve" && req.method === "POST") {
+    const admin = requireAdmin(req, res);
+    if (!admin) return;
+    try {
+      const parsed = (await readBody(req)) || {};
+      const setCode = String(parsed.setCode || "").trim().toUpperCase();
+      const cardNo = String(parsed.cardNo || "").trim();
+      const productUrl = String(
+        parsed.productUrl || parsed.priceUrl || parsed.priceLink || parsed.link || ""
+      ).trim();
+      if (!setCode || !cardNo) {
+        json(res, 400, { ok: false, error: "setCode and cardNo are required" });
+        return;
+      }
+      if (!isPriceChartingProductUrl(productUrl)) {
+        json(res, 400, { ok: false, error: "Paste a PriceCharting product page URL" });
+        return;
+      }
+      const failRow = priceChartingFailLinks.get(priceChartingFailLinkKey(setCode, cardNo)) || {};
+      const details = await fetchPriceChartingCardDetailsFromProductUrl(productUrl, {
+        cardName: String(parsed.cardName || failRow.cardName || "").trim(),
+        cardNo
+      });
+      if (!details?.ok) {
+        json(res, 400, {
+          ok: false,
+          error: details?.error || "Could not load PriceCharting details from that URL"
+        });
+        return;
+      }
+      const written = writeCachedCardDetails(setCode, cardNo, details);
+      if (!written) {
+        json(res, 400, { ok: false, error: "Could not write PriceCharting details to cache" });
+        return;
+      }
+      removePriceChartingFailLink(setCode, cardNo);
+      await persistPriceChartingCardDetailsCacheNow();
+      await flushPersistPriceChartingFailLinks();
+      const meta = getPriceChartingCardDetailsCacheMeta();
+      json(res, 200, {
+        ok: true,
+        setCode,
+        cardNo,
+        productUrl: details.productUrl,
+        soldListings: Array.isArray(details.soldListings) ? details.soldListings.length : 0,
+        gradedGuides: Array.isArray(details.gradedGuides) ? details.gradedGuides.length : 0,
+        failLinkCount: priceChartingFailLinks.size,
+        ...meta
+      });
+    } catch (err) {
+      json(res, 400, { ok: false, error: err.message || "Failed to save PriceCharting details" });
+    }
+    return;
+  }
+
   if (pathname === "/api/admin/pricecharting-details/fail-links/clear" && req.method === "POST") {
     const admin = requireAdmin(req, res);
     if (!admin) return;
@@ -9223,6 +9306,30 @@ async function route(req, res) {
         : "Restock tracker refresh started",
       inFlight: true,
       retailers,
+      meta: restockRefreshMeta
+    });
+    return;
+  }
+
+  if (pathname === "/api/admin/restock/stop" && req.method === "POST") {
+    const admin = requireAdmin(req, res);
+    if (!admin) return;
+    if (!restockRefreshInFlight) {
+      json(res, 200, {
+        ok: true,
+        stopped: false,
+        message: "No restock refresh is running",
+        inFlight: false,
+        meta: restockRefreshMeta
+      });
+      return;
+    }
+    requestRestockRefreshCancel();
+    json(res, 200, {
+      ok: true,
+      stopped: true,
+      message: "Stop requested. Finishing the current restock check…",
+      inFlight: true,
       meta: restockRefreshMeta
     });
     return;

@@ -51,6 +51,7 @@
   const btnRestockSelectNone = document.getElementById("btnRestockSelectNone");
   const restockRefreshMsg = document.getElementById("restockRefreshMsg");
   const btnRestockRefresh = document.getElementById("btnRestockRefresh");
+  const btnRestockStop = document.getElementById("btnRestockStop");
   const btnClearActivities = document.getElementById("btnClearActivities");
   const siteStatusMsg = document.getElementById("siteStatusMsg");
   const restockForm = document.getElementById("restockForm");
@@ -335,11 +336,19 @@
     }
 
     const busy = Boolean(restock.inFlight);
+    const stopped = !busy && String(restock.progress?.phase || "").toLowerCase() === "stopped";
     if (restockStatusBadge) {
-      restockStatusBadge.textContent = busy ? "refreshing" : restock.lastError ? "error" : "idle";
+      restockStatusBadge.textContent = busy
+        ? "refreshing"
+        : restock.lastError
+          ? "error"
+          : stopped
+            ? "stopped"
+            : "idle";
       restockStatusBadge.classList.remove("running", "error", "stopped");
       if (busy) restockStatusBadge.classList.add("running");
       else if (restock.lastError) restockStatusBadge.classList.add("error");
+      else if (stopped) restockStatusBadge.classList.add("stopped");
     }
 
     const progress = restock.progress || {};
@@ -362,6 +371,8 @@
         restockProgressText.textContent = `${progress.label || "Refreshing…"}${counts} · ${percent}%`;
       } else if (restock.lastError) {
         restockProgressText.textContent = progress.label || restock.lastError;
+      } else if (stopped) {
+        restockProgressText.textContent = progress.label || "Refresh stopped";
       } else if (percent >= 100 && restock.lastFinishedAt) {
         restockProgressText.textContent = progress.label || "Refresh complete";
       } else {
@@ -372,6 +383,10 @@
     if (btnRestockRefresh) {
       btnRestockRefresh.disabled = busy;
       btnRestockRefresh.textContent = busy ? "Refresh running…" : "Refresh restock tracker";
+    }
+    if (btnRestockStop) {
+      btnRestockStop.hidden = !busy;
+      btnRestockStop.disabled = !busy;
     }
     if (btnRestockSelectAll) btnRestockSelectAll.disabled = busy;
     if (btnRestockSelectNone) btnRestockSelectNone.disabled = busy;
@@ -954,25 +969,68 @@
     if (pcFailLinksCount) pcFailLinksCount.textContent = String(count);
     pcFailLinksSection.hidden = count === 0;
     pcFailLinksList.innerHTML = rows
-      .map((row) => {
-        const setCode = escapeHtml(row.setCode || "");
-        const cardNo = escapeHtml(row.cardNo || "");
+      .map((row, index) => {
+        const setCode = String(row.setCode || "").trim().toUpperCase();
+        const cardNo = String(row.cardNo || "").trim();
         const cardName = escapeHtml(row.cardName || "Unknown card");
         const setName = escapeHtml(row.setName || "");
         const error = escapeHtml(row.error || "Failed");
-        return `<div class="admin-fail-link-row" data-set-code="${setCode}" data-card-no="${cardNo}">
-          <div class="admin-fail-link-main">
-            <strong>${cardName}</strong>
-            <span class="mono">${setCode} #${cardNo}${setName ? ` · ${setName}` : ""}</span>
-            <span class="admin-fail-link-error">${error}</span>
+        const rowId = `pc-fail-link-${index}`;
+        return `<article class="admin-fail-link-row" data-set-code="${escapeHtml(setCode)}" data-card-no="${escapeHtml(cardNo)}">
+          <div class="admin-fail-link-meta">
+            <span class="admin-fail-link-product"><strong>${cardName}</strong></span>
+            <span class="admin-fail-link-when mono">${escapeHtml(setCode)} #${escapeHtml(cardNo)}${setName ? ` · ${setName}` : ""}</span>
           </div>
+          <div class="admin-fail-link-error">${error}</div>
           <div class="admin-fail-link-fields">
+            <label class="admin-fail-link-price-label">PriceCharting product page
+              <input type="url" placeholder="https://www.pricecharting.com/game/..." data-pc-fail-price-link />
+            </label>
+            <button type="button" class="admin-btn primary" data-pc-fail-save>Save to cache</button>
             <button type="button" class="admin-btn" data-pc-fail-dismiss>Dismiss</button>
-            <p class="admin-status"></p>
           </div>
-        </div>`;
+          <p class="admin-status" id="${rowId}-msg"></p>
+        </article>`;
       })
       .join("");
+
+    pcFailLinksList.querySelectorAll("[data-pc-fail-save]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const rowEl = btn.closest(".admin-fail-link-row");
+        const setCode = rowEl?.getAttribute("data-set-code") || "";
+        const cardNo = rowEl?.getAttribute("data-card-no") || "";
+        const productUrl = String(rowEl?.querySelector("[data-pc-fail-price-link]")?.value || "").trim();
+        const msgEl = rowEl?.querySelector(".admin-status");
+        if (!setCode || !cardNo) {
+          setStatus(msgEl, "Missing card identity.", "error");
+          return;
+        }
+        if (!productUrl) {
+          setStatus(msgEl, "Paste a PriceCharting product page URL.", "error");
+          return;
+        }
+        btn.disabled = true;
+        setStatus(msgEl, "Fetching PriceCharting details…", "");
+        try {
+          const saved = await api("/api/admin/pricecharting-details/fail-links/resolve", {
+            method: "POST",
+            body: JSON.stringify({ setCode, cardNo, productUrl })
+          });
+          const sold = Number(saved.soldListings || 0);
+          const guides = Number(saved.gradedGuides || 0);
+          setStatus(
+            msgEl,
+            `Saved to cache (${sold} sold listing${sold === 1 ? "" : "s"}, ${guides} grade guide${guides === 1 ? "" : "s"}).`,
+            "ok"
+          );
+          await refreshPcFailLinks();
+          await refreshPcCacheLive();
+        } catch (err) {
+          setStatus(msgEl, err.message, "error");
+          btn.disabled = false;
+        }
+      });
+    });
 
     pcFailLinksList.querySelectorAll("[data-pc-fail-dismiss]").forEach((btn) => {
       btn.addEventListener("click", async () => {
@@ -1198,6 +1256,8 @@
           stopRestockLivePolling();
           if (status.restock?.lastError) {
             setStatus(restockRefreshMsg, status.restock.lastError, "error");
+          } else if (String(status.restock?.progress?.phase || "").toLowerCase() === "stopped") {
+            setStatus(restockRefreshMsg, "Restock refresh stopped. Progress saved so far.", "ok");
           } else {
             setStatus(
               restockRefreshMsg,
@@ -1416,6 +1476,19 @@
     } catch (err) {
       setStatus(restockRefreshMsg, err.message, "error");
       if (btnRestockRefresh) btnRestockRefresh.disabled = false;
+    }
+  });
+
+  btnRestockStop?.addEventListener("click", async () => {
+    if (btnRestockStop) btnRestockStop.disabled = true;
+    setStatus(restockRefreshMsg, "Stopping…", "");
+    try {
+      await api("/api/admin/restock/stop", { method: "POST", body: "{}" });
+      setStatus(restockRefreshMsg, "Stop requested. Finishing the current restock check…", "ok");
+      startRestockLivePolling();
+    } catch (err) {
+      setStatus(restockRefreshMsg, err.message, "error");
+      if (btnRestockStop) btnRestockStop.disabled = false;
     }
   });
 

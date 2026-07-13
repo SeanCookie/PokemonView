@@ -735,11 +735,13 @@ async function refreshInStockPrices(items, options = {}) {
   });
 
   const onProgress = typeof options.onProgress === "function" ? options.onProgress : null;
+  const shouldCancel = typeof options.shouldCancel === "function" ? options.shouldCancel : () => false;
   if (onProgress) {
     onProgress({ current: 0, total: candidates.length, name: "", retailer: "" });
   }
 
   for (let index = 0; index < candidates.length; index += 1) {
+    if (shouldCancel()) break;
     const item = candidates[index];
     const url = String(item.productUrl || item.statusUrl || "");
     try {
@@ -946,11 +948,13 @@ async function refreshAmazonItems(items, options = {}) {
   });
 
   const onProgress = typeof options.onProgress === "function" ? options.onProgress : null;
+  const shouldCancel = typeof options.shouldCancel === "function" ? options.shouldCancel : () => false;
   if (onProgress) {
     onProgress({ current: 0, total: candidates.length, name: "" });
   }
 
   for (let index = 0; index < candidates.length; index += 1) {
+    if (shouldCancel()) break;
     const item = candidates[index];
     const asin = extractAsin(item.productUrl || item.statusUrl);
     try {

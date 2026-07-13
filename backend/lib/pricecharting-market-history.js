@@ -959,9 +959,97 @@ async function fetchPriceChartingCardDetailsForCard({
   };
 }
 
+async function fetchPriceChartingCardDetailsFromProductUrl(
+  productUrl = "",
+  { cardName = "", cardNo = "" } = {}
+) {
+  const url = String(productUrl || "").trim();
+  const match = url.match(/pricecharting\.com\/game\/([^/?#]+)\/([^/?#]+)/i);
+  if (!match) {
+    return {
+      ok: false,
+      soldListings: [],
+      gradedGuides: [],
+      productUrl: url,
+      error: "Not a PriceCharting product URL"
+    };
+  }
+
+  const consoleSlug = decodeHtmlEntities(match[1]).trim();
+  const gameSlug = decodeHtmlEntities(match[2]).trim();
+  const product = {
+    consoleSlug,
+    gameSlug,
+    productUrl: url.split("?")[0]
+  };
+
+  let pageData;
+  try {
+    pageData = await fetchProductPageData(product);
+  } catch (err) {
+    return {
+      ok: false,
+      soldListings: [],
+      gradedGuides: [],
+      productUrl: product.productUrl,
+      error: err?.message || "PriceCharting page fetch failed"
+    };
+  }
+
+  if (!pageData || (!pageData.soldListings?.length && !pageData.gradedGuide?.grades?.length && !pageData.chartData)) {
+    return {
+      ok: false,
+      soldListings: [],
+      gradedGuides: [],
+      productUrl: product.productUrl,
+      error: "Could not read PriceCharting card details from that page"
+    };
+  }
+
+  const gradedGuides = [];
+  if (pageData?.gradedGuide?.grades?.length) {
+    gradedGuides.push({
+      variant: "normal",
+      title: pageData.gradedGuide.title,
+      grades: pageData.gradedGuide.grades,
+      productUrl: product.productUrl
+    });
+  }
+
+  const name = String(cardName || "").trim();
+  const no = String(cardNo || "").trim();
+  if (name && no && consoleSlug) {
+    try {
+      const index = await getConsoleIndex(consoleSlug);
+      const reverseHoloProduct = await resolveReverseHoloProduct(index, name, no, consoleSlug);
+      if (reverseHoloProduct) {
+        const reversePageData = await fetchProductPageData(reverseHoloProduct);
+        if (reversePageData?.gradedGuide?.grades?.length) {
+          gradedGuides.push({
+            variant: "reverse_holo",
+            title: reversePageData.gradedGuide.title,
+            grades: reversePageData.gradedGuide.grades,
+            productUrl: reverseHoloProduct.productUrl
+          });
+        }
+      }
+    } catch {
+      // reverse holo is optional
+    }
+  }
+
+  return {
+    ok: true,
+    productUrl: product.productUrl,
+    soldListings: pageData?.soldListings || [],
+    gradedGuides
+  };
+}
+
 module.exports = {
   fetchPriceChartingMarketHistoryForCard,
   fetchPriceChartingCardDetailsForCard,
+  fetchPriceChartingCardDetailsFromProductUrl,
   fetchPriceChartingUngradedPriceForCard,
   fetchPriceChartingUngradedPriceFromProductUrl,
   resolveConsoleSlug,

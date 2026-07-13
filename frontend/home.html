@@ -232,6 +232,13 @@
       return `$${Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
 
+    let kpiLoadToken = 0;
+
+    function clearHeroKpis() {
+      const el = byId("heroKpis");
+      if (el) el.innerHTML = "";
+    }
+
     function renderKpis(k, prefs = {}) {
       const showCost = prefs.showCostBasis === true;
       const showPnL = prefs.showUnrealizedPnL === true;
@@ -280,20 +287,41 @@
     scheduleHomeCardSky();
 
     async function loadSignedInKpis() {
-      const dashboardRes = await fetch("/api/dashboard");
-      const dashboard = dashboardRes.ok ? await dashboardRes.json() : { kpis: {}, preferences: {} };
-      const prefs =
-        dashboard.preferences ||
-        window.InfinityAccount?.getUser?.()?.preferences ||
-        {};
-      renderKpis(dashboard.kpis || {}, prefs);
+      const token = ++kpiLoadToken;
+      try {
+        const dashboardRes = await fetch("/api/dashboard", { credentials: "same-origin" });
+        if (token !== kpiLoadToken) return;
+        if (!window.InfinityAccount?.isSignedIn?.()) {
+          clearHeroKpis();
+          return;
+        }
+        if (!dashboardRes.ok) {
+          clearHeroKpis();
+          return;
+        }
+        const dashboard = await dashboardRes.json();
+        if (token !== kpiLoadToken) return;
+        if (!window.InfinityAccount?.isSignedIn?.()) {
+          clearHeroKpis();
+          return;
+        }
+        const prefs =
+          dashboard.preferences ||
+          window.InfinityAccount?.getUser?.()?.preferences ||
+          {};
+        renderKpis(dashboard.kpis || {}, prefs);
+      } catch {
+        if (token !== kpiLoadToken) return;
+        clearHeroKpis();
+      }
     }
 
     function applyHomeAuthState({ signedIn }) {
       if (signedIn) {
-        loadSignedInKpis().catch(() => renderKpis({}));
+        void loadSignedInKpis();
       } else {
-        byId("heroKpis").innerHTML = "";
+        kpiLoadToken += 1;
+        clearHeroKpis();
       }
     }
 

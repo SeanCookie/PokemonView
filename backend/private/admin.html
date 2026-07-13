@@ -152,7 +152,7 @@
             <span class="admin-fail-links-count" id="pcFailLinksCount">0</span>
             <button type="button" class="admin-btn" id="btnClearPcFailLinks">Clear all</button>
           </div>
-          <p class="admin-hint">These cards could not load PriceCharting sold/graded details. Dismiss after fixing or retrying.</p>
+          <p class="admin-hint">These cards could not load PriceCharting sold/graded details. Paste a PriceCharting product page URL to save them to cache, or dismiss.</p>
           <div class="admin-fail-links-list" id="pcFailLinksList"></div>
         </section>
         <p class="admin-status" id="pcStatusMsg"></p>
@@ -192,6 +192,7 @@
       </div>
       <div class="admin-actions">
         <button type="button" class="admin-btn primary" id="btnRestockRefresh">Refresh restock tracker</button>
+        <button type="button" class="admin-btn danger" id="btnRestockStop" hidden>Stop restock refresh</button>
       </div>
       <p class="admin-status" id="restockRefreshMsg"></p>
     </section>
@@ -343,6 +344,6 @@
   </main>
 
   <script src="/account-ui.js?v=5"></script>
-  <script src="/admin.js?v=4"></script>
+  <script src="/admin.js?v=5"></script>
 </body>
 </html>
