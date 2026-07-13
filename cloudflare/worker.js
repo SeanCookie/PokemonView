@@ -47,10 +47,12 @@ function containerEnvFromBindings(bindings) {
 export class PokemonViewContainer extends Container {
   defaultPort = 8080;
   sleepAfter = "30m";
+  // Prefer a real health path so port checks wait for the Node server.
+  pingEndpoint = "localhost/api/health";
 
-  async fetch(request) {
-    this.envVars = containerEnvFromBindings(this.env);
-    return super.fetch(request);
+  constructor(ctx, env) {
+    super(ctx, env);
+    this.envVars = containerEnvFromBindings(env);
   }
 
   onStart() {
