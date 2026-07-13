@@ -208,16 +208,67 @@
     renderInfinityCardSky(unique(merged));
   }
 
-  /** Home-only: no duplicate URLs in flight; each card is replaced after one pass. */
+  /** Home-only: fixed element pool — no create/destroy per flight. */
   let skyRecyclerToken = null;
 
   function stopInfinityCardSkyRecycler() {
+    if (skyRecyclerToken && typeof skyRecyclerToken.cleanup === "function") {
+      try {
+        skyRecyclerToken.cleanup();
+      } catch {
+        /* ignore */
+      }
+    }
     skyRecyclerToken = null;
     const sky = byId("cardSky");
     if (sky) {
       sky.replaceChildren();
-      sky.classList.remove("card-sky--recycle");
+      sky.classList.remove("card-sky--recycle", "card-sky-frozen");
     }
+  }
+
+  function downsampleCardUrl(url, maxW) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.decoding = "async";
+      img.referrerPolicy = "no-referrer";
+      img.onload = () => {
+        try {
+          const w = Math.max(1, Math.min(maxW, img.naturalWidth || maxW));
+          const ratio = (img.naturalHeight || maxW) / (img.naturalWidth || maxW);
+          const h = Math.max(1, Math.round(w * ratio));
+          const canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d", { alpha: false });
+          if (!ctx) {
+            resolve(url);
+            return;
+          }
+          ctx.drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL("image/jpeg", 0.72));
+        } catch {
+          resolve(url);
+        }
+      };
+      img.onerror = () => resolve("");
+      img.src = url;
+    });
+  }
+
+  async function preloadDownsampled(urls, maxW) {
+    const out = [];
+    const queue = urls.slice();
+    const concurrency = 4;
+    async function worker() {
+      while (queue.length) {
+        const u = queue.shift();
+        const data = await downsampleCardUrl(u, maxW);
+        if (data) out.push(data);
+      }
+    }
+    await Promise.all(Array.from({ length: concurrency }, () => worker()));
+    return out;
   }
 
   function startInfinityCardSkyRecycler(urls, options) {
@@ -243,124 +294,105 @@
 
     const narrow = window.innerWidth < 900;
     const homeSky = Boolean(opts.homeSky);
-    let pool = uniq;
-    /** Home: small shuffled deck — reuse cached images instead of walking the full catalog. */
-    let homeDeck = null;
-    let homeDeckIndex = 0;
+    const dpr = Math.min(1.25, window.devicePixelRatio || 1);
+    const thumbW = Math.round((narrow ? 72 : 96) * dpr);
+
+    let poolCap;
+    let maxActive;
+    let durMinSec;
+    let durRangeSec;
     if (catalogSearch) {
-      const maxUnique = narrow ? 12 : 16;
-      pool = uniq.slice(0, Math.min(uniq.length, maxUnique));
+      poolCap = narrow ? 10 : 14;
+      maxActive = narrow ? 5 : 7;
+      durMinSec = 14;
+      durRangeSec = 6;
     } else if (homeSky) {
-      const maxDistinct = Math.min(uniq.length, narrow ? 36 : 56);
-      homeDeck = shuffle(uniq.slice(0, maxDistinct));
-      pool = homeDeck;
+      poolCap = narrow ? 18 : 24;
+      maxActive = narrow ? 6 : 8;
+      durMinSec = 13;
+      durRangeSec = 5;
     } else {
-      const maxDistinct = Math.min(uniq.length, narrow ? 28 : 44);
-      pool = uniq.slice(0, Math.max(1, maxDistinct));
-    }
-    const maxActive = catalogSearch
-      ? Math.min(narrow ? 8 : 12, pool.length)
-      : homeSky
-        ? Math.min(narrow ? 12 : 16, pool.length)
-        : Math.min(narrow ? 16 : 22, pool.length);
-    const inUse = new Set();
-    const durMinSec = catalogSearch ? 12 : 9;
-    const durRangeSec = catalogSearch ? 8 : 8;
-
-    function pickUrl() {
-      if (homeSky && homeDeck && homeDeck.length) {
-        const n = homeDeck.length;
-        for (let attempt = 0; attempt < n; attempt += 1) {
-          const url = homeDeck[homeDeckIndex % n];
-          homeDeckIndex += 1;
-          if (homeDeckIndex >= n) {
-            homeDeck = shuffle(homeDeck);
-            homeDeckIndex = 0;
-          }
-          if (!inUse.has(url)) return url;
-        }
-      }
-      const avail = pool.filter((u) => !inUse.has(u));
-      if (avail.length) return avail[Math.floor(Math.random() * avail.length)];
-      return pool[Math.floor(Math.random() * pool.length)];
+      poolCap = narrow ? 16 : 22;
+      maxActive = narrow ? 7 : 9;
+      durMinSec = 12;
+      durRangeSec = 5;
     }
 
-    function spawnOne(options) {
-      if (skyRecyclerToken !== token) return;
-      const staggerSec =
-        options && typeof options.staggerSec === "number" && Number.isFinite(options.staggerSec)
-          ? Math.max(0, options.staggerSec)
-          : 0;
+    const sourcePool = shuffle(uniq).slice(0, Math.min(uniq.length, poolCap));
+    maxActive = Math.min(maxActive, sourcePool.length);
 
-      const url = pickUrl();
-      const startVw = Math.random() * 138 - 24;
-      const driftVw = Math.random() * 72 - 36;
-      const endVw = startVw + driftVw;
-      const duration = `${(durMinSec + Math.random() * durRangeSec).toFixed(2)}s`;
-      const r1 = Math.random() * 36 - 18;
-      const r2 = r1 + (Math.random() * 56 - 28);
-      const xs = `${startVw.toFixed(2)}vw`;
-      const xe = `${endVw.toFixed(2)}vw`;
-      const z = 1 + Math.floor(Math.random() * 12);
+    void (async () => {
+      const warm = await preloadDownsampled(sourcePool, thumbW);
+      if (skyRecyclerToken !== token || !warm.length) return;
 
-      inUse.add(url);
+      let deck = shuffle(warm);
+      let deckIndex = 0;
+      const active = [];
 
-      const img = document.createElement("img");
-      img.className = "flying-card flying-card--recycle";
-      img.alt = "";
-      img.loading = "lazy";
-      img.decoding = "async";
-      img.referrerPolicy = "no-referrer";
-      if ("fetchPriority" in img) {
-        img.fetchPriority = "low";
-      }
-      img.style.setProperty("--x-start", xs);
-      img.style.setProperty("--x-end", xe);
-      img.style.setProperty("--dur", duration);
-      img.style.setProperty("--delay", `${staggerSec.toFixed(2)}s`);
-      img.style.setProperty("--rot-start", `${r1.toFixed(2)}deg`);
-      img.style.setProperty("--rot-end", `${r2.toFixed(2)}deg`);
-      img.style.zIndex = String(z);
-
-      img.addEventListener(
-        "animationend",
-        () => {
-          if (skyRecyclerToken !== token) return;
-          inUse.delete(url);
-          img.remove();
-          spawnOne({ staggerSec: Math.random() * 0.22 });
-        },
-        { once: true }
-      );
-
-      function releaseUrlAndMaybeRetry() {
-        inUse.delete(url);
-        if (skyRecyclerToken === token) {
-          spawnOne({ staggerSec });
+      function nextSrc() {
+        if (!deck.length) return "";
+        const src = deck[deckIndex % deck.length];
+        deckIndex += 1;
+        if (deckIndex >= deck.length) {
+          deck = shuffle(deck);
+          deckIndex = 0;
         }
+        return src;
       }
 
-      function appendWhenReady() {
-        if (skyRecyclerToken !== token) {
-          inUse.delete(url);
-          return;
-        }
+      function armFlight(img, staggerSec) {
+        if (skyRecyclerToken !== token) return;
+        const startVw = Math.random() * 120 - 15;
+        const endVw = startVw + (Math.random() * 48 - 24);
+        const duration = durMinSec + Math.random() * durRangeSec;
+        const r1 = Math.random() * 24 - 12;
+        const r2 = r1 + (Math.random() * 36 - 18);
+
+        img.style.setProperty("--x-start", `${startVw.toFixed(2)}vw`);
+        img.style.setProperty("--x-end", `${endVw.toFixed(2)}vw`);
+        img.style.setProperty("--dur", `${duration.toFixed(2)}s`);
+        img.style.setProperty("--delay", `${Math.max(0, staggerSec).toFixed(2)}s`);
+        img.style.setProperty("--rot-start", `${r1.toFixed(2)}deg`);
+        img.style.setProperty("--rot-end", `${r2.toFixed(2)}deg`);
+
+        // Restart CSS animation without recreating the node.
+        img.style.animation = "none";
+        // Force reflow so the next animation name takes effect.
+        void img.offsetWidth;
+        img.style.animation = "";
         img.classList.add("flying-card--ready");
-        sky.appendChild(img);
       }
 
-      img.src = url;
-      if (img.complete) {
-        appendWhenReady();
-      } else {
-        img.addEventListener("load", appendWhenReady, { once: true });
-        img.addEventListener("error", releaseUrlAndMaybeRetry, { once: true });
+      function onFlightEnd(event) {
+        if (skyRecyclerToken !== token) return;
+        const img = event.currentTarget;
+        img.src = nextSrc() || img.src;
+        armFlight(img, Math.random() * 0.35);
       }
-    }
 
-    for (let i = 0; i < maxActive; i += 1) {
-      spawnOne({ staggerSec: i * 0.034 });
-    }
+      const frag = document.createDocumentFragment();
+      for (let i = 0; i < maxActive; i += 1) {
+        const img = document.createElement("img");
+        img.className = "flying-card flying-card--recycle flying-card--ready";
+        img.alt = "";
+        img.decoding = "sync";
+        img.draggable = false;
+        img.src = nextSrc();
+        img.addEventListener("animationend", onFlightEnd);
+        active.push(img);
+        frag.appendChild(img);
+        armFlight(img, i * (narrow ? 0.55 : 0.42));
+      }
+      sky.appendChild(frag);
+
+      function onVisibility() {
+        if (document.hidden) sky.classList.add("card-sky-frozen");
+        else sky.classList.remove("card-sky-frozen");
+      }
+      document.addEventListener("visibilitychange", onVisibility);
+      onVisibility();
+      token.cleanup = () => document.removeEventListener("visibilitychange", onVisibility);
+    })();
   }
 
   function startInfinityCardSkyRecyclerFromPayloads(payloads, setCodeFilter, opts) {
