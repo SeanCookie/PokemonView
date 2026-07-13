@@ -5,7 +5,7 @@ const COLLECTR_PROFILE_RE =
 const COLLECTR_HANDLE_RE = /^@?([a-z0-9_]{3,24})$/i;
 const COLLECTR_API_ORIGIN = "https://api-v2.getcollectr.com";
 const COLLECTR_ANON_USERNAME = "00000000-0000-0000-0000-000000000000";
-const COLLECTR_DEFAULT_PAGE_SIZE = 100;
+const COLLECTR_DEFAULT_PAGE_SIZE = 30;
 const COLLECTR_PAGE_DELAY_MS = 120;
 const {
   fetchCollectrShowcaseCatalogViaBrowser,

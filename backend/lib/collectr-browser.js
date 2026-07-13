@@ -3,9 +3,10 @@
 const fs = require("fs");
 
 const COLLECTR_ANON_USERNAME = "00000000-0000-0000-0000-000000000000";
-const API_PAGE_SIZE = 100;
-const PAGE_DELAY_MS = 150;
-const COLLECTR_LOADER_VERSION = "2026-07-13-light-shell-fetch-v6";
+/** Collectr showcase infinite query pages exactly 30 rows (see getNextPageParam: 30*pages). */
+const API_PAGE_SIZE = 30;
+const PAGE_DELAY_MS = 120;
+const COLLECTR_LOADER_VERSION = "2026-07-13-page-size-30-v7";
 const STEALTH_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
@@ -18,6 +19,7 @@ function showcaseApiPath(handle) {
     .trim()
     .toLowerCase()
     .replace(/^@+/, "");
+  // Collectr profile routes use @handle in the showcase API path.
   return `@${encodeURIComponent(slug)}`;
 }
 
@@ -25,7 +27,7 @@ function buildShowcaseApiUrl(handle, offset = 0, limit = API_PAGE_SIZE) {
   const params = new URLSearchParams({
     searchString: "",
     offset: String(Math.max(0, Number(offset) || 0)),
-    limit: String(Math.min(100, Math.max(1, Number(limit) || API_PAGE_SIZE))),
+    limit: String(API_PAGE_SIZE),
     id: "",
     sortType: "",
     sortOrder: "",
@@ -34,6 +36,8 @@ function buildShowcaseApiUrl(handle, offset = 0, limit = API_PAGE_SIZE) {
     unstackedView: "true",
     username: COLLECTR_ANON_USERNAME
   });
+  // limit is fixed at Collectr's page size; ignore callers asking for other sizes.
+  void limit;
   return `https://api-v2.getcollectr.com/data/showcase/${showcaseApiPath(handle)}?${params}`;
 }
 
@@ -296,7 +300,8 @@ function buildCatalogResult({
   }
 
   const capped = byKey.size >= maxItems;
-  const complete = exhausted || capped || (lastPageSize > 0 && lastPageSize < API_PAGE_SIZE);
+  // Collectr ends the infinite query when a page has zero products — not when length < limit.
+  const complete = exhausted || capped;
   const partial = Boolean(crashReason) || (!complete && !capped);
 
   return {
@@ -376,9 +381,8 @@ async function fetchCollectrShowcaseCatalogViaBrowser(handle, options = {}) {
         : [];
     lastPageSize = rows.length;
     const added = mergeProductsByKey(byKey, rows);
-    if (rows.length > 0 && rows.length < API_PAGE_SIZE) {
-      exhausted = true;
-    } else if (rows.length === 0 && byKey.size > 0) {
+    // Match Collectr getNextPageParam: stop only when products is empty.
+    if (rows.length === 0) {
       exhausted = true;
     }
     if (added > 0) report();
@@ -408,6 +412,7 @@ async function fetchCollectrShowcaseCatalogViaBrowser(handle, options = {}) {
     });
     await page.waitForTimeout(250);
 
+    // Collectr's own infinite query: offset = 0, 30, 60, ... until a page returns no products.
     let offset = 0;
     let consecutiveEmpty = 0;
     const maxPages = Math.ceil(maxItems / API_PAGE_SIZE) + 5;
@@ -437,10 +442,16 @@ async function fetchCollectrShowcaseCatalogViaBrowser(handle, options = {}) {
       }
 
       const before = byKey.size;
+      const pageCount = Array.isArray(payload?.products)
+        ? payload.products.length
+        : Array.isArray(payload?.data)
+          ? payload.data.length
+          : 0;
       ingestPayload(payload);
-      if (byKey.size === before) {
+
+      if (pageCount === 0 || byKey.size === before) {
         consecutiveEmpty += 1;
-        if (consecutiveEmpty >= 2) {
+        if (consecutiveEmpty >= 2 || pageCount === 0) {
           exhausted = true;
           break;
         }
@@ -449,7 +460,8 @@ async function fetchCollectrShowcaseCatalogViaBrowser(handle, options = {}) {
       }
 
       if (exhausted) break;
-      offset += API_PAGE_SIZE;
+      // Same step Collectr uses: 30 * pagesLoaded sofar after this page.
+      offset = API_PAGE_SIZE * (pageIdx + 1);
       await page.waitForTimeout(PAGE_DELAY_MS);
     }
   } catch (err) {
