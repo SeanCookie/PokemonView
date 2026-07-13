@@ -12,7 +12,7 @@ DEFAULT_REGION = "US"
 [[containers]]
 class_name = "PokemonViewContainer"
 image = "./Dockerfile"
-max_instances = 1
+max_instances = 2
 # Default "lite" is 256MiB — Node + catalog JSON OOMs and never stays running.
 instance_type = "standard-1"
 

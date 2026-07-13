@@ -147,10 +147,44 @@ async function handleDurableStoreRequest(request, env) {
         headers: { "content-type": "application/json; charset=utf-8" }
       });
     }
+
+    let incomingUsers = 0;
+    try {
+      const parsed = JSON.parse(new TextDecoder().decode(body));
+      incomingUsers = Array.isArray(parsed?.users) ? parsed.users.length : 0;
+    } catch {
+      return new Response(JSON.stringify({ ok: false, error: "Invalid JSON" }), {
+        status: 400,
+        headers: { "content-type": "application/json; charset=utf-8" }
+      });
+    }
+
+    // Guard: never let an empty boot wipe durable accounts in R2.
+    if (incomingUsers === 0) {
+      const existing = await bucket.get(STORE_R2_KEY);
+      if (existing) {
+        try {
+          const prev = JSON.parse(await existing.text());
+          const prevUsers = Array.isArray(prev?.users) ? prev.users.length : 0;
+          if (prevUsers > 0) {
+            return new Response(
+              JSON.stringify({ ok: false, error: "refusing_empty_overwrite", prevUsers }),
+              {
+                status: 409,
+                headers: { "content-type": "application/json; charset=utf-8" }
+              }
+            );
+          }
+        } catch {
+          /* if existing is corrupt, allow replace */
+        }
+      }
+    }
+
     await bucket.put(STORE_R2_KEY, body, {
       httpMetadata: { contentType: "application/json; charset=utf-8" }
     });
-    return new Response(JSON.stringify({ ok: true, bytes: body.byteLength }), {
+    return new Response(JSON.stringify({ ok: true, bytes: body.byteLength, users: incomingUsers }), {
       status: 200,
       headers: { "content-type": "application/json; charset=utf-8" }
     });
@@ -173,7 +207,8 @@ export default {
     const imageResponse = await tryServeCardImageFromR2(request, env);
     if (imageResponse) return imageResponse;
 
-    const container = env.POKEMONVIEW.getByName("main-v7");
+    // Fresh DO so the container boots with current secrets + latest image after CI rebuild.
+    const container = env.POKEMONVIEW.getByName("main-v10");
     return container.fetch(request);
   }
 };

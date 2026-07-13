@@ -17,6 +17,10 @@ function getSyncConfig(env = {}) {
   };
 }
 
+function userCount(store) {
+  return Array.isArray(store?.users) ? store.users.length : 0;
+}
+
 async function pullStoreFromR2(env = {}) {
   const cfg = getSyncConfig(env);
   if (!cfg.enabled) return null;
@@ -33,9 +37,7 @@ async function pullStoreFromR2(env = {}) {
     const text = await res.text();
     const parsed = JSON.parse(text);
     if (!parsed || typeof parsed !== "object") return null;
-    console.log(
-      `[store-r2] restored from R2 (users=${Array.isArray(parsed.users) ? parsed.users.length : 0})`
-    );
+    console.log(`[store-r2] restored from R2 (users=${userCount(parsed)})`);
     return parsed;
   } catch (err) {
     console.warn(`[store-r2] pull error: ${err.message || err}`);
@@ -56,6 +58,10 @@ async function pushStoreToR2(store, env = {}) {
       },
       body
     });
+    if (res.status === 409) {
+      console.warn("[store-r2] push skipped: refusing to overwrite non-empty R2 with empty store");
+      return { ok: false, skipped: true };
+    }
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       console.warn(`[store-r2] push failed: HTTP ${res.status} ${text.slice(0, 200)}`);
@@ -71,5 +77,6 @@ async function pushStoreToR2(store, env = {}) {
 module.exports = {
   getSyncConfig,
   pullStoreFromR2,
-  pushStoreToR2
+  pushStoreToR2,
+  userCount
 };

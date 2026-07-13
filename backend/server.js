@@ -437,13 +437,20 @@ async function ensureStore() {
   let storeChanged = false;
   if (migrateStoreCollections(store)) storeChanged = true;
   if (ensureDefaultAdminRoles(store, adminUsernames)) storeChanged = true;
-  // Always persist so disk + R2 stay aligned after restore/migrations.
-  await persistStore();
+
+  // Always keep a local copy for this container lifetime.
+  await fsp.writeFile(DATA_FILE, JSON.stringify(store, null, 2), "utf8");
+  // Only push to R2 when we have something worth saving or migrations changed data.
+  // Never boot-push an empty store (that used to wipe durable accounts).
+  if (storeChanged || (Array.isArray(store.users) && store.users.length > 0)) {
+    await pushStoreToR2(store, { ...env, ...process.env });
+  }
 }
 
 async function persistStore() {
   await fsp.writeFile(DATA_FILE, JSON.stringify(store, null, 2), "utf8");
-  void pushStoreToR2(store, { ...env, ...process.env }).catch(() => {});
+  // Await durable backup so signup/sign-in cannot finish before R2 has the account.
+  await pushStoreToR2(store, { ...env, ...process.env });
 }
 
 function schedulePersistTcgLinkPriceCache() {
