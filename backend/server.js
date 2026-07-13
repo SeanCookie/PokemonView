@@ -2248,7 +2248,26 @@ function getCurrentUser(req) {
   return out;
 }
 
+function defaultUserPreferences() {
+  return {
+    showCostBasis: false,
+    showUnrealizedPnL: false
+  };
+}
+
+function ensureUserPreferences(user) {
+  const base = defaultUserPreferences();
+  if (!user || typeof user !== "object") return { ...base };
+  const raw = user.preferences && typeof user.preferences === "object" ? user.preferences : {};
+  user.preferences = {
+    showCostBasis: raw.showCostBasis === true,
+    showUnrealizedPnL: raw.showUnrealizedPnL === true
+  };
+  return user.preferences;
+}
+
 function publicUserPayload(user) {
+  const prefs = ensureUserPreferences(user);
   const out = withAdminFlag(
     {
       id: user.id,
@@ -2256,7 +2275,8 @@ function publicUserPayload(user) {
       username: user.username || "",
       name: user.name || "",
       role: user.role || "",
-      hasPassword: Boolean(user.passwordHash)
+      hasPassword: Boolean(user.passwordHash),
+      preferences: { ...prefs }
     },
     adminUsernames
   );
@@ -6106,21 +6126,15 @@ function summarizeDashboard(userId) {
       acc.costBasis += cost;
       acc.totalItems += item.quantity;
       acc.lineItems += 1;
-      if (item.lastPricedAt) {
-        const pricedAt = Date.parse(item.lastPricedAt);
-        if (Number.isFinite(pricedAt)) {
-          const ageMs = Date.now() - pricedAt;
-          if (ageMs > 1000 * 60 * 60 * 2) acc.staleCount += 1;
-        }
-      }
       return acc;
     },
-    { marketValue: 0, costBasis: 0, totalItems: 0, lineItems: 0, staleCount: 0 }
+    { marketValue: 0, costBasis: 0, totalItems: 0, lineItems: 0 }
   );
 
   const pnl = totals.marketValue - totals.costBasis;
 
   const record = userId ? findStoreUserById(userId) : null;
+  const preferences = record ? ensureUserPreferences(record) : defaultUserPreferences();
 
   return {
     kpis: {
@@ -6128,9 +6142,9 @@ function summarizeDashboard(userId) {
       costBasis: Number(totals.costBasis.toFixed(2)),
       unrealizedPnL: Number(pnl.toFixed(2)),
       totalItems: totals.totalItems,
-      lineItems: totals.lineItems,
-      staleCount: totals.staleCount
+      lineItems: totals.lineItems
     },
+    preferences: { ...preferences },
     counts: {
       sealed: byType.sealed.length,
       singles: byType.single.length
@@ -7339,7 +7353,16 @@ async function route(req, res) {
       const hasDisplayName = Object.prototype.hasOwnProperty.call(body, "displayName");
       const hasEmail = Object.prototype.hasOwnProperty.call(body, "email");
       const hasUsername = Object.prototype.hasOwnProperty.call(body, "username");
-      if (!hasName && !hasDisplayName && !hasEmail && !hasUsername) {
+      const hasShowCostBasis = Object.prototype.hasOwnProperty.call(body, "showCostBasis");
+      const hasShowUnrealizedPnL = Object.prototype.hasOwnProperty.call(body, "showUnrealizedPnL");
+      if (
+        !hasName &&
+        !hasDisplayName &&
+        !hasEmail &&
+        !hasUsername &&
+        !hasShowCostBasis &&
+        !hasShowUnrealizedPnL
+      ) {
         json(res, 400, { ok: false, error: "Nothing to update" });
         return;
       }
@@ -7378,6 +7401,11 @@ async function route(req, res) {
           return;
         }
         user.username = username;
+      }
+      if (hasShowCostBasis || hasShowUnrealizedPnL) {
+        const prefs = ensureUserPreferences(user);
+        if (hasShowCostBasis) prefs.showCostBasis = body.showCostBasis === true;
+        if (hasShowUnrealizedPnL) prefs.showUnrealizedPnL = body.showUnrealizedPnL === true;
       }
       ensureDefaultAdminRoles(store, adminUsernames);
       await persistStore();

@@ -389,7 +389,11 @@
             isAdmin: Boolean(user.isAdmin),
             hasPassword: Boolean(user.hasPassword),
             picture: user.picture || "",
-            showcaseUrl: user.showcaseUrl || ""
+            showcaseUrl: user.showcaseUrl || "",
+            preferences: {
+              showCostBasis: Boolean(user.preferences?.showCostBasis),
+              showUnrealizedPnL: Boolean(user.preferences?.showUnrealizedPnL)
+            }
           }
         })
       );

@@ -414,6 +414,15 @@
           />
         </label>
         <p class="hint" style="margin:-4px 0 0;">Username: 3–24 characters, letters, numbers, and underscore only.</p>
+        <label style="display:flex;align-items:center;gap:8px;color:var(--text);font-size:13px;">
+          <input id="showCostBasis" type="checkbox" />
+          Show cost basis on Home and Personal Collection
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;color:var(--text);font-size:13px;">
+          <input id="showUnrealizedPnL" type="checkbox" />
+          Show unrealized P&amp;L on Home and Personal Collection
+        </label>
+        <p class="hint" style="margin:-4px 0 0;">Both options are off by default. When cost basis is on, you can edit each card’s cost next to its market value in Collection.</p>
         <button type="submit" class="btn">Save profile</button>
         <p id="profileStatus" class="status" role="status"></p>
       </form>
@@ -542,7 +551,7 @@
 
   <script src="/collectr-import-client.js?v=6"></script>
   <script src="/collectr-import-ui.js?v=3"></script>
-  <script src="/account-ui.js?v=5"></script>
+  <script src="/account-ui.js?v=6"></script>
   <script>
     const byId = (id) => document.getElementById(id);
 
@@ -676,6 +685,8 @@
       byId("displayName").value = user.name || "";
       byId("email").value = user.email || "";
       byId("username").value = user.username || "";
+      byId("showCostBasis").checked = user.preferences?.showCostBasis === true;
+      byId("showUnrealizedPnL").checked = user.preferences?.showUnrealizedPnL === true;
       applyPasswordUi();
       await loadShowcaseSettings();
       await loadRecentActivity();
@@ -788,6 +799,8 @@
       const name = byId("displayName").value.trim();
       const email = byId("email").value.trim();
       const username = byId("username").value.trim();
+      const showCostBasis = byId("showCostBasis").checked;
+      const showUnrealizedPnL = byId("showUnrealizedPnL").checked;
       if (!email || !email.includes("@")) {
         setText(status, "Enter a valid email.", "error");
         return;
@@ -802,7 +815,14 @@
           method: "POST",
           credentials: "same-origin",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, displayName: name, email, username })
+          body: JSON.stringify({
+            name,
+            displayName: name,
+            email,
+            username,
+            showCostBasis,
+            showUnrealizedPnL
+          })
         });
         const payload = await res.json().catch(() => ({}));
         if (!res.ok || !payload.ok) {

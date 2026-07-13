@@ -131,6 +131,46 @@
       position: relative;
     }
 
+    .collection-card-prices {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 2px;
+      flex-wrap: wrap;
+    }
+
+    .collection-card-prices .showcase-card-value {
+      margin-top: 0;
+    }
+
+    .collection-cost-basis {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .collection-cost-basis input {
+      width: 78px;
+      height: 28px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #0e1623;
+      color: var(--text);
+      padding: 0 6px;
+      font-size: 12px;
+      font-family: inherit;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .collection-cost-basis input:focus {
+      outline: none;
+      border-color: #4f6e9c;
+    }
+
     .collection-card-remove {
       position: absolute;
       top: 6px;
@@ -934,7 +974,7 @@
   <script src="/english-sets-catalog.js"></script>
   <script src="/collectr-import-client.js?v=6"></script>
   <script src="/collectr-import-ui.js?v=3"></script>
-  <script src="/account-ui.js?v=5"></script>
+  <script src="/account-ui.js?v=6"></script>
   <script>
     const state = {
       items: [],
@@ -1262,35 +1302,54 @@
       void loadSetProgressData();
     }
 
+    function getDisplayPreferences() {
+      const fromDash = state.dashboard?.preferences;
+      if (fromDash && typeof fromDash === "object") {
+        return {
+          showCostBasis: fromDash.showCostBasis === true,
+          showUnrealizedPnL: fromDash.showUnrealizedPnL === true
+        };
+      }
+      const fromUser = window.InfinityAccount?.getUser?.()?.preferences || {};
+      return {
+        showCostBasis: fromUser.showCostBasis === true,
+        showUnrealizedPnL: fromUser.showUnrealizedPnL === true
+      };
+    }
+
     function renderKpis() {
       const k = state.dashboard?.kpis || {};
+      const prefs = getDisplayPreferences();
       const pnl = Number(k.unrealizedPnL || 0);
-      byId("kpis").innerHTML = `
-        <div class="kpi">
+      const parts = [
+        `<div class="kpi">
           <div class="kpi-label">Market Value</div>
           <div class="kpi-value">${formatMoney(k.marketValue)}</div>
-        </div>
-        <div class="kpi">
+        </div>`
+      ];
+      if (prefs.showCostBasis) {
+        parts.push(`<div class="kpi">
           <div class="kpi-label">Cost Basis</div>
           <div class="kpi-value">${formatMoney(k.costBasis)}</div>
-        </div>
-        <div class="kpi">
+        </div>`);
+      }
+      if (prefs.showUnrealizedPnL) {
+        parts.push(`<div class="kpi">
           <div class="kpi-label">Unrealized PnL</div>
           <div class="kpi-value ${pnl >= 0 ? "up" : "down"}">${formatMoney(pnl)}</div>
-        </div>
-        <div class="kpi">
+        </div>`);
+      }
+      parts.push(
+        `<div class="kpi">
           <div class="kpi-label">Total Items</div>
           <div class="kpi-value">${Number(k.totalItems || 0).toLocaleString()}</div>
-        </div>
-        <div class="kpi">
+        </div>`,
+        `<div class="kpi">
           <div class="kpi-label">Line Items</div>
           <div class="kpi-value">${Number(k.lineItems || 0).toLocaleString()}</div>
-        </div>
-        <div class="kpi">
-          <div class="kpi-label">Stale Pricing</div>
-          <div class="kpi-value">${Number(k.staleCount || 0).toLocaleString()}</div>
-        </div>
-      `;
+        </div>`
+      );
+      byId("kpis").innerHTML = parts.join("");
     }
 
     function matches(item) {
@@ -1627,6 +1686,7 @@
     function renderItems() {
       const filtered = state.items.filter(matches);
       const list = byId("itemsList");
+      const showCost = getDisplayPreferences().showCostBasis;
       if (!filtered.length) {
         list.innerHTML = `<div class="empty">No collection items found.</div>`;
         list.classList.remove("showcase-grid");
@@ -1643,22 +1703,41 @@
             total > 0 ? formatMoney(total) : unit > 0 ? formatMoney(unit) : "";
           const typeLabel = item.type === "sealed" ? "Sealed" : "Single";
           const setsHref = collectionCardSetsHref(item);
-          const body = `<div class="showcase-card-thumb">${collectionCardImageHtml(item)}</div>
+          const costUnit = Math.max(0, Number(item.costBasis) || 0);
+          const costInput = showCost
+            ? `<label class="collection-cost-basis" title="Cost basis (per card)">
+                Cost
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  inputmode="decimal"
+                  data-cost-id="${escapeAttr(String(item.id || ""))}"
+                  value="${escapeAttr(costUnit.toFixed(2))}"
+                  aria-label="Cost basis for ${escapeAttr(String(item.name || "item"))}"
+                />
+              </label>`
+            : "";
+          const priceRow =
+            value || showCost
+              ? `<div class="collection-card-prices">
+                  ${value ? `<div class="showcase-card-value">${escapeHtml(value)}</div>` : `<div class="showcase-card-value" style="opacity:0.45;">—</div>`}
+                  ${costInput}
+                </div>`
+              : "";
+          const main = `<div class="showcase-card-thumb">${collectionCardImageHtml(item)}</div>
             <div class="showcase-card-body">
               <h3 class="showcase-card-name">${escapeHtml(item.name || "Unnamed Item")}${escapeHtml(qty)}</h3>
               <p class="showcase-card-meta">${escapeHtml(meta || typeLabel)}</p>
-              ${value ? `<div class="showcase-card-value">${escapeHtml(value)}</div>` : ""}
             </div>`;
           const removeBtn = `<button type="button" class="collection-card-remove" data-id="${escapeAttr(String(item.id || ""))}" data-name="${escapeAttr(String(item.name || "Item"))}" aria-label="Remove from collection">×</button>`;
-          if (setsHref) {
-            return `<article class="collection-card showcase-card showcase-card--static">
-              ${removeBtn}
-              <a class="collection-card-link" href="${escapeAttr(setsHref)}" title="View in Sets">${body}</a>
-            </article>`;
-          }
+          const linkedMain = setsHref
+            ? `<a class="collection-card-link" href="${escapeAttr(setsHref)}" title="View in Sets">${main}</a>`
+            : main;
           return `<article class="collection-card showcase-card showcase-card--static">
             ${removeBtn}
-            ${body}
+            ${linkedMain}
+            ${priceRow ? `<div class="showcase-card-body" style="padding-top:0;">${priceRow}</div>` : ""}
           </article>`;
         })
         .join("");
@@ -1754,6 +1833,54 @@
       const id = btn.getAttribute("data-id");
       const name = btn.getAttribute("data-name");
       removeCollectionItem(id, name);
+    });
+
+    async function saveCollectionCostBasis(itemId, rawValue) {
+      const id = String(itemId || "").trim();
+      if (!id) return;
+      const item = state.items.find((row) => String(row.id) === id);
+      if (!item) return;
+      const nextCost = Math.max(0, Number(rawValue));
+      const costBasis = Number.isFinite(nextCost) ? Number(nextCost.toFixed(2)) : 0;
+      if (Number(item.costBasis || 0) === costBasis) return;
+      try {
+        const res = await fetch(`/api/items/${encodeURIComponent(id)}`, {
+          method: "PUT",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...item, costBasis })
+        });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          window.alert(payload.error || `Could not save cost basis (${res.status})`);
+          await loadData();
+          renderAll();
+          return;
+        }
+        item.costBasis = costBasis;
+        if (payload.item) {
+          Object.assign(item, payload.item);
+        }
+        await loadData();
+        renderAll();
+      } catch (err) {
+        window.alert(err.message || "Could not save cost basis.");
+      }
+    }
+
+    byId("itemsList").addEventListener("change", (e) => {
+      const input = e.target && e.target.closest ? e.target.closest("input[data-cost-id]") : null;
+      if (!input) return;
+      saveCollectionCostBasis(input.getAttribute("data-cost-id"), input.value);
+    });
+
+    byId("itemsList").addEventListener("keydown", (e) => {
+      const input = e.target && e.target.closest ? e.target.closest("input[data-cost-id]") : null;
+      if (!input) return;
+      if (e.key === "Enter") {
+        e.preventDefault();
+        input.blur();
+      }
     });
 
     collectrImportUi = window.CollectrImportUI?.mount({
