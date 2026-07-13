@@ -247,6 +247,7 @@ async function fetchCollectrShowcaseCatalog(handle, options = {}) {
   const slug = parsed.handle;
   const maxItems = Math.min(25_000, Math.max(1, Number(options.maxItems) || 20_000));
   const useBrowser = options.useBrowser !== false;
+  let browserFailureReason = "";
 
   if (useBrowser) {
     const browserResult = await fetchCollectrShowcaseCatalogViaBrowser(slug, {
@@ -255,7 +256,7 @@ async function fetchCollectrShowcaseCatalog(handle, options = {}) {
     });
     if (browserResult?.ok && browserResult.products?.length) {
       const capped = browserResult.products.length >= maxItems;
-      return applyPokemonFilterToCatalogResult(
+      const filtered = applyPokemonFilterToCatalogResult(
         {
           ok: true,
           handle: slug,
@@ -264,15 +265,32 @@ async function fetchCollectrShowcaseCatalog(handle, options = {}) {
           products: browserResult.products,
           totalCards: browserResult.totalCards || 0,
           totalSealed: browserResult.totalSealed || 0,
-          expectedTotal: null,
+          expectedTotal: browserResult.expectedTotal || null,
           filteredOutNonPokemon: Number(browserResult.filteredOutNonPokemon) || 0,
           source: browserResult.source,
-          partial: capped,
+          partial: Boolean(browserResult.partial) || capped,
           needsBrowserFetch: false
         },
         maxItems
       );
+      // Treat heavily incomplete browser loads as failures so we don't silently import ~8 cards.
+      if (
+        filtered.partial &&
+        filtered.expectedTotal > 50 &&
+        filtered.products.length < Math.min(filtered.expectedTotal, maxItems) * 0.25
+      ) {
+        return {
+          ok: false,
+          error: `Collectr only returned ${filtered.products.length.toLocaleString()} of ~${filtered.expectedTotal.toLocaleString()} items for @${slug}. Try again in a minute.`,
+          partial: true,
+          source: browserResult.source,
+          products: filtered.products,
+          expectedTotal: filtered.expectedTotal
+        };
+      }
+      return filtered;
     }
+    browserFailureReason = String(browserResult?.reason || browserResult?.error || "").trim();
   }
 
   const byKey = new Map();
@@ -280,7 +298,7 @@ async function fetchCollectrShowcaseCatalog(handle, options = {}) {
   let totalCards = 0;
   let totalSealed = 0;
 
-  // Collectr's showcase API returns 401 without a logged-in browser session.
+  // Collectr's showcase API returns 403 without a real browser session.
   const [htmlPage, rscPage] = await Promise.all([
     fetchCollectrShowcaseHtmlPage(slug),
     fetchCollectrShowcaseRscPage(slug)
@@ -296,12 +314,13 @@ async function fetchCollectrShowcaseCatalog(handle, options = {}) {
       : byKey.size > htmlPage.products.length
         ? "collectr-html+rsc"
         : "collectr-html";
-  let partial = true;
 
   if (!byKey.size) {
     return {
       ok: false,
-      error: "Could not read this Collectr showcase. Check the link is public and try again."
+      error: browserFailureReason
+        ? `Could not load Collectr showcase (@${slug}): ${browserFailureReason}`
+        : "Could not read this Collectr showcase. Check the link is public and try again."
     };
   }
 
@@ -310,8 +329,21 @@ async function fetchCollectrShowcaseCatalog(handle, options = {}) {
   }
 
   const expectedTotal = totalCards + totalSealed;
-  if (expectedTotal > 0 && byKey.size < expectedTotal) {
-    partial = true;
+  const partial = expectedTotal > 0 ? byKey.size < Math.min(expectedTotal, maxItems) * 0.9 : true;
+
+  // SSR HTML only embeds the first ~30 showcase rows. Large collections need the browser path.
+  if (partial && expectedTotal > 50) {
+    return {
+      ok: false,
+      error: browserFailureReason
+        ? `Collectr showcase @${slug} has ~${expectedTotal.toLocaleString()} items, but full loading is unavailable (${browserFailureReason}).`
+        : `Collectr showcase @${slug} has ~${expectedTotal.toLocaleString()} items, but only the first page could be loaded. Full import needs the server browser loader.`,
+      partial: true,
+      source,
+      browserUnavailable: true,
+      expectedTotal,
+      products: [...byKey.values()].slice(0, maxItems)
+    };
   }
 
   return applyPokemonFilterToCatalogResult(
@@ -356,14 +388,33 @@ function applyPokemonFilterToCatalogResult(result, maxItems) {
   const totals = summarizeCollectrProductQuantities(products);
   const priorFiltered = Number(result.filteredOutNonPokemon) || 0;
   const passFiltered = Math.max(0, raw.length - products.length);
+
+  // Preserve Collectr-reported showcase totals (used for completeness / progress).
+  const showcaseTotalCards = Number(result.totalCards) || 0;
+  const showcaseTotalSealed = Number(result.totalSealed) || 0;
+  const showcaseExpected =
+    Number(result.expectedTotal) > 0
+      ? Number(result.expectedTotal)
+      : showcaseTotalCards + showcaseTotalSealed > 0
+        ? showcaseTotalCards + showcaseTotalSealed
+        : null;
+  const loadedRaw = raw.length;
+  const incomplete =
+    Boolean(result.partial) ||
+    (showcaseExpected > 0 && loadedRaw < Math.min(showcaseExpected, maxItems) * 0.9);
+
   return {
     ...result,
     products,
-    totalCards: totals.cards,
-    totalSealed: totals.sealed,
-    expectedTotal: totals.cards + totals.sealed > 0 ? totals.cards + totals.sealed : null,
+    totalCards: showcaseTotalCards || totals.cards,
+    totalSealed: showcaseTotalSealed || totals.sealed,
+    expectedTotal: showcaseExpected || (totals.cards + totals.sealed > 0 ? totals.cards + totals.sealed : null),
+    filteredCardCount: totals.cards,
+    filteredSealedCount: totals.sealed,
     pokemonOnly: true,
-    filteredOutNonPokemon: priorFiltered + passFiltered
+    filteredOutNonPokemon: priorFiltered + passFiltered,
+    partial: incomplete,
+    needsBrowserFetch: incomplete && result.source !== "collectr-browser"
   };
 }
 

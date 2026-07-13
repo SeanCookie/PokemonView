@@ -1,13 +1,30 @@
 # Cloudflare Containers image (linux/amd64).
 # Card art is served from R2 — never COPY backend/data/card-images into this image.
-# cache-bust: 2026-07-13-admin-restock-stop-pc-link-v1
+# cache-bust: 2026-07-13-collectr-browser-pagination-v1
 FROM node:20-bookworm-slim
 
 WORKDIR /app
 
+# Chromium is required for Collectr imports: their showcase API is WAF-blocked from plain Node fetch.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
+    chromium \
+    ca-certificates \
+    fonts-liberation \
+    fonts-dejavu-core \
+  && rm -rf /var/lib/apt/lists/*
+
+ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+ENV CHROME_PATH=/usr/bin/chromium
+
 COPY package.json ./
 COPY scripts/noop-build.js ./scripts/noop-build.js
 COPY app.js ./
+
+# Only install the optional browser driver used by Collectr imports (skip wrangler/cloud tooling).
+RUN npm install --omit=dev --no-audit --no-fund playwright-core@1.61.1 \
+  && npm cache clean --force
 
 # Backend code
 COPY backend/server.js backend/poke-scanner.js backend/chase-resolve-local-images.js ./backend/

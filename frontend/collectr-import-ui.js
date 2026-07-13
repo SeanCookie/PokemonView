@@ -170,10 +170,16 @@
       if (!collectrPreviewSummary || !catalog) return;
       const filtered = filterCollectrProductsForImport(catalog.products);
       const handle = catalog.handle || "collector";
+      const expected = Number(catalog.expectedTotal) || 0;
+      const partialNote =
+        catalog.partial && expected > filtered.length
+          ? `<div style="color:var(--down, var(--danger, #ff5f73));font-size:12px;">Partial load: ${filtered.length.toLocaleString()} ready of ~${expected.toLocaleString()} showcase items. Re-run Preview if this looks too low.</div>`
+          : "";
       collectrPreviewSummary.innerHTML = `
         <div>Ready to import from <strong>@${escapeHtml(handle)}</strong></div>
         <div><strong>${filtered.length.toLocaleString()}</strong> ungraded Pokémon cards</div>
-        <div style="color:var(--muted);font-size:12px;">Sealed, graded, and other TCGs are skipped${catalog.filteredOutNonPokemon ? ` (${Number(catalog.filteredOutNonPokemon).toLocaleString()} other TCGs)` : ""}</div>`;
+        <div style="color:var(--muted);font-size:12px;">Sealed, graded, and other TCGs are skipped${catalog.filteredOutNonPokemon ? ` (${Number(catalog.filteredOutNonPokemon).toLocaleString()} other TCGs)` : ""}</div>
+        ${partialNote}`;
       collectrPreviewSummary.classList.add("visible");
     }
 

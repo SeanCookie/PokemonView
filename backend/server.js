@@ -7968,7 +7968,7 @@ async function route(req, res) {
         return;
       }
       const catalog = await fetchCollectrShowcaseCatalog(parsedLink.handle, {
-        maxItems: Math.min(500, Number(body.maxItems) || 500)
+        maxItems: Math.min(25_000, Number(body.maxItems) || 20_000)
       });
       if (!catalog.ok) {
         json(res, 400, { ok: false, error: catalog.error || "Failed to load Collectr showcase" });
