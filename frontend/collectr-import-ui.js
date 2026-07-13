@@ -175,7 +175,7 @@
         catalog.partial && expected > filtered.length
           ? `<div style="color:var(--down, var(--danger, #ff5f73));font-size:12px;">${escapeHtml(
               catalog.warning ||
-                `Partial load: ${filtered.length.toLocaleString()} ready of ~${expected.toLocaleString()} showcase items. Re-run Preview if this looks too low.`
+                `Partial load: ${filtered.length.toLocaleString()} Cards Only / Ungraded / Pokemon items ready. Re-run Preview if this looks too low.`
             )}</div>`
           : "";
       collectrPreviewSummary.innerHTML = `

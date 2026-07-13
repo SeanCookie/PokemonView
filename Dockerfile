@@ -1,6 +1,6 @@
 # Cloudflare Containers image (linux/amd64).
 # Card art is served from R2 — never COPY backend/data/card-images into this image.
-# cache-bust: 2026-07-13-collectr-offset-rewrite-v3
+# cache-bust: 2026-07-13-collectr-filters-cards-ungraded-pokemon-v4
 FROM node:20-bookworm-slim
 
 WORKDIR /app

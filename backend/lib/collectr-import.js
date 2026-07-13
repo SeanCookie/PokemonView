@@ -7,7 +7,7 @@ const COLLECTR_API_ORIGIN = "https://api-v2.getcollectr.com";
 const COLLECTR_ANON_USERNAME = "00000000-0000-0000-0000-000000000000";
 const COLLECTR_DEFAULT_PAGE_SIZE = 100;
 const COLLECTR_PAGE_DELAY_MS = 120;
-const { fetchCollectrShowcaseCatalogViaBrowser } = require("./collectr-browser");
+const { fetchCollectrShowcaseCatalogViaBrowser, COLLECTR_IMPORT_FILTERS_PARAM, buildShowcaseProfileUrl } = require("./collectr-browser");
 const {
   isCollectrPokemonProduct,
   filterCollectrPokemonProducts
@@ -62,6 +62,7 @@ function buildCollectrShowcaseApiUrl(handle, offset = 0, limit = COLLECTR_DEFAUL
     sortType: "",
     sortOrder: "",
     groupId: "",
+    filters: COLLECTR_IMPORT_FILTERS_PARAM,
     unstackedView: "true",
     username: COLLECTR_ANON_USERNAME
   });
@@ -207,7 +208,7 @@ function mergeCollectrProductsIntoMap(byKey, rows) {
 
 async function fetchCollectrShowcaseRscPage(handle) {
   const slug = String(handle || "").trim().toLowerCase();
-  const path = `/showcase/profile/@${encodeURIComponent(slug)}`;
+  const path = `/showcase/profile/@${encodeURIComponent(slug)}?selectedFilters=${encodeURIComponent(COLLECTR_IMPORT_FILTERS_PARAM)}`;
   try {
     const response = await fetch(`https://app.getcollectr.com${path}`, {
       headers: {
@@ -232,7 +233,7 @@ async function fetchCollectrShowcaseRscPage(handle) {
 }
 
 async function fetchCollectrShowcaseHtmlPage(handle) {
-  const profileUrl = `https://app.getcollectr.com/showcase/profile/@${encodeURIComponent(handle)}`;
+  const profileUrl = buildShowcaseProfileUrl(handle);
   const response = await fetch(profileUrl, { headers: collectrFetchHeaders(handle) });
   if (!response.ok) {
     throw new Error(`Collectr profile returned ${response.status}`);
@@ -289,28 +290,27 @@ async function fetchCollectrShowcaseCatalog(handle, options = {}) {
 
       const expected = Number(filtered.expectedTotal) || 0;
       const loaded = Array.isArray(filtered.products) ? filtered.products.length : 0;
-      // Accept meaningful partial harvests (e.g. hundreds of cards) with a warning
-      // instead of failing the whole import when the browser stops early.
-      const tooSmall = loaded < 100 && expected > 50;
+      // Filtered imports: only fail when the harvest is tiny and clearly crashed.
+      const tooSmall = loaded < 100 && Boolean(browserResult.crashReason);
 
       if (filtered.partial && tooSmall) {
         return {
           ok: false,
-          error: `Collectr only returned ${loaded.toLocaleString()} of ~${expected.toLocaleString()} items for @${slug}${
+          error: `Collectr only returned ${loaded.toLocaleString()} filtered items for @${slug}${
             browserResult.crashReason ? ` (${summarizeCollectrErrorDetail(browserResult.crashReason)})` : ""
           }. Try again in a minute.`,
           partial: true,
           source: browserResult.source,
           products: filtered.products,
-          expectedTotal: expected
+          expectedTotal: expected || null
         };
       }
 
       return {
         ...filtered,
         warning:
-          filtered.partial && expected > loaded
-            ? `Loaded ${loaded.toLocaleString()} of ~${expected.toLocaleString()} showcase items${
+          filtered.partial && loaded > 0
+            ? `Loaded ${loaded.toLocaleString()} Cards Only / Ungraded / Pokemon items${
                 browserResult.crashReason ? " before browser stopped" : ""
               }. You can import these now and re-run later for the rest.`
             : ""
@@ -412,31 +412,42 @@ function summarizeCollectrProductQuantities(products) {
 function applyPokemonFilterToCatalogResult(result, maxItems) {
   if (!result?.ok) return result;
   const raw = Array.isArray(result.products) ? result.products : [];
-  const products = filterCollectrPokemonProducts(raw).slice(0, maxItems);
+  // Browser already requested Cards Only + Ungraded + Pokemon; local filter is a safety net.
+  const products = (
+    result.filteredImport
+      ? raw.filter((row) => {
+          if (row?.is_card === false) return false;
+          if (String(row?.grade_company || "").trim()) return false;
+          return isCollectrPokemonProduct(row);
+        })
+      : filterCollectrPokemonProducts(raw)
+  ).slice(0, maxItems);
   const totals = summarizeCollectrProductQuantities(products);
   const priorFiltered = Number(result.filteredOutNonPokemon) || 0;
   const passFiltered = Math.max(0, raw.length - products.length);
 
-  // Preserve Collectr-reported showcase totals (used for completeness / progress).
-  const showcaseTotalCards = Number(result.totalCards) || 0;
-  const showcaseTotalSealed = Number(result.totalSealed) || 0;
-  const showcaseExpected =
-    Number(result.expectedTotal) > 0
+  const filteredImport = Boolean(result.filteredImport);
+  const showcaseTotalCards = Number(result.showcaseTotalCards || result.totalCards) || 0;
+  const showcaseTotalSealed = Number(result.showcaseTotalSealed || result.totalSealed) || 0;
+  // For filtered browser harvests, expected = what we loaded (or loaded so far), not full showcase size.
+  const showcaseExpected = filteredImport
+    ? products.length || null
+    : Number(result.expectedTotal) > 0
       ? Number(result.expectedTotal)
       : showcaseTotalCards + showcaseTotalSealed > 0
         ? showcaseTotalCards + showcaseTotalSealed
         : null;
-  const loadedRaw = raw.length;
-  const incomplete =
-    Boolean(result.partial) ||
-    (showcaseExpected > 0 && loadedRaw < Math.min(showcaseExpected, maxItems) * 0.9);
+  const incomplete = filteredImport
+    ? Boolean(result.partial)
+    : Boolean(result.partial) ||
+      (showcaseExpected > 0 && raw.length < Math.min(showcaseExpected, maxItems) * 0.9);
 
   return {
     ...result,
     products,
-    totalCards: showcaseTotalCards || totals.cards,
-    totalSealed: showcaseTotalSealed || totals.sealed,
-    expectedTotal: showcaseExpected || (totals.cards + totals.sealed > 0 ? totals.cards + totals.sealed : null),
+    totalCards: filteredImport ? totals.cards : showcaseTotalCards || totals.cards,
+    totalSealed: filteredImport ? 0 : showcaseTotalSealed || totals.sealed,
+    expectedTotal: showcaseExpected,
     filteredCardCount: totals.cards,
     filteredSealedCount: totals.sealed,
     pokemonOnly: true,

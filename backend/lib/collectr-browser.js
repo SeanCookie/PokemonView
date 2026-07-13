@@ -6,9 +6,13 @@ const COLLECTR_ANON_USERNAME = "00000000-0000-0000-0000-000000000000";
 const API_PAGE_SIZE = 100;
 const SCROLL_PAUSE_MS = 250;
 const MAX_SCROLL_ROUNDS = 200;
-const STALE_SCROLL_ROUNDS = 20;
+const STALE_SCROLL_ROUNDS = 12;
 const STEALTH_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
+/** Collectr filter ids: Cards Only, Ungraded Cards, Pokemon category. */
+const COLLECTR_IMPORT_FILTER_IDS = ["cards", "ungraded", "3"];
+const COLLECTR_IMPORT_FILTERS_PARAM = COLLECTR_IMPORT_FILTER_IDS.join(",");
 
 function showcaseApiPath(handle) {
   const slug = String(handle || "")
@@ -22,11 +26,22 @@ function buildShowcaseApiUrl(handle, offset = 0, limit = API_PAGE_SIZE) {
   const params = new URLSearchParams({
     offset: String(Math.max(0, Number(offset) || 0)),
     limit: String(Math.min(100, Math.max(1, Number(limit) || API_PAGE_SIZE))),
-    filters: "",
+    filters: COLLECTR_IMPORT_FILTERS_PARAM,
     unstackedView: "true",
     username: COLLECTR_ANON_USERNAME
   });
   return `https://api-v2.getcollectr.com/data/showcase/${showcaseApiPath(handle)}?${params}`;
+}
+
+function buildShowcaseProfileUrl(handle) {
+  const slug = String(handle || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^@+/, "");
+  const params = new URLSearchParams({
+    selectedFilters: COLLECTR_IMPORT_FILTERS_PARAM
+  });
+  return `https://app.getcollectr.com/showcase/profile/@${encodeURIComponent(slug)}?${params}`;
 }
 
 function productKey(row) {
@@ -231,7 +246,8 @@ async function newStealthContext(browser, { slug, onApiPage } = {}) {
       }
       url.searchParams.set("offset", String(nextOffset));
       url.searchParams.set("limit", String(API_PAGE_SIZE));
-      if (!url.searchParams.has("filters")) url.searchParams.set("filters", "");
+      // Always force Cards Only + Ungraded + Pokemon — reduces load and matches import rules.
+      url.searchParams.set("filters", COLLECTR_IMPORT_FILTERS_PARAM);
       url.searchParams.set("unstackedView", "true");
       if (!url.searchParams.get("username")) {
         url.searchParams.set("username", COLLECTR_ANON_USERNAME);
@@ -280,14 +296,19 @@ async function newStealthContext(browser, { slug, onApiPage } = {}) {
 }
 
 async function nudgeScroll(page) {
+  // Avoid mouse.move — it fails loudly if Chromium already died mid-harvest.
   try {
-    await page.mouse.move(540, 420);
     await page.mouse.wheel(0, 2800);
   } catch (err) {
     if (isClosedError(err)) throw err;
   }
   try {
     await page.keyboard.press("PageDown");
+  } catch (err) {
+    if (isClosedError(err)) throw err;
+  }
+  try {
+    await page.keyboard.press("End");
   } catch (err) {
     if (isClosedError(err)) throw err;
   }
@@ -301,7 +322,9 @@ function buildCatalogResult({
   totalCards,
   totalSealed,
   maxItems,
-  crashReason = ""
+  crashReason = "",
+  exhausted = false,
+  lastPageSize = 0
 }) {
   if (!byKey.size) {
     return {
@@ -310,10 +333,10 @@ function buildCatalogResult({
     };
   }
 
-  const expected = totalCards + totalSealed;
+  // Filtered imports must not treat unfiltered showcase totals (cards+sealed) as the target.
   const capped = byKey.size >= maxItems;
-  const partial =
-    Boolean(crashReason) || (!capped && expected > 0 && byKey.size < expected * 0.9);
+  const complete = exhausted || capped || (lastPageSize > 0 && lastPageSize < API_PAGE_SIZE);
+  const partial = Boolean(crashReason) || (!complete && !capped);
 
   return {
     ok: true,
@@ -321,9 +344,13 @@ function buildCatalogResult({
     profileUrl,
     profile: profile || { handle: slug, displayName: slug, profilePhoto: null },
     products: [...byKey.values()].slice(0, maxItems),
-    totalCards,
-    totalSealed,
-    expectedTotal: expected || null,
+    totalCards: byKey.size,
+    totalSealed: 0,
+    expectedTotal: complete ? byKey.size : byKey.size,
+    showcaseTotalCards: totalCards,
+    showcaseTotalSealed: totalSealed,
+    filters: COLLECTR_IMPORT_FILTER_IDS.slice(),
+    filteredImport: true,
     partial,
     crashReason: summarizeFailureReason(crashReason),
     source: "collectr-browser"
@@ -342,7 +369,7 @@ async function fetchCollectrShowcaseCatalogViaBrowser(handle, options = {}) {
 
   const maxItems = Math.min(25_000, Math.max(1, Number(options.maxItems) || 20_000));
   const onProgress = typeof options.onProgress === "function" ? options.onProgress : null;
-  const profileUrl = `https://app.getcollectr.com/showcase/profile/@${encodeURIComponent(slug)}`;
+  const profileUrl = buildShowcaseProfileUrl(slug);
   const byKey = new Map();
   let totalCards = 0;
   let totalSealed = 0;
@@ -352,15 +379,17 @@ async function fetchCollectrShowcaseCatalogViaBrowser(handle, options = {}) {
   let page;
   let crashReason = "";
   let stopRewrite = () => {};
+  let exhausted = false;
+  let lastPageSize = 0;
 
   const report = () => {
     if (!onProgress) return;
-    const expectedTotal = totalCards + totalSealed > 0 ? totalCards + totalSealed : null;
     onProgress({
       loaded: byKey.size,
-      totalCards,
-      totalSealed,
-      expectedTotal
+      totalCards: byKey.size,
+      totalSealed: 0,
+      expectedTotal: null,
+      filters: COLLECTR_IMPORT_FILTER_IDS.slice()
     });
   };
 
@@ -380,7 +409,13 @@ async function fetchCollectrShowcaseCatalogViaBrowser(handle, options = {}) {
       : Array.isArray(payload.data)
         ? payload.data
         : [];
+    lastPageSize = rows.length;
     const added = mergeProductsByKey(byKey, rows);
+    if (rows.length > 0 && rows.length < API_PAGE_SIZE) {
+      exhausted = true;
+    } else if (rows.length === 0 && byKey.size > 0) {
+      exhausted = true;
+    }
     if (added > 0) report();
     return added;
   };
@@ -424,18 +459,15 @@ async function fetchCollectrShowcaseCatalogViaBrowser(handle, options = {}) {
 
     let staleRounds = 0;
     let lastSize = byKey.size;
-    const expectedTotal = () => (totalCards + totalSealed > 0 ? totalCards + totalSealed : 0);
-    // With offset rewriting, each scroll should pull the next 100 items quickly.
-    const maxRounds = Math.max(
-      MAX_SCROLL_ROUNDS,
-      Math.ceil((Math.min(expectedTotal() || maxItems, maxItems) || maxItems) / API_PAGE_SIZE) + 10
-    );
+    // Filtered set is smaller than full showcase; still pad rounds for large card portfolios.
+    const maxRounds = Math.max(MAX_SCROLL_ROUNDS, Math.ceil(maxItems / API_PAGE_SIZE) + 20);
 
     for (let round = 0; round < maxRounds && byKey.size < maxItems; round += 1) {
       if (page.isClosed() || !browser.isConnected()) {
         crashReason = crashReason || "Browser closed during showcase scroll";
         break;
       }
+      if (exhausted) break;
 
       try {
         await nudgeScroll(page);
@@ -447,14 +479,14 @@ async function fetchCollectrShowcaseCatalogViaBrowser(handle, options = {}) {
 
       if (byKey.size === lastSize) {
         staleRounds += 1;
-        if (staleRounds >= STALE_SCROLL_ROUNDS) break;
+        if (staleRounds >= STALE_SCROLL_ROUNDS) {
+          exhausted = true;
+          break;
+        }
       } else {
         staleRounds = 0;
         lastSize = byKey.size;
       }
-
-      const expected = expectedTotal();
-      if (expected > 0 && byKey.size >= Math.min(expected, maxItems)) break;
     }
   } catch (err) {
     crashReason = summarizeFailureReason(err.message || "Browser load failed");
@@ -477,7 +509,9 @@ async function fetchCollectrShowcaseCatalogViaBrowser(handle, options = {}) {
     totalCards,
     totalSealed,
     maxItems,
-    crashReason
+    crashReason,
+    exhausted,
+    lastPageSize
   });
 }
 
@@ -485,5 +519,8 @@ module.exports = {
   fetchCollectrShowcaseCatalogViaBrowser,
   showcaseApiPath,
   buildShowcaseApiUrl,
-  summarizeFailureReason
+  buildShowcaseProfileUrl,
+  summarizeFailureReason,
+  COLLECTR_IMPORT_FILTER_IDS,
+  COLLECTR_IMPORT_FILTERS_PARAM
 };
