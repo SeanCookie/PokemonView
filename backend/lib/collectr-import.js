@@ -13,6 +13,19 @@ const {
   filterCollectrPokemonProducts
 } = require("./collectr-pokemon-filter");
 
+function summarizeCollectrErrorDetail(reason = "") {
+  try {
+    const { summarizeFailureReason } = require("./collectr-browser");
+    return summarizeFailureReason(reason);
+  } catch {
+    return String(reason || "")
+      .split(/Browser logs:/i)[0]
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 180);
+  }
+}
+
 function parseCollectrProfileUrl(rawUrl = "") {
   const text = String(rawUrl || "").trim();
   if (!text) return { ok: false, error: "Collectr profile URL is required" };
@@ -302,7 +315,9 @@ async function fetchCollectrShowcaseCatalog(handle, options = {}) {
             : ""
       };
     }
-    browserFailureReason = String(browserResult?.reason || browserResult?.error || "").trim();
+    browserFailureReason = summarizeCollectrErrorDetail(
+      browserResult?.reason || browserResult?.error || ""
+    );
   }
 
   const byKey = new Map();

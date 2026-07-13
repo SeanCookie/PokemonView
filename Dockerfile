@@ -1,29 +1,48 @@
 # Cloudflare Containers image (linux/amd64).
 # Card art is served from R2 — never COPY backend/data/card-images into this image.
-# cache-bust: 2026-07-13-collectr-browser-oom-harden-v1
+# cache-bust: 2026-07-13-collectr-playwright-chromium-v2
 FROM node:20-bookworm-slim
 
 WORKDIR /app
 
-# Chromium is required for Collectr imports: their showcase API is WAF-blocked from plain Node fetch.
+# System libraries for Playwright's Chromium (do NOT use Debian's /usr/bin/chromium wrapper —
+# it crashes with "[: -lt: unexpected operator" under Playwright).
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
-    chromium \
     ca-certificates \
     fonts-liberation \
     fonts-dejavu-core \
+    libasound2 \
+    libatk-bridge2.0-0 \
+    libatk1.0-0 \
+    libcups2 \
+    libdbus-1-3 \
+    libdrm2 \
+    libgbm1 \
+    libglib2.0-0 \
+    libnspr4 \
+    libnss3 \
+    libpango-1.0-0 \
+    libx11-6 \
+    libxcb1 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxext6 \
+    libxfixes3 \
+    libxkbcommon0 \
+    libxrandr2 \
   && rm -rf /var/lib/apt/lists/*
 
-ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium
-ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
-ENV CHROME_PATH=/usr/bin/chromium
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+# Keep Chromium downloads in the image; do not point at Debian chromium.
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=0
 
 COPY package.json ./
 COPY scripts/noop-build.js ./scripts/noop-build.js
 COPY app.js ./
 
-# Only install the optional browser driver used by Collectr imports (skip wrangler/cloud tooling).
 RUN npm install --omit=dev --no-audit --no-fund playwright-core@1.61.1 \
+  && node node_modules/playwright-core/cli.js install chromium \
   && npm cache clean --force
 
 # Backend code

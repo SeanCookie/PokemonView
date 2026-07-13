@@ -1,10 +1,12 @@
 "use strict";
 
+const fs = require("fs");
+
 const COLLECTR_ANON_USERNAME = "00000000-0000-0000-0000-000000000000";
 const PAGE_SIZE = 30;
-const SCROLL_PAUSE_MS = 350;
+const SCROLL_PAUSE_MS = 400;
 const MAX_SCROLL_ROUNDS = 500;
-const STALE_SCROLL_ROUNDS = 24;
+const STALE_SCROLL_ROUNDS = 28;
 const STEALTH_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
@@ -17,7 +19,6 @@ function showcaseApiPath(handle) {
 }
 
 function buildShowcaseApiUrl(handle, offset = 0, limit = PAGE_SIZE) {
-  // Match the query shape Collectr's own web app uses (WAF is picky).
   const params = new URLSearchParams({
     offset: String(Math.max(0, Number(offset) || 0)),
     limit: String(Math.min(100, Math.max(1, Number(limit) || PAGE_SIZE))),
@@ -52,14 +53,43 @@ function isShowcaseApiUrl(url, handle) {
   return text.includes(`/data/showcase/${path}`) || text.includes(`/data/showcase/@${handle}`);
 }
 
+function summarizeFailureReason(reason = "") {
+  return String(reason || "")
+    .split(/Browser logs:/i)[0]
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 180);
+}
+
+function fileLooksLikeShellWrapper(filePath) {
+  try {
+    const head = fs.readFileSync(filePath, { encoding: "utf8", flag: "r" }).slice(0, 120);
+    return head.startsWith("#!") && /chromium/i.test(head + fs.readFileSync(filePath, "utf8").slice(0, 800));
+  } catch {
+    return false;
+  }
+}
+
 function resolveChromiumExecutablePath() {
+  // Prefer Playwright's bundled Chromium — Debian's /usr/bin/chromium is a broken shell wrapper
+  // under Playwright ("[: -lt: unexpected operator").
+  try {
+    const { chromium } = require("playwright-core");
+    const bundled = String(chromium.executablePath?.() || "").trim();
+    if (bundled && fs.existsSync(bundled)) return bundled;
+  } catch {
+    // ignore
+  }
+
   const fromEnv = String(
     process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ||
       process.env.CHROME_PATH ||
       process.env.CHROMIUM_PATH ||
       ""
   ).trim();
-  if (fromEnv) return fromEnv;
+  if (fromEnv && fs.existsSync(fromEnv) && !fileLooksLikeShellWrapper(fromEnv)) {
+    return fromEnv;
+  }
 
   const candidates =
     process.platform === "win32"
@@ -70,13 +100,18 @@ function resolveChromiumExecutablePath() {
           `${process.env["PROGRAMFILES(X86)"] || "C:\\Program Files (x86)"}\\Microsoft\\Edge\\Application\\msedge.exe`,
           `${process.env.PROGRAMFILES || "C:\\Program Files"}\\Microsoft\\Edge\\Application\\msedge.exe`
         ]
-      : ["/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome", "/usr/bin/google-chrome-stable"];
+      : [
+          "/usr/lib/chromium/chromium",
+          "/usr/lib/chromium-browser/chromium",
+          "/usr/bin/google-chrome-stable",
+          "/usr/bin/google-chrome"
+          // Intentionally skip /usr/bin/chromium — Debian wrapper script.
+        ];
 
-  const fs = require("fs");
   for (const candidate of candidates) {
     if (!candidate) continue;
     try {
-      if (fs.existsSync(candidate)) return candidate;
+      if (fs.existsSync(candidate) && !fileLooksLikeShellWrapper(candidate)) return candidate;
     } catch {
       // ignore
     }
@@ -118,7 +153,7 @@ async function launchStealthBrowser() {
       "--mute-audio",
       "--no-first-run",
       "--renderer-process-limit=2",
-      "--js-flags=--max-old-space-size=192"
+      "--js-flags=--max-old-space-size=256"
     ]
   };
   const executablePath = resolveChromiumExecutablePath();
@@ -127,17 +162,16 @@ async function launchStealthBrowser() {
   }
 
   try {
-    if (executablePath) {
-      return { ok: true, browser: await chromium.launch(launchOptions) };
-    }
-    return { ok: true, browser: await chromium.launch({ channel: "chrome", ...launchOptions }) };
-  } catch (firstErr) {
+    return { ok: true, browser: await chromium.launch(launchOptions), executablePath };
+  } catch (err) {
+    // Last resort: let Playwright pick its default bundled browser with no executablePath.
     try {
-      return { ok: true, browser: await chromium.launch(launchOptions) };
-    } catch (err) {
+      const { executablePath: _ignored, ...withoutPath } = launchOptions;
+      return { ok: true, browser: await chromium.launch(withoutPath), executablePath: "" };
+    } catch (err2) {
       return {
         ok: false,
-        reason: err.message || firstErr.message || "Could not launch browser"
+        reason: summarizeFailureReason(err2.message || err.message || "Could not launch browser")
       };
     }
   }
@@ -148,7 +182,6 @@ async function newStealthContext(browser) {
     userAgent: STEALTH_USER_AGENT,
     viewport: { width: 1280, height: 900 },
     javaScriptEnabled: true,
-    // Images/fonts inflate memory on large showcases and are not needed for the API harvest.
     extraHTTPHeaders: {
       "sec-ch-ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
       "sec-ch-ua-mobile": "?0",
@@ -158,6 +191,30 @@ async function newStealthContext(browser) {
   await context.addInitScript(() => {
     Object.defineProperty(navigator, "webdriver", { get: () => undefined });
   });
+  // Auto-scroll from inside the page so Node never needs page.evaluate during harvest.
+  await context.addInitScript(() => {
+    const start = () => {
+      if (window.__icCollectrAutoScroll) return;
+      window.__icCollectrAutoScroll = window.setInterval(() => {
+        try {
+          window.scrollBy(0, 2800);
+          const main = document.querySelector("main");
+          if (main) main.scrollTop = main.scrollHeight;
+          const scroller =
+            document.querySelector("[data-radix-scroll-area-viewport]") ||
+            document.querySelector(".overflow-y-auto");
+          if (scroller) scroller.scrollTop = scroller.scrollHeight;
+        } catch {
+          // ignore
+        }
+      }, 450);
+    };
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", start, { once: true });
+    } else {
+      start();
+    }
+  });
   await context.route("**/*", async (route) => {
     const req = route.request();
     const type = req.resourceType();
@@ -166,7 +223,7 @@ async function newStealthContext(browser) {
       await route.abort();
       return;
     }
-    if (/google-analytics|googletagmanager|doubleclick|facebook\.net|hotjar|segment\.io/i.test(url)) {
+    if (/google-analytics|googletagmanager|doubleclick|facebook\.net|hotjar|segment\.io|gcm_for|googleapis\.com\/gcm/i.test(url)) {
       await route.abort();
       return;
     }
@@ -175,8 +232,7 @@ async function newStealthContext(browser) {
   return context;
 }
 
-async function scrollShowcasePage(page) {
-  // Prefer mouse wheel over page.evaluate — surviving longer under low memory.
+async function nudgeScroll(page) {
   try {
     await page.mouse.move(640, 450);
     await page.mouse.wheel(0, 3200);
@@ -185,21 +241,6 @@ async function scrollShowcasePage(page) {
   }
   try {
     await page.keyboard.press("PageDown");
-    await page.keyboard.press("End");
-  } catch (err) {
-    if (isClosedError(err)) throw err;
-  }
-  try {
-    await page.evaluate(() => {
-      const main = document.querySelector("main") || document.documentElement;
-      main.scrollTop = main.scrollHeight;
-      window.scrollTo(0, document.body.scrollHeight);
-      const scroller =
-        document.querySelector("[data-radix-scroll-area-viewport]") ||
-        document.querySelector(".overflow-y-auto") ||
-        null;
-      if (scroller) scroller.scrollTop = scroller.scrollHeight;
-    });
   } catch (err) {
     if (isClosedError(err)) throw err;
   }
@@ -218,7 +259,7 @@ function buildCatalogResult({
   if (!byKey.size) {
     return {
       ok: false,
-      reason: crashReason || "Browser load returned no products"
+      reason: summarizeFailureReason(crashReason) || "Browser load returned no products"
     };
   }
 
@@ -237,7 +278,7 @@ function buildCatalogResult({
     totalSealed,
     expectedTotal: expected || null,
     partial,
-    crashReason: crashReason || "",
+    crashReason: summarizeFailureReason(crashReason),
     source: "collectr-browser"
   };
 }
@@ -300,7 +341,6 @@ async function fetchCollectrShowcaseCatalogViaBrowser(handle, options = {}) {
     context = await newStealthContext(browser);
     page = await context.newPage();
 
-    // Listen only — do not intercept/reissue requests (route.fetch() is WAF-blocked).
     page.on("response", async (response) => {
       try {
         const url = response.url();
@@ -320,8 +360,17 @@ async function fetchCollectrShowcaseCatalogViaBrowser(handle, options = {}) {
     });
 
     await page.goto(profileUrl, { waitUntil: "domcontentloaded", timeout: 120_000 });
-    // Collectr keeps analytics sockets busy, so networkidle often never settles.
-    await page.waitForTimeout(2500);
+
+    // Wait briefly for the first showcase API page before scrolling harder.
+    try {
+      await page.waitForResponse(
+        (res) => isShowcaseApiUrl(res.url(), slug) && res.ok(),
+        { timeout: 20_000 }
+      );
+    } catch {
+      // continue; scroll may still trigger loads
+    }
+    await page.waitForTimeout(1500);
     report();
 
     let staleRounds = 0;
@@ -335,10 +384,10 @@ async function fetchCollectrShowcaseCatalogViaBrowser(handle, options = {}) {
       }
 
       try {
-        await scrollShowcasePage(page);
+        await nudgeScroll(page);
         await page.waitForTimeout(SCROLL_PAUSE_MS);
       } catch (err) {
-        crashReason = err?.message || String(err);
+        crashReason = summarizeFailureReason(err?.message || String(err));
         break;
       }
 
@@ -354,7 +403,7 @@ async function fetchCollectrShowcaseCatalogViaBrowser(handle, options = {}) {
       if (expected > 0 && byKey.size >= Math.min(expected, maxItems)) break;
     }
   } catch (err) {
-    crashReason = err.message || "Browser load failed";
+    crashReason = summarizeFailureReason(err.message || "Browser load failed");
   } finally {
     await page?.close().catch(() => {});
     await context?.close().catch(() => {});
@@ -376,5 +425,6 @@ async function fetchCollectrShowcaseCatalogViaBrowser(handle, options = {}) {
 module.exports = {
   fetchCollectrShowcaseCatalogViaBrowser,
   showcaseApiPath,
-  buildShowcaseApiUrl
+  buildShowcaseApiUrl,
+  summarizeFailureReason
 };
