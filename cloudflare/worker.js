@@ -22,8 +22,14 @@ const SECRET_KEYS = [
   "POWER_PACKS_COOKIE"
 ];
 
+/**
+ * Env passed to container.start({ env }) can replace the image environment.
+ * Always include PATH so `node` from CMD remains resolvable.
+ */
 function containerEnvFromBindings(bindings) {
   const out = {
+    PATH: "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    HOME: "/root",
     NODE_ENV: "production",
     PORT: "8080",
     DEFER_HEAVY_STARTUP: "1",
@@ -47,12 +53,34 @@ function containerEnvFromBindings(bindings) {
 export class PokemonViewContainer extends Container {
   defaultPort = 8080;
   sleepAfter = "30m";
-  // Prefer a real health path so port checks wait for the Node server.
-  pingEndpoint = "localhost/api/health";
+  // Absolute path — survives env replacement that clears PATH.
+  entrypoint = ["/usr/local/bin/node", "app.js"];
+  enableInternet = true;
 
   constructor(ctx, env) {
     super(ctx, env);
     this.envVars = containerEnvFromBindings(env);
+  }
+
+  async fetch(request) {
+    // Cold start can exceed the inbound request abort window; do not cancel boot.
+    try {
+      await this.startAndWaitForPorts({
+        ports: [this.defaultPort],
+        cancellationOptions: {
+          instanceGetTimeoutMS: 90_000,
+          portReadyTimeoutMS: 120_000
+        }
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error("[pokemonview] container start failed:", message);
+      return new Response(`Failed to start container: ${message}`, {
+        status: 503,
+        headers: { "content-type": "text/plain; charset=utf-8" }
+      });
+    }
+    return super.fetch(request);
   }
 
   onStart() {
@@ -70,6 +98,8 @@ export class PokemonViewContainer extends Container {
 
 export default {
   async fetch(request, env) {
+    // Card / symbol / set art is served from the R2 binding at the edge.
+    // No public R2 S3 API URL is required for the site.
     const imageResponse = await tryServeCardImageFromR2(request, env);
     if (imageResponse) return imageResponse;
 

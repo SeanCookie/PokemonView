@@ -26,6 +26,7 @@ COPY backend/data/restock-manual-items.json ./backend/data/
 COPY backend/data/pokesymbols ./backend/data/pokesymbols
 COPY backend/data/set-images ./backend/data/set-images
 COPY backend/data/showcase-avatars/.gitkeep ./backend/data/showcase-avatars/
+COPY backend/data/store.example.json ./backend/data/store.json
 
 COPY frontend ./frontend
 
@@ -33,7 +34,9 @@ ENV NODE_ENV=production
 ENV PORT=8080
 ENV DEFER_HEAVY_STARTUP=1
 ENV SELF_HOSTED=1
+ENV PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 EXPOSE 8080
 
-CMD ["node", "app.js"]
+# Absolute node path in case start({ env }) replaces PATH.
+CMD ["/usr/local/bin/node", "app.js"]
