@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Pokemon Card Home</title>
-  <link rel="stylesheet" href="/card-sky.css?v=7" />
+  <link rel="stylesheet" href="/card-sky.css?v=8" />
   <link rel="stylesheet" href="/brand-logo.css" />
-  <script src="/card-sky.js?v=7"></script>
+  <script src="/card-sky.js?v=8"></script>
   <style>
     :root {
       color-scheme: dark;
@@ -243,7 +243,8 @@
 
     async function loadCardSkyFromLocalImages() {
       const skyOpts = { includeJapanesePaths: false, homeSky: true };
-      const res = await fetch("/api/sets/card-sky-urls?limit=all&localOnly=1", { cache: "no-store" });
+      // Fresh random sample each page load / refresh (not the full ~20k catalog).
+      const res = await fetch("/api/sets/card-sky-urls?limit=500&localOnly=1", { cache: "no-store" });
       if (!res.ok) return;
       const payload = await res.json();
       const urls = payload && Array.isArray(payload.urls) ? payload.urls : [];

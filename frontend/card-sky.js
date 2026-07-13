@@ -244,14 +244,17 @@
     const narrow = window.innerWidth < 900;
     const homeSky = Boolean(opts.homeSky);
     let pool = uniq;
-    /** Home: full catalog, shuffled deck — every card gets a turn before repeats. */
+    /** Home/browse: cycle a capped random sample (~500); reshuffled each page load. */
+    const HOME_SKY_MAX_URLS = 500;
     let homeDeck = null;
     let homeDeckIndex = 0;
     if (catalogSearch) {
       const maxUnique = narrow ? 12 : 16;
       pool = uniq.slice(0, Math.min(uniq.length, maxUnique));
     } else if (homeSky) {
-      homeDeck = shuffle(uniq);
+      const sample =
+        uniq.length > HOME_SKY_MAX_URLS ? shuffle(uniq).slice(0, HOME_SKY_MAX_URLS) : uniq;
+      homeDeck = shuffle(sample);
       pool = homeDeck;
     } else {
       const maxDistinct = Math.min(uniq.length, narrow ? 28 : 44);
@@ -374,7 +377,9 @@
 
   async function bootstrapInfinityCardSky() {
     try {
-      const sampleRes = await fetch("/api/sets/card-sky-urls?limit=250");
+      const sampleRes = await fetch("/api/sets/card-sky-urls?limit=500&localOnly=1", {
+        cache: "no-store"
+      });
       if (sampleRes.ok) {
         const sample = await sampleRes.json();
         const urls = sample && Array.isArray(sample.urls) ? sample.urls : [];

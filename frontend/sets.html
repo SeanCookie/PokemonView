@@ -6,10 +6,10 @@
   <title>Infinity Cards Sets</title>
   <link rel="preload" href="/api/pokesymbols/manifest" as="fetch" crossorigin="anonymous" />
   <link rel="preload" href="/api/sets/images" as="fetch" crossorigin="anonymous" />
-  <link rel="preload" href="/api/sets/card-sky-urls?limit=120" as="fetch" crossorigin="anonymous" />
-  <link rel="stylesheet" href="/card-sky.css?v=7" />
+  <link rel="preload" href="/api/sets/card-sky-urls?limit=500&localOnly=1" as="fetch" crossorigin="anonymous" />
+  <link rel="stylesheet" href="/card-sky.css?v=8" />
   <link rel="stylesheet" href="/brand-logo.css" />
-  <script src="/card-sky.js?v=7" defer></script>
+  <script src="/card-sky.js?v=8" defer></script>
   <style>
     :root {
       color-scheme: dark;
@@ -7365,7 +7365,8 @@
     }
 
     async function fetchSetsCardSkyUrlsFromDisk(setCodes) {
-      const params = new URLSearchParams({ limit: "all", localOnly: "1" });
+      // Random ~500 per visit; refresh / new page load reshuffles via no-store.
+      const params = new URLSearchParams({ limit: "500", localOnly: "1" });
       if (setCodes && setCodes.length) {
         params.set(
           "setCodes",
