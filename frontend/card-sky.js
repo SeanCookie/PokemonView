@@ -295,7 +295,7 @@
     const narrow = window.innerWidth < 900;
     const homeSky = Boolean(opts.homeSky);
     const dpr = Math.min(1.25, window.devicePixelRatio || 1);
-    const thumbW = Math.round((narrow ? 96 : 128) * dpr);
+    const thumbW = Math.round((narrow ? 140 : 200) * dpr);
 
     let poolCap;
     let maxActive;

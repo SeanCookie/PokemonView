@@ -12,12 +12,12 @@
   position: absolute;
   top: 0;
   left: 0;
-  width: clamp(64px, 8vw, 118px);
+  width: clamp(88px, 11vw, 168px);
   height: auto;
   aspect-ratio: 63 / 88;
   object-fit: cover;
-  border-radius: 10px;
-  opacity: 0.94;
+  border-radius: 12px;
+  opacity: 0.96;
   /* Compositor-only: no filter, shadow, or opacity keyframes while moving */
   will-change: transform;
   transform: translate3d(-200px, 120vh, 0);
