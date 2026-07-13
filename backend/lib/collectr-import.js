@@ -7,7 +7,12 @@ const COLLECTR_API_ORIGIN = "https://api-v2.getcollectr.com";
 const COLLECTR_ANON_USERNAME = "00000000-0000-0000-0000-000000000000";
 const COLLECTR_DEFAULT_PAGE_SIZE = 100;
 const COLLECTR_PAGE_DELAY_MS = 120;
-const { fetchCollectrShowcaseCatalogViaBrowser, COLLECTR_IMPORT_FILTERS_PARAM, buildShowcaseProfileUrl } = require("./collectr-browser");
+const {
+  fetchCollectrShowcaseCatalogViaBrowser,
+  COLLECTR_IMPORT_FILTERS_PARAM,
+  COLLECTR_LOADER_VERSION,
+  buildShowcaseProfileUrl
+} = require("./collectr-browser");
 const {
   isCollectrPokemonProduct,
   filterCollectrPokemonProducts
@@ -268,6 +273,7 @@ async function fetchCollectrShowcaseCatalog(handle, options = {}) {
       maxItems,
       onProgress: options.onProgress
     });
+    const loaderVersion = browserResult?.loaderVersion || COLLECTR_LOADER_VERSION;
     if (browserResult?.ok && browserResult.products?.length) {
       const filtered = applyPokemonFilterToCatalogResult(
         {
@@ -286,14 +292,14 @@ async function fetchCollectrShowcaseCatalog(handle, options = {}) {
           source: browserResult.source,
           partial: Boolean(browserResult.partial),
           needsBrowserFetch: false,
-          crashReason: browserResult.crashReason || ""
+          crashReason: browserResult.crashReason || "",
+          loaderVersion
         },
         maxItems
       );
 
       const expected = Number(filtered.expectedTotal) || 0;
       const loaded = Array.isArray(filtered.products) ? filtered.products.length : 0;
-      // Filtered imports: only fail when the harvest is tiny and clearly crashed.
       const tooSmall = loaded < 100 && Boolean(browserResult.crashReason);
 
       if (filtered.partial && tooSmall) {
@@ -301,16 +307,18 @@ async function fetchCollectrShowcaseCatalog(handle, options = {}) {
           ok: false,
           error: `Collectr only returned ${loaded.toLocaleString()} filtered items for @${slug}${
             browserResult.crashReason ? ` (${summarizeCollectrErrorDetail(browserResult.crashReason)})` : ""
-          }. Try again in a minute.`,
+          }. Try again in a minute. [${loaderVersion}]`,
           partial: true,
           source: browserResult.source,
           products: filtered.products,
-          expectedTotal: expected || null
+          expectedTotal: expected || null,
+          loaderVersion
         };
       }
 
       return {
         ...filtered,
+        loaderVersion,
         warning:
           filtered.partial && loaded > 0
             ? `Loaded ${loaded.toLocaleString()} Cards Only / Ungraded / Pokemon items${
@@ -326,10 +334,7 @@ async function fetchCollectrShowcaseCatalog(handle, options = {}) {
 
   const byKey = new Map();
   let profile = null;
-  let totalCards = 0;
-  let totalSealed = 0;
 
-  // Collectr's showcase API returns 403 without a real browser session.
   const [htmlPage, rscPage] = await Promise.all([
     fetchCollectrShowcaseHtmlPage(slug),
     fetchCollectrShowcaseRscPage(slug)
@@ -337,8 +342,6 @@ async function fetchCollectrShowcaseCatalog(handle, options = {}) {
   profile = htmlPage.profile;
   mergeCollectrProductsIntoMap(byKey, htmlPage.products);
   mergeCollectrProductsIntoMap(byKey, rscPage.products);
-  totalCards = htmlPage.totalCards || rscPage.totalCards || 0;
-  totalSealed = htmlPage.totalSealed || rscPage.totalSealed || 0;
   let source =
     byKey.size > htmlPage.products.length && byKey.size > rscPage.products.length
       ? "collectr-rsc"
@@ -350,8 +353,9 @@ async function fetchCollectrShowcaseCatalog(handle, options = {}) {
     return {
       ok: false,
       error: browserFailureReason
-        ? `Could not load Collectr showcase (@${slug}): ${browserFailureReason}`
-        : "Could not read this Collectr showcase. Check the link is public and try again."
+        ? `Could not load Collectr showcase (@${slug}): ${browserFailureReason} [${COLLECTR_LOADER_VERSION}]`
+        : `Could not read this Collectr showcase. Check the link is public and try again. [${COLLECTR_LOADER_VERSION}]`,
+      loaderVersion: COLLECTR_LOADER_VERSION
     };
   }
 
@@ -359,18 +363,17 @@ async function fetchCollectrShowcaseCatalog(handle, options = {}) {
     profile = { handle: slug, displayName: slug, profilePhoto: null };
   }
 
-  // HTML/RSC only embeds the first ~30 rows. total_cards/total_sealed are unfiltered showcase
-  // counts and must not drive success/failure messaging for filtered imports.
   return {
     ok: false,
     error: browserFailureReason
-      ? `Collectr browser loader failed for @${slug} (${browserFailureReason}). Try again in a minute.`
-      : `Collectr could not fully load @${slug}. The server browser loader is required for large filtered imports.`,
+      ? `Collectr browser loader failed for @${slug} (${browserFailureReason}). Try again in a minute. [${COLLECTR_LOADER_VERSION}]`
+      : `Collectr could not fully load @${slug}. The server browser loader is required for large filtered imports. [${COLLECTR_LOADER_VERSION}]`,
     partial: true,
     source,
     browserUnavailable: true,
     expectedTotal: null,
-    products: [...byKey.values()].slice(0, maxItems)
+    products: [...byKey.values()].slice(0, maxItems),
+    loaderVersion: COLLECTR_LOADER_VERSION
   };
 }
 
@@ -515,6 +518,7 @@ function filterCollectrProductsByImportType(products, options = {}) {
 
 module.exports = {
   COLLECTR_ANON_USERNAME,
+  COLLECTR_LOADER_VERSION,
   parseCollectrProfileUrl,
   fetchCollectrShowcaseCatalog,
   isCollectrPokemonProduct,

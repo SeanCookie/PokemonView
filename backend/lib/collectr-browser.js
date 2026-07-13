@@ -4,6 +4,8 @@ const fs = require("fs");
 
 const COLLECTR_ANON_USERNAME = "00000000-0000-0000-0000-000000000000";
 const API_PAGE_SIZE = 100;
+const PAGE_DELAY_MS = 150;
+const COLLECTR_LOADER_VERSION = "2026-07-13-light-shell-fetch-v6";
 const STEALTH_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
@@ -21,8 +23,13 @@ function showcaseApiPath(handle) {
 
 function buildShowcaseApiUrl(handle, offset = 0, limit = API_PAGE_SIZE) {
   const params = new URLSearchParams({
+    searchString: "",
     offset: String(Math.max(0, Number(offset) || 0)),
     limit: String(Math.min(100, Math.max(1, Number(limit) || API_PAGE_SIZE))),
+    id: "",
+    sortType: "",
+    sortOrder: "",
+    groupId: "",
     filters: COLLECTR_IMPORT_FILTERS_PARAM,
     unstackedView: "true",
     username: COLLECTR_ANON_USERNAME
@@ -87,7 +94,6 @@ function isDebianChromiumWrapper(filePath) {
 }
 
 function resolveChromiumExecutablePath() {
-  // Prefer Playwright bundled Chromium. Never use Debian's /usr/bin/chromium wrapper.
   try {
     const { chromium } = require("playwright-core");
     const bundled = String(chromium.executablePath?.() || "").trim();
@@ -169,8 +175,8 @@ async function launchStealthBrowser() {
       "--disable-translate",
       "--mute-audio",
       "--no-first-run",
-      "--renderer-process-limit=2",
-      "--js-flags=--max-old-space-size=384"
+      "--renderer-process-limit=1",
+      "--js-flags=--max-old-space-size=256"
     ]
   };
 
@@ -196,12 +202,11 @@ async function launchStealthBrowser() {
     return { ok: true, browser: await chromium.launch(launchOptions), executablePath };
   } catch (err) {
     try {
-      // Retry with Playwright default path resolution (no explicit executablePath).
       return {
         ok: true,
         browser: await chromium.launch({
           headless: true,
-          args: launchOptions.args
+          args: launchOptions.args.filter((a) => a !== "--renderer-process-limit=1")
         }),
         executablePath: ""
       };
@@ -217,7 +222,7 @@ async function launchStealthBrowser() {
 async function newStealthContext(browser) {
   const context = await browser.newContext({
     userAgent: STEALTH_USER_AGENT,
-    viewport: { width: 1100, height: 800 },
+    viewport: { width: 800, height: 600 },
     javaScriptEnabled: true,
     extraHTTPHeaders: {
       "sec-ch-ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
@@ -230,7 +235,8 @@ async function newStealthContext(browser) {
     Object.defineProperty(navigator, "webdriver", { get: () => undefined });
   });
 
-  // Block heavy assets so the SPA does not OOM the container. Showcase JSON stays intact.
+  // Keep only the document shell + showcase JSON. Abort the Collectr SPA so Chromium
+  // does not OOM on their profile page (root cause of "page closed during load").
   await context.route("**/*", async (route) => {
     const req = route.request();
     const type = req.resourceType();
@@ -239,19 +245,11 @@ async function newStealthContext(browser) {
       await route.continue();
       return;
     }
-    if (type === "image" || type === "media" || type === "font" || type === "stylesheet") {
-      await route.abort();
+    if (type === "document") {
+      await route.continue();
       return;
     }
-    if (
-      /google-analytics|googletagmanager|doubleclick|facebook\.net|hotjar|segment\.io|googleapis\.com\/gcm|sentry\.io|intercom/i.test(
-        url
-      )
-    ) {
-      await route.abort();
-      return;
-    }
-    await route.continue();
+    await route.abort();
   });
 
   return { context };
@@ -268,7 +266,8 @@ async function fetchShowcasePageInBrowser(page, handle, offset) {
       }
     });
     if (!res.ok) {
-      const err = new Error(`Collectr API ${res.status}`);
+      const body = await res.text().catch(() => "");
+      const err = new Error(`Collectr API ${res.status}${body ? `: ${body.slice(0, 80)}` : ""}`);
       err.status = res.status;
       throw err;
     }
@@ -291,11 +290,11 @@ function buildCatalogResult({
   if (!byKey.size) {
     return {
       ok: false,
-      reason: summarizeFailureReason(crashReason) || "Browser load returned no products"
+      reason: summarizeFailureReason(crashReason) || "Browser load returned no products",
+      loaderVersion: COLLECTR_LOADER_VERSION
     };
   }
 
-  // Filtered imports must not treat unfiltered showcase totals (cards+sealed) as the target.
   const capped = byKey.size >= maxItems;
   const complete = exhausted || capped || (lastPageSize > 0 && lastPageSize < API_PAGE_SIZE);
   const partial = Boolean(crashReason) || (!complete && !capped);
@@ -308,26 +307,29 @@ function buildCatalogResult({
     products: [...byKey.values()].slice(0, maxItems),
     totalCards: byKey.size,
     totalSealed: 0,
-    expectedTotal: complete ? byKey.size : byKey.size,
+    expectedTotal: byKey.size,
     showcaseTotalCards: totalCards,
     showcaseTotalSealed: totalSealed,
     filters: COLLECTR_IMPORT_FILTER_IDS.slice(),
     filteredImport: true,
     partial,
     crashReason: summarizeFailureReason(crashReason),
-    source: "collectr-browser"
+    source: "collectr-browser",
+    loaderVersion: COLLECTR_LOADER_VERSION
   };
 }
 
 async function fetchCollectrShowcaseCatalogViaBrowser(handle, options = {}) {
   const launched = await launchStealthBrowser();
-  if (!launched.ok) return launched;
+  if (!launched.ok) {
+    return { ...launched, loaderVersion: COLLECTR_LOADER_VERSION };
+  }
 
   const slug = String(handle || "")
     .trim()
     .toLowerCase()
     .replace(/^@+/, "");
-  if (!slug) return { ok: false, reason: "invalid handle" };
+  if (!slug) return { ok: false, reason: "invalid handle", loaderVersion: COLLECTR_LOADER_VERSION };
 
   const maxItems = Math.min(25_000, Math.max(1, Number(options.maxItems) || 20_000));
   const onProgress = typeof options.onProgress === "function" ? options.onProgress : null;
@@ -351,7 +353,8 @@ async function fetchCollectrShowcaseCatalogViaBrowser(handle, options = {}) {
       totalCards: byKey.size,
       totalSealed: 0,
       expectedTotal: null,
-      filters: COLLECTR_IMPORT_FILTER_IDS.slice()
+      filters: COLLECTR_IMPORT_FILTER_IDS.slice(),
+      loaderVersion: COLLECTR_LOADER_VERSION
     });
   };
 
@@ -387,55 +390,24 @@ async function fetchCollectrShowcaseCatalogViaBrowser(handle, options = {}) {
     context = routed.context;
     page = await context.newPage();
 
-    // Capture SPA responses too (first paint), then we page the rest via in-page fetch.
-    page.on("response", async (response) => {
-      try {
-        const url = response.url();
-        if (!isShowcaseApiUrl(url, slug) || !response.ok()) return;
-        const payload = await response.json().catch(() => null);
-        ingestPayload(payload);
-      } catch {
-        // ignore navigation / body races
-      }
-    });
-
     page.on("close", () => {
       if (!closingIntentionally && !crashReason) {
-        crashReason = "Showcase page closed during load";
+        crashReason = "Browser page closed unexpectedly";
       }
     });
     browser.on("disconnected", () => {
       if (!closingIntentionally && !crashReason) {
-        crashReason = "Browser disconnected during load";
+        crashReason = "Browser disconnected unexpectedly";
       }
     });
 
-    await page.goto(profileUrl, { waitUntil: "domcontentloaded", timeout: 90_000 });
+    // Light shell only — never open /showcase/profile (that SPA OOMs the container).
+    await page.goto("https://app.getcollectr.com/", {
+      waitUntil: "domcontentloaded",
+      timeout: 60_000
+    });
+    await page.waitForTimeout(250);
 
-    try {
-      await page.waitForResponse(
-        (res) => isShowcaseApiUrl(res.url(), slug) && res.ok(),
-        { timeout: 30_000 }
-      );
-    } catch {
-      // First paint may not hit API if SSR-only; in-page fetch below still runs.
-    }
-    await page.waitForTimeout(500);
-    report();
-
-    // Leave the heavy showcase DOM behind while keeping getcollectr.com cookies/origin.
-    try {
-      await page.goto("https://app.getcollectr.com/", {
-        waitUntil: "domcontentloaded",
-        timeout: 45_000
-      });
-      await page.waitForTimeout(300);
-    } catch (err) {
-      if (isClosedError(err)) throw err;
-      // Stay on profile page and continue paging from there.
-    }
-
-    // Own the pagination explicitly (filters forced on each URL). No DOM scrolling.
     let offset = 0;
     let consecutiveEmpty = 0;
     const maxPages = Math.ceil(maxItems / API_PAGE_SIZE) + 5;
@@ -455,8 +427,7 @@ async function fetchCollectrShowcaseCatalogViaBrowser(handle, options = {}) {
           crashReason = summarizeFailureReason(msg);
           break;
         }
-        // One soft retry after a short pause (WAF / transient).
-        await page.waitForTimeout(750);
+        await page.waitForTimeout(900);
         try {
           payload = await fetchShowcasePageInBrowser(page, slug, offset);
         } catch (err2) {
@@ -479,12 +450,7 @@ async function fetchCollectrShowcaseCatalogViaBrowser(handle, options = {}) {
 
       if (exhausted) break;
       offset += API_PAGE_SIZE;
-      await page.waitForTimeout(120);
-    }
-
-    if (!crashReason && byKey.size > 0 && !exhausted && byKey.size < maxItems) {
-      // Reached max pages without a short final page — treat as incomplete.
-      crashReason = "";
+      await page.waitForTimeout(PAGE_DELAY_MS);
     }
   } catch (err) {
     crashReason = summarizeFailureReason(err.message || "Browser load failed");
@@ -516,5 +482,6 @@ module.exports = {
   buildShowcaseProfileUrl,
   summarizeFailureReason,
   COLLECTR_IMPORT_FILTER_IDS,
-  COLLECTR_IMPORT_FILTERS_PARAM
+  COLLECTR_IMPORT_FILTERS_PARAM,
+  COLLECTR_LOADER_VERSION
 };

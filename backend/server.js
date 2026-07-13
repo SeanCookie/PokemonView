@@ -7926,7 +7926,8 @@ async function route(req, res) {
       if (!catalog.ok) {
         json(res, 400, {
           ok: false,
-          error: catalog.error || catalog.reason || "Failed to load Collectr showcase"
+          error: catalog.error || catalog.reason || "Failed to load Collectr showcase",
+          loaderVersion: catalog.loaderVersion || ""
         });
         return;
       }
@@ -7940,6 +7941,7 @@ async function route(req, res) {
         partial: catalog.partial,
         warning: catalog.warning || "",
         pokemonOnly: true,
+        loaderVersion: catalog.loaderVersion || "",
         totalCards: catalog.totalCards || 0,
         totalSealed: catalog.totalSealed || 0,
         expectedTotal: catalog.expectedTotal || null,
@@ -7972,7 +7974,11 @@ async function route(req, res) {
         maxItems: Math.min(25_000, Number(body.maxItems) || 20_000)
       });
       if (!catalog.ok) {
-        json(res, 400, { ok: false, error: catalog.error || "Failed to load Collectr showcase" });
+        json(res, 400, {
+          ok: false,
+          error: catalog.error || "Failed to load Collectr showcase",
+          loaderVersion: catalog.loaderVersion || ""
+        });
         return;
       }
       const mapped = catalog.products
@@ -7986,6 +7992,7 @@ async function route(req, res) {
         source: catalog.source,
         partial: catalog.partial,
         needsBrowserFetch: catalog.needsBrowserFetch === true,
+        loaderVersion: catalog.loaderVersion || "",
         totalFound: mapped.length,
         totalCards: catalog.totalCards || 0,
         totalSealed: catalog.totalSealed || 0,

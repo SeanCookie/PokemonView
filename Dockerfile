@@ -1,6 +1,6 @@
 # Cloudflare Containers image (linux/amd64).
 # Card art is served from R2 — never COPY backend/data/card-images into this image.
-# cache-bust: 2026-07-13-collectr-inpage-fetch-paging-v5
+# cache-bust: 2026-07-13-collectr-light-shell-fetch-v6
 FROM node:20-bookworm-slim
 
 WORKDIR /app
