@@ -456,7 +456,10 @@
   function setSignedOutView() {
     currentUser = null;
     clearAuthHint();
-    if (acctMenuAdmin) acctMenuAdmin.hidden = true;
+    if (acctMenuAdmin) {
+      acctMenuAdmin.hidden = true;
+      acctMenuAdmin.style.display = "none";
+    }
     acctOpen.textContent = "Sign In";
     acctOpen.onclick = () => {
       closeMenu();
