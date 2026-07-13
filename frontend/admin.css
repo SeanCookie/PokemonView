@@ -560,6 +560,27 @@
   font-size: 12px;
 }
 
+.admin-users-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0 8px;
+}
+
+.admin-users-search {
+  flex: 1;
+  min-width: 220px;
+  max-width: 420px;
+}
+
+.admin-users-subtitle {
+  margin: 14px 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
 .admin-input {
   width: 100%;
   min-width: 120px;

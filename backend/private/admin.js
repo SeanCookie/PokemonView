@@ -68,6 +68,9 @@
   const nicknameSelectedCard = document.getElementById("nicknameSelectedCard");
   const nicknameSubmitBtn = document.getElementById("nicknameSubmitBtn");
   const usersBody = document.getElementById("usersBody");
+  const usersSearch = document.getElementById("usersSearch");
+  const usersCountLabel = document.getElementById("usersCountLabel");
+  let allUsersCache = [];
 
   let tcgPollTimer = null;
   let pcPollTimer = null;
@@ -690,11 +693,42 @@
       .join("");
   }
 
+  function sortUsersRecentFirst(users) {
+    return [...(Array.isArray(users) ? users : [])].sort((a, b) => {
+      const at = Date.parse(a?.createdAt || a?.lastLoginAt || 0) || 0;
+      const bt = Date.parse(b?.createdAt || b?.lastLoginAt || 0) || 0;
+      return bt - at;
+    });
+  }
+
+  function filterUsers(users, query) {
+    const q = String(query || "")
+      .trim()
+      .toLowerCase();
+    const sorted = sortUsersRecentFirst(users);
+    if (!q) return sorted;
+    return sorted.filter((row) => {
+      const hay = `${row.username || ""} ${row.name || ""} ${row.email || ""}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }
+
   function renderUsers(users) {
-    const list = Array.isArray(users) ? users : [];
+    if (Array.isArray(users)) allUsersCache = users;
+    const list = filterUsers(allUsersCache, usersSearch?.value || "");
+    if (usersCountLabel) {
+      const total = allUsersCache.length;
+      const shown = list.length;
+      usersCountLabel.textContent =
+        shown === total
+          ? `${total.toLocaleString()} user${total === 1 ? "" : "s"}`
+          : `Showing ${shown.toLocaleString()} of ${total.toLocaleString()}`;
+    }
     if (!usersBody) return;
     if (!list.length) {
-      usersBody.innerHTML = `<tr><td colspan="7" style="color:var(--muted)">No users yet.</td></tr>`;
+      usersBody.innerHTML = `<tr><td colspan="7" style="color:var(--muted)">${
+        allUsersCache.length ? "No users match your search." : "No users yet."
+      }</td></tr>`;
       return;
     }
     usersBody.innerHTML = list
@@ -705,7 +739,7 @@
           <td><input class="admin-input" data-field="name" value="${escapeHtml(row.name || "")}" autocomplete="off" /></td>
           <td><input class="admin-input" data-field="email" type="email" value="${escapeHtml(row.email || "")}" autocomplete="off" /></td>
           <td>${row.isAdmin ? "admin" : escapeHtml(row.role || "user")}</td>
-          <td>${row.hasPassword ? "hashed" : "Google only"}</td>
+          <td>${escapeHtml(formatDateTime(row.createdAt))}</td>
           <td>${escapeHtml(formatDateTime(row.lastLoginAt))}</td>
           <td><button type="button" class="admin-btn primary" data-save-user>Save</button></td>
         </tr>`;
@@ -731,8 +765,8 @@
             msg.textContent = `Saved ${username || email}.`;
             msg.className = "admin-status ok";
           }
-          const users = await api("/api/admin/users");
-          renderUsers(users.users);
+          const payload = await api("/api/admin/users");
+          renderUsers(payload.users);
         } catch (err) {
           if (msg) {
             msg.textContent = err.message || "Could not save user.";
@@ -744,6 +778,10 @@
       });
     });
   }
+
+  usersSearch?.addEventListener("input", () => {
+    renderUsers(allUsersCache);
+  });
 
   function escapeHtml(value) {
     return String(value ?? "")

@@ -6,7 +6,7 @@
   <meta name="robots" content="noindex, nofollow" />
   <title>Admin — PokemonView</title>
   <link rel="stylesheet" href="/site-nav.css" />
-  <link rel="stylesheet" href="/admin.css?v=2" />
+  <link rel="stylesheet" href="/admin.css?v=3" />
   <style>
     :root {
       color-scheme: dark;
@@ -301,8 +301,20 @@
 
     <section class="admin-card">
       <h2>Users</h2>
-      <p class="admin-hint">Edit username or email, then Save. Passwords are stored as one-way scrypt hashes (never plaintext).</p>
+      <p class="admin-hint">Search all accounts, or browse recent signups below. Edit username/name/email, then Save.</p>
+      <div class="admin-users-toolbar">
+        <input
+          id="usersSearch"
+          class="admin-input admin-users-search"
+          type="search"
+          placeholder="Search username, name, or email…"
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <span class="admin-hint" id="usersCountLabel" style="margin:0;"></span>
+      </div>
       <p class="admin-status" id="usersStatusMsg"></p>
+      <h3 class="admin-users-subtitle">Recent signups</h3>
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead>
@@ -311,7 +323,7 @@
               <th>Name</th>
               <th>Email</th>
               <th>Role</th>
-              <th>Password</th>
+              <th>Signed up</th>
               <th>Last login</th>
               <th></th>
             </tr>
@@ -323,6 +335,6 @@
   </main>
 
   <script src="/account-ui.js?v=5"></script>
-  <script src="/admin.js?v=2"></script>
+  <script src="/admin.js?v=3"></script>
 </body>
 </html>
