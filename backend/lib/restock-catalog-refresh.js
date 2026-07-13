@@ -1,10 +1,30 @@
 const https = require("https");
 const zlib = require("zlib");
 const { URL } = require("url");
+
+function loadRestockParsers() {
+  const candidates = ["./restock-parsers", "../scripts/restock-parsers"];
+  let lastErr = null;
+  for (const id of candidates) {
+    try {
+      return require(id);
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  console.warn(
+    `[restock] parsers unavailable (${lastErr?.message || "missing"}); Smoke & Mirrors refresh disabled`
+  );
+  return {
+    parseSmokeAndMirrorsProducts: () => [],
+    SMOKE_AND_MIRRORS_COLLECTION_URL: "https://smokeandmirrorshobby.com/collections/pokemon-in-stock"
+  };
+}
+
 const {
   parseSmokeAndMirrorsProducts,
   SMOKE_AND_MIRRORS_COLLECTION_URL
-} = require("./restock-parsers");
+} = loadRestockParsers();
 
 const POKENE_COLLECTION_URL = "https://www.pokene.com/category/pokemontcg";
 const POKENE_GRAPHQL_URL = "https://www.pokene.com/_api/wixstores-graphql-server/graphql";

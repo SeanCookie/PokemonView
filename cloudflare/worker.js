@@ -103,7 +103,7 @@ export default {
     const imageResponse = await tryServeCardImageFromR2(request, env);
     if (imageResponse) return imageResponse;
 
-    const container = env.POKEMONVIEW.getByName("main");
+    const container = env.POKEMONVIEW.getByName("main-v7");
     return container.fetch(request);
   }
 };
