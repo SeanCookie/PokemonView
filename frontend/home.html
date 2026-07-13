@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Pokemon Card Home</title>
-  <link rel="stylesheet" href="/card-sky.css?v=4" />
+  <link rel="stylesheet" href="/card-sky.css?v=5" />
   <link rel="stylesheet" href="/brand-logo.css" />
-  <script src="/card-sky.js?v=4"></script>
+  <script src="/card-sky.js?v=5"></script>
   <style>
     :root {
       color-scheme: dark;
@@ -244,7 +244,7 @@
     async function loadCardSkyFromLocalImages() {
       const skyOpts = { includeJapanesePaths: false, homeSky: true };
       // Cap the pool — limit=all (~20k full JPGs) causes continuous fetch/decode lag.
-      const res = await fetch("/api/sets/card-sky-urls?limit=48&localOnly=1", { cache: "no-store" });
+      const res = await fetch("/api/sets/card-sky-urls?limit=72&localOnly=1", { cache: "no-store" });
       if (!res.ok) return;
       const payload = await res.json();
       const urls = payload && Array.isArray(payload.urls) ? payload.urls : [];

@@ -295,25 +295,25 @@
     const narrow = window.innerWidth < 900;
     const homeSky = Boolean(opts.homeSky);
     const dpr = Math.min(1.25, window.devicePixelRatio || 1);
-    const thumbW = Math.round((narrow ? 72 : 96) * dpr);
+    const thumbW = Math.round((narrow ? 96 : 128) * dpr);
 
     let poolCap;
     let maxActive;
     let durMinSec;
     let durRangeSec;
     if (catalogSearch) {
-      poolCap = narrow ? 10 : 14;
-      maxActive = narrow ? 5 : 7;
-      durMinSec = 14;
+      poolCap = narrow ? 16 : 22;
+      maxActive = narrow ? 9 : 12;
+      durMinSec = 13;
       durRangeSec = 6;
     } else if (homeSky) {
-      poolCap = narrow ? 18 : 24;
-      maxActive = narrow ? 6 : 8;
-      durMinSec = 13;
-      durRangeSec = 5;
+      poolCap = narrow ? 32 : 48;
+      maxActive = narrow ? 14 : 22;
+      durMinSec = 12;
+      durRangeSec = 6;
     } else {
-      poolCap = narrow ? 16 : 22;
-      maxActive = narrow ? 7 : 9;
+      poolCap = narrow ? 28 : 40;
+      maxActive = narrow ? 12 : 18;
       durMinSec = 12;
       durRangeSec = 5;
     }
@@ -381,7 +381,7 @@
         img.addEventListener("animationend", onFlightEnd);
         active.push(img);
         frag.appendChild(img);
-        armFlight(img, i * (narrow ? 0.55 : 0.42));
+        armFlight(img, i * (narrow ? 0.28 : 0.2));
       }
       sky.appendChild(frag);
 
