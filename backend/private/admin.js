@@ -26,6 +26,8 @@
   const btnClearPcFailLinks = document.getElementById("btnClearPcFailLinks");
   const tcgSetRefreshSelect = document.getElementById("tcgSetRefreshSelect");
   const btnTcgSetRefresh = document.getElementById("btnTcgSetRefresh");
+  const pcSetRefreshSelect = document.getElementById("pcSetRefreshSelect");
+  const btnPcSetRefresh = document.getElementById("btnPcSetRefresh");
   const tcgStatusMsg = document.getElementById("tcgStatusMsg");
   const btnTcgPriceUpdate = document.getElementById("btnTcgPriceUpdate");
   const btnTcgPriceStop = document.getElementById("btnTcgPriceStop");
@@ -235,6 +237,8 @@
       btnPcDetailsUpdate.disabled = pcBusy;
       btnPcDetailsUpdate.textContent = pcBusy ? "PriceCharting running…" : "Update PriceCharting cache";
     }
+    if (btnPcSetRefresh) btnPcSetRefresh.disabled = pcBusy;
+    if (pcSetRefreshSelect) pcSetRefreshSelect.disabled = pcBusy;
     if (btnPcDetailsStop) {
       btnPcDetailsStop.hidden = !pcBusy;
       btnPcDetailsStop.disabled = !pcBusy;
@@ -1027,12 +1031,11 @@
   });
 
   async function loadTcgSetOptions() {
-    if (!tcgSetRefreshSelect) return;
+    if (!tcgSetRefreshSelect && !pcSetRefreshSelect) return;
     try {
       const payload = await api("/api/admin/tcg-price-check/sets");
       const sets = Array.isArray(payload.sets) ? payload.sets : [];
-      const current = tcgSetRefreshSelect.value;
-      tcgSetRefreshSelect.innerHTML =
+      const optionsHtml =
         `<option value="">Select a set…</option>` +
         sets
           .map((row) => {
@@ -1041,7 +1044,16 @@
             return `<option value="${code}" data-set-name="${name}">${name} (${code})</option>`;
           })
           .join("");
-      if (current) tcgSetRefreshSelect.value = current;
+      if (tcgSetRefreshSelect) {
+        const current = tcgSetRefreshSelect.value;
+        tcgSetRefreshSelect.innerHTML = optionsHtml;
+        if (current) tcgSetRefreshSelect.value = current;
+      }
+      if (pcSetRefreshSelect) {
+        const current = pcSetRefreshSelect.value;
+        pcSetRefreshSelect.innerHTML = optionsHtml;
+        if (current) pcSetRefreshSelect.value = current;
+      }
     } catch {
       // keep placeholder
     }
@@ -1314,6 +1326,27 @@
       startTcgLivePolling();
     } catch (err) {
       setStatus(tcgStatusMsg, err.message, "error");
+    }
+  });
+
+  btnPcSetRefresh?.addEventListener("click", async () => {
+    const setCode = String(pcSetRefreshSelect?.value || "").trim().toUpperCase();
+    if (!setCode) {
+      setStatus(pcStatusMsg, "Select a set to refresh.", "error");
+      return;
+    }
+    const selected = pcSetRefreshSelect?.selectedOptions?.[0];
+    const setName = String(selected?.getAttribute("data-set-name") || selected?.textContent || "").trim();
+    setStatus(pcStatusMsg, "");
+    try {
+      await api("/api/admin/pricecharting-details/run-set", {
+        method: "POST",
+        body: JSON.stringify({ setCode, setName })
+      });
+      setStatus(pcStatusMsg, `Refreshing PriceCharting details for ${setCode}…`, "ok");
+      startPcLivePolling();
+    } catch (err) {
+      setStatus(pcStatusMsg, err.message, "error");
     }
   });
 

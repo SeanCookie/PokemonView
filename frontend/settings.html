@@ -460,10 +460,6 @@
           <input id="showcaseValues" type="checkbox" checked />
           Show estimated values on cards
         </label>
-        <label style="display:flex;align-items:center;gap:8px;color:var(--text);font-size:13px;">
-          <input id="showcaseCost" type="checkbox" />
-          Show cost basis on cards (optional)
-        </label>
         <label>
           Bio
           <textarea id="showcaseBio" rows="3" maxlength="500" placeholder="Tell visitors about your collection…" style="resize:vertical;min-height:72px;border:1px solid var(--border);border-radius:8px;background:#0e1623;color:var(--text);padding:8px 10px;font-family:inherit;font-size:14px;"></textarea>
@@ -654,7 +650,6 @@
         const profile = payload.profile || {};
         byId("showcasePublic").checked = showcase.isPublic !== false;
         byId("showcaseValues").checked = showcase.showValues !== false;
-        byId("showcaseCost").checked = showcase.showCost === true;
         byId("showcaseBio").value = showcase.bio || "";
         byId("showcaseAvatarUrl").value =
           showcase.avatarUrl && !String(showcase.avatarUrl).startsWith("/showcase-avatars/")
@@ -769,7 +764,6 @@
         const payloadBody = {
           isPublic: byId("showcasePublic").checked,
           showValues: byId("showcaseValues").checked,
-          showCost: byId("showcaseCost").checked,
           bio: byId("showcaseBio").value.trim()
         };
         const avatarUrlField = byId("showcaseAvatarUrl").value.trim();

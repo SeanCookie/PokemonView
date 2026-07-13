@@ -186,18 +186,23 @@ async function getOrFetchPriceChartingCardDetails(
   return { ...fresh, cached: false };
 }
 
-async function collectEnglishCardsForPriceChartingPrewarm() {
+async function collectEnglishCardsForPriceChartingPrewarm(options = {}) {
+  const onlySetCode = String(options.setCode || "")
+    .trim()
+    .toUpperCase();
   const raw = await fsp.readFile(SET_CARD_LIST_FILE, "utf8");
   const parsed = JSON.parse(raw);
   const byCode = parsed?.byCode && typeof parsed.byCode === "object" ? parsed.byCode : {};
   const cards = [];
   for (const [setCode, entry] of Object.entries(byCode)) {
+    const code = String(setCode || "").trim().toUpperCase();
+    if (!code) continue;
+    if (onlySetCode && code !== onlySetCode) continue;
     const cardMap = entry?.cards && typeof entry.cards === "object" ? entry.cards : {};
     const setName = String(entry?.sourceTitle || "").trim();
     for (const [cardNo, cardName] of Object.entries(cardMap)) {
-      const code = String(setCode || "").trim().toUpperCase();
       const no = String(cardNo || "").trim();
-      if (!code || !no) continue;
+      if (!no) continue;
       cards.push({
         setCode: code,
         setName,

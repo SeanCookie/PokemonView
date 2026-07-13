@@ -1140,10 +1140,14 @@ function normalizeStaleTcgBulkPriceCheckMeta() {
   console.warn("[pricing-cache] Reset stale bulk price check status after restart (was running).");
 }
 
-function runPriceChartingDetailsPrewarmBackground(triggeredBy = "") {
+function runPriceChartingDetailsPrewarmBackground(triggeredBy = "", options = {}) {
   if (priceChartingDetailsPrewarmJob) {
     return { skipped: true, reason: "in_flight" };
   }
+  const onlySetCode = String(options.setCode || "")
+    .trim()
+    .toUpperCase();
+  const onlySetName = String(options.setName || "").trim();
   clearPriceChartingCancelFlag();
   const startedAt = new Date().toISOString();
   priceChartingBulkMeta = {
@@ -1153,14 +1157,26 @@ function runPriceChartingDetailsPrewarmBackground(triggeredBy = "") {
     finishedAt: null,
     triggeredBy: String(triggeredBy || "").trim() || null,
     lastError: null,
+    setCode: onlySetCode || null,
+    setName: onlySetName || null,
     progress: { total: 0, done: 0, ok: 0, fail: 0, skipped: 0 }
   };
   priceChartingDetailsPrewarmJob = (async () => {
     try {
-      console.log("[pricing] PriceCharting card details cache started...");
-      await clearPriceChartingFailLinks();
-      const pcCards = await collectEnglishCardsForPriceChartingPrewarm();
+      const scopeLabel = onlySetCode ? ` for ${onlySetCode}` : "";
+      console.log(`[pricing] PriceCharting card details cache started${scopeLabel}...`);
+      if (!onlySetCode) {
+        await clearPriceChartingFailLinks();
+      }
+      const pcCards = await collectEnglishCardsForPriceChartingPrewarm(
+        onlySetCode ? { setCode: onlySetCode } : {}
+      );
+      if (onlySetCode && !pcCards.length) {
+        throw new Error(`No English cards found for set ${onlySetCode}`);
+      }
       const pcCachedBefore = getPriceChartingCardDetailsCacheMeta().cacheEntryCount;
+      // Single-set refreshes always re-fetch; full runs can skip valid cached cards.
+      const skipValidCached = !onlySetCode && pcCachedBefore > 0;
       priceChartingBulkMeta.progress = {
         total: pcCards.length,
         done: 0,
@@ -1171,7 +1187,7 @@ function runPriceChartingDetailsPrewarmBackground(triggeredBy = "") {
       const pcResult = await refreshPriceChartingCardDetailsBatch(pcCards, {
         concurrency: 1,
         max: pcCards.length,
-        skipValidCached: pcCachedBefore > 0,
+        skipValidCached,
         persistEvery: PRICECHARTING_DETAILS_PERSIST_EVERY,
         shouldCancel: isPriceChartingCancelled,
         onFail: (card, error) => {
@@ -1208,7 +1224,7 @@ function runPriceChartingDetailsPrewarmBackground(triggeredBy = "") {
         skipped: Number(pcResult.skipped) || 0
       };
       console.log(
-        `[pricing] PriceCharting card details ${stopped ? "stopped" : "done"}: cards=${pcCards.length}, ok=${pcResult.ok}, fail=${pcResult.fail}, skipped=${pcResult.skipped || 0}`
+        `[pricing] PriceCharting card details ${stopped ? "stopped" : "done"}${scopeLabel}: cards=${pcCards.length}, ok=${pcResult.ok}, fail=${pcResult.fail}, skipped=${pcResult.skipped || 0}`
       );
       return pcResult;
     } catch (err) {
@@ -1220,6 +1236,10 @@ function runPriceChartingDetailsPrewarmBackground(triggeredBy = "") {
     } finally {
       priceChartingDetailsPrewarmJob = null;
       clearPriceChartingCancelFlag();
+      if (priceChartingBulkMeta) {
+        priceChartingBulkMeta.setCode = null;
+        priceChartingBulkMeta.setName = null;
+      }
     }
   })();
   return priceChartingDetailsPrewarmJob;
@@ -8906,6 +8926,40 @@ async function route(req, res) {
       meta: getPriceChartingAdminMeta(),
       inFlight: true
     });
+    return;
+  }
+
+  if (pathname === "/api/admin/pricecharting-details/run-set" && req.method === "POST") {
+    const admin = requireAdmin(req, res);
+    if (!admin) return;
+    if (isPriceChartingDetailsPrewarmInFlight()) {
+      json(res, 409, {
+        ok: false,
+        error: "A PriceCharting details refresh is already running.",
+        meta: getPriceChartingAdminMeta(),
+        inFlight: true
+      });
+      return;
+    }
+    try {
+      const parsed = (await readBody(req)) || {};
+      const setCode = String(parsed.setCode || "").trim().toUpperCase();
+      const setName = String(parsed.setName || "").trim();
+      if (!setCode) {
+        json(res, 400, { ok: false, error: "setCode is required" });
+        return;
+      }
+      const label = admin.sessionUser.username || admin.sessionUser.name || admin.sessionUser.email;
+      runPriceChartingDetailsPrewarmBackground(label, { setCode, setName });
+      json(res, 202, {
+        ok: true,
+        message: `PriceCharting details refresh started for ${setCode}`,
+        meta: getPriceChartingAdminMeta(),
+        inFlight: true
+      });
+    } catch (err) {
+      json(res, 400, { ok: false, error: err.message || "Failed to start set PriceCharting refresh" });
+    }
     return;
   }
 

@@ -6,7 +6,7 @@
   <meta name="robots" content="noindex, nofollow" />
   <title>Admin — PokemonView</title>
   <link rel="stylesheet" href="/site-nav.css" />
-  <link rel="stylesheet" href="/admin.css?v=3" />
+  <link rel="stylesheet" href="/admin.css?v=4" />
   <style>
     :root {
       color-scheme: dark;
@@ -115,7 +115,7 @@
 
       <article class="admin-card" id="pcCacheCard">
         <h2>PriceCharting details cache</h2>
-        <p class="admin-hint">Sold listings and graded guides. Separate from TCG listing prices. Saves every <strong>1000</strong> cards during refresh.</p>
+        <p class="admin-hint">Sold listings and graded guides. Separate from TCG listing prices. Saves every <strong>1000</strong> cards during refresh. Use <strong>Update all</strong> for every set, or refresh one set below.</p>
         <div class="admin-stat">
           <span class="label">Last successful refresh</span>
           <span class="value mono" id="pcLastSuccess">—</span>
@@ -134,6 +134,14 @@
         </div>
         <div class="admin-progress" aria-hidden="true"><span id="pcProgressBar"></span></div>
         <p class="admin-stat"><span class="label">PriceCharting progress</span><span class="value" id="pcDetailsProgressText">—</span></p>
+        <div class="admin-set-refresh">
+          <label class="admin-set-refresh-label" for="pcSetRefreshSelect">Refresh one set
+            <select id="pcSetRefreshSelect">
+              <option value="">Select a set…</option>
+            </select>
+          </label>
+          <button type="button" class="admin-btn" id="btnPcSetRefresh">Refresh set details</button>
+        </div>
         <div class="admin-actions">
           <button type="button" class="admin-btn primary" id="btnPcDetailsUpdate">Update PriceCharting cache</button>
           <button type="button" class="admin-btn danger" id="btnPcDetailsStop" hidden>Stop PriceCharting</button>
@@ -335,6 +343,6 @@
   </main>
 
   <script src="/account-ui.js?v=5"></script>
-  <script src="/admin.js?v=3"></script>
+  <script src="/admin.js?v=4"></script>
 </body>
 </html>
