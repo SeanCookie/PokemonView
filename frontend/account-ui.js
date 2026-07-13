@@ -15,6 +15,9 @@
       cursor: pointer;
     }
     .acct-button:hover { border-color: #4f6e9c; }
+    .acct-button:not([data-auth-ready="1"]) {
+      visibility: hidden;
+    }
     .acct-menu-wrap {
       position: relative;
     }
@@ -215,7 +218,7 @@
 
   slot.innerHTML = `
     <div class="acct-menu-wrap">
-      <button type="button" class="acct-button" id="acctOpen">Sign In</button>
+      <button type="button" class="acct-button" id="acctOpen">Account</button>
       <div class="acct-menu" id="acctMenu" role="menu" aria-label="Account menu">
         <div class="acct-menu-head" id="acctMenuHead">Signed in</div>
         <a class="acct-menu-item" id="acctMenuCollection" href="/dashboard.html" role="menuitem">Collection</a>
@@ -296,6 +299,7 @@
   let currentUser = null;
   const authListeners = [];
   const REMEMBER_ME_KEY = "ic.rememberMe.v1";
+  const AUTH_HINT_KEY = "ic.authHint.v1";
 
   function loadRememberMePreference() {
     try {
@@ -311,6 +315,57 @@
     } catch {
       // ignore
     }
+  }
+
+  function saveAuthHint(user) {
+    if (!user) {
+      clearAuthHint();
+      return;
+    }
+    try {
+      localStorage.setItem(
+        AUTH_HINT_KEY,
+        JSON.stringify({
+          signedIn: true,
+          user: {
+            id: user.id || "",
+            email: user.email || "",
+            username: user.username || "",
+            name: user.name || "",
+            isAdmin: Boolean(user.isAdmin),
+            hasPassword: Boolean(user.hasPassword),
+            picture: user.picture || "",
+            showcaseUrl: user.showcaseUrl || ""
+          }
+        })
+      );
+    } catch {
+      // ignore
+    }
+  }
+
+  function clearAuthHint() {
+    try {
+      localStorage.removeItem(AUTH_HINT_KEY);
+    } catch {
+      // ignore
+    }
+  }
+
+  function loadAuthHint() {
+    try {
+      const raw = localStorage.getItem(AUTH_HINT_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed?.signedIn || !parsed?.user) return null;
+      return parsed.user;
+    } catch {
+      return null;
+    }
+  }
+
+  function markAuthButtonReady() {
+    acctOpen.setAttribute("data-auth-ready", "1");
   }
 
   function isRememberMeChecked() {
@@ -397,6 +452,7 @@
 
   function setSignedOutView() {
     currentUser = null;
+    clearAuthHint();
     if (acctMenuAdmin) acctMenuAdmin.hidden = true;
     acctOpen.textContent = "Sign In";
     acctOpen.onclick = () => {
@@ -406,16 +462,23 @@
     acctOpen.removeAttribute("aria-haspopup");
     acctOpen.removeAttribute("aria-expanded");
     closeMenu();
+    markAuthButtonReady();
     notifyAuthChange();
   }
 
   async function signOut() {
-    await fetch("/api/auth/signout", { method: "POST", credentials: "same-origin" });
+    try {
+      await fetch("/api/auth/signout", { method: "POST", credentials: "same-origin" });
+    } catch {
+      // still clear local session UI
+    }
     setSignedOutView();
+    window.location.assign("/");
   }
 
   function setSignedInView(user) {
     currentUser = user;
+    saveAuthHint(user);
     if (acctMenuAdmin) acctMenuAdmin.hidden = !user?.isAdmin;
     if (acctMenuShowcase) {
       const slug = String(user?.username || "").trim().toLowerCase();
@@ -434,6 +497,7 @@
       closeMenu();
       await signOut();
     };
+    markAuthButtonReady();
     notifyAuthChange();
   }
 
@@ -756,7 +820,11 @@
     });
   }
   setMode("signin");
-  setSignedOutView();
+  // Optimistic Account label from last session — avoids Sign In flash while /api/auth/me runs.
+  const authHint = loadAuthHint();
+  if (authHint) {
+    setSignedInView(authHint);
+  }
   rememberPageHistory();
   refreshUser();
   initGoogleSignIn();
