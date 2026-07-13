@@ -61,6 +61,9 @@
       cursor: pointer;
       text-align: left;
     }
+    .acct-menu-item[hidden] {
+      display: none !important;
+    }
     .acct-menu-item:hover {
       border-color: #3f5c84;
       background: #172b47;
@@ -479,7 +482,11 @@
   function setSignedInView(user) {
     currentUser = user;
     saveAuthHint(user);
-    if (acctMenuAdmin) acctMenuAdmin.hidden = !user?.isAdmin;
+    if (acctMenuAdmin) {
+      const isAdmin = Boolean(user?.isAdmin);
+      acctMenuAdmin.hidden = !isAdmin;
+      acctMenuAdmin.style.display = isAdmin ? "" : "none";
+    }
     if (acctMenuShowcase) {
       const slug = String(user?.username || "").trim().toLowerCase();
       acctMenuShowcase.href = slug ? `/showcase/@${encodeURIComponent(slug)}` : "/showcase";
