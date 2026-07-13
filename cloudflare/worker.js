@@ -19,7 +19,8 @@ const SECRET_KEYS = [
   "SMTP_USER",
   "SMTP_PASS",
   "SMTP_FROM",
-  "POWER_PACKS_COOKIE"
+  "POWER_PACKS_COOKIE",
+  "STORE_SYNC_SECRET"
 ];
 
 /**
@@ -63,20 +64,9 @@ export class PokemonViewContainer extends Container {
   }
 
   async fetch(request) {
-    // Apply latest Worker secrets/vars. Destroy+restart when they change —
-    // stop() alone can leave a running Node process with stale process.env.
-    const nextEnv = containerEnvFromBindings(this.env);
-    const secretFingerprint =
-      "rev3|" + SECRET_KEYS.map((k) => `${k}=${nextEnv[k] || ""}`).join("|");
-    if (this._appliedSecretFingerprint !== secretFingerprint) {
-      try {
-        await this.destroy();
-      } catch {
-        /* may already be gone */
-      }
-      this._appliedSecretFingerprint = secretFingerprint;
-    }
-    this.envVars = nextEnv;
+    // Refresh env for the *next* cold start. Do not destroy() here — container
+    // disk is ephemeral and destroy wipes store.json (accounts/collections).
+    this.envVars = containerEnvFromBindings(this.env);
 
     // Cold start can exceed the inbound request abort window; do not cancel boot.
     try {
@@ -111,8 +101,73 @@ export class PokemonViewContainer extends Container {
   }
 }
 
+const STORE_R2_KEY = "app-data/store.json";
+const STORE_SYNC_PATH = "/api/internal/r2-store";
+
+async function handleDurableStoreRequest(request, env) {
+  const url = new URL(request.url);
+  if (url.pathname !== STORE_SYNC_PATH) return null;
+
+  const expected = String(env.STORE_SYNC_SECRET || "").trim();
+  const got = String(request.headers.get("x-store-sync-secret") || "").trim();
+  if (!expected || got !== expected) {
+    return new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), {
+      status: 401,
+      headers: { "content-type": "application/json; charset=utf-8" }
+    });
+  }
+
+  const bucket = env.CARD_IMAGES;
+  if (!bucket) {
+    return new Response(JSON.stringify({ ok: false, error: "R2 binding missing" }), {
+      status: 503,
+      headers: { "content-type": "application/json; charset=utf-8" }
+    });
+  }
+
+  if (request.method === "GET") {
+    const object = await bucket.get(STORE_R2_KEY);
+    if (!object) {
+      return new Response(JSON.stringify({ ok: false, error: "not_found" }), {
+        status: 404,
+        headers: { "content-type": "application/json; charset=utf-8" }
+      });
+    }
+    const headers = new Headers();
+    headers.set("content-type", "application/json; charset=utf-8");
+    headers.set("cache-control", "no-store");
+    return new Response(object.body, { status: 200, headers });
+  }
+
+  if (request.method === "PUT") {
+    const body = await request.arrayBuffer();
+    if (!body || body.byteLength < 2) {
+      return new Response(JSON.stringify({ ok: false, error: "Empty body" }), {
+        status: 400,
+        headers: { "content-type": "application/json; charset=utf-8" }
+      });
+    }
+    await bucket.put(STORE_R2_KEY, body, {
+      httpMetadata: { contentType: "application/json; charset=utf-8" }
+    });
+    return new Response(JSON.stringify({ ok: true, bytes: body.byteLength }), {
+      status: 200,
+      headers: { "content-type": "application/json; charset=utf-8" }
+    });
+  }
+
+  return new Response(JSON.stringify({ ok: false, error: "Method not allowed" }), {
+    status: 405,
+    headers: { "content-type": "application/json; charset=utf-8" }
+  });
+}
+
 export default {
   async fetch(request, env) {
+    // Durable account store — handled at the Worker (no container), so boot can restore without deadlock.
+    const storeResponse = await handleDurableStoreRequest(request, env);
+    if (storeResponse) return storeResponse;
+
     // Card / symbol / set art is served from the R2 binding at the edge.
     // No public R2 S3 API URL is required for the site.
     const imageResponse = await tryServeCardImageFromR2(request, env);

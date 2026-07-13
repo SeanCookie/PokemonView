@@ -170,15 +170,13 @@ Open http://localhost:8080
 
 ## Important: user data persistence
 
-Container **disk is ephemeral**. While the container is running, `backend/data/store.json` (accounts, collection, etc.) behaves normally. If the container is replaced or evicted after sleeping, **runtime writes may be lost** unless you add external persistence (e.g. R2 backup — not set up yet).
+Accounts and collections live in `backend/data/store.json`.
 
-For now:
+On Cloudflare, container disk is ephemeral, so the app also syncs `store.json` to **R2**
+(`app-data/store.json` in the `pokemonview-card-images` bucket) via the Worker endpoint
+`/api/internal/r2-store` (authenticated with the `STORE_SYNC_SECRET` Worker secret).
 
-- `max_instances = 1` and a single named container (`main`) keep one consistent disk while it is awake
-- `sleepAfter = "30m"` reduces cold starts
-
-If you need durable user data on Cloudflare long term, plan a follow-up to sync `store.json` (and uploads) to **R2** or move auth/data to **D1**.
-
+On boot the container restores from R2 when available, then keeps writing local disk + R2 on each save.
 ---
 
 ## Troubleshooting

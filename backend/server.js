@@ -63,6 +63,7 @@ const {
 } = require("./lib/pricecharting-card-details-cache");
 const { loadPersistedPriceChartingMarketHistoryCache } = require("./lib/pricecharting-market-history-cache");
 const { requestPasswordReset, completePasswordReset, isEmailConfigured } = require("./lib/password-reset");
+const { pullStoreFromR2, pushStoreToR2 } = require("./lib/store-r2-sync");
 const {
   defaultShowcaseSettings,
   normalizeShowcaseSettings,
@@ -406,27 +407,43 @@ async function ensureStore() {
   await fsp.mkdir(CARD_IMAGE_JAPANESE_DIR, { recursive: true });
   await fsp.mkdir(SHOWCASE_AVATAR_DIR, { recursive: true });
   await fsp.mkdir(POWER_PACKS_CACHE_DIR, { recursive: true });
+
+  let parsed = null;
+  // Prefer durable R2 copy on Cloudflare (container disk is ephemeral).
   try {
-    const raw = await fsp.readFile(DATA_FILE, "utf8");
-    const parsed = JSON.parse(raw);
-    store = {
-      users: Array.isArray(parsed.users) ? parsed.users : [],
-      items: Array.isArray(parsed.items) ? parsed.items : [],
-      pokeViewWatchlists: Array.isArray(parsed.pokeViewWatchlists) ? parsed.pokeViewWatchlists : [],
-      activities: Array.isArray(parsed.activities) ? parsed.activities : [],
-      refreshedAt: parsed.refreshedAt || null
-    };
-  } catch {
-    await persistStore();
+    const remote = await pullStoreFromR2({ ...env, ...process.env });
+    if (remote && typeof remote === "object") parsed = remote;
+  } catch (err) {
+    console.warn(`[store] R2 pull skipped: ${err.message || err}`);
   }
+
+  if (!parsed) {
+    try {
+      const raw = await fsp.readFile(DATA_FILE, "utf8");
+      parsed = JSON.parse(raw);
+    } catch {
+      parsed = null;
+    }
+  }
+
+  store = {
+    users: Array.isArray(parsed?.users) ? parsed.users : [],
+    items: Array.isArray(parsed?.items) ? parsed.items : [],
+    pokeViewWatchlists: Array.isArray(parsed?.pokeViewWatchlists) ? parsed.pokeViewWatchlists : [],
+    activities: Array.isArray(parsed?.activities) ? parsed.activities : [],
+    refreshedAt: parsed?.refreshedAt || null
+  };
+
   let storeChanged = false;
   if (migrateStoreCollections(store)) storeChanged = true;
   if (ensureDefaultAdminRoles(store, adminUsernames)) storeChanged = true;
-  if (storeChanged) await persistStore();
+  // Always persist so disk + R2 stay aligned after restore/migrations.
+  await persistStore();
 }
 
 async function persistStore() {
   await fsp.writeFile(DATA_FILE, JSON.stringify(store, null, 2), "utf8");
+  void pushStoreToR2(store, { ...env, ...process.env }).catch(() => {});
 }
 
 function schedulePersistTcgLinkPriceCache() {
