@@ -1,6 +1,6 @@
-# Host Infinity Cards on Cloudflare
+# Host PokemonView on Cloudflare
 
-Infinity Cards is a **Node.js server** with on-disk data (`backend/data/store.json`, set catalogs, pokesymbols, etc.). That does **not** run on Cloudflare Pages or a plain Worker alone.
+PokemonView is a **Node.js server** with on-disk data (`backend/data/store.json`, set catalogs, pokesymbols, etc.). That does **not** run on Cloudflare Pages or a plain Worker alone.
 
 Use **Cloudflare Containers**: a Docker image of this app, fronted by a small Worker that routes traffic to it. Your domain stays on Cloudflare (DNS + SSL) like before.
 

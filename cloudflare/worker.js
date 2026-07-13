@@ -48,7 +48,7 @@ function containerEnvFromBindings(bindings) {
 }
 
 /**
- * Runs the Infinity Cards Node server (see Dockerfile).
+ * Runs the PokemonView Node server (see Dockerfile).
  */
 export class PokemonViewContainer extends Container {
   defaultPort = 8080;

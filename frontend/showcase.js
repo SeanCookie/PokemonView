@@ -492,7 +492,7 @@
       return;
     }
     state.username = slug;
-    document.title = `@${slug} — Infinity Cards Showcase`;
+    document.title = `@${slug} — PokemonView Showcase`;
     try {
       const res = await fetch(`/api/showcase/profile/${encodeURIComponent(slug)}`);
       const payload = await res.json().catch(() => ({}));

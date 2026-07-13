@@ -89,7 +89,7 @@ function countShinyVaultCards(entry) {
 
 async function fetchPkmnShinyVaultHtml() {
   const response = await fetch(PKMN_SHINY_VAULT_URL, {
-    headers: { "User-Agent": "Mozilla/5.0 (compatible; InfinityCards/1.0)" }
+    headers: { "User-Agent": "Mozilla/5.0 (compatible; PokemonView/1.0)" }
   });
   if (!response.ok) {
     throw new Error(`PkmnCards shiny vault failed (${response.status})`);

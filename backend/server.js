@@ -9355,7 +9355,7 @@ async function bootstrapServer({ hosted = false } = {}) {
 
 function onServerListening() {
   // eslint-disable-next-line no-console
-  console.log(`Infinity Cards running at http://localhost:${PORT}`);
+  console.log(`PokemonView running at http://localhost:${PORT}`);
   console.log(
     `[restock-hourly] enabled (interval=${Math.round(RESTOCK_AUTO_REFRESH_MS / 60000)}m)`
   );
@@ -9415,7 +9415,7 @@ async function startProductionServer() {
   await new Promise((resolve, reject) => {
     server.listen(port, "0.0.0.0", () => {
       // eslint-disable-next-line no-console
-      console.log(`Infinity Cards listening on 0.0.0.0:${port}`);
+      console.log(`PokemonView listening on 0.0.0.0:${port}`);
       resolve();
     });
     server.on("error", reject);

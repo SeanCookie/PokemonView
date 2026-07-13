@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Infinity Cards Sets</title>
+  <title>PokemonView Sets</title>
   <link rel="preload" href="/api/pokesymbols/manifest" as="fetch" crossorigin="anonymous" />
   <link rel="preload" href="/api/sets/images" as="fetch" crossorigin="anonymous" />
   <link rel="preload" href="/api/sets/card-sky-urls?limit=500&localOnly=1" as="fetch" crossorigin="anonymous" />
@@ -4436,7 +4436,7 @@
     /**
      * App set code → pokesymbols.com URL slug when it differs from pkmncards import slug,
      * or when one TCG “Online Code” is shared by multiple sets (we pick the main expansion).
-     * Keys: Infinity Cards `setEntry.code` (see setsByEra). Values: keys of manifest.bySlug.
+     * Keys: PokemonView `setEntry.code` (see setsByEra). Values: keys of manifest.bySlug.
      */
     const POKESYMBOLS_SLUG_BY_APP_CODE = {
       ASR: "astral-radiance",
@@ -7435,9 +7435,9 @@
 
     async function updateSetsCardSkyNow() {
       const startRecycler =
-        typeof startInfinityCardSkyRecycler === "function" ? startInfinityCardSkyRecycler : null;
-      const stopRecycler = typeof stopInfinityCardSkyRecycler === "function" ? stopInfinityCardSkyRecycler : null;
-      const renderSky = typeof renderInfinityCardSky === "function" ? renderInfinityCardSky : null;
+        typeof startPokemonViewkyRecycler === "function" ? startPokemonViewkyRecycler : null;
+      const stopRecycler = typeof stopPokemonViewkyRecycler === "function" ? stopPokemonViewkyRecycler : null;
+      const renderSky = typeof renderPokemonViewky === "function" ? renderPokemonViewky : null;
       if (!startRecycler && !renderSky) return;
 
       let urls = [];

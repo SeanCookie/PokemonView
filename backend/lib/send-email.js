@@ -24,7 +24,7 @@ function encodeHeaderValue(value) {
 }
 
 function buildMimeMessage({ from, to, subject, text, html }) {
-  const boundary = `----InfinityCards_${Date.now()}`;
+  const boundary = `----PokemonView_${Date.now()}`;
   const lines = [
     `From: ${encodeHeaderValue(from)}`,
     `To: ${encodeHeaderValue(to)}`,
@@ -127,7 +127,7 @@ async function sendViaSmtp({ to, subject, text, html }, env = {}) {
     let resp = await sendCommand(socket);
     if (resp.code !== 220) throw new Error(resp.message || "SMTP greeting failed");
 
-    resp = await sendCommand(socket, `EHLO infinitycards.local`);
+    resp = await sendCommand(socket, `EHLO PokemonView.local`);
     if (resp.code !== 250) throw new Error(resp.message || "SMTP EHLO failed");
 
     if (!cfg.secure && cfg.port === 587) {
@@ -138,7 +138,7 @@ async function sendViaSmtp({ to, subject, text, html }, env = {}) {
         tlsSocket.on("error", reject);
       });
       socket = upgraded;
-      resp = await sendCommand(socket, `EHLO infinitycards.local`);
+      resp = await sendCommand(socket, `EHLO PokemonView.local`);
       if (resp.code !== 250) throw new Error(resp.message || "SMTP EHLO after TLS failed");
     }
 
@@ -172,24 +172,24 @@ async function sendViaSmtp({ to, subject, text, html }, env = {}) {
 }
 
 async function sendPasswordResetEmail({ to, resetUrl, userName }, env = {}) {
-  const subject = "Reset your Infinity Cards password";
+  const subject = "Reset your PokemonView password";
   const greeting = userName ? `Hi ${userName},` : "Hi,";
   const text = `${greeting}
 
-We received a request to reset your Infinity Cards password.
+We received a request to reset your PokemonView password.
 
 Open this link to choose a new password (expires in 1 hour):
 ${resetUrl}
 
 If you did not request this, you can ignore this email.
 
-— Infinity Cards`;
+— PokemonView`;
 
   const html = `<!doctype html>
 <html>
 <body style="font-family:Segoe UI,Arial,sans-serif;background:#0a0f18;color:#e9f1ff;padding:24px;">
   <p>${greeting}</p>
-  <p>We received a request to reset your Infinity Cards password.</p>
+  <p>We received a request to reset your PokemonView password.</p>
   <p><a href="${resetUrl}" style="color:#67b2ff;">Reset your password</a></p>
   <p style="color:#93a8c7;font-size:13px;">This link expires in 1 hour. If you did not request a reset, ignore this email.</p>
 </body>

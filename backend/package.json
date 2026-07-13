@@ -1,5 +1,5 @@
 {
-  "name": "infinity-cards-backend",
+  "name": "pokemonview-backend",
   "private": true,
   "optionalDependencies": {
     "playwright-core": "^1.60.0"

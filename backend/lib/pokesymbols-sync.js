@@ -5,7 +5,7 @@ const path = require("path");
 const SOURCE_URL = "https://pokesymbols.com/tcg/sets";
 const CDN_ORIGIN = "https://pokesymbols.com";
 const USER_AGENT =
-  "InfinityCards-PokesymbolsSync/1.0 (+https://pokesymbols.com/tcg/sets)";
+  "PokemonView-PokesymbolsSync/1.0 (+https://pokesymbols.com/tcg/sets)";
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));

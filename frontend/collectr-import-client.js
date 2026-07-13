@@ -75,7 +75,7 @@
     if (!response.ok || !payload.ok) {
       const raw =
         payload.error ||
-        (response.status === 401 ? "Sign in to Infinity Cards, then try Preview again." : "") ||
+        (response.status === 401 ? "Sign in to PokemonView, then try Preview again." : "") ||
         `Collectr catalog request failed (${response.status})`;
       return { ok: false, error: raw };
     }
