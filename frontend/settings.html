@@ -208,6 +208,154 @@
       font-size: 13px;
       margin: 0;
     }
+
+    .collectr-import-block {
+      display: grid;
+      gap: 10px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.15);
+    }
+    .collectr-import-block h3 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .collectr-import-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    .collectr-import-row .search {
+      flex: 1;
+      min-width: 200px;
+      max-width: none;
+      height: 38px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #0e1623;
+      color: var(--text);
+      padding: 0 10px;
+      font-size: 14px;
+      font-family: inherit;
+    }
+    .collectr-import-actions {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .collectr-import-btn-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .collectr-import-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .collectr-import-options label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      color: var(--muted);
+    }
+    .collectr-progress {
+      display: none;
+      margin-top: 4px;
+      gap: 6px;
+    }
+    .collectr-progress.active {
+      display: grid;
+    }
+    .collectr-progress-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 10px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .collectr-progress-pct {
+      font-variant-numeric: tabular-nums;
+      color: var(--text);
+      font-weight: 600;
+    }
+    .collectr-progress-track {
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .collectr-progress-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(80, 140, 255, 0.85), rgba(103, 178, 255, 0.95));
+      transition: width 0.25s ease;
+    }
+    .collectr-preview-summary {
+      margin-top: 4px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: rgba(0, 0, 0, 0.18);
+      display: none;
+      gap: 4px;
+      font-size: 13px;
+    }
+    .collectr-preview-summary.visible {
+      display: grid;
+    }
+    .collectr-preview-summary strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+    .collectr-delete-wrap {
+      width: 100%;
+      display: flex;
+      justify-content: flex-end;
+    }
+    .collectr-delete-btn {
+      height: 34px;
+      border: 1px solid rgba(255, 120, 130, 0.45);
+      border-radius: 8px;
+      background: rgba(255, 80, 95, 0.12);
+      color: #ff9aa5;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 0 12px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .collectr-delete-btn:hover {
+      border-color: rgba(255, 140, 150, 0.7);
+      background: rgba(255, 80, 95, 0.2);
+      color: #ffc4ca;
+    }
+    .collectr-delete-btn.collectr-undo-btn {
+      border-color: rgba(51, 209, 143, 0.45);
+      background: rgba(51, 209, 143, 0.12);
+      color: #33d18f;
+    }
+    .collectr-delete-btn.collectr-undo-btn:hover {
+      border-color: rgba(51, 209, 143, 0.7);
+      background: rgba(51, 209, 143, 0.2);
+      color: #9ef0c8;
+    }
+    #collectrImportPanel[hidden] {
+      display: none !important;
+    }
   </style>
 </head>
 <body>
@@ -309,16 +457,59 @@
           <textarea id="showcaseBio" rows="3" maxlength="500" placeholder="Tell visitors about your collection…" style="resize:vertical;min-height:72px;border:1px solid var(--border);border-radius:8px;background:#0e1623;color:var(--text);padding:8px 10px;font-family:inherit;font-size:14px;"></textarea>
         </label>
         <label>
-          Collectr showcase link (optional)
-          <input id="showcaseCollectrUrl" type="url" placeholder="https://app.getcollectr.com/showcase/profile/@username" />
+          Collectr username or showcase link (optional)
+          <input id="showcaseCollectrUrl" type="text" autocomplete="off" placeholder="@username or https://app.getcollectr.com/showcase/profile/@username" />
         </label>
-        <p class="hint">Saved for reference. Use Collection → Import from Collectr to copy cards into your PokemonView inventory.</p>
+        <p class="hint">Saved on your showcase profile for reference. You can also import that collection below.</p>
         <div style="display:flex;flex-wrap:wrap;gap:8px;">
           <button type="submit" class="btn">Save showcase settings</button>
           <a id="showcaseOpenLink" class="btn" href="/showcase" style="display:inline-flex;align-items:center;text-decoration:none;">Open showcase</a>
         </div>
         <p id="showcaseStatus" class="status" role="status"></p>
       </form>
+      <div id="collectrImportPanel" class="collectr-import-block">
+        <h3>Import from Collectr</h3>
+        <p class="hint">Paste a Collectr showcase link, or type <strong>@username</strong>, to copy <strong>Pokémon</strong> into your collection (other TCGs are skipped).</p>
+        <div class="collectr-import-row">
+          <input
+            id="collectrImportUrl"
+            class="search"
+            type="text"
+            spellcheck="false"
+            autocomplete="off"
+            placeholder="@username or https://app.getcollectr.com/showcase/profile/@username"
+          />
+          <div class="collectr-import-actions">
+            <div class="collectr-import-btn-row">
+              <button type="button" class="btn" id="collectrPreviewBtn">Preview</button>
+              <button type="button" class="btn" id="collectrImportBtn">Import</button>
+            </div>
+            <div id="collectrDeleteWrap" class="collectr-delete-wrap" hidden>
+              <button type="button" class="collectr-delete-btn" id="collectrDeleteImportBtn">Delete All</button>
+            </div>
+          </div>
+        </div>
+        <div class="collectr-import-options">
+          <label><input type="checkbox" id="collectrImportSingles" checked /> Only Singles</label>
+          <label><input type="checkbox" id="collectrImportSealed" checked /> Only Sealed</label>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);">
+          <input type="checkbox" id="collectrReplaceExisting" />
+          Replace my current collection before import
+        </label>
+        <div id="collectrProgress" class="collectr-progress" aria-hidden="true">
+          <div class="collectr-progress-head">
+            <span id="collectrProgressLabel">Working…</span>
+            <span id="collectrProgressPct" class="collectr-progress-pct">0%</span>
+          </div>
+          <div class="collectr-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div id="collectrProgressFill" class="collectr-progress-fill"></div>
+          </div>
+        </div>
+        <div id="collectrPreviewSummary" class="collectr-preview-summary"></div>
+        <p id="collectrImportStatus" class="sub" style="margin:0;min-height:18px;"></p>
+        <button type="button" id="collectrImportDismiss" hidden aria-hidden="true">×</button>
+      </div>
     </section>
 
     <section class="panel panel--password">
@@ -352,6 +543,9 @@
     </div>
   </main>
 
+  <script src="/collectr-import-client.js?v=5"></script>
+  <script src="/collectr-import-ui.js?v=1"></script>
+  <script src="/account-ui.js?v=5"></script>
   <script>
     const byId = (id) => document.getElementById(id);
 
@@ -560,9 +754,41 @@
       reader.readAsDataURL(file);
     });
 
+    function normalizeCollectrProfileInput(raw) {
+      const text = String(raw || "").trim();
+      if (!text) return { ok: true, profileUrl: "" };
+      const urlMatch = text.match(
+        /^(?:https?:\/\/)?(?:app\.)?getcollectr\.com\/showcase\/profile\/@?([a-z0-9_]{3,24})\/?(?:\?.*)?$/i
+      );
+      if (urlMatch) {
+        const handle = urlMatch[1].toLowerCase();
+        return {
+          ok: true,
+          profileUrl: `https://app.getcollectr.com/showcase/profile/@${handle}`
+        };
+      }
+      const handleMatch = text.match(/^@?([a-z0-9_]{3,24})$/i);
+      if (handleMatch) {
+        const handle = handleMatch[1].toLowerCase();
+        return {
+          ok: true,
+          profileUrl: `https://app.getcollectr.com/showcase/profile/@${handle}`
+        };
+      }
+      return {
+        ok: false,
+        error: "Use @username or a Collectr link like https://app.getcollectr.com/showcase/profile/@username"
+      };
+    }
+
     byId("showcaseForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const status = byId("showcaseStatus");
+      const collectrParsed = normalizeCollectrProfileInput(byId("showcaseCollectrUrl").value);
+      if (!collectrParsed.ok) {
+        setText(status, collectrParsed.error, "error");
+        return;
+      }
       setText(status, "Saving…");
       try {
         const payloadBody = {
@@ -570,7 +796,7 @@
           showValues: byId("showcaseValues").checked,
           showCost: byId("showcaseCost").checked,
           bio: byId("showcaseBio").value.trim(),
-          collectrProfileUrl: byId("showcaseCollectrUrl").value.trim()
+          collectrProfileUrl: collectrParsed.profileUrl
         };
         const avatarUrlField = byId("showcaseAvatarUrl").value.trim();
         if (avatarUrlField) payloadBody.avatarUrl = avatarUrlField;
@@ -587,6 +813,7 @@
         }
         setText(status, "Showcase settings saved.", "ok");
         await loadShowcaseSettings();
+        collectrImportUi?.refresh();
       } catch {
         setText(status, "Network error.", "error");
       }
@@ -664,8 +891,46 @@
       }
     });
 
-    loadMe();
+    let collectrImportUi = null;
+    let collectrItemCount = 0;
+    let collectrCanUndo = false;
+    let collectrUndoCount = 0;
+
+    async function refreshCollectrCollectionMeta() {
+      try {
+        const [dashRes, itemsRes] = await Promise.all([
+          fetch("/api/dashboard", { credentials: "same-origin" }),
+          fetch("/api/items", { credentials: "same-origin" })
+        ]);
+        const dashboard = dashRes.ok ? await dashRes.json() : {};
+        const itemsPayload = itemsRes.ok ? await itemsRes.json() : { items: [] };
+        const items = Array.isArray(itemsPayload.items) ? itemsPayload.items : [];
+        collectrItemCount = items.length;
+        collectrCanUndo = Boolean(dashboard.canUndoCollection);
+        collectrUndoCount = Number(dashboard.collectionUndoCount) || 0;
+        collectrImportUi?.syncFromDashboard(dashboard, items);
+        await loadRecentActivity();
+      } catch {
+        /* optional */
+      }
+    }
+
+    async function bootSettings() {
+      const ok = await loadMe();
+      if (!ok || !window.CollectrImportUI) return;
+      collectrImportUi = window.CollectrImportUI.mount({
+        alwaysVisible: true,
+        enableDismiss: false,
+        getItemCount: () => collectrItemCount,
+        getCanUndo: () => collectrCanUndo,
+        getUndoCount: () => collectrUndoCount,
+        getDefaultUrl: () => byId("showcaseCollectrUrl")?.value || "",
+        onCollectionChanged: refreshCollectrCollectionMeta
+      });
+      await refreshCollectrCollectionMeta();
+    }
+
+    bootSettings();
   </script>
-  <script src="/account-ui.js?v=4"></script>
 </body>
 </html>

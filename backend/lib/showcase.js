@@ -2,6 +2,7 @@
 
 const { normalizeShowcaseAvatarUrl, resolveShowcasePicture } = require("./showcase-avatar");
 const { buildShowcaseCardHref } = require("./showcase-enrich");
+const { parseCollectrProfileUrl } = require("./collectr-import");
 
 function defaultShowcaseSettings() {
   return {
@@ -14,10 +15,18 @@ function defaultShowcaseSettings() {
   };
 }
 
+function normalizeCollectrProfileUrlField(raw) {
+  const text = String(raw || "").trim();
+  if (!text) return "";
+  const parsed = parseCollectrProfileUrl(text);
+  if (parsed.ok) return parsed.profileUrl;
+  return text.slice(0, 300);
+}
+
 function normalizeShowcaseSettings(raw, userId = "") {
   const base = defaultShowcaseSettings();
   if (!raw || typeof raw !== "object") return { ...base };
-  const collectrProfileUrl = String(raw.collectrProfileUrl || "").trim();
+  const collectrProfileUrl = normalizeCollectrProfileUrlField(raw.collectrProfileUrl);
   const avatarUrl = Object.prototype.hasOwnProperty.call(raw, "avatarUrl")
     ? normalizeShowcaseAvatarUrl(raw.avatarUrl, userId)
     : base.avatarUrl;
@@ -26,7 +35,7 @@ function normalizeShowcaseSettings(raw, userId = "") {
     bio: String(raw.bio || "").trim().slice(0, 500),
     showValues: raw.showValues !== false,
     showCost: raw.showCost === true,
-    collectrProfileUrl: collectrProfileUrl.slice(0, 300),
+    collectrProfileUrl,
     avatarUrl
   };
 }

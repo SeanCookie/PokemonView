@@ -306,6 +306,8 @@
   const authListeners = [];
   const REMEMBER_ME_KEY = "ic.rememberMe.v1";
   const AUTH_HINT_KEY = "ic.authHint.v1";
+  const REMEMBER_LOGIN_COOKIE = "poke_remember_login";
+  const REMEMBER_LOGIN_MAX_AGE_SEC = 60 * 60 * 24 * 30;
 
   function loadRememberMePreference() {
     try {
@@ -320,6 +322,52 @@
       localStorage.setItem(REMEMBER_ME_KEY, checked ? "1" : "0");
     } catch {
       // ignore
+    }
+  }
+
+  function readCookie(name) {
+    const prefix = `${encodeURIComponent(name)}=`;
+    const parts = String(document.cookie || "").split(";");
+    for (const part of parts) {
+      const trimmed = part.trim();
+      if (trimmed.startsWith(prefix)) {
+        try {
+          return decodeURIComponent(trimmed.slice(prefix.length));
+        } catch {
+          return trimmed.slice(prefix.length);
+        }
+      }
+    }
+    return "";
+  }
+
+  function writeRememberLoginCookie(login) {
+    const value = String(login || "").trim();
+    const secure = location.protocol === "https:" ? "; Secure" : "";
+    if (!value) {
+      document.cookie = `${REMEMBER_LOGIN_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax${secure}`;
+      return;
+    }
+    document.cookie = `${REMEMBER_LOGIN_COOKIE}=${encodeURIComponent(value)}; Path=/; Max-Age=${REMEMBER_LOGIN_MAX_AGE_SEC}; SameSite=Lax${secure}`;
+  }
+
+  function clearRememberLoginCookie() {
+    writeRememberLoginCookie("");
+  }
+
+  function applyRememberedLogin() {
+    if (!acctEmail) return;
+    const saved = readCookie(REMEMBER_LOGIN_COOKIE);
+    if (saved && !String(acctEmail.value || "").trim()) {
+      acctEmail.value = saved;
+    }
+  }
+
+  function persistRememberLogin(login, rememberMe) {
+    if (rememberMe) {
+      writeRememberLoginCookie(login);
+    } else {
+      clearRememberLoginCookie();
     }
   }
 
@@ -723,6 +771,9 @@
         setStatus(payload?.error || "Unable to complete request.", true);
         return;
       }
+      if (mode === "signin") {
+        persistRememberLogin(login, rememberMe);
+      }
       setSignedInView(payload.user || null);
       acctPassword.value = "";
       if (mode === "signup") {
@@ -779,6 +830,13 @@
       if (!response.ok || !payload?.ok) {
         setStatus(payload?.error || "Google sign-in failed.", true);
         return;
+      }
+      const rememberedLogin =
+        String(payload.user?.email || payload.user?.username || "").trim();
+      if (rememberedLogin) {
+        persistRememberLogin(rememberedLogin, rememberMe);
+      } else if (!rememberMe) {
+        clearRememberLoginCookie();
       }
       setSignedInView(payload.user || null);
       setStatus("Success. You are signed in.");
@@ -849,9 +907,18 @@
     acctRemember.checked = loadRememberMePreference();
     acctRemember.addEventListener("change", () => {
       saveRememberMePreference(acctRemember.checked);
+      if (!acctRemember.checked) {
+        clearRememberLoginCookie();
+      } else {
+        const login = String(acctEmail?.value || "").trim();
+        if (login) {
+          writeRememberLoginCookie(login);
+        }
+      }
     });
   }
   setMode("signin");
+  applyRememberedLogin();
   // Optimistic Account label from last session — avoids Sign In flash while /api/auth/me runs.
   const authHint = loadAuthHint();
   if (authHint) {

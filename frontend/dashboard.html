@@ -937,7 +937,8 @@
 
   <script src="/english-sets-catalog.js"></script>
   <script src="/collectr-import-client.js?v=5"></script>
-  <script src="/account-ui.js?v=4"></script>
+  <script src="/collectr-import-ui.js?v=1"></script>
+  <script src="/account-ui.js?v=5"></script>
   <script>
     const state = {
       items: [],
@@ -962,6 +963,7 @@
     };
 
     const byId = (id) => document.getElementById(id);
+    let collectrImportUi = null;
 
     function decodeHtml(value) {
       return String(value || "")
@@ -1259,13 +1261,7 @@
       const itemsPayload = itemsRes.ok ? await itemsRes.json() : { items: [] };
       state.dashboard = dashboard;
       state.items = Array.isArray(itemsPayload.items) ? itemsPayload.items : [];
-      if (dashboard.lastCollectrImport?.batchId) {
-        lastCollectrImport = dashboard.lastCollectrImport;
-      }
-      collectionCanUndo = Boolean(dashboard.canUndoCollection);
-      collectionUndoCount = Number(dashboard.collectionUndoCount) || 0;
-      updateCollectrDeleteButton();
-      updateCollectrImportPanelVisibility();
+      collectrImportUi?.syncFromDashboard(dashboard, state.items);
       await loadCardImagesForDashboard();
       void loadSetProgressData();
     }
@@ -1764,519 +1760,27 @@
       removeCollectionItem(id, name);
     });
 
-    const collectrImportUrl = byId("collectrImportUrl");
-    const collectrImportStatus = byId("collectrImportStatus");
-    const collectrPreviewBtn = byId("collectrPreviewBtn");
-    const collectrImportBtn = byId("collectrImportBtn");
-    const collectrReplaceExisting = byId("collectrReplaceExisting");
-    const collectrImportSingles = byId("collectrImportSingles");
-    const collectrImportSealed = byId("collectrImportSealed");
-    const collectrProgress = byId("collectrProgress");
-    const collectrProgressLabel = byId("collectrProgressLabel");
-    const collectrProgressPct = byId("collectrProgressPct");
-    const collectrProgressFill = byId("collectrProgressFill");
-    const collectrPreviewSummary = byId("collectrPreviewSummary");
-    const collectrImportPanel = byId("collectrImportPanel");
-    const collectrImportDismiss = byId("collectrImportDismiss");
-    let collectrCatalogCache = null;
-    let collectrCatalogCacheUrl = "";
-    let collectrImportBatchId = "";
-    let lastCollectrImport = null;
-    const COLLECTR_DISMISS_KEY_PREFIX = "ic.collectrImport.dismissed.v1.";
-
-    function collectrDismissStorageKey() {
-      const user = window.InfinityAccount?.getUser?.();
-      const id = String(user?.id || user?.email || user?.username || "").trim();
-      return id ? `${COLLECTR_DISMISS_KEY_PREFIX}${id}` : "";
-    }
-
-    function isCollectrImportDismissed() {
-      const key = collectrDismissStorageKey();
-      if (!key) return false;
-      try {
-        return localStorage.getItem(key) === "1";
-      } catch {
-        return false;
-      }
-    }
-
-    function setCollectrImportDismissed(dismissed) {
-      const key = collectrDismissStorageKey();
-      if (!key) return;
-      try {
-        if (dismissed) localStorage.setItem(key, "1");
-        else localStorage.removeItem(key);
-      } catch {
-        // ignore
-      }
-    }
-
-    function updateCollectrImportPanelVisibility() {
-      if (!collectrImportPanel) return;
-      const itemCount = Array.isArray(state.items) ? state.items.length : 0;
-      const isNewUser = itemCount === 0;
-      const show = isNewUser && !isCollectrImportDismissed();
-      collectrImportPanel.hidden = !show;
-    }
-
-    collectrImportDismiss?.addEventListener("click", () => {
-      setCollectrImportDismissed(true);
-      updateCollectrImportPanelVisibility();
-    });
-    let collectionCanUndo = false;
-    let collectionUndoCount = 0;
-    const collectrDeleteWrap = byId("collectrDeleteWrap");
-    const collectrDeleteImportBtn = byId("collectrDeleteImportBtn");
-
-    function setCollectrStatus(message, isError = false) {
-      if (!collectrImportStatus) return;
-      collectrImportStatus.textContent = message || "";
-      collectrImportStatus.style.color = isError ? "var(--down)" : "var(--muted)";
-    }
-
-    function setCollectrProgress(percent, label) {
-      const pct = Math.max(0, Math.min(100, Math.round(Number(percent) || 0)));
-      if (collectrProgress) {
-        collectrProgress.classList.add("active");
-        collectrProgress.setAttribute("aria-hidden", "false");
-      }
-      if (collectrProgressLabel && label) collectrProgressLabel.textContent = label;
-      if (collectrProgressPct) collectrProgressPct.textContent = `${pct}%`;
-      if (collectrProgressFill) collectrProgressFill.style.width = `${pct}%`;
-      const track = collectrProgress?.querySelector("[role=progressbar]");
-      if (track) track.setAttribute("aria-valuenow", String(pct));
-    }
-
-    function hideCollectrProgress() {
-      if (collectrProgress) {
-        collectrProgress.classList.remove("active");
-        collectrProgress.setAttribute("aria-hidden", "true");
-      }
-      if (collectrProgressFill) collectrProgressFill.style.width = "0%";
-      if (collectrProgressPct) collectrProgressPct.textContent = "0%";
-    }
-
-    function countCollectrProductTypes(products) {
-      const rows = Array.isArray(products) ? products : [];
-      let cards = 0;
-      let sealed = 0;
-      for (const row of rows) {
-        if (row && row.is_card === false) sealed += 1;
-        else cards += 1;
-      }
-      return { cards, sealed, total: rows.length };
-    }
-
-    function getCollectrImportTypeOptions() {
-      const importSingles = Boolean(collectrImportSingles?.checked);
-      const importSealed = Boolean(collectrImportSealed?.checked);
-      return { importSingles, importSealed };
-    }
-
-    function filterCollectrProductsForImport(products) {
-      const { importSingles, importSealed } = getCollectrImportTypeOptions();
-      if (!importSingles && !importSealed) return [];
-      const rows = Array.isArray(products) ? products : [];
-      if (importSingles && importSealed) return rows;
-      return rows.filter((row) => {
-        const isSealed = row && row.is_card === false;
-        return isSealed ? importSealed : importSingles;
-      });
-    }
-
-    function showCollectrPreviewSummary(catalog) {
-      if (!collectrPreviewSummary || !catalog) return;
-      const filtered = filterCollectrProductsForImport(catalog.products);
-      const counts = countCollectrProductTypes(filtered);
-      const cards = Number(catalog.totalCards) > 0 ? Number(catalog.totalCards) : counts.cards;
-      const sealed = Number(catalog.totalSealed) > 0 ? Number(catalog.totalSealed) : counts.sealed;
-      const handle = catalog.handle || "collector";
-      collectrPreviewSummary.innerHTML = `
-        <div>Ready to import from <strong>@${escapeHtml(handle)}</strong></div>
-        <div><strong>${cards.toLocaleString()}</strong> Cards · <strong>${sealed.toLocaleString()}</strong> Sealed products</div>
-        <div style="color:var(--muted);font-size:12px;">${counts.total.toLocaleString()} Pokémon line items${catalog.filteredOutNonPokemon ? ` (${Number(catalog.filteredOutNonPokemon).toLocaleString()} other TCGs skipped)` : ""}</div>`;
-      collectrPreviewSummary.classList.add("visible");
-    }
-
-    function hideCollectrPreviewSummary() {
-      if (!collectrPreviewSummary) return;
-      collectrPreviewSummary.classList.remove("visible");
-      collectrPreviewSummary.innerHTML = "";
-    }
-
-    function resetCollectrImportField() {
-      if (collectrImportUrl) collectrImportUrl.value = "";
-      collectrCatalogCache = null;
-      collectrCatalogCacheUrl = "";
-      collectrImportBatchId = "";
-      hideCollectrPreviewSummary();
-    }
-
-    function updateCollectrDeleteButton() {
-      if (!collectrDeleteWrap || !collectrDeleteImportBtn) return;
-      const count = Array.isArray(state.items) ? state.items.length : 0;
-      if (collectionCanUndo) {
-        const undoN = collectionUndoCount || count;
-        collectrDeleteImportBtn.textContent = "Undo";
-        collectrDeleteImportBtn.classList.add("collectr-undo-btn");
-        collectrDeleteImportBtn.title = `Restore ${undoN.toLocaleString()} item(s) to your collection`;
-        collectrDeleteWrap.hidden = false;
-        return;
-      }
-      collectrDeleteImportBtn.classList.remove("collectr-undo-btn");
-      if (!count) {
-        collectrDeleteWrap.hidden = true;
-        return;
-      }
-      collectrDeleteImportBtn.textContent = "Delete All";
-      collectrDeleteImportBtn.title = `Remove all ${count.toLocaleString()} item(s) from your collection`;
-      collectrDeleteWrap.hidden = false;
-    }
-
-    function setCollectrActionButtonsDisabled(disabled) {
-      if (collectrDeleteImportBtn) collectrDeleteImportBtn.disabled = disabled;
-      if (collectrImportBtn) collectrImportBtn.disabled = disabled;
-      if (collectrPreviewBtn) collectrPreviewBtn.disabled = disabled;
-    }
-
-    async function deleteAllCollectionItems() {
-      const count = Array.isArray(state.items) ? state.items.length : 0;
-      if (!count) return;
-      if (
-        !window.confirm(
-          `Remove all ${count.toLocaleString()} item(s) from your personal collection? You can use Undo to bring them back.`
-        )
-      ) {
-        return;
-      }
-      setCollectrActionButtonsDisabled(true);
-      try {
-        const res = await fetch("/api/collection/delete-all", {
-          method: "POST",
-          credentials: "same-origin",
-          headers: { "Content-Type": "application/json" },
-          body: "{}"
-        });
-        const payload = await res.json().catch(() => ({}));
-        if (!res.ok || !payload.ok) {
-          setCollectrStatus(payload.error || "Could not clear your collection.", true);
-          return;
+    collectrImportUi = window.CollectrImportUI?.mount({
+      alwaysVisible: false,
+      enableDismiss: true,
+      getItemCount: () => (Array.isArray(state.items) ? state.items.length : 0),
+      getCanUndo: () => Boolean(state.dashboard?.canUndoCollection),
+      getUndoCount: () => Number(state.dashboard?.collectionUndoCount) || 0,
+      setCollectionMeta: (patch = {}) => {
+        if (!state.dashboard) state.dashboard = {};
+        if (Object.prototype.hasOwnProperty.call(patch, "canUndo")) {
+          state.dashboard.canUndoCollection = Boolean(patch.canUndo);
         }
-        lastCollectrImport = null;
-        collectrImportBatchId = "";
-        collectionCanUndo = Boolean(payload.canUndo);
-        collectionUndoCount = Number(payload.deleted) || count;
-        setCollectrStatus(
-          `Removed ${Number(payload.deleted || 0).toLocaleString()} item(s). Click Undo to restore.`
-        );
+        if (Object.prototype.hasOwnProperty.call(patch, "undoCount")) {
+          state.dashboard.collectionUndoCount = Number(patch.undoCount) || 0;
+        }
+        if (Object.prototype.hasOwnProperty.call(patch, "lastCollectrImport")) {
+          state.dashboard.lastCollectrImport = patch.lastCollectrImport;
+        }
+      },
+      onCollectionChanged: async () => {
         await loadData();
         renderAll();
-      } catch (err) {
-        setCollectrStatus(err.message || "Delete failed.", true);
-      } finally {
-        setCollectrActionButtonsDisabled(false);
-      }
-    }
-
-    async function undoDeleteAllCollectionItems() {
-      const restoreN = collectionUndoCount || 0;
-      if (!collectionCanUndo) return;
-      if (
-        restoreN &&
-        !window.confirm(
-          `Restore ${restoreN.toLocaleString()} item(s) to your personal collection?`
-        )
-      ) {
-        return;
-      }
-      setCollectrActionButtonsDisabled(true);
-      try {
-        const res = await fetch("/api/collection/undo-delete-all", {
-          method: "POST",
-          credentials: "same-origin",
-          headers: { "Content-Type": "application/json" },
-          body: "{}"
-        });
-        const payload = await res.json().catch(() => ({}));
-        if (!res.ok || !payload.ok) {
-          setCollectrStatus(payload.error || "Could not restore your collection.", true);
-          return;
-        }
-        collectionCanUndo = false;
-        collectionUndoCount = 0;
-        setCollectrStatus(
-          `Restored ${Number(payload.restored || 0).toLocaleString()} item(s) to your collection.`
-        );
-        await loadData();
-        renderAll();
-      } catch (err) {
-        setCollectrStatus(err.message || "Restore failed.", true);
-      } finally {
-        setCollectrActionButtonsDisabled(false);
-      }
-    }
-
-    collectrDeleteImportBtn?.addEventListener("click", () => {
-      if (collectionCanUndo) undoDeleteAllCollectionItems();
-      else deleteAllCollectionItems();
-    });
-
-    [collectrImportSingles, collectrImportSealed].forEach((el) => {
-      el?.addEventListener("change", () => {
-        if (collectrCatalogCache) showCollectrPreviewSummary(collectrCatalogCache);
-      });
-    });
-
-    async function fetchCollectrCatalogInBrowser(url, onProgress) {
-      if (!window.CollectrImportClient?.fetchAllCollectrShowcaseProducts) {
-        throw new Error("Collectr import helper failed to load. Hard refresh the page.");
-      }
-      let fakePct = 0;
-      const tick = setInterval(() => {
-        fakePct = Math.min(92, fakePct + 1);
-        setCollectrProgress(fakePct, "Loading showcase from Collectr (large collections may take several minutes)…");
-      }, 900);
-      try {
-        return await window.CollectrImportClient.fetchAllCollectrShowcaseProducts(url, {
-          maxItems: 25000,
-          onProgress
-        });
-      } finally {
-        clearInterval(tick);
-      }
-    }
-
-    async function uploadCollectrProductsBatches(catalog, replaceExisting, importBatchId, onProgress) {
-      const batchSize = 400;
-      const { importSingles, importSealed } = getCollectrImportTypeOptions();
-      const products = filterCollectrProductsForImport(catalog.products || []);
-      const totalBatches = Math.max(1, Math.ceil(products.length / batchSize));
-      let imported = 0;
-      let skipped = 0;
-      let pricedFromSets = 0;
-      let batchIndex = 0;
-      for (let i = 0; i < products.length; i += batchSize) {
-        const slice = products.slice(i, i + batchSize);
-        const isFinal = i + batchSize >= products.length;
-        batchIndex += 1;
-        if (onProgress) {
-          const processed = Math.min(i + slice.length, products.length);
-          onProgress({
-            phase: "save",
-            batchIndex,
-            totalBatches,
-            processed,
-            total: products.length,
-            percent: Math.round((processed / products.length) * 100)
-          });
-        }
-        const res = await fetch("/api/collectr/import/bulk", {
-          method: "POST",
-          credentials: "same-origin",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            products: slice,
-            replaceExisting: replaceExisting && i === 0,
-            importSingles,
-            importSealed,
-            profileUrl: catalog.profileUrl,
-            handle: catalog.handle,
-            importBatchId
-          })
-        });
-        const payload = await res.json().catch(() => ({}));
-        if (!res.ok || !payload.ok) {
-          throw new Error(payload.error || "Import batch failed");
-        }
-        imported += Number(payload.imported) || 0;
-        skipped += Number(payload.skipped) || 0;
-        pricedFromSets += Number(payload.pricedFromSets) || 0;
-        if (isFinal) {
-          await fetch("/api/collectr/import/bulk", {
-            method: "POST",
-            credentials: "same-origin",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              products: [],
-              handle: catalog.handle,
-              profileUrl: catalog.profileUrl,
-              importBatchId,
-              finalBatch: true,
-              runImported: imported,
-              runSkipped: skipped
-            })
-          }).catch(() => {});
-        }
-      }
-      return { imported, skipped, pricedFromSets, totalFound: products.length };
-    }
-
-    function parseCollectrImportInput(raw) {
-      if (!window.CollectrImportClient?.parseCollectrProfileUrl) {
-        return { ok: false, error: "Collectr import helper failed to load. Hard refresh the page." };
-      }
-      return window.CollectrImportClient.parseCollectrProfileUrl(raw);
-    }
-
-    collectrPreviewBtn?.addEventListener("click", async () => {
-      const url = collectrImportUrl?.value.trim() || "";
-      const parsed = parseCollectrImportInput(url);
-      if (!parsed.ok) {
-        setCollectrStatus(parsed.error || "Enter a Collectr @username or showcase link.", true);
-        return;
-      }
-      hideCollectrPreviewSummary();
-      setCollectrStatus("");
-      setCollectrProgress(0, "Loading showcase from Collectr…");
-      collectrPreviewBtn.disabled = true;
-      collectrImportBtn.disabled = true;
-      try {
-        const catalog = await fetchCollectrCatalogInBrowser(parsed.profileUrl, (progress) => {
-          const loaded = Number(progress.loaded) || 0;
-          const expected = Number(progress.expectedTotal) || 0;
-          const pct = expected > 0 ? Math.min(99, Math.round((loaded / expected) * 100)) : Math.min(95, Math.round(loaded / 50));
-          setCollectrProgress(
-            pct,
-            `Loading showcase… ${loaded.toLocaleString()}${expected ? ` / ${expected.toLocaleString()}` : ""} items`
-          );
-        });
-        if (!catalog.ok) {
-          setCollectrStatus(catalog.error || "Preview failed.", true);
-          hideCollectrProgress();
-          return;
-        }
-        collectrCatalogCache = catalog;
-        collectrCatalogCacheUrl = parsed.handle;
-        setCollectrProgress(100, "Preview complete");
-        showCollectrPreviewSummary(catalog);
-        const counts = countCollectrProductTypes(catalog.products);
-        const cards = Number(catalog.totalCards) > 0 ? Number(catalog.totalCards) : counts.cards;
-        const sealed = Number(catalog.totalSealed) > 0 ? Number(catalog.totalSealed) : counts.sealed;
-        setCollectrStatus(
-          `Preview ready for @${catalog.handle}: ${cards.toLocaleString()} cards and ${sealed.toLocaleString()} sealed products (${counts.total.toLocaleString()} line items loaded).`
-        );
-        setTimeout(() => hideCollectrProgress(), 600);
-      } catch (err) {
-        setCollectrStatus(err.message || "Network error while previewing Collectr.", true);
-        hideCollectrProgress();
-      } finally {
-        collectrPreviewBtn.disabled = false;
-        collectrImportBtn.disabled = false;
-      }
-    });
-
-    collectrImportBtn?.addEventListener("click", async () => {
-      const url = collectrImportUrl?.value.trim() || "";
-      const parsed = parseCollectrImportInput(url);
-      if (!parsed.ok) {
-        setCollectrStatus(parsed.error || "Enter a Collectr @username or showcase link.", true);
-        return;
-      }
-      const profileUrl = parsed.profileUrl;
-      const { importSingles, importSealed } = getCollectrImportTypeOptions();
-      if (!importSingles && !importSealed) {
-        setCollectrStatus("Select at least one import type: Only Singles and/or Only Sealed.", true);
-        return;
-      }
-      const replace = Boolean(collectrReplaceExisting?.checked);
-      const typeNote = importSingles && importSealed ? "" : importSingles ? " (singles only)" : " (sealed only)";
-      const confirmText = replace
-        ? `Replace your entire collection and import from this Collectr showcase${typeNote}?`
-        : `Import from this Collectr showcase into your collection${typeNote}?`;
-      if (!window.confirm(confirmText)) return;
-
-      setCollectrStatus("");
-      collectrPreviewBtn.disabled = true;
-      collectrImportBtn.disabled = true;
-      collectrImportBatchId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-      try {
-        let catalog =
-          collectrCatalogCache &&
-          collectrCatalogCacheUrl === parsed.handle &&
-          !collectrCatalogCache.partial
-            ? collectrCatalogCache
-            : null;
-        const fetchWeight = catalog ? 0 : 45;
-
-        if (!catalog) {
-          setCollectrProgress(0, "Fetching catalog from Collectr…");
-          catalog = await fetchCollectrCatalogInBrowser(profileUrl, (progress) => {
-            const loaded = Number(progress.loaded) || 0;
-            const expected = Number(progress.expectedTotal) || 0;
-            const fetchPct = expected > 0 ? (loaded / expected) * fetchWeight : Math.min(fetchWeight - 1, loaded / 80);
-            setCollectrProgress(
-              Math.round(fetchPct),
-              `Fetching from Collectr… ${loaded.toLocaleString()}${expected ? ` / ${expected.toLocaleString()}` : ""}`
-            );
-          });
-          collectrCatalogCache = catalog;
-          collectrCatalogCacheUrl = parsed.handle;
-        }
-
-        if (!catalog.ok) {
-          setCollectrStatus(catalog.error || "Could not load Collectr showcase.", true);
-          hideCollectrProgress();
-          return;
-        }
-
-        showCollectrPreviewSummary(catalog);
-        const products = filterCollectrProductsForImport(catalog.products || []);
-        if (!products.length) {
-          setCollectrStatus("No items match your import type selection.", true);
-          hideCollectrProgress();
-          return;
-        }
-        const useBatches = products.length > 400;
-        const saveStart = fetchWeight;
-        setCollectrProgress(
-          saveStart,
-          useBatches
-            ? `Saving ${products.length.toLocaleString()} items in batches…`
-            : `Saving ${products.length.toLocaleString()} items…`
-        );
-
-        const catalogForImport = { ...catalog, products };
-        const result = await uploadCollectrProductsBatches(catalogForImport, replace, collectrImportBatchId, (progress) => {
-          const savePct =
-            saveStart + Math.round(((progress.processed || 0) / (progress.total || 1)) * (100 - saveStart));
-          const batchNote = useBatches
-            ? ` (batch ${progress.batchIndex} of ${progress.totalBatches})`
-            : "";
-          setCollectrProgress(
-            savePct,
-            `Saving to your collection… ${Number(progress.processed || 0).toLocaleString()} / ${Number(progress.total || 0).toLocaleString()}${batchNote}`
-          );
-        });
-
-        setCollectrProgress(100, "Import complete");
-        const counts = countCollectrProductTypes(products);
-        lastCollectrImport = {
-          batchId: collectrImportBatchId,
-          handle: catalog.handle,
-          itemCount: Number(result.imported) || 0,
-          importedAt: new Date().toISOString()
-        };
-        if (state.dashboard) state.dashboard.lastCollectrImport = lastCollectrImport;
-        updateCollectrDeleteButton();
-        let statusMsg = `Imported ${Number(result.imported || 0).toLocaleString()} Pokémon items from @${catalog.handle} (${counts.cards.toLocaleString()} cards, ${counts.sealed.toLocaleString()} sealed; ${Number(result.skipped || 0).toLocaleString()} skipped).`;
-        const skippedOtherTcgs = Number(catalog.filteredOutNonPokemon) || 0;
-        if (skippedOtherTcgs > 0) {
-          statusMsg += ` ${skippedOtherTcgs.toLocaleString()} Magic/other TCG items were excluded.`;
-        }
-        if (Number(result.pricedFromSets) > 0) {
-          statusMsg += ` ${Number(result.pricedFromSets).toLocaleString()} priced from Sets/TCGplayer links.`;
-        }
-        setCollectrStatus(statusMsg);
-        await loadData();
-        renderAll();
-        resetCollectrImportField();
-        setTimeout(() => hideCollectrProgress(), 1200);
-      } catch (err) {
-        setCollectrStatus(err.message || "Import failed.", true);
-        hideCollectrProgress();
-      } finally {
-        collectrPreviewBtn.disabled = false;
-        collectrImportBtn.disabled = false;
       }
     });
 
@@ -2294,7 +1798,7 @@
       if (dashboardReady) return;
       dashboardReady = true;
       setCollectionLocked(false);
-      resetCollectrImportField();
+      collectrImportUi?.resetField();
       loadData()
         .then(renderAll)
         .catch(() => {
