@@ -279,6 +279,9 @@ async function fetchCollectrShowcaseCatalog(handle, options = {}) {
           totalCards: browserResult.totalCards || 0,
           totalSealed: browserResult.totalSealed || 0,
           expectedTotal: browserResult.expectedTotal || null,
+          showcaseTotalCards: browserResult.showcaseTotalCards || 0,
+          showcaseTotalSealed: browserResult.showcaseTotalSealed || 0,
+          filteredImport: true,
           filteredOutNonPokemon: Number(browserResult.filteredOutNonPokemon) || 0,
           source: browserResult.source,
           partial: Boolean(browserResult.partial),
@@ -317,7 +320,7 @@ async function fetchCollectrShowcaseCatalog(handle, options = {}) {
       };
     }
     browserFailureReason = summarizeCollectrErrorDetail(
-      browserResult?.reason || browserResult?.error || ""
+      browserResult?.reason || browserResult?.crashReason || browserResult?.error || ""
     );
   }
 
@@ -356,41 +359,19 @@ async function fetchCollectrShowcaseCatalog(handle, options = {}) {
     profile = { handle: slug, displayName: slug, profilePhoto: null };
   }
 
-  const expectedTotal = totalCards + totalSealed;
-  const partial = expectedTotal > 0 ? byKey.size < Math.min(expectedTotal, maxItems) * 0.9 : true;
-
-  // SSR HTML only embeds the first ~30 showcase rows. Large collections need the browser path.
-  if (partial && expectedTotal > 50) {
-    return {
-      ok: false,
-      error: browserFailureReason
-        ? `Collectr showcase @${slug} has ~${expectedTotal.toLocaleString()} items, but full loading is unavailable (${browserFailureReason}).`
-        : `Collectr showcase @${slug} has ~${expectedTotal.toLocaleString()} items, but only the first page could be loaded. Full import needs the server browser loader.`,
-      partial: true,
-      source,
-      browserUnavailable: true,
-      expectedTotal,
-      products: [...byKey.values()].slice(0, maxItems)
-    };
-  }
-
-  return applyPokemonFilterToCatalogResult(
-    {
-      ok: true,
-      handle: slug,
-      profileUrl: parsed.profileUrl,
-      profile,
-      products: [...byKey.values()].slice(0, maxItems),
-      totalCards,
-      totalSealed,
-      expectedTotal: expectedTotal || null,
-      source,
-      partial,
-      needsBrowserFetch: partial,
-      browserUnavailable: useBrowser
-    },
-    maxItems
-  );
+  // HTML/RSC only embeds the first ~30 rows. total_cards/total_sealed are unfiltered showcase
+  // counts and must not drive success/failure messaging for filtered imports.
+  return {
+    ok: false,
+    error: browserFailureReason
+      ? `Collectr browser loader failed for @${slug} (${browserFailureReason}). Try again in a minute.`
+      : `Collectr could not fully load @${slug}. The server browser loader is required for large filtered imports.`,
+    partial: true,
+    source,
+    browserUnavailable: true,
+    expectedTotal: null,
+    products: [...byKey.values()].slice(0, maxItems)
+  };
 }
 
 function sleep(ms) {

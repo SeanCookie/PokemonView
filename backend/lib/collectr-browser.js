@@ -4,9 +4,6 @@ const fs = require("fs");
 
 const COLLECTR_ANON_USERNAME = "00000000-0000-0000-0000-000000000000";
 const API_PAGE_SIZE = 100;
-const SCROLL_PAUSE_MS = 250;
-const MAX_SCROLL_ROUNDS = 200;
-const STALE_SCROLL_ROUNDS = 12;
 const STEALTH_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
@@ -217,7 +214,7 @@ async function launchStealthBrowser() {
   }
 }
 
-async function newStealthContext(browser, { slug, onApiPage } = {}) {
+async function newStealthContext(browser) {
   const context = await browser.newContext({
     userAgent: STEALTH_USER_AGENT,
     viewport: { width: 1100, height: 800 },
@@ -225,93 +222,58 @@ async function newStealthContext(browser, { slug, onApiPage } = {}) {
     extraHTTPHeaders: {
       "sec-ch-ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
       "sec-ch-ua-mobile": "?0",
-      "sec-ch-ua-platform": '"Linux"'
+      "sec-ch-ua-platform": '"Linux"',
+      "Accept-Language": "en-US,en;q=0.9"
     }
   });
   await context.addInitScript(() => {
     Object.defineProperty(navigator, "webdriver", { get: () => undefined });
   });
 
-  // Rewrite showcase page requests to our own offset/limit sequence.
-  // route.continue keeps the browser TLS fingerprint (route.fetch is WAF-blocked).
-  let nextOffset = 0;
-  let rewriteEnabled = true;
-  await context.route("**/api-v2.getcollectr.com/data/showcase/**", async (route) => {
-    try {
-      const req = route.request();
-      const url = new URL(req.url());
-      if (!rewriteEnabled || !isShowcaseApiUrl(url.toString(), slug)) {
-        await route.continue();
-        return;
-      }
-      url.searchParams.set("offset", String(nextOffset));
-      url.searchParams.set("limit", String(API_PAGE_SIZE));
-      // Always force Cards Only + Ungraded + Pokemon — reduces load and matches import rules.
-      url.searchParams.set("filters", COLLECTR_IMPORT_FILTERS_PARAM);
-      url.searchParams.set("unstackedView", "true");
-      if (!url.searchParams.get("username")) {
-        url.searchParams.set("username", COLLECTR_ANON_USERNAME);
-      }
-      const assignedOffset = nextOffset;
-      nextOffset += API_PAGE_SIZE;
-      if (typeof onApiPage === "function") {
-        onApiPage({ offset: assignedOffset, limit: API_PAGE_SIZE });
-      }
-      await route.continue({ url: url.toString() });
-    } catch {
-      try {
-        await route.continue();
-      } catch {
-        // page closing
-      }
-    }
-  });
-
+  // Block heavy assets so the SPA does not OOM the container. Showcase JSON stays intact.
   await context.route("**/*", async (route) => {
     const req = route.request();
     const type = req.resourceType();
     const url = req.url();
     if (url.includes("api-v2.getcollectr.com/data/showcase/")) {
-      await route.fallback();
+      await route.continue();
       return;
     }
-    if (type === "image" || type === "media" || type === "font") {
+    if (type === "image" || type === "media" || type === "font" || type === "stylesheet") {
       await route.abort();
       return;
     }
-    if (/google-analytics|googletagmanager|doubleclick|facebook\.net|hotjar|segment\.io|googleapis\.com\/gcm/i.test(url)) {
+    if (
+      /google-analytics|googletagmanager|doubleclick|facebook\.net|hotjar|segment\.io|googleapis\.com\/gcm|sentry\.io|intercom/i.test(
+        url
+      )
+    ) {
       await route.abort();
       return;
     }
     await route.continue();
   });
 
-  return {
-    context,
-    stopRewrite: () => {
-      rewriteEnabled = false;
-    },
-    getNextOffset: () => nextOffset
-  };
+  return { context };
 }
 
-async function nudgeScroll(page) {
-  // Avoid mouse.move — it fails loudly if Chromium already died mid-harvest.
-  try {
-    await page.mouse.wheel(0, 2800);
-  } catch (err) {
-    if (isClosedError(err)) throw err;
-  }
-  try {
-    await page.keyboard.press("PageDown");
-  } catch (err) {
-    if (isClosedError(err)) throw err;
-  }
-  try {
-    await page.keyboard.press("End");
-  } catch (err) {
-    if (isClosedError(err)) throw err;
-  }
+async function fetchShowcasePageInBrowser(page, handle, offset) {
+  const apiUrl = buildShowcaseApiUrl(handle, offset, API_PAGE_SIZE);
+  return page.evaluate(async (url) => {
+    const res = await fetch(url, {
+      credentials: "include",
+      headers: {
+        Accept: "application/json, text/plain, */*",
+        "Accept-Language": "en-US,en;q=0.9"
+      }
+    });
+    if (!res.ok) {
+      const err = new Error(`Collectr API ${res.status}`);
+      err.status = res.status;
+      throw err;
+    }
+    return res.json();
+  }, apiUrl);
 }
 
 function buildCatalogResult({
@@ -378,9 +340,9 @@ async function fetchCollectrShowcaseCatalogViaBrowser(handle, options = {}) {
   let context;
   let page;
   let crashReason = "";
-  let stopRewrite = () => {};
   let exhausted = false;
   let lastPageSize = 0;
+  let closingIntentionally = false;
 
   const report = () => {
     if (!onProgress) return;
@@ -421,11 +383,11 @@ async function fetchCollectrShowcaseCatalogViaBrowser(handle, options = {}) {
   };
 
   try {
-    const routed = await newStealthContext(browser, { slug });
+    const routed = await newStealthContext(browser);
     context = routed.context;
-    stopRewrite = routed.stopRewrite;
     page = await context.newPage();
 
+    // Capture SPA responses too (first paint), then we page the rest via in-page fetch.
     page.on("response", async (response) => {
       try {
         const url = response.url();
@@ -438,64 +400,96 @@ async function fetchCollectrShowcaseCatalogViaBrowser(handle, options = {}) {
     });
 
     page.on("close", () => {
-      if (!crashReason) crashReason = "Showcase page closed during load";
+      if (!closingIntentionally && !crashReason) {
+        crashReason = "Showcase page closed during load";
+      }
     });
     browser.on("disconnected", () => {
-      if (!crashReason) crashReason = "Browser disconnected during load";
+      if (!closingIntentionally && !crashReason) {
+        crashReason = "Browser disconnected during load";
+      }
     });
 
-    await page.goto(profileUrl, { waitUntil: "domcontentloaded", timeout: 120_000 });
+    await page.goto(profileUrl, { waitUntil: "domcontentloaded", timeout: 90_000 });
 
     try {
       await page.waitForResponse(
         (res) => isShowcaseApiUrl(res.url(), slug) && res.ok(),
-        { timeout: 25_000 }
+        { timeout: 30_000 }
       );
     } catch {
-      // continue
+      // First paint may not hit API if SSR-only; in-page fetch below still runs.
     }
-    await page.waitForTimeout(800);
+    await page.waitForTimeout(500);
     report();
 
-    let staleRounds = 0;
-    let lastSize = byKey.size;
-    // Filtered set is smaller than full showcase; still pad rounds for large card portfolios.
-    const maxRounds = Math.max(MAX_SCROLL_ROUNDS, Math.ceil(maxItems / API_PAGE_SIZE) + 20);
+    // Leave the heavy showcase DOM behind while keeping getcollectr.com cookies/origin.
+    try {
+      await page.goto("https://app.getcollectr.com/", {
+        waitUntil: "domcontentloaded",
+        timeout: 45_000
+      });
+      await page.waitForTimeout(300);
+    } catch (err) {
+      if (isClosedError(err)) throw err;
+      // Stay on profile page and continue paging from there.
+    }
 
-    for (let round = 0; round < maxRounds && byKey.size < maxItems; round += 1) {
+    // Own the pagination explicitly (filters forced on each URL). No DOM scrolling.
+    let offset = 0;
+    let consecutiveEmpty = 0;
+    const maxPages = Math.ceil(maxItems / API_PAGE_SIZE) + 5;
+
+    for (let pageIdx = 0; pageIdx < maxPages && byKey.size < maxItems && !exhausted; pageIdx += 1) {
       if (page.isClosed() || !browser.isConnected()) {
-        crashReason = crashReason || "Browser closed during showcase scroll";
+        crashReason = crashReason || "Browser closed during Collectr paging";
         break;
       }
-      if (exhausted) break;
 
+      let payload = null;
       try {
-        await nudgeScroll(page);
-        await page.waitForTimeout(SCROLL_PAUSE_MS);
+        payload = await fetchShowcasePageInBrowser(page, slug, offset);
       } catch (err) {
-        crashReason = summarizeFailureReason(err?.message || String(err));
-        break;
+        const msg = String(err?.message || err || "");
+        if (isClosedError(err)) {
+          crashReason = summarizeFailureReason(msg);
+          break;
+        }
+        // One soft retry after a short pause (WAF / transient).
+        await page.waitForTimeout(750);
+        try {
+          payload = await fetchShowcasePageInBrowser(page, slug, offset);
+        } catch (err2) {
+          crashReason = summarizeFailureReason(err2?.message || msg || "Collectr API fetch failed");
+          break;
+        }
       }
 
-      if (byKey.size === lastSize) {
-        staleRounds += 1;
-        if (staleRounds >= STALE_SCROLL_ROUNDS) {
+      const before = byKey.size;
+      ingestPayload(payload);
+      if (byKey.size === before) {
+        consecutiveEmpty += 1;
+        if (consecutiveEmpty >= 2) {
           exhausted = true;
           break;
         }
       } else {
-        staleRounds = 0;
-        lastSize = byKey.size;
+        consecutiveEmpty = 0;
       }
+
+      if (exhausted) break;
+      offset += API_PAGE_SIZE;
+      await page.waitForTimeout(120);
+    }
+
+    if (!crashReason && byKey.size > 0 && !exhausted && byKey.size < maxItems) {
+      // Reached max pages without a short final page — treat as incomplete.
+      crashReason = "";
     }
   } catch (err) {
     crashReason = summarizeFailureReason(err.message || "Browser load failed");
   } finally {
-    try {
-      stopRewrite();
-    } catch {
-      // ignore
-    }
+    closingIntentionally = true;
     await page?.close().catch(() => {});
     await context?.close().catch(() => {});
     await browser?.close().catch(() => {});
