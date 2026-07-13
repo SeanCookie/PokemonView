@@ -29,11 +29,10 @@ new_sqlite_classes = ["PokemonViewContainer"]
 binding = "CARD_IMAGES"
 bucket_name = "pokemonview-card-images"
 
-# After first deploy, attach your domain in the Cloudflare dashboard
-# (Workers & Pages → pokemonview → Custom domains), or uncomment:
-# [[routes]]
-# pattern = "pokemonview.com"
-# custom_domain = true
+# Custom domain (keep in sync with dashboard so deploys do not drop it)
+[[routes]]
+pattern = "pokemonview.com"
+custom_domain = true
 # [[routes]]
 # pattern = "www.pokemonview.com"
 # custom_domain = true

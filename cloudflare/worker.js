@@ -63,6 +63,21 @@ export class PokemonViewContainer extends Container {
   }
 
   async fetch(request) {
+    // Apply latest Worker secrets/vars. Destroy+restart when they change —
+    // stop() alone can leave a running Node process with stale process.env.
+    const nextEnv = containerEnvFromBindings(this.env);
+    const secretFingerprint =
+      "rev3|" + SECRET_KEYS.map((k) => `${k}=${nextEnv[k] || ""}`).join("|");
+    if (this._appliedSecretFingerprint !== secretFingerprint) {
+      try {
+        await this.destroy();
+      } catch {
+        /* may already be gone */
+      }
+      this._appliedSecretFingerprint = secretFingerprint;
+    }
+    this.envVars = nextEnv;
+
     // Cold start can exceed the inbound request abort window; do not cancel boot.
     try {
       await this.startAndWaitForPorts({

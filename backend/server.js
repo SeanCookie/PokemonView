@@ -7345,6 +7345,7 @@ async function route(req, res) {
         }
         user.username = username;
       }
+      ensureDefaultAdminRoles(store, adminUsernames);
       await persistStore();
       json(res, 200, { ok: true, user: publicUserPayload(user) });
     } catch (err) {
@@ -7408,9 +7409,12 @@ async function route(req, res) {
       }
       const profile = await verifyGoogleIdToken(credential);
 
+      // Prefer an existing account with the same Google subject, then same email
+      // (links Google to email/password accounts without creating a duplicate).
       const bySub = store.users.find((u) => u.googleSub === profile.sub);
       const byEmail = store.users.find((u) => normalizeEmail(u.email) === profile.email);
       let user = bySub || null;
+      let linkedByEmail = false;
 
       if (!user && byEmail) {
         if (byEmail.googleSub && byEmail.googleSub !== profile.sub) {
@@ -7419,8 +7423,23 @@ async function route(req, res) {
         }
         user = byEmail;
         user.googleSub = profile.sub;
+        linkedByEmail = true;
         if (profile.picture) user.picture = profile.picture;
         if (profile.name && !user.name) user.name = profile.name;
+      }
+
+      // Same Google account already signed in earlier under a different row than the
+      // email/password account — merge into the email match and drop the empty Google-only row.
+      if (user && byEmail && user.id !== byEmail.id && normalizeEmail(byEmail.email) === profile.email) {
+        if (!byEmail.googleSub || byEmail.googleSub === profile.sub) {
+          byEmail.googleSub = profile.sub;
+          if (profile.picture) byEmail.picture = profile.picture;
+          if (profile.name && !byEmail.name) byEmail.name = profile.name;
+          if (!byEmail.passwordHash && user.passwordHash) byEmail.passwordHash = user.passwordHash;
+          store.users = store.users.filter((u) => u.id !== user.id);
+          user = byEmail;
+          linkedByEmail = true;
+        }
       }
 
       if (!user) {
@@ -7444,10 +7463,19 @@ async function route(req, res) {
         if (profile.name && !user.name) user.name = profile.name;
       }
 
+      if (ensureDefaultAdminRoles(store, adminUsernames)) {
+        /* role may update for ADMIN_USERNAMES matches */
+      }
+
       await persistStore();
       const rememberMe = parseRememberMe(body.rememberMe);
       const { cookie: sessionCookie } = issueAuthSession(user.id, rememberMe);
-      json(res, 200, { ok: true, user: publicUserPayload(user) }, { "Set-Cookie": sessionCookie });
+      json(
+        res,
+        200,
+        { ok: true, linkedByEmail, user: publicUserPayload(user) },
+        { "Set-Cookie": sessionCookie }
+      );
     } catch (err) {
       const code = err.code;
       if (code === "NO_GOOGLE") {
