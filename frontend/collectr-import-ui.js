@@ -157,10 +157,9 @@
 
     function isCollectrUngradedCard(row) {
       if (!row || row.is_card === false) return false;
-      const gradeId = String(row.grade_id || "").trim();
+      // Collectr grade_id can mean raw condition (e.g. Near Mint); graded needs a company.
       const gradeCompany = String(row.grade_company || "").trim();
-      const isGraded = Boolean(gradeCompany) || Boolean(gradeId && gradeId !== "12" && gradeId !== "0");
-      return !isGraded;
+      return !gradeCompany;
     }
 
     function filterCollectrProductsForImport(products) {

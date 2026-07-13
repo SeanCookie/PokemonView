@@ -376,9 +376,10 @@ function detectSetLanguage(product) {
 }
 
 function isCollectrGradedProduct(product) {
-  const gradeId = String(product?.grade_id || "").trim();
+  // Collectr uses grade_id for raw condition tiers too (e.g. 52 = Near Mint).
+  // Treat as graded only when a grading company is present (PSA, BGS, CGC, etc.).
   const gradeCompany = String(product?.grade_company || "").trim();
-  return Boolean(gradeCompany) || Boolean(gradeId && gradeId !== "12" && gradeId !== "0");
+  return Boolean(gradeCompany);
 }
 
 function isCollectrUngradedPokemonCard(product) {
