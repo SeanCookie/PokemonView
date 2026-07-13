@@ -3,10 +3,10 @@
 const fs = require("fs");
 
 const COLLECTR_ANON_USERNAME = "00000000-0000-0000-0000-000000000000";
-const PAGE_SIZE = 30;
-const SCROLL_PAUSE_MS = 400;
-const MAX_SCROLL_ROUNDS = 500;
-const STALE_SCROLL_ROUNDS = 28;
+const API_PAGE_SIZE = 100;
+const SCROLL_PAUSE_MS = 250;
+const MAX_SCROLL_ROUNDS = 200;
+const STALE_SCROLL_ROUNDS = 20;
 const STEALTH_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
@@ -18,10 +18,10 @@ function showcaseApiPath(handle) {
   return `@${encodeURIComponent(slug)}`;
 }
 
-function buildShowcaseApiUrl(handle, offset = 0, limit = PAGE_SIZE) {
+function buildShowcaseApiUrl(handle, offset = 0, limit = API_PAGE_SIZE) {
   const params = new URLSearchParams({
     offset: String(Math.max(0, Number(offset) || 0)),
-    limit: String(Math.min(100, Math.max(1, Number(limit) || PAGE_SIZE))),
+    limit: String(Math.min(100, Math.max(1, Number(limit) || API_PAGE_SIZE))),
     filters: "",
     unstackedView: "true",
     username: COLLECTR_ANON_USERNAME
@@ -61,22 +61,27 @@ function summarizeFailureReason(reason = "") {
     .slice(0, 180);
 }
 
-function fileLooksLikeShellWrapper(filePath) {
+function isDebianChromiumWrapper(filePath) {
+  const normalized = String(filePath || "").replace(/\\/g, "/").toLowerCase();
+  if (normalized === "/usr/bin/chromium" || normalized === "/usr/bin/chromium-browser") {
+    return true;
+  }
   try {
-    const head = fs.readFileSync(filePath, { encoding: "utf8", flag: "r" }).slice(0, 120);
-    return head.startsWith("#!") && /chromium/i.test(head + fs.readFileSync(filePath, "utf8").slice(0, 800));
+    const head = fs.readFileSync(filePath, { encoding: "utf8", flag: "r" }).slice(0, 200);
+    return head.startsWith("#!") && /chromium/i.test(head);
   } catch {
     return false;
   }
 }
 
 function resolveChromiumExecutablePath() {
-  // Prefer Playwright's bundled Chromium — Debian's /usr/bin/chromium is a broken shell wrapper
-  // under Playwright ("[: -lt: unexpected operator").
+  // Prefer Playwright bundled Chromium. Never use Debian's /usr/bin/chromium wrapper.
   try {
     const { chromium } = require("playwright-core");
     const bundled = String(chromium.executablePath?.() || "").trim();
-    if (bundled && fs.existsSync(bundled)) return bundled;
+    if (bundled && fs.existsSync(bundled) && !isDebianChromiumWrapper(bundled)) {
+      return bundled;
+    }
   } catch {
     // ignore
   }
@@ -87,7 +92,7 @@ function resolveChromiumExecutablePath() {
       process.env.CHROMIUM_PATH ||
       ""
   ).trim();
-  if (fromEnv && fs.existsSync(fromEnv) && !fileLooksLikeShellWrapper(fromEnv)) {
+  if (fromEnv && fs.existsSync(fromEnv) && !isDebianChromiumWrapper(fromEnv)) {
     return fromEnv;
   }
 
@@ -101,17 +106,17 @@ function resolveChromiumExecutablePath() {
           `${process.env.PROGRAMFILES || "C:\\Program Files"}\\Microsoft\\Edge\\Application\\msedge.exe`
         ]
       : [
+          "/usr/local/bin/playwright-chromium",
           "/usr/lib/chromium/chromium",
           "/usr/lib/chromium-browser/chromium",
           "/usr/bin/google-chrome-stable",
           "/usr/bin/google-chrome"
-          // Intentionally skip /usr/bin/chromium — Debian wrapper script.
         ];
 
   for (const candidate of candidates) {
     if (!candidate) continue;
     try {
-      if (fs.existsSync(candidate) && !fileLooksLikeShellWrapper(candidate)) return candidate;
+      if (fs.existsSync(candidate) && !isDebianChromiumWrapper(candidate)) return candidate;
     } catch {
       // ignore
     }
@@ -153,21 +158,41 @@ async function launchStealthBrowser() {
       "--mute-audio",
       "--no-first-run",
       "--renderer-process-limit=2",
-      "--js-flags=--max-old-space-size=256"
+      "--js-flags=--max-old-space-size=384"
     ]
   };
+
   const executablePath = resolveChromiumExecutablePath();
   if (executablePath) {
     launchOptions.executablePath = executablePath;
+  } else {
+    return {
+      ok: false,
+      reason:
+        "Playwright Chromium is not installed in this container (refusing Debian /usr/bin/chromium wrapper)"
+    };
+  }
+
+  if (isDebianChromiumWrapper(executablePath)) {
+    return {
+      ok: false,
+      reason: "Refusing Debian Chromium wrapper; Playwright Chromium is required"
+    };
   }
 
   try {
     return { ok: true, browser: await chromium.launch(launchOptions), executablePath };
   } catch (err) {
-    // Last resort: let Playwright pick its default bundled browser with no executablePath.
     try {
-      const { executablePath: _ignored, ...withoutPath } = launchOptions;
-      return { ok: true, browser: await chromium.launch(withoutPath), executablePath: "" };
+      // Retry with Playwright default path resolution (no explicit executablePath).
+      return {
+        ok: true,
+        browser: await chromium.launch({
+          headless: true,
+          args: launchOptions.args
+        }),
+        executablePath: ""
+      };
     } catch (err2) {
       return {
         ok: false,
@@ -177,10 +202,10 @@ async function launchStealthBrowser() {
   }
 }
 
-async function newStealthContext(browser) {
+async function newStealthContext(browser, { slug, onApiPage } = {}) {
   const context = await browser.newContext({
     userAgent: STEALTH_USER_AGENT,
-    viewport: { width: 1280, height: 900 },
+    viewport: { width: 1100, height: 800 },
     javaScriptEnabled: true,
     extraHTTPHeaders: {
       "sec-ch-ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
@@ -191,51 +216,73 @@ async function newStealthContext(browser) {
   await context.addInitScript(() => {
     Object.defineProperty(navigator, "webdriver", { get: () => undefined });
   });
-  // Auto-scroll from inside the page so Node never needs page.evaluate during harvest.
-  await context.addInitScript(() => {
-    const start = () => {
-      if (window.__icCollectrAutoScroll) return;
-      window.__icCollectrAutoScroll = window.setInterval(() => {
-        try {
-          window.scrollBy(0, 2800);
-          const main = document.querySelector("main");
-          if (main) main.scrollTop = main.scrollHeight;
-          const scroller =
-            document.querySelector("[data-radix-scroll-area-viewport]") ||
-            document.querySelector(".overflow-y-auto");
-          if (scroller) scroller.scrollTop = scroller.scrollHeight;
-        } catch {
-          // ignore
-        }
-      }, 450);
-    };
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", start, { once: true });
-    } else {
-      start();
+
+  // Rewrite showcase page requests to our own offset/limit sequence.
+  // route.continue keeps the browser TLS fingerprint (route.fetch is WAF-blocked).
+  let nextOffset = 0;
+  let rewriteEnabled = true;
+  await context.route("**/api-v2.getcollectr.com/data/showcase/**", async (route) => {
+    try {
+      const req = route.request();
+      const url = new URL(req.url());
+      if (!rewriteEnabled || !isShowcaseApiUrl(url.toString(), slug)) {
+        await route.continue();
+        return;
+      }
+      url.searchParams.set("offset", String(nextOffset));
+      url.searchParams.set("limit", String(API_PAGE_SIZE));
+      if (!url.searchParams.has("filters")) url.searchParams.set("filters", "");
+      url.searchParams.set("unstackedView", "true");
+      if (!url.searchParams.get("username")) {
+        url.searchParams.set("username", COLLECTR_ANON_USERNAME);
+      }
+      const assignedOffset = nextOffset;
+      nextOffset += API_PAGE_SIZE;
+      if (typeof onApiPage === "function") {
+        onApiPage({ offset: assignedOffset, limit: API_PAGE_SIZE });
+      }
+      await route.continue({ url: url.toString() });
+    } catch {
+      try {
+        await route.continue();
+      } catch {
+        // page closing
+      }
     }
   });
+
   await context.route("**/*", async (route) => {
     const req = route.request();
     const type = req.resourceType();
     const url = req.url();
+    if (url.includes("api-v2.getcollectr.com/data/showcase/")) {
+      await route.fallback();
+      return;
+    }
     if (type === "image" || type === "media" || type === "font") {
       await route.abort();
       return;
     }
-    if (/google-analytics|googletagmanager|doubleclick|facebook\.net|hotjar|segment\.io|gcm_for|googleapis\.com\/gcm/i.test(url)) {
+    if (/google-analytics|googletagmanager|doubleclick|facebook\.net|hotjar|segment\.io|googleapis\.com\/gcm/i.test(url)) {
       await route.abort();
       return;
     }
     await route.continue();
   });
-  return context;
+
+  return {
+    context,
+    stopRewrite: () => {
+      rewriteEnabled = false;
+    },
+    getNextOffset: () => nextOffset
+  };
 }
 
 async function nudgeScroll(page) {
   try {
-    await page.mouse.move(640, 450);
-    await page.mouse.wheel(0, 3200);
+    await page.mouse.move(540, 420);
+    await page.mouse.wheel(0, 2800);
   } catch (err) {
     if (isClosedError(err)) throw err;
   }
@@ -304,6 +351,7 @@ async function fetchCollectrShowcaseCatalogViaBrowser(handle, options = {}) {
   let context;
   let page;
   let crashReason = "";
+  let stopRewrite = () => {};
 
   const report = () => {
     if (!onProgress) return;
@@ -338,7 +386,9 @@ async function fetchCollectrShowcaseCatalogViaBrowser(handle, options = {}) {
   };
 
   try {
-    context = await newStealthContext(browser);
+    const routed = await newStealthContext(browser, { slug });
+    context = routed.context;
+    stopRewrite = routed.stopRewrite;
     page = await context.newPage();
 
     page.on("response", async (response) => {
@@ -361,23 +411,27 @@ async function fetchCollectrShowcaseCatalogViaBrowser(handle, options = {}) {
 
     await page.goto(profileUrl, { waitUntil: "domcontentloaded", timeout: 120_000 });
 
-    // Wait briefly for the first showcase API page before scrolling harder.
     try {
       await page.waitForResponse(
         (res) => isShowcaseApiUrl(res.url(), slug) && res.ok(),
-        { timeout: 20_000 }
+        { timeout: 25_000 }
       );
     } catch {
-      // continue; scroll may still trigger loads
+      // continue
     }
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(800);
     report();
 
     let staleRounds = 0;
     let lastSize = byKey.size;
     const expectedTotal = () => (totalCards + totalSealed > 0 ? totalCards + totalSealed : 0);
+    // With offset rewriting, each scroll should pull the next 100 items quickly.
+    const maxRounds = Math.max(
+      MAX_SCROLL_ROUNDS,
+      Math.ceil((Math.min(expectedTotal() || maxItems, maxItems) || maxItems) / API_PAGE_SIZE) + 10
+    );
 
-    for (let round = 0; round < MAX_SCROLL_ROUNDS && byKey.size < maxItems; round += 1) {
+    for (let round = 0; round < maxRounds && byKey.size < maxItems; round += 1) {
       if (page.isClosed() || !browser.isConnected()) {
         crashReason = crashReason || "Browser closed during showcase scroll";
         break;
@@ -405,6 +459,11 @@ async function fetchCollectrShowcaseCatalogViaBrowser(handle, options = {}) {
   } catch (err) {
     crashReason = summarizeFailureReason(err.message || "Browser load failed");
   } finally {
+    try {
+      stopRewrite();
+    } catch {
+      // ignore
+    }
     await page?.close().catch(() => {});
     await context?.close().catch(() => {});
     await browser?.close().catch(() => {});

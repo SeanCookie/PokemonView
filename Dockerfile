@@ -1,12 +1,12 @@
 # Cloudflare Containers image (linux/amd64).
 # Card art is served from R2 — never COPY backend/data/card-images into this image.
-# cache-bust: 2026-07-13-collectr-playwright-chromium-v2
+# cache-bust: 2026-07-13-collectr-offset-rewrite-v3
 FROM node:20-bookworm-slim
 
 WORKDIR /app
 
-# System libraries for Playwright's Chromium (do NOT use Debian's /usr/bin/chromium wrapper —
-# it crashes with "[: -lt: unexpected operator" under Playwright).
+# System libraries for Playwright's Chromium (do NOT install Debian chromium —
+# /usr/bin/chromium is a broken shell wrapper under Playwright).
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     ca-certificates \
@@ -34,7 +34,6 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-# Keep Chromium downloads in the image; do not point at Debian chromium.
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=0
 
 COPY package.json ./
@@ -43,7 +42,17 @@ COPY app.js ./
 
 RUN npm install --omit=dev --no-audit --no-fund playwright-core@1.61.1 \
   && node node_modules/playwright-core/cli.js install chromium \
+  && CHROME_BIN="$(node -e "process.stdout.write(require('playwright-core').chromium.executablePath())")" \
+  && test -n "$CHROME_BIN" \
+  && test -x "$CHROME_BIN" \
+  && ln -sf "$CHROME_BIN" /usr/local/bin/playwright-chromium \
+  && echo "Playwright Chromium: $CHROME_BIN" \
   && npm cache clean --force
+
+# Force the Playwright binary; never fall back to Debian /usr/bin/chromium.
+ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/local/bin/playwright-chromium
+ENV CHROME_PATH=/usr/local/bin/playwright-chromium
+ENV CHROMIUM_PATH=/usr/local/bin/playwright-chromium
 
 # Backend code
 COPY backend/server.js backend/poke-scanner.js backend/chase-resolve-local-images.js ./backend/
@@ -75,5 +84,4 @@ ENV PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 EXPOSE 8080
 
-# Absolute paths in case start({ env }) replaces PATH or cwd is not /app.
 CMD ["/usr/local/bin/node", "/app/app.js"]

@@ -289,14 +289,15 @@ async function fetchCollectrShowcaseCatalog(handle, options = {}) {
 
       const expected = Number(filtered.expectedTotal) || 0;
       const loaded = Array.isArray(filtered.products) ? filtered.products.length : 0;
-      const usableThreshold = Math.max(80, Math.min(expected, maxItems) * 0.2);
+      // Accept meaningful partial harvests (e.g. hundreds of cards) with a warning
+      // instead of failing the whole import when the browser stops early.
+      const tooSmall = loaded < 100 && expected > 50;
 
-      // If the browser crashed mid-scroll but already harvested a useful chunk, keep it.
-      if (filtered.partial && expected > 50 && loaded < usableThreshold) {
+      if (filtered.partial && tooSmall) {
         return {
           ok: false,
           error: `Collectr only returned ${loaded.toLocaleString()} of ~${expected.toLocaleString()} items for @${slug}${
-            browserResult.crashReason ? ` (${browserResult.crashReason})` : ""
+            browserResult.crashReason ? ` (${summarizeCollectrErrorDetail(browserResult.crashReason)})` : ""
           }. Try again in a minute.`,
           partial: true,
           source: browserResult.source,
@@ -310,8 +311,8 @@ async function fetchCollectrShowcaseCatalog(handle, options = {}) {
         warning:
           filtered.partial && expected > loaded
             ? `Loaded ${loaded.toLocaleString()} of ~${expected.toLocaleString()} showcase items${
-                browserResult.crashReason ? ` before browser stopped` : ""
-              }.`
+                browserResult.crashReason ? " before browser stopped" : ""
+              }. You can import these now and re-run later for the rest.`
             : ""
       };
     }
