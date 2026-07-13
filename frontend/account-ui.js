@@ -215,6 +215,9 @@
       background: #2d405e;
     }
     .acct-divider span { white-space: nowrap; }
+    .acct-google-wrap[hidden] {
+      display: none !important;
+    }
     #acctGoogle { display: flex; justify-content: center; }
   `;
   document.head.appendChild(style);
@@ -424,7 +427,9 @@
       acctRememberWrap.style.display = mode === "signin" ? "flex" : "none";
     }
     if (acctGoogleWrap) {
-      acctGoogleWrap.hidden = isForgot || acctGoogleWrap.dataset.ready !== "1";
+      const showGoogle = !isForgot && acctGoogleWrap.dataset.ready === "1";
+      acctGoogleWrap.hidden = !showGoogle;
+      acctGoogleWrap.style.display = showGoogle ? "" : "none";
     }
     setStatus("");
   }
@@ -671,6 +676,21 @@
           setStatus(payload?.error || "Could not send reset email.", true);
           return;
         }
+        if (payload.mailConfigured === false) {
+          setStatus(
+            "Password reset email is not set up on this server yet (SMTP is not configured). Use Google sign-in, or ask the site owner to add SMTP settings.",
+            true
+          );
+          return;
+        }
+        if (payload.emailSent === false) {
+          setStatus(
+            payload.message ||
+              "Could not send the email. Try again later or sign in with Google.",
+            true
+          );
+          return;
+        }
         setStatus(payload.message || "If an account exists for that email, a reset link has been sent.");
       } catch {
         setStatus("Network error. Please try again.", true);
@@ -817,7 +837,9 @@
       }
 
       acctGoogleWrap.dataset.ready = "1";
-      acctGoogleWrap.hidden = mode === "forgot";
+      const showGoogle = mode !== "forgot";
+      acctGoogleWrap.hidden = !showGoogle;
+      acctGoogleWrap.style.display = showGoogle ? "" : "none";
     } catch {
       /* Google optional */
     }

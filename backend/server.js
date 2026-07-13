@@ -7115,7 +7115,7 @@ async function route(req, res) {
         pricecharting: Boolean(getConfig("PRICECHARTING_API_TOKEN")),
         psa: Boolean(getConfig("PSA_ACCESS_TOKEN")),
         googleOAuth: Boolean(getConfig("GOOGLE_CLIENT_ID")),
-        passwordResetMail: isEmailConfigured(env)
+        passwordResetMail: isEmailConfigured({ ...env, ...process.env })
       },
       tcgplayerAuth: {
         tokenCached: Boolean(tcgTokenCache.accessToken && now < tcgTokenCache.expiresAt),
@@ -7242,7 +7242,7 @@ async function route(req, res) {
         users: store.users,
         resetFilePath: PASSWORD_RESET_FILE,
         req,
-        env
+        env: { ...env, ...process.env }
       });
       if (!result.ok) {
         json(res, 400, { ok: false, error: result.error || "Could not send reset email" });
@@ -7252,7 +7252,7 @@ async function route(req, res) {
         ok: true,
         message: result.message,
         emailSent: Boolean(result.emailSent),
-        mailConfigured: isEmailConfigured(env)
+        mailConfigured: isEmailConfigured({ ...env, ...process.env })
       });
     } catch (err) {
       console.warn(`[auth] forgot-password failed: ${err.message}`);
