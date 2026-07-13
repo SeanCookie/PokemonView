@@ -560,6 +560,19 @@
   font-size: 12px;
 }
 
+.admin-input {
+  width: 100%;
+  min-width: 120px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #0c1422;
+  color: var(--text);
+  padding: 0 8px;
+  font: inherit;
+  font-size: 12px;
+}
+
 .admin-status {
   min-height: 18px;
   font-size: 12px;

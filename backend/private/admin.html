@@ -301,6 +301,8 @@
 
     <section class="admin-card">
       <h2>Users</h2>
+      <p class="admin-hint">Edit username or email, then Save. Passwords are stored as one-way scrypt hashes (never plaintext).</p>
+      <p class="admin-status" id="usersStatusMsg"></p>
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead>
@@ -309,7 +311,9 @@
               <th>Name</th>
               <th>Email</th>
               <th>Role</th>
+              <th>Password</th>
               <th>Last login</th>
+              <th></th>
             </tr>
           </thead>
           <tbody id="usersBody"></tbody>

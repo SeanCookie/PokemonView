@@ -694,20 +694,55 @@
     const list = Array.isArray(users) ? users : [];
     if (!usersBody) return;
     if (!list.length) {
-      usersBody.innerHTML = `<tr><td colspan="5" style="color:var(--muted)">No users yet.</td></tr>`;
+      usersBody.innerHTML = `<tr><td colspan="7" style="color:var(--muted)">No users yet.</td></tr>`;
       return;
     }
     usersBody.innerHTML = list
-      .map(
-        (row) => `<tr>
-          <td>${escapeHtml(row.username || "—")}</td>
-          <td>${escapeHtml(row.name || "—")}</td>
-          <td>${escapeHtml(row.email || "—")}</td>
+      .map((row) => {
+        const id = escapeHtml(row.id || "");
+        return `<tr data-user-id="${id}">
+          <td><input class="admin-input" data-field="username" value="${escapeHtml(row.username || "")}" autocomplete="off" spellcheck="false" /></td>
+          <td><input class="admin-input" data-field="name" value="${escapeHtml(row.name || "")}" autocomplete="off" /></td>
+          <td><input class="admin-input" data-field="email" type="email" value="${escapeHtml(row.email || "")}" autocomplete="off" /></td>
           <td>${row.isAdmin ? "admin" : escapeHtml(row.role || "user")}</td>
+          <td>${row.hasPassword ? "hashed" : "Google only"}</td>
           <td>${escapeHtml(formatDateTime(row.lastLoginAt))}</td>
-        </tr>`
-      )
+          <td><button type="button" class="admin-btn primary" data-save-user>Save</button></td>
+        </tr>`;
+      })
       .join("");
+
+    usersBody.querySelectorAll("[data-save-user]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const rowEl = btn.closest("tr");
+        const userId = rowEl?.getAttribute("data-user-id");
+        if (!userId) return;
+        const username = rowEl.querySelector('[data-field="username"]')?.value?.trim() || "";
+        const name = rowEl.querySelector('[data-field="name"]')?.value?.trim() || "";
+        const email = rowEl.querySelector('[data-field="email"]')?.value?.trim() || "";
+        const msg = document.getElementById("usersStatusMsg");
+        btn.disabled = true;
+        try {
+          await api(`/api/admin/users/${encodeURIComponent(userId)}`, {
+            method: "PATCH",
+            body: JSON.stringify({ username, name, email })
+          });
+          if (msg) {
+            msg.textContent = `Saved ${username || email}.`;
+            msg.className = "admin-status ok";
+          }
+          const users = await api("/api/admin/users");
+          renderUsers(users.users);
+        } catch (err) {
+          if (msg) {
+            msg.textContent = err.message || "Could not save user.";
+            msg.className = "admin-status error";
+          }
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    });
   }
 
   function escapeHtml(value) {

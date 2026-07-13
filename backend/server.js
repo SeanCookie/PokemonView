@@ -436,6 +436,7 @@ async function ensureStore() {
 
   let storeChanged = false;
   if (migrateStoreCollections(store)) storeChanged = true;
+  if (migratePlaintextPasswords(store)) storeChanged = true;
   if (ensureDefaultAdminRoles(store, adminUsernames)) storeChanged = true;
 
   // Always keep a local copy for this container lifetime.
@@ -2136,12 +2137,32 @@ function isValidUsername(value) {
 }
 
 function hashPassword(password, saltHex = "") {
+  // scrypt one-way hash (salt:hash). Plaintext passwords are never stored.
   const salt = saltHex || crypto.randomBytes(16).toString("hex");
   const hash = crypto.scryptSync(String(password), salt, 64).toString("hex");
   return `${salt}:${hash}`;
 }
 
+function looksLikePasswordHash(stored) {
+  const raw = String(stored || "");
+  const [salt, digest] = raw.split(":");
+  return Boolean(salt && digest && /^[a-f0-9]{16,}$/i.test(salt) && /^[a-f0-9]{64,}$/i.test(digest));
+}
+
+function migratePlaintextPasswords(storeObj) {
+  let changed = false;
+  for (const user of storeObj.users || []) {
+    if (!user || user.passwordHash == null || user.passwordHash === "") continue;
+    if (looksLikePasswordHash(user.passwordHash)) continue;
+    // Legacy/plaintext value — hash it in place so a dump never exposes usable passwords.
+    user.passwordHash = hashPassword(String(user.passwordHash));
+    changed = true;
+  }
+  return changed;
+}
+
 function verifyPassword(password, storedHash) {
+  if (!looksLikePasswordHash(storedHash)) return false;
   const [salt, expected] = String(storedHash || "").split(":");
   if (!salt || !expected) return false;
   const actual = crypto.scryptSync(String(password), salt, 64).toString("hex");
@@ -9144,6 +9165,7 @@ async function route(req, res) {
             username: user.username || "",
             name: user.name || "",
             role: user.role || "",
+            hasPassword: Boolean(user.passwordHash),
             createdAt: user.createdAt || null,
             lastLoginAt: user.lastLoginAt || null
           },
@@ -9151,6 +9173,81 @@ async function route(req, res) {
         )
       )
     });
+    return;
+  }
+
+  const adminUserEditMatch = pathname.match(/^\/api\/admin\/users\/([^/]+)$/);
+  if (adminUserEditMatch && (req.method === "PATCH" || req.method === "POST")) {
+    const admin = requireAdmin(req, res);
+    if (!admin) return;
+    try {
+      const body = await readBody(req);
+      const target = store.users.find((entry) => entry.id === adminUserEditMatch[1]);
+      if (!target) {
+        json(res, 404, { ok: false, error: "User not found" });
+        return;
+      }
+
+      if (Object.prototype.hasOwnProperty.call(body, "username")) {
+        const username = normalizeUsername(body.username);
+        if (!isValidUsername(username)) {
+          json(res, 400, {
+            ok: false,
+            error: "Username must be 3-24 characters (letters, numbers, underscore)"
+          });
+          return;
+        }
+        const taken = store.users.some(
+          (u) => u.id !== target.id && normalizeUsername(u.username) === username
+        );
+        if (taken) {
+          json(res, 409, { ok: false, error: "Username already taken" });
+          return;
+        }
+        target.username = username;
+      }
+
+      if (Object.prototype.hasOwnProperty.call(body, "email")) {
+        const email = normalizeEmail(body.email);
+        if (!email || !email.includes("@")) {
+          json(res, 400, { ok: false, error: "Valid email is required" });
+          return;
+        }
+        const taken = store.users.some(
+          (u) => u.id !== target.id && normalizeEmail(u.email) === email
+        );
+        if (taken) {
+          json(res, 409, { ok: false, error: "Email already in use" });
+          return;
+        }
+        target.email = email;
+      }
+
+      if (Object.prototype.hasOwnProperty.call(body, "name")) {
+        target.name = String(body.name ?? "").trim().slice(0, 80);
+      }
+
+      ensureDefaultAdminRoles(store, adminUsernames);
+      await persistStore();
+      json(res, 200, {
+        ok: true,
+        user: withAdminFlag(
+          {
+            id: target.id,
+            email: target.email,
+            username: target.username || "",
+            name: target.name || "",
+            role: target.role || "",
+            hasPassword: Boolean(target.passwordHash),
+            createdAt: target.createdAt || null,
+            lastLoginAt: target.lastLoginAt || null
+          },
+          adminUsernames
+        )
+      });
+    } catch (err) {
+      json(res, 400, { ok: false, error: err.message || "Failed to update user" });
+    }
     return;
   }
 
