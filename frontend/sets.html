@@ -4672,8 +4672,11 @@
       "124": "Mega Zygarde ex"
     };
 
-    function buildCardImageUrl(setConfig, cardNo) {
-      return "";
+    function buildCardImageUrl(setCode, cardNo) {
+      const code = String(setCode || "").trim().toUpperCase();
+      const no = String(cardNo || "").trim();
+      if (!code || !no) return "";
+      return `/card-images/${encodeURIComponent(code)}/${encodeURIComponent(no)}.jpg`;
     }
 
     function getSetCards(setEntry, setConfig) {
@@ -4685,7 +4688,7 @@
       if (importedCardKeys.length) {
         return importedCardKeys.map((cardNo, index) => {
           const numericValue = Number(cardNo);
-          const fallbackImage = setConfig ? buildCardImageUrl(setConfig, cardNo) : "";
+          const fallbackImage = buildCardImageUrl(setEntry.code, cardNo);
           const setSlug = importedSlug || (setConfig ? setConfig.slug : "");
           return {
             setCode: setEntry.code,
@@ -4699,7 +4702,7 @@
               cardNo,
               name: importedNames[cardNo] || `${setEntry.name} Card ${cardNo}`
             }),
-            imageUrl: lookupSetCardImage(importedImages, cardNo),
+            imageUrl: lookupSetCardImage(importedImages, cardNo) || fallbackImage,
             link: ""
           };
         });
@@ -4723,7 +4726,7 @@
             cardNo,
             name: specificName || `${setEntry.name} Card ${cardNo}`
           }),
-          imageUrl: lookupSetCardImage(importedImages, cardNo),
+          imageUrl: lookupSetCardImage(importedImages, cardNo) || buildCardImageUrl(setEntry.code, cardNo),
           link: ""
         });
       }

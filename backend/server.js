@@ -5757,7 +5757,7 @@ async function getSetCardManifest(language = "english", setCodeFilter = "") {
         : []
       : Object.entries(byCode);
     for (const [code, entry] of sourceEntries) {
-      clientByCode[code] = sanitizeManifestEntryForClient(entry);
+      clientByCode[code] = sanitizeManifestEntryForClient(entry, code);
     }
     const catalogByEra =
       languageNode && languageNode.catalogByEra && typeof languageNode.catalogByEra === "object"
@@ -5833,13 +5833,25 @@ function collectCardSkyUrlsFromParsed(parsed, limit = 250, diskIndex = null, set
       : parsed && typeof parsed.byCode === "object"
         ? parsed.byCode
         : {};
+  const filter =
+    setCodeFilter == null
+      ? null
+      : new Set(setCodeFilter.map((c) => String(c || "").toUpperCase()).filter(Boolean));
+  if (filter && filter.size === 0) return [];
   const urls = [];
   const seen = new Set();
-  for (const entry of Object.values(byCode)) {
+  for (const [code, entry] of Object.entries(byCode)) {
+    const codeKey = String(code || "").toUpperCase();
+    if (filter && !filter.has(codeKey)) continue;
     const localImages =
       entry && entry.localImages && typeof entry.localImages === "object" ? entry.localImages : {};
     const images = entry && entry.images && typeof entry.images === "object" ? entry.images : {};
-    for (const raw of Object.values({ ...images, ...localImages })) {
+    const cards = entry && entry.cards && typeof entry.cards === "object" ? entry.cards : {};
+    const merged = { ...images, ...localImages };
+    if (!Object.keys(merged).length && Object.keys(cards).length) {
+      Object.assign(merged, synthesizeLocalImagesFromCards(codeKey, cards));
+    }
+    for (const raw of Object.values(merged)) {
       const s = String(raw || "").trim();
       if (!s.startsWith("/card-images/") || seen.has(s)) continue;
       seen.add(s);
@@ -6572,10 +6584,41 @@ async function refreshPrices(itemId = null, userId = null) {
 const STATIC_CACHE_CONTROL = "public, max-age=86400, stale-while-revalidate=604800";
 const API_CATALOG_CACHE_CONTROL = "public, max-age=3600, stale-while-revalidate=86400";
 
-function sanitizeManifestEntryForClient(entry) {
+function makeSyntheticCardImageUrl(setCode, cardNo) {
+  const code = String(setCode || "").trim().toUpperCase();
+  const no = String(cardNo || "").trim();
+  if (!code || !no) return "";
+  return `/card-images/${encodeURIComponent(code)}/${encodeURIComponent(no)}.jpg`;
+}
+
+/**
+ * When card art lives on R2 (Cloudflare) there is no local card-images disk tree.
+ * Build the same /card-images/{SET}/{no}.jpg map the frontend expects from card keys.
+ */
+function synthesizeLocalImagesFromCards(setCode, cards) {
+  const out = {};
+  if (!cards || typeof cards !== "object") return out;
+  for (const cardNo of Object.keys(cards)) {
+    const url = makeSyntheticCardImageUrl(setCode, cardNo);
+    if (!url) continue;
+    out[cardNo] = url;
+    const n = Number(cardNo);
+    if (Number.isFinite(n)) {
+      out[String(n)] = url;
+      out[String(n).padStart(3, "0")] = url;
+    }
+  }
+  return out;
+}
+
+function sanitizeManifestEntryForClient(entry, setCode = "") {
   if (!entry || typeof entry !== "object") return entry;
-  const localImages =
+  let localImages =
     entry.localImages && typeof entry.localImages === "object" ? { ...entry.localImages } : {};
+  const cards = entry.cards && typeof entry.cards === "object" ? entry.cards : {};
+  if (!Object.keys(localImages).length && Object.keys(cards).length) {
+    localImages = synthesizeLocalImagesFromCards(setCode || entry.setCode || "", cards);
+  }
   const { images, sourceHref, ...rest } = entry;
   const out = { ...rest };
   if (Object.keys(localImages).length) {
@@ -8109,10 +8152,19 @@ async function route(req, res) {
         .filter(Boolean);
       const diskIndex = await getLocalCardImageIndex();
       let urls;
-      if (localOnly || String(limit).trim().toLowerCase() === "all") {
+      if (diskIndex && diskIndex.size > 0 && (localOnly || String(limit).trim().toLowerCase() === "all")) {
         urls = collectCardSkyUrlsFromDiskIndex(
           diskIndex,
           limit,
+          setCodeFilter.length ? setCodeFilter : null
+        );
+      } else if (localOnly || String(limit).trim().toLowerCase() === "all") {
+        // No local card-images tree (e.g. Cloudflare + R2): synthesize from catalog card numbers.
+        const parsed = await loadSetCardListsParsed();
+        urls = collectCardSkyUrlsFromParsed(
+          parsed,
+          limit,
+          null,
           setCodeFilter.length ? setCodeFilter : null
         );
       } else {
