@@ -165,6 +165,41 @@
 
     .muted { color: var(--muted); font-size: 12px; }
 
+    .collectr-import-panel-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 6px;
+    }
+
+    .collectr-import-panel-head h2 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .collectr-import-dismiss {
+      flex-shrink: 0;
+      width: 32px;
+      height: 32px;
+      border: 1px solid var(--line, #2d405e);
+      border-radius: 8px;
+      background: transparent;
+      color: var(--muted, #93a8c7);
+      font-size: 18px;
+      line-height: 1;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .collectr-import-dismiss:hover {
+      color: var(--text, #e9f1ff);
+      border-color: #4f6e9c;
+      background: rgba(79, 110, 156, 0.15);
+    }
+
     .collectr-import-row {
       display: flex;
       flex-wrap: wrap;
@@ -803,8 +838,17 @@
       <div class="kpis" id="kpis"></div>
     </section>
 
-    <section class="panel" id="collectrImportPanel">
-      <h2 style="margin:0 0 6px;font-size:18px;">Import from Collectr</h2>
+    <section class="panel" id="collectrImportPanel" hidden>
+      <div class="collectr-import-panel-head">
+        <h2>Import from Collectr</h2>
+        <button
+          type="button"
+          class="collectr-import-dismiss"
+          id="collectrImportDismiss"
+          aria-label="Dismiss Collectr import"
+          title="Dismiss"
+        >×</button>
+      </div>
       <p class="sub" style="margin:0 0 10px;">Paste a Collectr showcase link, or type <strong>@username</strong>, to copy <strong>Pokémon</strong> into your collection (other TCGs are skipped).</p>
       <div class="collectr-import-row">
         <input
@@ -1221,6 +1265,7 @@
       collectionCanUndo = Boolean(dashboard.canUndoCollection);
       collectionUndoCount = Number(dashboard.collectionUndoCount) || 0;
       updateCollectrDeleteButton();
+      updateCollectrImportPanelVisibility();
       await loadCardImagesForDashboard();
       void loadSetProgressData();
     }
@@ -1731,10 +1776,53 @@
     const collectrProgressPct = byId("collectrProgressPct");
     const collectrProgressFill = byId("collectrProgressFill");
     const collectrPreviewSummary = byId("collectrPreviewSummary");
+    const collectrImportPanel = byId("collectrImportPanel");
+    const collectrImportDismiss = byId("collectrImportDismiss");
     let collectrCatalogCache = null;
     let collectrCatalogCacheUrl = "";
     let collectrImportBatchId = "";
     let lastCollectrImport = null;
+    const COLLECTR_DISMISS_KEY_PREFIX = "ic.collectrImport.dismissed.v1.";
+
+    function collectrDismissStorageKey() {
+      const user = window.InfinityAccount?.getUser?.();
+      const id = String(user?.id || user?.email || user?.username || "").trim();
+      return id ? `${COLLECTR_DISMISS_KEY_PREFIX}${id}` : "";
+    }
+
+    function isCollectrImportDismissed() {
+      const key = collectrDismissStorageKey();
+      if (!key) return false;
+      try {
+        return localStorage.getItem(key) === "1";
+      } catch {
+        return false;
+      }
+    }
+
+    function setCollectrImportDismissed(dismissed) {
+      const key = collectrDismissStorageKey();
+      if (!key) return;
+      try {
+        if (dismissed) localStorage.setItem(key, "1");
+        else localStorage.removeItem(key);
+      } catch {
+        // ignore
+      }
+    }
+
+    function updateCollectrImportPanelVisibility() {
+      if (!collectrImportPanel) return;
+      const itemCount = Array.isArray(state.items) ? state.items.length : 0;
+      const isNewUser = itemCount === 0;
+      const show = isNewUser && !isCollectrImportDismissed();
+      collectrImportPanel.hidden = !show;
+    }
+
+    collectrImportDismiss?.addEventListener("click", () => {
+      setCollectrImportDismissed(true);
+      updateCollectrImportPanelVisibility();
+    });
     let collectionCanUndo = false;
     let collectionUndoCount = 0;
     const collectrDeleteWrap = byId("collectrDeleteWrap");
