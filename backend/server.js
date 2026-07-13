@@ -2621,21 +2621,10 @@ async function resolveTcgSetPriceForCollectrItem(draft, manifestCache) {
 async function importCollectrProductsForUser(sessionUserId, products, options = {}) {
   const userId = String(sessionUserId || "").trim();
   const rawRows = Array.isArray(products) ? products : [];
-  const importSingles = options.importSingles !== false;
-  const importSealed = options.importSealed !== false;
-  if (!importSingles && !importSealed) {
-    return {
-      imported: 0,
-      skipped: 0,
-      pricedFromSets: 0,
-      skippedNonPokemon: 0,
-      error: "Select at least one import type (Singles or Sealed)."
-    };
-  }
   let rows = filterCollectrPokemonProducts(rawRows);
   const skippedNonPokemon = Math.max(0, rawRows.length - rows.length);
   const beforeTypeFilter = rows.length;
-  rows = filterCollectrProductsByImportType(rows, { importSingles, importSealed });
+  rows = filterCollectrProductsByImportType(rows);
   const skippedByType = Math.max(0, beforeTypeFilter - rows.length);
   const replaceExisting = options.replaceExisting === true;
   const profileUrl = String(options.profileUrl || "").trim();

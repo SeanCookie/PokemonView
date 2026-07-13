@@ -459,11 +459,6 @@
           Bio
           <textarea id="showcaseBio" rows="3" maxlength="500" placeholder="Tell visitors about your collection…" style="resize:vertical;min-height:72px;border:1px solid var(--border);border-radius:8px;background:#0e1623;color:var(--text);padding:8px 10px;font-family:inherit;font-size:14px;"></textarea>
         </label>
-        <label>
-          Collectr username (optional)
-          <input id="showcaseCollectrUrl" type="text" autocomplete="off" spellcheck="false" placeholder="username, @username, or Collectr link" />
-        </label>
-        <p class="hint">Saved on your showcase profile. Accepts a username, @username, or Collectr link.</p>
         <div style="display:flex;flex-wrap:wrap;gap:8px;">
           <button type="submit" class="btn">Save showcase settings</button>
           <a id="showcaseOpenLink" class="btn" href="/showcase" style="display:inline-flex;align-items:center;text-decoration:none;">Open showcase</a>
@@ -474,7 +469,7 @@
 
     <section class="panel panel--collectr" id="collectrImportPanel">
       <h2 class="panel-title">Import from Collectr</h2>
-      <p class="sub">Enter a <strong>username</strong>, <strong>@username</strong>, or Collectr showcase link to copy <strong>Pokémon</strong> into your collection (other TCGs are skipped).</p>
+      <p class="sub">Enter a <strong>username</strong>, <strong>@username</strong>, or Collectr showcase link to import <strong>ungraded Pokémon cards</strong> only (sealed, graded, and other TCGs are skipped).</p>
       <div class="collectr-import-block" style="padding:0;border:none;background:transparent;">
         <div class="collectr-import-row">
           <input
@@ -494,10 +489,6 @@
               <button type="button" class="collectr-delete-btn" id="collectrDeleteImportBtn">Delete All</button>
             </div>
           </div>
-        </div>
-        <div class="collectr-import-options">
-          <label><input type="checkbox" id="collectrImportSingles" checked /> Only Singles</label>
-          <label><input type="checkbox" id="collectrImportSealed" checked /> Only Sealed</label>
         </div>
         <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);">
           <input type="checkbox" id="collectrReplaceExisting" />
@@ -550,7 +541,7 @@
   </main>
 
   <script src="/collectr-import-client.js?v=6"></script>
-  <script src="/collectr-import-ui.js?v=2"></script>
+  <script src="/collectr-import-ui.js?v=3"></script>
   <script src="/account-ui.js?v=5"></script>
   <script>
     const byId = (id) => document.getElementById(id);
@@ -656,7 +647,6 @@
         byId("showcaseValues").checked = showcase.showValues !== false;
         byId("showcaseCost").checked = showcase.showCost === true;
         byId("showcaseBio").value = showcase.bio || "";
-        byId("showcaseCollectrUrl").value = formatCollectrDisplayValue(showcase.collectrProfileUrl || "");
         byId("showcaseAvatarUrl").value =
           showcase.avatarUrl && !String(showcase.avatarUrl).startsWith("/showcase-avatars/")
             ? showcase.avatarUrl
@@ -760,57 +750,16 @@
       reader.readAsDataURL(file);
     });
 
-    function normalizeCollectrProfileInput(raw) {
-      const text = String(raw || "").trim();
-      if (!text) return { ok: true, profileUrl: "", handle: "" };
-      const urlMatch = text.match(
-        /^(?:https?:\/\/)?(?:app\.)?getcollectr\.com\/showcase\/profile\/@?([a-z0-9_]{3,24})\/?(?:\?.*)?$/i
-      );
-      if (urlMatch) {
-        const handle = urlMatch[1].toLowerCase();
-        return {
-          ok: true,
-          handle,
-          profileUrl: `https://app.getcollectr.com/showcase/profile/@${handle}`
-        };
-      }
-      const handleMatch = text.match(/^@?([a-z0-9_]{3,24})$/i);
-      if (handleMatch) {
-        const handle = handleMatch[1].toLowerCase();
-        return {
-          ok: true,
-          handle,
-          profileUrl: `https://app.getcollectr.com/showcase/profile/@${handle}`
-        };
-      }
-      return {
-        ok: false,
-        error: "Enter a Collectr username, @username, or showcase link."
-      };
-    }
-
-    function formatCollectrDisplayValue(raw) {
-      const parsed = normalizeCollectrProfileInput(raw);
-      if (parsed.ok && parsed.handle) return `@${parsed.handle}`;
-      return String(raw || "").trim();
-    }
-
     byId("showcaseForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const status = byId("showcaseStatus");
-      const collectrParsed = normalizeCollectrProfileInput(byId("showcaseCollectrUrl").value);
-      if (!collectrParsed.ok) {
-        setText(status, collectrParsed.error, "error");
-        return;
-      }
       setText(status, "Saving…");
       try {
         const payloadBody = {
           isPublic: byId("showcasePublic").checked,
           showValues: byId("showcaseValues").checked,
           showCost: byId("showcaseCost").checked,
-          bio: byId("showcaseBio").value.trim(),
-          collectrProfileUrl: collectrParsed.profileUrl
+          bio: byId("showcaseBio").value.trim()
         };
         const avatarUrlField = byId("showcaseAvatarUrl").value.trim();
         if (avatarUrlField) payloadBody.avatarUrl = avatarUrlField;
@@ -938,7 +887,6 @@
         getItemCount: () => collectrItemCount,
         getCanUndo: () => collectrCanUndo,
         getUndoCount: () => collectrUndoCount,
-        getDefaultUrl: () => formatCollectrDisplayValue(byId("showcaseCollectrUrl")?.value || ""),
         onCollectionChanged: refreshCollectrCollectionMeta
       });
       await refreshCollectrCollectionMeta();

@@ -849,7 +849,7 @@
           title="Dismiss"
         >×</button>
       </div>
-      <p class="sub" style="margin:0 0 10px;">Paste a Collectr <strong>username</strong>, <strong>@username</strong>, or showcase link to copy <strong>Pokémon</strong> into your collection (other TCGs are skipped).</p>
+      <p class="sub" style="margin:0 0 10px;">Paste a Collectr <strong>username</strong>, <strong>@username</strong>, or showcase link to import <strong>ungraded Pokémon cards</strong> only (sealed, graded, and other TCGs are skipped).</p>
       <div class="collectr-import-row">
         <input
           id="collectrImportUrl"
@@ -868,10 +868,6 @@
             <button type="button" class="collectr-delete-btn" id="collectrDeleteImportBtn">Delete All</button>
           </div>
         </div>
-      </div>
-      <div class="collectr-import-options">
-        <label><input type="checkbox" id="collectrImportSingles" checked /> Only Singles</label>
-        <label><input type="checkbox" id="collectrImportSealed" checked /> Only Sealed</label>
       </div>
       <label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12px;color:var(--muted);">
         <input type="checkbox" id="collectrReplaceExisting" />
@@ -937,7 +933,7 @@
 
   <script src="/english-sets-catalog.js"></script>
   <script src="/collectr-import-client.js?v=6"></script>
-  <script src="/collectr-import-ui.js?v=2"></script>
+  <script src="/collectr-import-ui.js?v=3"></script>
   <script src="/account-ui.js?v=5"></script>
   <script>
     const state = {

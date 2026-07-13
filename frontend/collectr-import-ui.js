@@ -27,8 +27,6 @@
     const collectrPreviewBtn = byId("collectrPreviewBtn");
     const collectrImportBtn = byId("collectrImportBtn");
     const collectrReplaceExisting = byId("collectrReplaceExisting");
-    const collectrImportSingles = byId("collectrImportSingles");
-    const collectrImportSealed = byId("collectrImportSealed");
     const collectrProgress = byId("collectrProgress");
     const collectrProgressLabel = byId("collectrProgressLabel");
     const collectrProgressPct = byId("collectrProgressPct");
@@ -157,45 +155,26 @@
       if (collectrProgressPct) collectrProgressPct.textContent = "0%";
     }
 
-    function countCollectrProductTypes(products) {
-      const rows = Array.isArray(products) ? products : [];
-      let cards = 0;
-      let sealed = 0;
-      for (const row of rows) {
-        if (row && row.is_card === false) sealed += 1;
-        else cards += 1;
-      }
-      return { cards, sealed, total: rows.length };
-    }
-
-    function getCollectrImportTypeOptions() {
-      const importSingles = Boolean(collectrImportSingles?.checked);
-      const importSealed = Boolean(collectrImportSealed?.checked);
-      return { importSingles, importSealed };
+    function isCollectrUngradedCard(row) {
+      if (!row || row.is_card === false) return false;
+      const gradeId = String(row.grade_id || "").trim();
+      const gradeCompany = String(row.grade_company || "").trim();
+      const isGraded = Boolean(gradeCompany) || Boolean(gradeId && gradeId !== "12" && gradeId !== "0");
+      return !isGraded;
     }
 
     function filterCollectrProductsForImport(products) {
-      const { importSingles, importSealed } = getCollectrImportTypeOptions();
-      if (!importSingles && !importSealed) return [];
-      const rows = Array.isArray(products) ? products : [];
-      if (importSingles && importSealed) return rows;
-      return rows.filter((row) => {
-        const isSealed = row && row.is_card === false;
-        return isSealed ? importSealed : importSingles;
-      });
+      return (Array.isArray(products) ? products : []).filter(isCollectrUngradedCard);
     }
 
     function showCollectrPreviewSummary(catalog) {
       if (!collectrPreviewSummary || !catalog) return;
       const filtered = filterCollectrProductsForImport(catalog.products);
-      const counts = countCollectrProductTypes(filtered);
-      const cards = Number(catalog.totalCards) > 0 ? Number(catalog.totalCards) : counts.cards;
-      const sealed = Number(catalog.totalSealed) > 0 ? Number(catalog.totalSealed) : counts.sealed;
       const handle = catalog.handle || "collector";
       collectrPreviewSummary.innerHTML = `
         <div>Ready to import from <strong>@${escapeHtml(handle)}</strong></div>
-        <div><strong>${cards.toLocaleString()}</strong> Cards · <strong>${sealed.toLocaleString()}</strong> Sealed products</div>
-        <div style="color:var(--muted);font-size:12px;">${counts.total.toLocaleString()} Pokémon line items${catalog.filteredOutNonPokemon ? ` (${Number(catalog.filteredOutNonPokemon).toLocaleString()} other TCGs skipped)` : ""}</div>`;
+        <div><strong>${filtered.length.toLocaleString()}</strong> ungraded Pokémon cards</div>
+        <div style="color:var(--muted);font-size:12px;">Sealed, graded, and other TCGs are skipped${catalog.filteredOutNonPokemon ? ` (${Number(catalog.filteredOutNonPokemon).toLocaleString()} other TCGs)` : ""}</div>`;
       collectrPreviewSummary.classList.add("visible");
     }
 
@@ -358,7 +337,6 @@
 
     async function uploadCollectrProductsBatches(catalog, replaceExisting, importBatchId, onProgress) {
       const batchSize = 400;
-      const { importSingles, importSealed } = getCollectrImportTypeOptions();
       const products = filterCollectrProductsForImport(catalog.products || []);
       const totalBatches = Math.max(1, Math.ceil(products.length / batchSize));
       let imported = 0;
@@ -387,8 +365,8 @@
           body: JSON.stringify({
             products: slice,
             replaceExisting: replaceExisting && i === 0,
-            importSingles,
-            importSealed,
+            importSingles: true,
+            importSealed: false,
             profileUrl: catalog.profileUrl,
             handle: catalog.handle,
             importBatchId
@@ -442,12 +420,6 @@
       else deleteAllCollectionItems();
     });
 
-    [collectrImportSingles, collectrImportSealed].forEach((el) => {
-      el?.addEventListener("change", () => {
-        if (collectrCatalogCache) showCollectrPreviewSummary(collectrCatalogCache);
-      });
-    });
-
     collectrPreviewBtn?.addEventListener("click", async () => {
       const url = collectrImportUrl?.value.trim() || "";
       const parsed = parseCollectrImportInput(url);
@@ -482,11 +454,9 @@
         collectrCatalogCacheUrl = parsed.handle;
         setCollectrProgress(100, "Preview complete");
         showCollectrPreviewSummary(catalog);
-        const counts = countCollectrProductTypes(catalog.products);
-        const cards = Number(catalog.totalCards) > 0 ? Number(catalog.totalCards) : counts.cards;
-        const sealed = Number(catalog.totalSealed) > 0 ? Number(catalog.totalSealed) : counts.sealed;
+        const filteredPreview = filterCollectrProductsForImport(catalog.products);
         setCollectrStatus(
-          `Preview ready for @${catalog.handle}: ${cards.toLocaleString()} cards and ${sealed.toLocaleString()} sealed products (${counts.total.toLocaleString()} line items loaded).`
+          `Preview ready for @${catalog.handle}: ${filteredPreview.length.toLocaleString()} ungraded Pokémon cards to import.`
         );
         setTimeout(() => hideCollectrProgress(), 600);
       } catch (err) {
@@ -506,17 +476,10 @@
         return;
       }
       const profileUrl = parsed.profileUrl;
-      const { importSingles, importSealed } = getCollectrImportTypeOptions();
-      if (!importSingles && !importSealed) {
-        setCollectrStatus("Select at least one import type: Only Singles and/or Only Sealed.", true);
-        return;
-      }
       const replace = Boolean(collectrReplaceExisting?.checked);
-      const typeNote =
-        importSingles && importSealed ? "" : importSingles ? " (singles only)" : " (sealed only)";
       const confirmText = replace
-        ? `Replace your entire collection and import from this Collectr showcase${typeNote}?`
-        : `Import from this Collectr showcase into your collection${typeNote}?`;
+        ? "Replace your entire collection and import ungraded Pokémon cards from this Collectr showcase?"
+        : "Import ungraded Pokémon cards from this Collectr showcase into your collection?";
       if (!global.confirm(confirmText)) return;
 
       setCollectrStatus("");
@@ -559,7 +522,7 @@
         showCollectrPreviewSummary(catalog);
         const products = filterCollectrProductsForImport(catalog.products || []);
         if (!products.length) {
-          setCollectrStatus("No items match your import type selection.", true);
+          setCollectrStatus("No ungraded Pokémon cards found to import.", true);
           hideCollectrProgress();
           return;
         }
@@ -592,7 +555,6 @@
         );
 
         setCollectrProgress(100, "Import complete");
-        const counts = countCollectrProductTypes(products);
         lastCollectrImport = {
           batchId: collectrImportBatchId,
           handle: catalog.handle,
@@ -600,7 +562,7 @@
           importedAt: new Date().toISOString()
         };
         notifyMeta({ lastCollectrImport });
-        let statusMsg = `Imported ${Number(result.imported || 0).toLocaleString()} Pokémon items from @${catalog.handle} (${counts.cards.toLocaleString()} cards, ${counts.sealed.toLocaleString()} sealed; ${Number(result.skipped || 0).toLocaleString()} skipped).`;
+        let statusMsg = `Imported ${Number(result.imported || 0).toLocaleString()} ungraded Pokémon cards from @${catalog.handle} (${Number(result.skipped || 0).toLocaleString()} skipped).`;
         const skippedOtherTcgs = Number(catalog.filteredOutNonPokemon) || 0;
         if (skippedOtherTcgs > 0) {
           statusMsg += ` ${skippedOtherTcgs.toLocaleString()} Magic/other TCG items were excluded.`;
@@ -609,10 +571,6 @@
           statusMsg += ` ${Number(result.pricedFromSets).toLocaleString()} priced from Sets/TCGplayer links.`;
         }
         setCollectrStatus(statusMsg);
-        const showcaseField = byId("showcaseCollectrUrl");
-        if (showcaseField && catalog.handle) {
-          showcaseField.value = `@${catalog.handle}`;
-        }
         await refreshCollection();
         updateCollectrDeleteButton();
         updateCollectrImportPanelVisibility();

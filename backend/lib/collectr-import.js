@@ -375,19 +375,27 @@ function detectSetLanguage(product) {
   return "english";
 }
 
-function mapCollectrProductToItem(product) {
-  if (!isCollectrPokemonProduct(product)) return null;
-  const name = String(product?.product_name || "").trim();
-  if (!name) return null;
-  const isCard = product?.is_card !== false;
-  const qty = Math.max(1, Number(product?.quantity) || 1);
-  const market = Number(product?.market_price);
+function isCollectrGradedProduct(product) {
   const gradeId = String(product?.grade_id || "").trim();
   const gradeCompany = String(product?.grade_company || "").trim();
-  const isGraded = Boolean(gradeCompany) || (gradeId && gradeId !== "12" && gradeId !== "0");
+  return Boolean(gradeCompany) || Boolean(gradeId && gradeId !== "12" && gradeId !== "0");
+}
+
+function isCollectrUngradedPokemonCard(product) {
+  if (!isCollectrPokemonProduct(product)) return false;
+  if (product?.is_card === false) return false;
+  return !isCollectrGradedProduct(product);
+}
+
+function mapCollectrProductToItem(product) {
+  if (!isCollectrUngradedPokemonCard(product)) return null;
+  const name = String(product?.product_name || "").trim();
+  if (!name) return null;
+  const qty = Math.max(1, Number(product?.quantity) || 1);
+  const market = Number(product?.market_price);
 
   return {
-    type: isCard ? "single" : "sealed",
+    type: "single",
     name,
     setName: String(product?.catalog_group || "").trim(),
     cardNumber: String(product?.card_number || "").trim(),
@@ -397,10 +405,10 @@ function mapCollectrProductToItem(product) {
       .replace(/\\u0026/g, "&")
       .trim(),
     tcgProductId: String(product?.product_id || "").trim(),
-    conditionType: isGraded ? "graded" : "raw",
+    conditionType: "raw",
     condition: String(product?.card_condition || "").trim() || "Near Mint",
-    gradeCompany: gradeCompany || "",
-    gradeValue: gradeId && isGraded ? gradeId : "",
+    gradeCompany: "",
+    gradeValue: "",
     quantity: qty,
     costBasis: 0,
     currency: "USD",
@@ -428,15 +436,9 @@ function itemImportKey(item) {
 }
 
 function filterCollectrProductsByImportType(products, options = {}) {
-  const importSingles = options.importSingles !== false;
-  const importSealed = options.importSealed !== false;
-  const rows = Array.isArray(products) ? products : [];
-  if (importSingles && importSealed) return rows;
-  if (!importSingles && !importSealed) return [];
-  return rows.filter((row) => {
-    const isSealed = row && row.is_card === false;
-    return isSealed ? importSealed : importSingles;
-  });
+  void options;
+  // Always import ungraded Pokémon singles only (no sealed, graded, or other TCGs).
+  return (Array.isArray(products) ? products : []).filter(isCollectrUngradedPokemonCard);
 }
 
 module.exports = {
@@ -446,6 +448,8 @@ module.exports = {
   isCollectrPokemonProduct,
   filterCollectrPokemonProducts,
   filterCollectrProductsByImportType,
+  isCollectrGradedProduct,
+  isCollectrUngradedPokemonCard,
   mapCollectrProductToItem,
   itemImportKey,
   mergeCollectrProductsIntoMap
