@@ -2,9 +2,9 @@
 
 const COLLECTR_ANON_USERNAME = "00000000-0000-0000-0000-000000000000";
 const PAGE_SIZE = 30;
-const SCROLL_PAUSE_MS = 450;
-const MAX_SCROLL_ROUNDS = 400;
-const STALE_SCROLL_ROUNDS = 20;
+const SCROLL_PAUSE_MS = 350;
+const MAX_SCROLL_ROUNDS = 500;
+const STALE_SCROLL_ROUNDS = 24;
 const STEALTH_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
@@ -84,6 +84,17 @@ function resolveChromiumExecutablePath() {
   return "";
 }
 
+function isClosedError(err) {
+  const msg = String(err?.message || err || "").toLowerCase();
+  return (
+    msg.includes("has been closed") ||
+    msg.includes("target closed") ||
+    msg.includes("browser has been closed") ||
+    msg.includes("connection closed") ||
+    msg.includes("protocol error")
+  );
+}
+
 async function launchStealthBrowser() {
   let chromium;
   try {
@@ -94,7 +105,21 @@ async function launchStealthBrowser() {
 
   const launchOptions = {
     headless: true,
-    args: ["--disable-blink-features=AutomationControlled", "--no-sandbox", "--disable-dev-shm-usage"]
+    args: [
+      "--disable-blink-features=AutomationControlled",
+      "--no-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+      "--disable-extensions",
+      "--disable-background-networking",
+      "--disable-default-apps",
+      "--disable-sync",
+      "--disable-translate",
+      "--mute-audio",
+      "--no-first-run",
+      "--renderer-process-limit=2",
+      "--js-flags=--max-old-space-size=192"
+    ]
   };
   const executablePath = resolveChromiumExecutablePath();
   if (executablePath) {
@@ -121,16 +146,100 @@ async function launchStealthBrowser() {
 async function newStealthContext(browser) {
   const context = await browser.newContext({
     userAgent: STEALTH_USER_AGENT,
+    viewport: { width: 1280, height: 900 },
+    javaScriptEnabled: true,
+    // Images/fonts inflate memory on large showcases and are not needed for the API harvest.
     extraHTTPHeaders: {
       "sec-ch-ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
       "sec-ch-ua-mobile": "?0",
-      "sec-ch-ua-platform": '"Windows"'
+      "sec-ch-ua-platform": '"Linux"'
     }
   });
   await context.addInitScript(() => {
     Object.defineProperty(navigator, "webdriver", { get: () => undefined });
   });
+  await context.route("**/*", async (route) => {
+    const req = route.request();
+    const type = req.resourceType();
+    const url = req.url();
+    if (type === "image" || type === "media" || type === "font") {
+      await route.abort();
+      return;
+    }
+    if (/google-analytics|googletagmanager|doubleclick|facebook\.net|hotjar|segment\.io/i.test(url)) {
+      await route.abort();
+      return;
+    }
+    await route.continue();
+  });
   return context;
+}
+
+async function scrollShowcasePage(page) {
+  // Prefer mouse wheel over page.evaluate — surviving longer under low memory.
+  try {
+    await page.mouse.move(640, 450);
+    await page.mouse.wheel(0, 3200);
+  } catch (err) {
+    if (isClosedError(err)) throw err;
+  }
+  try {
+    await page.keyboard.press("PageDown");
+    await page.keyboard.press("End");
+  } catch (err) {
+    if (isClosedError(err)) throw err;
+  }
+  try {
+    await page.evaluate(() => {
+      const main = document.querySelector("main") || document.documentElement;
+      main.scrollTop = main.scrollHeight;
+      window.scrollTo(0, document.body.scrollHeight);
+      const scroller =
+        document.querySelector("[data-radix-scroll-area-viewport]") ||
+        document.querySelector(".overflow-y-auto") ||
+        null;
+      if (scroller) scroller.scrollTop = scroller.scrollHeight;
+    });
+  } catch (err) {
+    if (isClosedError(err)) throw err;
+  }
+}
+
+function buildCatalogResult({
+  slug,
+  profileUrl,
+  profile,
+  byKey,
+  totalCards,
+  totalSealed,
+  maxItems,
+  crashReason = ""
+}) {
+  if (!byKey.size) {
+    return {
+      ok: false,
+      reason: crashReason || "Browser load returned no products"
+    };
+  }
+
+  const expected = totalCards + totalSealed;
+  const capped = byKey.size >= maxItems;
+  const partial =
+    Boolean(crashReason) || (!capped && expected > 0 && byKey.size < expected * 0.9);
+
+  return {
+    ok: true,
+    handle: slug,
+    profileUrl,
+    profile: profile || { handle: slug, displayName: slug, profilePhoto: null },
+    products: [...byKey.values()].slice(0, maxItems),
+    totalCards,
+    totalSealed,
+    expectedTotal: expected || null,
+    partial,
+    crashReason: crashReason || "",
+    source: "collectr-browser"
+  };
 }
 
 async function fetchCollectrShowcaseCatalogViaBrowser(handle, options = {}) {
@@ -153,6 +262,7 @@ async function fetchCollectrShowcaseCatalogViaBrowser(handle, options = {}) {
   let browser = launched.browser;
   let context;
   let page;
+  let crashReason = "";
 
   const report = () => {
     if (!onProgress) return;
@@ -202,9 +312,16 @@ async function fetchCollectrShowcaseCatalogViaBrowser(handle, options = {}) {
       }
     });
 
+    page.on("close", () => {
+      if (!crashReason) crashReason = "Showcase page closed during load";
+    });
+    browser.on("disconnected", () => {
+      if (!crashReason) crashReason = "Browser disconnected during load";
+    });
+
     await page.goto(profileUrl, { waitUntil: "domcontentloaded", timeout: 120_000 });
     // Collectr keeps analytics sockets busy, so networkidle often never settles.
-    await page.waitForTimeout(3500);
+    await page.waitForTimeout(2500);
     report();
 
     let staleRounds = 0;
@@ -212,17 +329,18 @@ async function fetchCollectrShowcaseCatalogViaBrowser(handle, options = {}) {
     const expectedTotal = () => (totalCards + totalSealed > 0 ? totalCards + totalSealed : 0);
 
     for (let round = 0; round < MAX_SCROLL_ROUNDS && byKey.size < maxItems; round += 1) {
-      await page.evaluate(() => {
-        const main = document.querySelector("main") || document.documentElement;
-        main.scrollTop = main.scrollHeight;
-        window.scrollTo(0, document.body.scrollHeight);
-        const scroller =
-          document.querySelector("[data-radix-scroll-area-viewport]") ||
-          document.querySelector(".overflow-y-auto") ||
-          null;
-        if (scroller) scroller.scrollTop = scroller.scrollHeight;
-      });
-      await page.waitForTimeout(SCROLL_PAUSE_MS);
+      if (page.isClosed() || !browser.isConnected()) {
+        crashReason = crashReason || "Browser closed during showcase scroll";
+        break;
+      }
+
+      try {
+        await scrollShowcasePage(page);
+        await page.waitForTimeout(SCROLL_PAUSE_MS);
+      } catch (err) {
+        crashReason = err?.message || String(err);
+        break;
+      }
 
       if (byKey.size === lastSize) {
         staleRounds += 1;
@@ -236,33 +354,23 @@ async function fetchCollectrShowcaseCatalogViaBrowser(handle, options = {}) {
       if (expected > 0 && byKey.size >= Math.min(expected, maxItems)) break;
     }
   } catch (err) {
-    return { ok: false, reason: err.message || "Browser load failed" };
+    crashReason = err.message || "Browser load failed";
   } finally {
     await page?.close().catch(() => {});
     await context?.close().catch(() => {});
     await browser?.close().catch(() => {});
   }
 
-  if (!byKey.size) {
-    return { ok: false, reason: "Browser load returned no products" };
-  }
-
-  const expected = totalCards + totalSealed;
-  const capped = byKey.size >= maxItems;
-  const partial = !capped && expected > 0 && byKey.size < expected * 0.9;
-
-  return {
-    ok: true,
-    handle: slug,
+  return buildCatalogResult({
+    slug,
     profileUrl,
-    profile: profile || { handle: slug, displayName: slug, profilePhoto: null },
-    products: [...byKey.values()].slice(0, maxItems),
+    profile,
+    byKey,
     totalCards,
     totalSealed,
-    expectedTotal: expected || null,
-    partial,
-    source: "collectr-browser"
-  };
+    maxItems,
+    crashReason
+  });
 }
 
 module.exports = {

@@ -173,7 +173,10 @@
       const expected = Number(catalog.expectedTotal) || 0;
       const partialNote =
         catalog.partial && expected > filtered.length
-          ? `<div style="color:var(--down, var(--danger, #ff5f73));font-size:12px;">Partial load: ${filtered.length.toLocaleString()} ready of ~${expected.toLocaleString()} showcase items. Re-run Preview if this looks too low.</div>`
+          ? `<div style="color:var(--down, var(--danger, #ff5f73));font-size:12px;">${escapeHtml(
+              catalog.warning ||
+                `Partial load: ${filtered.length.toLocaleString()} ready of ~${expected.toLocaleString()} showcase items. Re-run Preview if this looks too low.`
+            )}</div>`
           : "";
       collectrPreviewSummary.innerHTML = `
         <div>Ready to import from <strong>@${escapeHtml(handle)}</strong></div>

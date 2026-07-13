@@ -7938,6 +7938,7 @@ async function route(req, res) {
         profile: catalog.profile,
         source: catalog.source,
         partial: catalog.partial,
+        warning: catalog.warning || "",
         pokemonOnly: true,
         totalCards: catalog.totalCards || 0,
         totalSealed: catalog.totalSealed || 0,

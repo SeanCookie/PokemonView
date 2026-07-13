@@ -255,7 +255,6 @@ async function fetchCollectrShowcaseCatalog(handle, options = {}) {
       onProgress: options.onProgress
     });
     if (browserResult?.ok && browserResult.products?.length) {
-      const capped = browserResult.products.length >= maxItems;
       const filtered = applyPokemonFilterToCatalogResult(
         {
           ok: true,
@@ -268,27 +267,40 @@ async function fetchCollectrShowcaseCatalog(handle, options = {}) {
           expectedTotal: browserResult.expectedTotal || null,
           filteredOutNonPokemon: Number(browserResult.filteredOutNonPokemon) || 0,
           source: browserResult.source,
-          partial: Boolean(browserResult.partial) || capped,
-          needsBrowserFetch: false
+          partial: Boolean(browserResult.partial),
+          needsBrowserFetch: false,
+          crashReason: browserResult.crashReason || ""
         },
         maxItems
       );
-      // Treat heavily incomplete browser loads as failures so we don't silently import ~8 cards.
-      if (
-        filtered.partial &&
-        filtered.expectedTotal > 50 &&
-        filtered.products.length < Math.min(filtered.expectedTotal, maxItems) * 0.25
-      ) {
+
+      const expected = Number(filtered.expectedTotal) || 0;
+      const loaded = Array.isArray(filtered.products) ? filtered.products.length : 0;
+      const usableThreshold = Math.max(80, Math.min(expected, maxItems) * 0.2);
+
+      // If the browser crashed mid-scroll but already harvested a useful chunk, keep it.
+      if (filtered.partial && expected > 50 && loaded < usableThreshold) {
         return {
           ok: false,
-          error: `Collectr only returned ${filtered.products.length.toLocaleString()} of ~${filtered.expectedTotal.toLocaleString()} items for @${slug}. Try again in a minute.`,
+          error: `Collectr only returned ${loaded.toLocaleString()} of ~${expected.toLocaleString()} items for @${slug}${
+            browserResult.crashReason ? ` (${browserResult.crashReason})` : ""
+          }. Try again in a minute.`,
           partial: true,
           source: browserResult.source,
           products: filtered.products,
-          expectedTotal: filtered.expectedTotal
+          expectedTotal: expected
         };
       }
-      return filtered;
+
+      return {
+        ...filtered,
+        warning:
+          filtered.partial && expected > loaded
+            ? `Loaded ${loaded.toLocaleString()} of ~${expected.toLocaleString()} showcase items${
+                browserResult.crashReason ? ` before browser stopped` : ""
+              }.`
+            : ""
+      };
     }
     browserFailureReason = String(browserResult?.reason || browserResult?.error || "").trim();
   }

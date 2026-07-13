@@ -14,7 +14,7 @@ class_name = "PokemonViewContainer"
 image = "./Dockerfile"
 max_instances = 2
 # Default "lite" is 256MiB — Node + catalog JSON OOMs and never stays running.
-instance_type = "standard-1"
+instance_type = "standard-2"
 
 [[durable_objects.bindings]]
 name = "POKEMONVIEW"

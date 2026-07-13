@@ -117,6 +117,7 @@
       totalSealed,
       expectedTotal,
       partial: payload.partial === true,
+      warning: String(payload.warning || "").trim(),
       pokemonOnly: payload.pokemonOnly === true,
       filteredOutNonPokemon: Number(payload.filteredOutNonPokemon) || 0,
       source: payload.source || "collectr-proxy"
