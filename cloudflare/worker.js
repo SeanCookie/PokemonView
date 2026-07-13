@@ -103,6 +103,13 @@ export class PokemonViewContainer extends Container {
 
 const STORE_R2_KEY = "app-data/store.json";
 const STORE_SYNC_PATH = "/api/internal/r2-store";
+const DATA_SYNC_PATH = "/api/internal/r2-data";
+const ALLOWED_APP_DATA_FILES = new Set([
+  "tcg-link-prices-cache.json",
+  "pricecharting-card-details-cache.json",
+  "tcg-link-price-fail-links.json",
+  "pricecharting-card-details-fail-links.json"
+]);
 
 async function handleDurableStoreRequest(request, env) {
   const url = new URL(request.url);
@@ -196,11 +203,82 @@ async function handleDurableStoreRequest(request, env) {
   });
 }
 
+async function handleDurableAppDataRequest(request, env) {
+  const url = new URL(request.url);
+  if (url.pathname !== DATA_SYNC_PATH) return null;
+
+  const expected = String(env.STORE_SYNC_SECRET || "").trim();
+  const got = String(request.headers.get("x-store-sync-secret") || "").trim();
+  if (!expected || got !== expected) {
+    return new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), {
+      status: 401,
+      headers: { "content-type": "application/json; charset=utf-8" }
+    });
+  }
+
+  const file = String(url.searchParams.get("file") || "").trim();
+  if (!ALLOWED_APP_DATA_FILES.has(file)) {
+    return new Response(JSON.stringify({ ok: false, error: "Unsupported file" }), {
+      status: 400,
+      headers: { "content-type": "application/json; charset=utf-8" }
+    });
+  }
+
+  const bucket = env.CARD_IMAGES;
+  if (!bucket) {
+    return new Response(JSON.stringify({ ok: false, error: "R2 binding missing" }), {
+      status: 503,
+      headers: { "content-type": "application/json; charset=utf-8" }
+    });
+  }
+
+  const r2Key = `app-data/${file}`;
+
+  if (request.method === "GET") {
+    const object = await bucket.get(r2Key);
+    if (!object) {
+      return new Response(JSON.stringify({ ok: false, error: "not_found" }), {
+        status: 404,
+        headers: { "content-type": "application/json; charset=utf-8" }
+      });
+    }
+    const headers = new Headers();
+    headers.set("content-type", "application/json; charset=utf-8");
+    headers.set("cache-control", "no-store");
+    return new Response(object.body, { status: 200, headers });
+  }
+
+  if (request.method === "PUT") {
+    const body = await request.arrayBuffer();
+    if (!body || body.byteLength < 2) {
+      return new Response(JSON.stringify({ ok: false, error: "Empty body" }), {
+        status: 400,
+        headers: { "content-type": "application/json; charset=utf-8" }
+      });
+    }
+    await bucket.put(r2Key, body, {
+      httpMetadata: { contentType: "application/json; charset=utf-8" }
+    });
+    return new Response(JSON.stringify({ ok: true, bytes: body.byteLength, file }), {
+      status: 200,
+      headers: { "content-type": "application/json; charset=utf-8" }
+    });
+  }
+
+  return new Response(JSON.stringify({ ok: false, error: "Method not allowed" }), {
+    status: 405,
+    headers: { "content-type": "application/json; charset=utf-8" }
+  });
+}
+
 export default {
   async fetch(request, env) {
     // Durable account store — handled at the Worker (no container), so boot can restore without deadlock.
     const storeResponse = await handleDurableStoreRequest(request, env);
     if (storeResponse) return storeResponse;
+
+    const dataResponse = await handleDurableAppDataRequest(request, env);
+    if (dataResponse) return dataResponse;
 
     // Card / symbol / set art is served from the R2 binding at the edge.
     // No public R2 S3 API URL is required for the site.

@@ -65,6 +65,11 @@ const { loadPersistedPriceChartingMarketHistoryCache } = require("./lib/pricecha
 const { requestPasswordReset, completePasswordReset, isEmailConfigured } = require("./lib/password-reset");
 const { pullStoreFromR2, pushStoreToR2 } = require("./lib/store-r2-sync");
 const {
+  pullPricingCacheFromR2,
+  pushPricingCacheToR2,
+  setPricingCacheR2Env
+} = require("./lib/pricing-cache-r2-sync");
+const {
   defaultShowcaseSettings,
   normalizeShowcaseSettings,
   ensureUserShowcase,
@@ -175,7 +180,7 @@ const TCG_LINK_PRICE_FAIL_LINKS_FILE = path.join(DATA_DIR, "tcg-link-price-fail-
 const TCG_LINK_PRICE_FAIL_LINKS_MAX = 2000;
 const PRICECHARTING_DETAILS_FAIL_LINKS_FILE = path.join(DATA_DIR, "pricecharting-card-details-fail-links.json");
 const PRICECHARTING_DETAILS_FAIL_LINKS_MAX = 2000;
-const PRICECHARTING_DETAILS_PERSIST_EVERY = 1000;
+const PRICECHARTING_DETAILS_PERSIST_EVERY = 100;
 const SHOWCASE_AVATAR_DIR = path.join(DATA_DIR, "showcase-avatars");
 const TCG_PRICE_LEDGER_FILE = path.join(DATA_DIR, "tcg-price-ledger.json");
 const MARKET_HISTORY_RANGE_DAYS = {
@@ -244,6 +249,7 @@ function loadEnvFile() {
 }
 
 loadEnvFile();
+setPricingCacheR2Env(env);
 
 const PORT = Number(process.env.PORT || env.PORT || 3000);
 let tcgTokenCache = {
@@ -324,6 +330,8 @@ const tcgLinkPriceFailLinks = new Map();
 const tcgLinkPriceInFlight = new Map();
 let tcgLinkPriceCachePersistTimer = null;
 let tcgLinkPricePersistChain = Promise.resolve();
+/** When true, skip debounce persists (bulk job uses interval + final save). */
+let tcgLinkPriceBulkPersistSuspended = false;
 let tcgLinkPricePrewarmInFlight = false;
 let tcgLinkPricePrewarmKickoffTimer = null;
 let tcgLinkPriceBackgroundTimer = null;
@@ -455,32 +463,11 @@ async function persistStore() {
 }
 
 function schedulePersistTcgLinkPriceCache() {
+  if (tcgLinkPriceBulkPersistSuspended) return;
   if (tcgLinkPriceCachePersistTimer) return;
-  tcgLinkPriceCachePersistTimer = setTimeout(async () => {
+  tcgLinkPriceCachePersistTimer = setTimeout(() => {
     tcgLinkPriceCachePersistTimer = null;
-    try {
-      const now = Date.now();
-      const entries = [];
-      for (const [key, row] of tcgLinkPriceCache.entries()) {
-        if (!row || typeof row !== "object") continue;
-        const expiresAt = Number(row.expiresAt || 0);
-        if (!Number.isFinite(expiresAt) || expiresAt <= now) continue;
-        entries.push({
-          key: String(key),
-          expiresAt,
-          value: row.value && typeof row.value === "object" ? row.value : null
-        });
-      }
-      tcgBulkPriceCheckMeta.cacheEntryCount = entries.length;
-      tcgBulkPriceCheckMeta.cacheSavedAt = new Date().toISOString();
-      await fsp.writeFile(
-        TCG_LINK_PRICE_CACHE_FILE,
-        JSON.stringify(buildTcgLinkPriceCacheFilePayload(entries), null, 2),
-        "utf8"
-      );
-    } catch {
-      // best effort cache persistence only
-    }
+    void enqueuePersistTcgLinkPriceCacheNow();
   }, 500);
 }
 
@@ -528,17 +515,22 @@ async function persistTcgLinkPriceCacheNow() {
   }
   tcgBulkPriceCheckMeta.cacheEntryCount = entries.length;
   tcgBulkPriceCheckMeta.cacheSavedAt = new Date().toISOString();
-  await fsp.writeFile(
-    TCG_LINK_PRICE_CACHE_FILE,
-    JSON.stringify(buildTcgLinkPriceCacheFilePayload(entries), null, 2),
-    "utf8"
-  );
+  const body = JSON.stringify(buildTcgLinkPriceCacheFilePayload(entries), null, 2);
+  await fsp.writeFile(TCG_LINK_PRICE_CACHE_FILE, body, "utf8");
+  const r2 = await pushPricingCacheToR2("tcg-link-prices-cache.json", body, { ...env, ...process.env });
+  if (r2?.ok) {
+    console.log(`[pricing-cache] TCG link prices saved (${entries.length} entries, R2 ok)`);
+  } else if (!r2?.skipped) {
+    console.warn("[pricing-cache] TCG link prices saved to disk but R2 push failed");
+  }
 }
 
 function enqueuePersistTcgLinkPriceCacheNow() {
   tcgLinkPricePersistChain = tcgLinkPricePersistChain
     .then(() => persistTcgLinkPriceCacheNow())
-    .catch(() => {});
+    .catch((err) => {
+      console.warn(`[pricing-cache] TCG link price persist failed: ${err?.message || err}`);
+    });
   return tcgLinkPricePersistChain;
 }
 
@@ -948,49 +940,53 @@ async function refreshTcgLinkPricesForUrls(
     if (typeof onProgress !== "function") return;
     onProgress({ total: list.length, done: ok + fail + skipped, ok, fail, skipped, ...live });
   };
-  const workers = Array.from({ length: Math.min(concurrency, list.length) }, async () => {
-    while (cursor < list.length) {
-      if (isTcgPriceCheckCancelled()) break;
-      const url = list[cursor];
-      cursor += 1;
-      try {
-        const productId = extractTcgplayerProductIdFromUrl(url);
-        if (skipValidCached && productId && isTcgLinkPriceCacheFresh(productId, url, freshnessMs)) {
-          skipped += 1;
-        } else {
-          const result = await fetchTcgPriceFromProductLink(url, {
-            forceRefresh: true,
-            priceChartingContext: pcContextByUrl.get(url) || null
-          });
-          if (result && result.ok) {
-            ok += 1;
-            removeTcgLinkPriceFailLink(url);
-          } else if (result?.skippedNonPokemon) {
-            skipped += 1;
-            removeTcgLinkPriceFailLink(url);
-          } else {
-            fail += 1;
-            recordTcgLinkPriceFailLink(url, result?.error || "Price fetch failed");
-          }
-        }
-      } catch (err) {
-        fail += 1;
-        recordTcgLinkPriceFailLink(url, err?.message || "Price fetch failed");
-      }
-      processed += 1;
-      if (persistEvery > 0 && processed % persistEvery === 0) {
-        await enqueuePersistTcgLinkPriceCacheNow();
-      }
-      if (processed % 8 === 0 || processed === list.length) reportProgress();
-    }
-  });
+  tcgLinkPriceBulkPersistSuspended = true;
   try {
+    const workers = Array.from({ length: Math.min(concurrency, list.length) }, async () => {
+      while (cursor < list.length) {
+        if (isTcgPriceCheckCancelled()) break;
+        const url = list[cursor];
+        cursor += 1;
+        try {
+          const productId = extractTcgplayerProductIdFromUrl(url);
+          if (skipValidCached && productId && isTcgLinkPriceCacheFresh(productId, url, freshnessMs)) {
+            skipped += 1;
+          } else {
+            const result = await fetchTcgPriceFromProductLink(url, {
+              forceRefresh: true,
+              priceChartingContext: pcContextByUrl.get(url) || null
+            });
+            if (result && result.ok) {
+              ok += 1;
+              removeTcgLinkPriceFailLink(url);
+            } else if (result?.skippedNonPokemon) {
+              skipped += 1;
+              removeTcgLinkPriceFailLink(url);
+            } else {
+              fail += 1;
+              recordTcgLinkPriceFailLink(url, result?.error || "Price fetch failed");
+            }
+          }
+        } catch (err) {
+          fail += 1;
+          recordTcgLinkPriceFailLink(url, err?.message || "Price fetch failed");
+        }
+        processed += 1;
+        if (persistEvery > 0 && processed % persistEvery === 0) {
+          await enqueuePersistTcgLinkPriceCacheNow();
+        }
+        if (processed % 8 === 0 || processed === list.length) reportProgress();
+      }
+    });
     await Promise.all(workers);
     reportProgress();
     return { ok, fail, skipped, total: list.length, cancelled: isTcgPriceCheckCancelled() };
   } finally {
-    if (isTcgPriceCheckCancelled()) {
-      await persistTcgLinkPriceCacheNow().catch(() => {});
+    tcgLinkPriceBulkPersistSuspended = false;
+    try {
+      await persistTcgLinkPriceCacheNow();
+    } catch (err) {
+      console.warn(`[pricing-cache] final TCG link price persist failed: ${err?.message || err}`);
     }
   }
 }
@@ -1769,8 +1765,28 @@ function storeManualTcgLinkPriceForUrl(url, nearMintPrice, shippingPrice) {
 }
 
 async function loadPersistedTcgLinkPriceCache() {
+  let raw = null;
   try {
-    const raw = await fsp.readFile(TCG_LINK_PRICE_CACHE_FILE, "utf8");
+    raw = await fsp.readFile(TCG_LINK_PRICE_CACHE_FILE, "utf8");
+  } catch {
+    // try R2 below
+  }
+
+  if (!raw || raw.length < 2) {
+    raw = await pullPricingCacheFromR2("tcg-link-prices-cache.json", { ...env, ...process.env });
+    if (raw) {
+      try {
+        await fsp.mkdir(DATA_DIR, { recursive: true });
+        await fsp.writeFile(TCG_LINK_PRICE_CACHE_FILE, raw, "utf8");
+      } catch (err) {
+        console.warn(`[pricing-cache] could not write R2 TCG cache to disk: ${err?.message || err}`);
+      }
+    }
+  }
+
+  if (!raw) return;
+
+  try {
     const parsed = JSON.parse(raw);
     const rows = Array.isArray(parsed?.entries) ? parsed.entries : [];
     if (parsed?.meta && typeof parsed.meta === "object") {
@@ -1822,10 +1838,9 @@ async function loadPersistedTcgLinkPriceCache() {
     tcgBulkPriceCheckMeta.cacheSavedAt = String(parsed?.savedAt || parsed?.meta?.cacheSavedAt || "").trim() || null;
     if (restored > 0) {
       console.log(`[pricing-cache] restored ${restored} persisted TCG link prices`);
-      void enqueuePersistTcgLinkPriceCacheNow();
     }
-  } catch {
-    // no persisted cache yet
+  } catch (err) {
+    console.warn(`[pricing-cache] TCG link price cache parse failed: ${err?.message || err}`);
   }
 }
 
@@ -9478,6 +9493,7 @@ async function startDeferredBackgroundWork() {
 
 async function bootstrapServer({ hosted = false } = {}) {
   loadEnvFile();
+  setPricingCacheR2Env(env);
   markTcgCatalogPriorityWindow(TCG_CATALOG_PRIORITY_MS);
   await ensureStore();
   if (hosted) {

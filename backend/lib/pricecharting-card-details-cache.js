@@ -1,17 +1,26 @@
 const fsp = require("fs/promises");
 const path = require("path");
 const { fetchPriceChartingCardDetailsForCard } = require("./pricecharting-market-history");
+const {
+  pullPricingCacheFromR2,
+  pushPricingCacheToR2
+} = require("./pricing-cache-r2-sync");
 
 const DATA_DIR = path.join(__dirname, "..", "data");
 const CACHE_FILE = path.join(DATA_DIR, "pricecharting-card-details-cache.json");
+const CACHE_R2_NAME = "pricecharting-card-details-cache.json";
 const SET_CARD_LIST_FILE = path.join(DATA_DIR, "set-card-lists.json");
 const CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const CACHE_VERSION = 2;
 const PERSIST_DEBOUNCE_MS = 500;
+/** Default for admin bulk runs — save to disk/R2 every N processed cards (not on every write). */
+const DEFAULT_BULK_PERSIST_EVERY = 100;
 
 const memCache = new Map();
 let persistTimer = null;
 let persistChain = Promise.resolve();
+/** When true, skip debounce persists (bulk job uses interval + final save). */
+let bulkPersistSuspended = false;
 let cacheMeta = {
   savedAt: null,
   entryCount: 0
@@ -60,7 +69,9 @@ function writeCachedCardDetails(setCode = "", cardNo = "", value) {
     expiresAt: Date.now() + CACHE_TTL_MS
   });
   cacheMeta.entryCount = memCache.size;
-  schedulePersistPriceChartingCardDetailsCache();
+  if (!bulkPersistSuspended) {
+    schedulePersistPriceChartingCardDetailsCache();
+  }
   return true;
 }
 
@@ -86,6 +97,7 @@ function buildCacheFilePayload() {
 }
 
 function schedulePersistPriceChartingCardDetailsCache() {
+  if (bulkPersistSuspended) return;
   if (persistTimer) return;
   persistTimer = setTimeout(() => {
     persistTimer = null;
@@ -96,7 +108,9 @@ function schedulePersistPriceChartingCardDetailsCache() {
 function enqueuePersistPriceChartingCardDetailsCacheNow() {
   persistChain = persistChain
     .then(() => persistPriceChartingCardDetailsCacheNow())
-    .catch(() => {});
+    .catch((err) => {
+      console.warn(`[pricing-cache] PriceCharting details persist failed: ${err?.message || err}`);
+    });
   return persistChain;
 }
 
@@ -108,38 +122,72 @@ async function persistPriceChartingCardDetailsCacheNow() {
   const payload = buildCacheFilePayload();
   cacheMeta.savedAt = payload.savedAt;
   cacheMeta.entryCount = payload.meta.entryCount;
+  const body = `${JSON.stringify(payload, null, 2)}\n`;
   await fsp.mkdir(DATA_DIR, { recursive: true });
-  await fsp.writeFile(CACHE_FILE, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+  await fsp.writeFile(CACHE_FILE, body, "utf8");
+  const r2 = await pushPricingCacheToR2(CACHE_R2_NAME, body);
+  if (r2?.ok) {
+    console.log(
+      `[pricing-cache] PriceCharting details saved (${payload.meta.entryCount} entries, R2 ok)`
+    );
+  } else if (!r2?.skipped) {
+    console.warn("[pricing-cache] PriceCharting details saved to disk but R2 push failed");
+  }
+}
+
+function applyParsedPriceChartingCache(parsed) {
+  const fileVersion = Number(parsed?.version) || 0;
+  if (fileVersion !== CACHE_VERSION) {
+    console.log(
+      `[pricing-cache] skipping stale PriceCharting card details cache (v${fileVersion} -> v${CACHE_VERSION})`
+    );
+    return 0;
+  }
+  const rows = Array.isArray(parsed?.entries) ? parsed.entries : [];
+  const revivedExpiresAt = Date.now() + CACHE_TTL_MS;
+  let restored = 0;
+  for (const row of rows) {
+    const key = String(row?.key || "").trim();
+    const value = row?.value && typeof row.value === "object" ? row.value : null;
+    if (!key || !cacheValueValid(value)) continue;
+    memCache.set(key, { value, expiresAt: revivedExpiresAt });
+    restored += 1;
+  }
+  cacheMeta.savedAt = String(parsed?.savedAt || "").trim() || null;
+  cacheMeta.entryCount = restored;
+  return restored;
 }
 
 async function loadPersistedPriceChartingCardDetailsCache() {
+  let raw = null;
   try {
-    const raw = await fsp.readFile(CACHE_FILE, "utf8");
+    raw = await fsp.readFile(CACHE_FILE, "utf8");
+  } catch {
+    // try R2 below
+  }
+
+  if (!raw || raw.length < 2) {
+    raw = await pullPricingCacheFromR2(CACHE_R2_NAME);
+    if (raw) {
+      try {
+        await fsp.mkdir(DATA_DIR, { recursive: true });
+        await fsp.writeFile(CACHE_FILE, raw.endsWith("\n") ? raw : `${raw}\n`, "utf8");
+      } catch (err) {
+        console.warn(`[pricing-cache] could not write R2 PriceCharting cache to disk: ${err?.message || err}`);
+      }
+    }
+  }
+
+  if (!raw) return;
+
+  try {
     const parsed = JSON.parse(raw);
-    const fileVersion = Number(parsed?.version) || 0;
-    if (fileVersion !== CACHE_VERSION) {
-      console.log(
-        `[pricing-cache] skipping stale PriceCharting card details cache (v${fileVersion} -> v${CACHE_VERSION})`
-      );
-      return;
-    }
-    const rows = Array.isArray(parsed?.entries) ? parsed.entries : [];
-    const revivedExpiresAt = Date.now() + CACHE_TTL_MS;
-    let restored = 0;
-    for (const row of rows) {
-      const key = String(row?.key || "").trim();
-      const value = row?.value && typeof row.value === "object" ? row.value : null;
-      if (!key || !cacheValueValid(value)) continue;
-      memCache.set(key, { value, expiresAt: revivedExpiresAt });
-      restored += 1;
-    }
-    cacheMeta.savedAt = String(parsed?.savedAt || "").trim() || null;
-    cacheMeta.entryCount = restored;
+    const restored = applyParsedPriceChartingCache(parsed);
     if (restored > 0) {
       console.log(`[pricing-cache] restored ${restored} persisted PriceCharting card detail caches`);
     }
-  } catch {
-    // no cache file yet
+  } catch (err) {
+    console.warn(`[pricing-cache] PriceCharting details cache parse failed: ${err?.message || err}`);
   }
 }
 
@@ -220,7 +268,7 @@ async function refreshPriceChartingCardDetailsBatch(
     concurrency = 1,
     max = 100_000,
     skipValidCached = false,
-    persistEvery = 1000,
+    persistEvery = DEFAULT_BULK_PERSIST_EVERY,
     onProgress,
     onFail,
     shouldCancel = () => false
@@ -247,42 +295,52 @@ async function refreshPriceChartingCardDetailsBatch(
     });
   };
 
-  const workers = Array.from({ length: Math.min(concurrency, list.length) }, async () => {
-    while (cursor < list.length) {
-      if (shouldCancel()) break;
-      const card = list[cursor];
-      cursor += 1;
-      try {
-        if (skipValidCached && readCachedCardDetails(card.setCode, card.cardNo)) {
-          skipped += 1;
-        } else {
-          const result = await getOrFetchPriceChartingCardDetails(card, { forceRefresh: true });
-          if (result?.ok) {
-            ok += 1;
+  bulkPersistSuspended = true;
+  try {
+    const workers = Array.from({ length: Math.min(concurrency, list.length) }, async () => {
+      while (cursor < list.length) {
+        if (shouldCancel()) break;
+        const card = list[cursor];
+        cursor += 1;
+        try {
+          if (skipValidCached && readCachedCardDetails(card.setCode, card.cardNo)) {
+            skipped += 1;
           } else {
-            fail += 1;
-            if (typeof onFail === "function") {
-              onFail(card, result?.error || "PriceCharting details fetch failed");
+            const result = await getOrFetchPriceChartingCardDetails(card, { forceRefresh: true });
+            if (result?.ok) {
+              ok += 1;
+            } else {
+              fail += 1;
+              if (typeof onFail === "function") {
+                onFail(card, result?.error || "PriceCharting details fetch failed");
+              }
             }
           }
+        } catch (err) {
+          fail += 1;
+          if (typeof onFail === "function") {
+            onFail(card, err?.message || "PriceCharting details fetch failed");
+          }
         }
-      } catch (err) {
-        fail += 1;
-        if (typeof onFail === "function") {
-          onFail(card, err?.message || "PriceCharting details fetch failed");
+        processed += 1;
+        if (persistEvery > 0 && processed % persistEvery === 0) {
+          await enqueuePersistPriceChartingCardDetailsCacheNow();
         }
+        if (processed % 10 === 0 || processed === list.length) reportProgress();
       }
-      processed += 1;
-      if (persistEvery > 0 && processed % persistEvery === 0) {
-        await enqueuePersistPriceChartingCardDetailsCacheNow();
-      }
-      if (processed % 10 === 0 || processed === list.length) reportProgress();
-    }
-  });
+    });
 
-  await Promise.all(workers);
-  reportProgress();
-  await persistPriceChartingCardDetailsCacheNow();
+    await Promise.all(workers);
+    reportProgress();
+  } finally {
+    bulkPersistSuspended = false;
+    try {
+      await persistPriceChartingCardDetailsCacheNow();
+    } catch (err) {
+      console.warn(`[pricing-cache] final PriceCharting details persist failed: ${err?.message || err}`);
+    }
+  }
+
   return {
     ok,
     fail,
@@ -301,5 +359,6 @@ module.exports = {
   writeCachedCardDetails,
   getOrFetchPriceChartingCardDetails,
   collectEnglishCardsForPriceChartingPrewarm,
-  refreshPriceChartingCardDetailsBatch
+  refreshPriceChartingCardDetailsBatch,
+  DEFAULT_BULK_PERSIST_EVERY
 };
