@@ -4,7 +4,7 @@ const { URL } = require("url");
 const {
   parseSmokeAndMirrorsProducts,
   SMOKE_AND_MIRRORS_COLLECTION_URL
-} = require("../scripts/restock-parsers");
+} = require("./restock-parsers");
 
 const POKENE_COLLECTION_URL = "https://www.pokene.com/category/pokemontcg";
 const POKENE_GRAPHQL_URL = "https://www.pokene.com/_api/wixstores-graphql-server/graphql";
