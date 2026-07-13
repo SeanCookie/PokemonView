@@ -208,7 +208,7 @@ export default {
     if (imageResponse) return imageResponse;
 
     // Fresh DO so the container boots with current secrets + latest image after CI rebuild.
-    const container = env.POKEMONVIEW.getByName("main-v10");
+    const container = env.POKEMONVIEW.getByName("main-v11");
     return container.fetch(request);
   }
 };
