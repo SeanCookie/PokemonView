@@ -217,7 +217,10 @@
       if (!collectrImportUrl || String(collectrImportUrl.value || "").trim()) return;
       if (typeof options.getDefaultUrl !== "function") return;
       const next = String(options.getDefaultUrl() || "").trim();
-      if (next) collectrImportUrl.value = next;
+      if (!next) return;
+      const parsed = global.CollectrImportClient?.parseCollectrProfileUrl?.(next);
+      collectrImportUrl.value =
+        parsed?.ok && parsed.handle ? `@${parsed.handle}` : next;
     }
 
     function updateCollectrDeleteButton() {
@@ -607,8 +610,8 @@
         }
         setCollectrStatus(statusMsg);
         const showcaseField = byId("showcaseCollectrUrl");
-        if (showcaseField && catalog.profileUrl) {
-          showcaseField.value = catalog.profileUrl;
+        if (showcaseField && catalog.handle) {
+          showcaseField.value = `@${catalog.handle}`;
         }
         await refreshCollection();
         updateCollectrDeleteButton();

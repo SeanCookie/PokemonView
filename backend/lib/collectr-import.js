@@ -36,7 +36,7 @@ function parseCollectrProfileUrl(rawUrl = "") {
   }
   return {
     ok: false,
-    error: "Use @username or a Collectr link like https://app.getcollectr.com/showcase/profile/@username"
+    error: "Enter a Collectr username, @username, or showcase link."
   };
 }
 

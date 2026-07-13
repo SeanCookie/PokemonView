@@ -7,7 +7,7 @@
   function parseCollectrProfileUrl(rawUrl = "") {
     const text = String(rawUrl || "").trim();
     if (!text) {
-      return { ok: false, error: "Enter a Collectr @username or showcase link." };
+      return { ok: false, error: "Enter a Collectr username, @username, or showcase link." };
     }
 
     const urlMatch = text.match(
@@ -34,7 +34,7 @@
 
     return {
       ok: false,
-      error: "Use @username or a Collectr link like https://app.getcollectr.com/showcase/profile/@username"
+      error: "Enter a Collectr username, @username, or showcase link."
     };
   }
 
