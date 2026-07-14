@@ -1797,6 +1797,7 @@
         <div id="catalogSearchFieldBar" class="search-controls-left" hidden>
           <button type="button" id="catalogSetSortBtn" class="catalog-number-sort-btn">Set ▲</button>
           <button type="button" id="catalogNumberSortBtn" class="catalog-number-sort-btn">Number</button>
+          <button type="button" id="catalogPriceSortBtn" class="catalog-number-sort-btn">Price</button>
         </div>
         <select
           id="globalArtistFilterSelect"
@@ -2009,10 +2010,11 @@
       eraFilter: "all",
       query: "",
       catalogArtistFilter: "all",
-      /** Catalog search: "set" = order by set code then card #; "number" = order by card # like set view, then set. */
+      /** Catalog search: "set" | "number" | "price". */
       globalSearchSortMode: "set",
       globalSearchSetOrder: "asc",
       globalSearchCardNumberOrder: "asc",
+      globalSearchPriceOrder: "asc",
       setCardQuery: "",
       /** From /api/pokesymbols/manifest.bySlug — keys are site slugs (e.g. call-of-legends). */
       pokesymbolsBySlug: {},
@@ -2210,8 +2212,29 @@
         }
         if (state.selectedSetCode && !state.selectedCardNumber) {
           updateSetDetailInlinePrices();
+          return;
+        }
+        if (String(state.query || "").trim() && !state.selectedSetCode) {
+          updateCatalogSearchInlinePrices();
         }
       }, 0);
+    }
+
+    function updateCatalogSearchInlinePrices() {
+      if (!String(state.query || "").trim() || state.selectedSetCode) return;
+      const content = document.getElementById("content");
+      if (!content) return;
+      content.querySelectorAll(".card-tile[data-set-code][data-card-number]").forEach((tile) => {
+        const priceEl = tile.querySelector(".card-price-inline");
+        if (!priceEl) return;
+        priceEl.textContent =
+          formatCardPriceInline({
+            setCode: tile.dataset.setCode,
+            cardNo: tile.dataset.cardNumber,
+            setName: "",
+            label: `#${tile.dataset.cardNumber}`
+          }) || "—";
+      });
     }
 
     function updateSetDetailInlinePrices() {
@@ -2434,6 +2457,14 @@
         updateCatalogSearchControls();
         updateSetsCardSky();
         return;
+      }
+      // Leave set/card detail so global Search Results can show (toolbar search is catalog-wide).
+      if (state.selectedSetCode || state.selectedCardNumber) {
+        state.selectedSetCode = null;
+        state.selectedSetName = "";
+        state.selectedCardNumber = null;
+        state.setCardQuery = "";
+        state.savedSetGridScrollY = null;
       }
       void ensureCatalogManifestLoaded().then(() => {
         scheduleCatalogSearchUpdate();
@@ -3107,7 +3138,7 @@
       const priceText = resolveTcgRowListingPriceText(row, pricingInfo);
       const ebayUrl = card ? buildEbaySearchUrlForCard(card, { row }) : "";
       const ebayLinkHtml = ebayUrl
-        ? `<a class="card-price-link card-price-link-ebay" href="${escapeHtml(ebayUrl)}" target="_blank" rel="noopener noreferrer" aria-label="Search eBay"><span class="ebay-e">e</span><span class="ebay-b">b</span><span class="ebay-a">a</span><span class="ebay-y">y</span><span class="ebay-arrow"> ↗</span></a>`
+        ? `<a class="card-price-link card-price-link-ebay" href="${escapeHtml(ebayUrl)}" target="_blank" rel="noopener noreferrer" aria-label="Search eBay"><span class="ebay-e">e</span><span class="ebay-b">B</span><span class="ebay-a">a</span><span class="ebay-y">y</span><span class="ebay-arrow"> ↗</span></a>`
         : "";
       return `<div class="card-price-print-row">
           <span class="card-price-print-label">${escapeHtml(row.label)}</span>
@@ -3646,8 +3677,9 @@
       const q = String(query || "").trim();
       if (!q) return true;
       if (cardMatchesNicknameQuery(card, q)) return true;
-      if (matchesQuery(getCardDisplayName(card), q)) return true;
-      if (matchesQuery(`${card.label} ${card.cardNo}`, q)) return true;
+      const normalizedQuery = normalize(q);
+      if (cardNameStartsWithQuery(card, normalizedQuery)) return true;
+      if (matchesQuery(`${card.label} ${card.cardNo}`, q) && /[0-9]/.test(q)) return true;
       if (matchesQuery(getCardIllustrator(card), q)) return true;
       return false;
     }
@@ -3670,6 +3702,7 @@
       const bar = document.getElementById("catalogSearchFieldBar");
       const setBtn = document.getElementById("catalogSetSortBtn");
       const numBtn = document.getElementById("catalogNumberSortBtn");
+      const priceBtn = document.getElementById("catalogPriceSortBtn");
       if (!bar || !setBtn || !numBtn) return;
       const q = state.query.trim();
       const artistOn = state.catalogArtistFilter !== "all";
@@ -3680,6 +3713,7 @@
       bar.hidden = false;
       const setActive = state.globalSearchSortMode === "set";
       const numActive = state.globalSearchSortMode === "number";
+      const priceActive = state.globalSearchSortMode === "price";
       setBtn.textContent = setActive
         ? state.globalSearchSetOrder === "desc"
           ? "Set ▼"
@@ -3690,6 +3724,13 @@
           ? "Number ▼"
           : "Number ▲"
         : "Number";
+      if (priceBtn) {
+        priceBtn.textContent = priceActive
+          ? state.globalSearchPriceOrder === "desc"
+            ? "Price ▼"
+            : "Price ▲"
+          : "Price";
+      }
     }
 
     function collectAllCatalogCards() {
@@ -3791,6 +3832,26 @@
     }
 
     function sortGlobalSearchMatches(list) {
+      if (state.globalSearchSortMode === "price") {
+        const desc = state.globalSearchPriceOrder === "desc";
+        list.sort((a, b) => {
+          const pa = getEffectiveTcgplayerPrice(getCardPricingInfo(a), a);
+          const pb = getEffectiveTcgplayerPrice(getCardPricingInfo(b), b);
+          const aMissing = !Number.isFinite(pa) || pa <= 0;
+          const bMissing = !Number.isFinite(pb) || pb <= 0;
+          if (aMissing && bMissing) {
+            const bySet = compareCardsBySetReleaseThenCode(a, b, false);
+            if (bySet !== 0) return bySet;
+            return cardSortNumberKey(a) - cardSortNumberKey(b);
+          }
+          if (aMissing) return 1;
+          if (bMissing) return -1;
+          const delta = desc ? pb - pa : pa - pb;
+          if (delta !== 0) return delta;
+          return cardSortNumberKey(a) - cardSortNumberKey(b);
+        });
+        return;
+      }
       if (state.globalSearchSortMode === "number") {
         const desc = state.globalSearchCardNumberOrder === "desc";
         const releaseDesc = state.globalSearchSetOrder === "desc";
@@ -6413,6 +6474,7 @@
       state.globalSearchSortMode = snap.globalSearchSortMode || "set";
       state.globalSearchSetOrder = snap.globalSearchSetOrder || "asc";
       state.globalSearchCardNumberOrder = snap.globalSearchCardNumberOrder || "asc";
+      state.globalSearchPriceOrder = snap.globalSearchPriceOrder || "asc";
       const y = snap.scrollY;
       renderAll();
       if (typeof y === "number" && y >= 0) {
@@ -6438,6 +6500,7 @@
       state.globalSearchSortMode = "set";
       state.globalSearchSetOrder = "asc";
       state.globalSearchCardNumberOrder = "asc";
+      state.globalSearchPriceOrder = "asc";
       state.setRarityFilter = "all";
       state.setRarityMenuOpen = false;
       state.setShinyVaultOnly = false;
@@ -7057,12 +7120,25 @@
       return Boolean(getSetByCode(setCode));
     }
 
+    function cardNameStartsWithQuery(card, normalizedQuery) {
+      const name = normalize(getCardDisplayName(card) || card?.name || "");
+      if (!name || !normalizedQuery) return false;
+      if (name.startsWith(normalizedQuery)) return true;
+      // Match word starts so "char" hits "Mega Charizard" as well as "Charizard".
+      return name
+        .split(/[^a-z0-9]+/)
+        .filter(Boolean)
+        .some((part) => part.startsWith(normalizedQuery));
+    }
+
     function collectGlobalCardMatches(query) {
-      const normalizedQuery = normalize(String(query || "").trim());
+      const rawQuery = String(query || "").trim();
+      const normalizedQuery = normalize(rawQuery);
       if (!normalizedQuery) return [];
       rebuildCatalogSearchIndexIfNeeded();
       const seen = new Set();
-      const matches = [];
+      const prefixMatches = [];
+      const otherMatches = [];
 
       for (const entry of getNicknameEntriesForQuery(query)) {
         const card = resolveCardFromNicknameEntry(entry);
@@ -7070,18 +7146,39 @@
         const key = `${card.setCode}:${card.cardNo}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        matches.push(card);
+        if (cardNameStartsWithQuery(card, normalizedQuery)) prefixMatches.push(card);
+        else otherMatches.push(card);
       }
 
       for (const card of catalogSearchIndex.cards) {
-        if (!card._haystack.includes(normalizedQuery)) continue;
         const key = `${card.setCode}:${card.cardNo}`;
         if (seen.has(key)) continue;
-        seen.add(key);
-        matches.push(card);
+        if (cardNameStartsWithQuery(card, normalizedQuery)) {
+          seen.add(key);
+          prefixMatches.push(card);
+          continue;
+        }
+        // Number / label lookup (e.g. "025" or "#4") — keep for collectors searching by number.
+        const numberBlob = normalize(`${card.label || ""} ${card.cardNo || ""}`);
+        if (numberBlob.includes(normalizedQuery) && /[0-9]/.test(normalizedQuery)) {
+          seen.add(key);
+          otherMatches.push(card);
+        }
       }
 
-      return matches;
+      // Prefix / word-start name hits first so "char" surfaces Charizard / Charmander immediately.
+      return [...prefixMatches, ...otherMatches];
+    }
+
+    function warmPricesForCatalogSearchMatches(matches) {
+      const list = Array.isArray(matches) ? matches : [];
+      const seen = new Set();
+      for (const card of list.slice(0, CATALOG_SEARCH_DISPLAY_LIMIT)) {
+        const code = String(card?.setCode || "").toUpperCase();
+        if (!code || seen.has(code)) continue;
+        seen.add(code);
+        scheduleSetLinkPriceWarmup(code, card.setName || "");
+      }
     }
 
     function applyCatalogSearchFilters(matches) {
@@ -7135,7 +7232,8 @@
             eraFilter: state.eraFilter,
             globalSearchSortMode: state.globalSearchSortMode,
             globalSearchSetOrder: state.globalSearchSetOrder,
-            globalSearchCardNumberOrder: state.globalSearchCardNumberOrder
+            globalSearchCardNumberOrder: state.globalSearchCardNumberOrder,
+            globalSearchPriceOrder: state.globalSearchPriceOrder
           };
           state.savedSetGridScrollY = null;
           const code = node.dataset.setCode || "";
@@ -7165,6 +7263,7 @@
         const displayMatches = matches.slice(0, CATALOG_SEARCH_DISPLAY_LIMIT);
         const truncated = matches.length > displayMatches.length;
         state.catalogSearchPreviewMatches = matches;
+        warmPricesForCatalogSearchMatches(displayMatches);
         content.innerHTML = `
           <article class="era-block">
             <h2 class="era-title">Search Results</h2>
@@ -7187,7 +7286,10 @@
                           ? `<img class="card-thumb" src="${escapeHtml(card.imageUrl)}" alt="${escapeHtml(getCardDisplayName(card))}" loading="lazy" />`
                           : `<div class="card-thumb placeholder">No image</div>`}
                         <div>${renderCardName(card)}</div>
-                        <div class="card-meta">${escapeHtml(card.setName)} (${escapeHtml(card.setCode)}) · ${escapeHtml(card.label)}</div>
+                        <div class="card-meta card-meta-row">
+                          <span>${escapeHtml(card.setName)} (${escapeHtml(card.setCode)}) · ${escapeHtml(card.label)}</span>
+                          <span class="card-price-inline">${escapeHtml(formatCardPriceInline(card) || "—")}</span>
+                        </div>
                       </button>
                     `).join("")}
                   </div>`
@@ -7541,6 +7643,7 @@
       state.globalSearchSortMode = "set";
       state.globalSearchSetOrder = "asc";
       state.globalSearchCardNumberOrder = "asc";
+      state.globalSearchPriceOrder = "asc";
       state.savedSetGridScrollY = null;
       state.savedSetsCatalogScrollY = null;
       state.catalogBrowseReturnSnapshot = null;
@@ -7560,6 +7663,7 @@
         state.globalSearchSortMode = "set";
         state.globalSearchSetOrder = "asc";
         state.globalSearchCardNumberOrder = "asc";
+        state.globalSearchPriceOrder = "asc";
         state.savedSetGridScrollY = null;
         state.savedSetsCatalogScrollY = null;
         state.catalogBrowseReturnSnapshot = null;
@@ -7590,6 +7694,20 @@
         state.globalSearchSortMode = "number";
         state.globalSearchCardNumberOrder =
           state.globalSearchCardNumberOrder === "asc" ? "desc" : "asc";
+        renderAll();
+      });
+    }
+
+    const catalogPriceSortBtn = document.getElementById("catalogPriceSortBtn");
+    if (catalogPriceSortBtn) {
+      catalogPriceSortBtn.addEventListener("click", () => {
+        if (state.globalSearchSortMode === "price") {
+          state.globalSearchPriceOrder = state.globalSearchPriceOrder === "asc" ? "desc" : "asc";
+        } else {
+          state.globalSearchSortMode = "price";
+          state.globalSearchPriceOrder = "desc";
+        }
+        warmPricesForCatalogSearchMatches(getCatalogSearchMatches(state.query));
         renderAll();
       });
     }
