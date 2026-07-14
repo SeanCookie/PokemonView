@@ -2117,12 +2117,18 @@
     let catalogManifestLoadPromise = null;
     const CATALOG_SEARCH_DEBOUNCE_MS = 320;
     const CATALOG_SEARCH_SKY_DEBOUNCE_MS = 700;
-    const CATALOG_SEARCH_DISPLAY_LIMIT = 150;
+    const CATALOG_SEARCH_PRICE_WARMUP_SET_LIMIT = 80;
+    const CATALOG_SEARCH_PRICE_LOAD_CONCURRENCY = 10;
     let catalogSearchRenderTimer = null;
     let catalogSearchSkyTimer = null;
+    let catalogSearchPricePaintToken = 0;
+    let catalogSearchPriceLoadPromise = null;
+    let catalogSearchPriceLoadKey = "";
     let catalogSearchIndexRevision = 0;
     let catalogSearchIndex = { language: "", revision: 0, cards: [] };
     let catalogSearchCache = { key: "", matches: [] };
+    const setPricingLoadPromisesByCode = Object.create(null);
+    const setLinkHydratePromisesByCode = Object.create(null);
 
     /** Load pricing manifest + server link-price cache for the set the user is viewing (not idle-deferred). */
     function primeActiveSetPrices(setCode, setName = "") {
@@ -2137,8 +2143,9 @@
           /* best effort */
         } finally {
           if (loadToken !== setPricesLoadToken) return;
-          if (String(state.selectedSetCode || "").toUpperCase() !== code) return;
-          scheduleSetPriceRerender();
+          const viewingThisSet = String(state.selectedSetCode || "").toUpperCase() === code;
+          const catalogSearchOpen = Boolean(String(state.query || "").trim()) && !state.selectedSetCode;
+          if (viewingThisSet || catalogSearchOpen) scheduleSetPriceRerender();
         }
       })();
     }
@@ -2456,6 +2463,14 @@
     function scheduleCatalogSearchUpdate() {
       setCatalogSearchSkyFrozen(true);
       if (catalogSearchRenderTimer) clearTimeout(catalogSearchRenderTimer);
+      const queryAtSchedule = String(state.query || "").trim();
+      // Start pulling prices during debounce so results can paint with numbers, not dashes.
+      if (queryAtSchedule) {
+        void ensureCatalogManifestLoaded().then(() => {
+          if (String(state.query || "").trim() !== queryAtSchedule) return;
+          warmPricesForCatalogSearchMatches(getCatalogSearchMatches(queryAtSchedule));
+        });
+      }
       catalogSearchRenderTimer = setTimeout(() => {
         catalogSearchRenderTimer = null;
         setCatalogSearchSkyFrozen(false);
@@ -2472,6 +2487,9 @@
         clearCatalogSearchTimers();
         setCatalogSearchSkyFrozen(false);
         catalogSearchCache = { key: "", matches: [] };
+        catalogSearchPricePaintToken += 1;
+        catalogSearchPriceLoadKey = "";
+        catalogSearchPriceLoadPromise = null;
         renderContent();
         updateCatalogSearchControls();
         updateSetsCardSky();
@@ -3698,6 +3716,8 @@
       if (cardMatchesNicknameQuery(card, q)) return true;
       const normalizedQuery = normalize(q);
       if (cardNameStartsWithQuery(card, normalizedQuery)) return true;
+      const name = normalize(getCardDisplayName(card) || card?.name || "");
+      if (name && name.includes(normalizedQuery)) return true;
       if (matchesQuery(`${card.label} ${card.cardNo}`, q) && /[0-9]/.test(q)) return true;
       if (matchesQuery(getCardIllustrator(card), q)) return true;
       return false;
@@ -3733,19 +3753,6 @@
       return "";
     }
 
-    function getCatalogSearchSortControlsMarkup() {
-      const setActive = state.globalSearchSortMode === "set";
-      const numActive = state.globalSearchSortMode === "number";
-      const priceActive = state.globalSearchSortMode === "price";
-      return `
-        <div class="set-filter-tabs set-filter-tabs--search-toolbar" role="group" aria-label="Sort search results">
-          <button type="button" class="set-filter-tab${setActive ? " active" : ""}" data-catalog-sort="set">${getCatalogSearchSortLabel("set")}</button>
-          <button type="button" class="set-filter-tab${numActive ? " active" : ""}" data-catalog-sort="number">${getCatalogSearchSortLabel("number")}</button>
-          <button type="button" class="set-filter-tab${priceActive ? " active" : ""}" data-catalog-sort="price">${getCatalogSearchSortLabel("price")}</button>
-        </div>
-      `;
-    }
-
     function applyCatalogSearchSortMode(mode) {
       const next = String(mode || "").trim().toLowerCase();
       if (next === "set") {
@@ -3773,15 +3780,6 @@
         return;
       }
       renderAll();
-    }
-
-    function bindCatalogSearchSortControls(root) {
-      if (!root) return;
-      root.querySelectorAll("[data-catalog-sort]").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          applyCatalogSearchSortMode(btn.getAttribute("data-catalog-sort"));
-        });
-      });
     }
 
     function updateCatalogSearchControls() {
@@ -4178,34 +4176,44 @@
         await hydrateSetLinkPricesFromCache(code, setName);
         return;
       }
-      if (state.cardPricingLoadingBySetCode[code]) return;
+      if (setPricingLoadPromisesByCode[code]) {
+        await setPricingLoadPromisesByCode[code];
+        return;
+      }
 
       state.cardPricingLoadingBySetCode[code] = true;
-      try {
-        const params = new URLSearchParams({ setCode: code });
-        const cleanName = String(setName || "").trim();
-        if (cleanName) params.set("setName", cleanName);
-        const response = await fetch(`/api/sets/pricing?${params.toString()}`);
-        const payload = response.ok ? await response.json() : null;
-        const byCardNo =
-          payload && payload.ok && payload.byCardNo && typeof payload.byCardNo === "object"
-            ? payload.byCardNo
-            : {};
-        const variantsByCardNo =
-          payload && payload.variantsByCardNo && typeof payload.variantsByCardNo === "object"
-            ? payload.variantsByCardNo
-            : {};
-        state.cardPricingBySetCode[code] = byCardNo;
-        state.cardVariantsBySetCode[code] = variantsByCardNo;
-      } catch {
-        state.cardPricingBySetCode[code] = {};
-        state.cardVariantsBySetCode[code] = {};
-      } finally {
-        delete state.cardPricingLoadingBySetCode[code];
-        await hydrateSetLinkPricesFromCache(code, setName);
-        if (state.selectedSetCode === code && state.selectedCardNumber) {
-          updateCardDetailTcgPanelPrices();
+      setPricingLoadPromisesByCode[code] = (async () => {
+        try {
+          const params = new URLSearchParams({ setCode: code });
+          const cleanName = String(setName || "").trim();
+          if (cleanName) params.set("setName", cleanName);
+          const response = await fetch(`/api/sets/pricing?${params.toString()}`);
+          const payload = response.ok ? await response.json() : null;
+          const byCardNo =
+            payload && payload.ok && payload.byCardNo && typeof payload.byCardNo === "object"
+              ? payload.byCardNo
+              : {};
+          const variantsByCardNo =
+            payload && payload.variantsByCardNo && typeof payload.variantsByCardNo === "object"
+              ? payload.variantsByCardNo
+              : {};
+          state.cardPricingBySetCode[code] = byCardNo;
+          state.cardVariantsBySetCode[code] = variantsByCardNo;
+        } catch {
+          state.cardPricingBySetCode[code] = {};
+          state.cardVariantsBySetCode[code] = {};
+        } finally {
+          delete state.cardPricingLoadingBySetCode[code];
+          await hydrateSetLinkPricesFromCache(code, setName);
+          if (state.selectedSetCode === code && state.selectedCardNumber) {
+            updateCardDetailTcgPanelPrices();
+          }
         }
+      })();
+      try {
+        await setPricingLoadPromisesByCode[code];
+      } finally {
+        delete setPricingLoadPromisesByCode[code];
       }
     }
 
@@ -4225,43 +4233,55 @@
       ) {
         return;
       }
-      if (state.setLinkPricesHydratingBySetCode[code]) return;
+      if (setLinkHydratePromisesByCode[code]) {
+        await setLinkHydratePromisesByCode[code];
+        return;
+      }
 
-      state.setLinkPricesHydratingBySetCode[code] = true;
-      try {
-        const params = new URLSearchParams({ setCode: code });
-        const cleanName = String(setName || "").trim();
-        if (cleanName) params.set("setName", cleanName);
-        const response = await fetch(`/api/sets/link-prices?${params.toString()}`);
-        const payload = response.ok ? await response.json() : null;
-        const serverKey = String(payload?.cacheGenerationKey || "").trim();
-        if (serverKey && serverKey !== state.tcgLinkCacheGenerationKey) {
-          state.tcgLinkCacheGenerationKey = serverKey;
+      setLinkHydratePromisesByCode[code] = (async () => {
+        state.setLinkPricesHydratingBySetCode[code] = true;
+        try {
+          const params = new URLSearchParams({ setCode: code });
+          const cleanName = String(setName || "").trim();
+          if (cleanName) params.set("setName", cleanName);
+          const response = await fetch(`/api/sets/link-prices?${params.toString()}`);
+          const payload = response.ok ? await response.json() : null;
+          const serverKey = String(payload?.cacheGenerationKey || "").trim();
+          if (serverKey && serverKey !== state.tcgLinkCacheGenerationKey) {
+            state.tcgLinkCacheGenerationKey = serverKey;
+            purgeStaleTcgLinkPricesFromClient();
+          }
+          const byUrl =
+            payload && payload.byUrl && typeof payload.byUrl === "object" ? payload.byUrl : {};
+          const fetchedAtMs = Date.now();
+          for (const [url, node] of Object.entries(byUrl)) {
+            const normalized = normalizeTcgLinkPriceNode({
+              ...node,
+              pricingLogicVersion: node.pricingLogicVersion ?? payload?.logicVersion ?? TCG_LINK_PRICE_LOGIC_VERSION,
+              fetchedAtMs,
+              cacheGenerationKey: serverKey || hydrationKey
+            });
+            if (normalized) storeTcgLinkPriceForUrl(url, normalized);
+          }
+          state.setLinkPricesHydratedBySetCode[code] = true;
+          state.setLinkPricesHydrationKeyByCode[code] = serverKey || hydrationKey;
+        } catch {
+          // best effort only
+        } finally {
+          delete state.setLinkPricesHydratingBySetCode[code];
           purgeStaleTcgLinkPricesFromClient();
+          if (state.selectedSetCode === code) {
+            scheduleSetPriceRerender();
+            if (state.selectedCardNumber) updateCardDetailTcgPanelPrices();
+          } else if (String(state.query || "").trim() && !state.selectedSetCode) {
+            scheduleSetPriceRerender();
+          }
         }
-        const byUrl =
-          payload && payload.byUrl && typeof payload.byUrl === "object" ? payload.byUrl : {};
-        const fetchedAtMs = Date.now();
-        for (const [url, node] of Object.entries(byUrl)) {
-          const normalized = normalizeTcgLinkPriceNode({
-            ...node,
-            pricingLogicVersion: node.pricingLogicVersion ?? payload?.logicVersion ?? TCG_LINK_PRICE_LOGIC_VERSION,
-            fetchedAtMs,
-            cacheGenerationKey: serverKey || hydrationKey
-          });
-          if (normalized) storeTcgLinkPriceForUrl(url, normalized);
-        }
-        state.setLinkPricesHydratedBySetCode[code] = true;
-        state.setLinkPricesHydrationKeyByCode[code] = serverKey || hydrationKey;
-      } catch {
-        // best effort only
+      })();
+      try {
+        await setLinkHydratePromisesByCode[code];
       } finally {
-        delete state.setLinkPricesHydratingBySetCode[code];
-        purgeStaleTcgLinkPricesFromClient();
-        if (state.selectedSetCode === code) {
-          scheduleSetPriceRerender();
-          if (state.selectedCardNumber) updateCardDetailTcgPanelPrices();
-        }
+        delete setLinkHydratePromisesByCode[code];
       }
     }
 
@@ -4331,7 +4351,7 @@
         delete state.cardPricingLoadingByTcgUrl[url];
         if (state.selectedCardNumber) {
           updateCardDetailTcgPanelPrices();
-        } else if (state.selectedSetCode) {
+        } else if (state.selectedSetCode || (String(state.query || "").trim() && !state.selectedSetCode)) {
           scheduleSetPriceRerender();
         }
       }
@@ -7225,32 +7245,113 @@
       for (const card of catalogSearchIndex.cards) {
         const key = `${card.setCode}:${card.cardNo}`;
         if (seen.has(key)) continue;
-        if (cardNameStartsWithQuery(card, normalizedQuery)) {
-          seen.add(key);
-          prefixMatches.push(card);
-          continue;
-        }
-        // Number / label lookup (e.g. "025" or "#4") — keep for collectors searching by number.
-        const numberBlob = normalize(`${card.label || ""} ${card.cardNo || ""}`);
-        if (numberBlob.includes(normalizedQuery) && /[0-9]/.test(normalizedQuery)) {
-          seen.add(key);
-          otherMatches.push(card);
-        }
+        const haystack = card._haystack || "";
+        if (!haystack.includes(normalizedQuery)) continue;
+        seen.add(key);
+        // Prefix / word-start name hits first so "char" surfaces Charizard / Charmander immediately.
+        if (cardNameStartsWithQuery(card, normalizedQuery)) prefixMatches.push(card);
+        else otherMatches.push(card);
       }
 
-      // Prefix / word-start name hits first so "char" surfaces Charizard / Charmander immediately.
       return [...prefixMatches, ...otherMatches];
     }
 
-    function warmPricesForCatalogSearchMatches(matches) {
+    function collectCatalogSearchPriceSetEntries(matches) {
       const list = Array.isArray(matches) ? matches : [];
-      const seen = new Set();
-      for (const card of list.slice(0, CATALOG_SEARCH_DISPLAY_LIMIT)) {
+      const byCode = new Map();
+      for (const card of list) {
         const code = String(card?.setCode || "").toUpperCase();
-        if (!code || seen.has(code)) continue;
-        seen.add(code);
-        scheduleSetLinkPriceWarmup(code, card.setName || "");
+        if (!code || byCode.has(code)) continue;
+        byCode.set(code, String(card.setName || "").trim());
+        if (byCode.size >= CATALOG_SEARCH_PRICE_WARMUP_SET_LIMIT) break;
       }
+      return [...byCode.entries()];
+    }
+
+    function catalogSearchMatchesHavePricing(matches) {
+      const entries = collectCatalogSearchPriceSetEntries(matches);
+      if (!entries.length) return true;
+      for (const [code] of entries) {
+        const cached = state.cardPricingBySetCode[code];
+        if (!cached || !Object.keys(cached).length) return false;
+        if (!state.setLinkPricesHydratedBySetCode[code]) return false;
+      }
+      return true;
+    }
+
+    async function ensurePricesForCatalogSearchMatches(matches) {
+      const entries = collectCatalogSearchPriceSetEntries(matches);
+      if (!entries.length || state.language !== "english") return;
+      const loadKey = entries.map(([code]) => code).join(",");
+      if (catalogSearchPriceLoadKey === loadKey && catalogSearchPriceLoadPromise) {
+        await catalogSearchPriceLoadPromise;
+        return;
+      }
+      catalogSearchPriceLoadKey = loadKey;
+      catalogSearchPriceLoadPromise = (async () => {
+        for (let i = 0; i < entries.length; i += CATALOG_SEARCH_PRICE_LOAD_CONCURRENCY) {
+          const chunk = entries.slice(i, i + CATALOG_SEARCH_PRICE_LOAD_CONCURRENCY);
+          await Promise.all(
+            chunk.map(([code, name]) =>
+              ensureSetPricingLoaded(code, name).catch(() => {
+                /* best effort */
+              })
+            )
+          );
+        }
+      })();
+      try {
+        await catalogSearchPriceLoadPromise;
+      } finally {
+        if (catalogSearchPriceLoadKey === loadKey) {
+          catalogSearchPriceLoadPromise = null;
+        }
+      }
+    }
+
+    function warmPricesForCatalogSearchMatches(matches) {
+      void ensurePricesForCatalogSearchMatches(matches).then(() => {
+        if (String(state.query || "").trim() && !state.selectedSetCode) {
+          scheduleSetPriceRerender();
+        }
+      });
+    }
+
+    function paintCatalogSearchResults(matches, eraSuffix = "") {
+      const content = document.getElementById("content");
+      if (!content) return;
+      const q = state.query.trim();
+      content.innerHTML = `
+        <article class="era-block">
+          <h2 class="era-title">Search Results</h2>
+          <div class="sub" style="margin-bottom:10px;">${escapeHtml(String(matches.length))} cards for "${escapeHtml(q)}"${eraSuffix}</div>
+          ${
+            matches.length
+              ? `<div class="cards-grid">
+                  ${matches.map((card) => `
+                    <button
+                      type="button"
+                      class="card-tile"
+                      data-set-code="${escapeHtml(card.setCode)}"
+                      data-card-number="${escapeHtml(card.cardNo)}"
+                    >
+                      ${card.imageUrl
+                        ? `<img class="card-thumb" src="${escapeHtml(card.imageUrl)}" alt="${escapeHtml(getCardDisplayName(card))}" loading="lazy" />`
+                        : `<div class="card-thumb placeholder">No image</div>`}
+                      <div>${renderCardName(card)}</div>
+                      <div class="card-meta card-meta-row">
+                        <span>${escapeHtml(card.setName)} (${escapeHtml(card.setCode)}) · ${escapeHtml(card.label)}</span>
+                        <span class="card-price-inline">${escapeHtml(formatCardPriceInline(card) || "—")}</span>
+                      </div>
+                    </button>
+                  `).join("")}
+                </div>`
+              : `<div class="card-meta">No cards found.</div>`
+          }
+        </article>
+      `;
+      bindCatalogSearchResultTiles(content);
+      updateCatalogSearchControls();
     }
 
     function applyCatalogSearchFilters(matches) {
@@ -7331,49 +7432,29 @@
       const eraSuffix = state.eraFilter !== "all" ? ` · ${escapeHtml(state.eraFilter)}` : "";
 
       if (state.query.trim()) {
-        const matches = getCatalogSearchMatches(state.query);
-        const displayMatches = matches.slice(0, CATALOG_SEARCH_DISPLAY_LIMIT);
-        const truncated = matches.length > displayMatches.length;
+        const queryAtRender = state.query.trim();
+        let matches = getCatalogSearchMatches(queryAtRender);
         state.catalogSearchPreviewMatches = matches;
-        warmPricesForCatalogSearchMatches(displayMatches);
+        const paintToken = ++catalogSearchPricePaintToken;
+        const paintNow = () => {
+          if (paintToken !== catalogSearchPricePaintToken) return;
+          if (state.query.trim() !== queryAtRender || state.selectedSetCode) return;
+          matches = getCatalogSearchMatches(queryAtRender);
+          state.catalogSearchPreviewMatches = matches;
+          paintCatalogSearchResults(matches, eraSuffix);
+        };
+        if (catalogSearchMatchesHavePricing(matches)) {
+          paintNow();
+          return;
+        }
         content.innerHTML = `
           <article class="era-block">
             <h2 class="era-title">Search Results</h2>
-            <div class="sub" style="margin-bottom:10px;">${escapeHtml(String(matches.length))} cards for "${escapeHtml(state.query.trim())}"${eraSuffix}${
-              truncated
-                ? ` · showing first ${escapeHtml(String(displayMatches.length))} (refine search to narrow)`
-                : ""
-            }</div>
-            ${getCatalogSearchSortControlsMarkup()}
-            ${
-              displayMatches.length
-                ? `<div class="cards-grid">
-                    ${displayMatches.map((card) => `
-                      <button
-                        type="button"
-                        class="card-tile"
-                        data-set-code="${escapeHtml(card.setCode)}"
-                        data-card-number="${escapeHtml(card.cardNo)}"
-                      >
-                        ${card.imageUrl
-                          ? `<img class="card-thumb" src="${escapeHtml(card.imageUrl)}" alt="${escapeHtml(getCardDisplayName(card))}" loading="lazy" />`
-                          : `<div class="card-thumb placeholder">No image</div>`}
-                        <div>${renderCardName(card)}</div>
-                        <div class="card-meta card-meta-row">
-                          <span>${escapeHtml(card.setName)} (${escapeHtml(card.setCode)}) · ${escapeHtml(card.label)}</span>
-                          <span class="card-price-inline">${escapeHtml(formatCardPriceInline(card) || "—")}</span>
-                        </div>
-                      </button>
-                    `).join("")}
-                  </div>`
-                : `<div class="card-meta">No cards found.</div>`
-            }
+            <div class="sub" style="margin-bottom:10px;">Loading prices for "${escapeHtml(queryAtRender)}"…</div>
           </article>
         `;
-
-        bindCatalogSearchSortControls(content);
-        bindCatalogSearchResultTiles(content);
         updateCatalogSearchControls();
+        void ensurePricesForCatalogSearchMatches(matches).then(paintNow);
         return;
       }
 
@@ -7773,6 +7854,7 @@
     if (globalArtistFilterSelect) {
       globalArtistFilterSelect.addEventListener("change", (event) => {
         state.catalogArtistFilter = event.target.value || "all";
+        state.globalSearchSortMode = "set";
         void ensureCatalogManifestLoaded().then(() => {
           scrollToPageTop();
           renderAll();
@@ -7781,6 +7863,7 @@
       globalArtistFilterSelect.addEventListener("keydown", (event) => {
         handleSelectArrowKey(event, globalArtistFilterSelect, (value) => {
           state.catalogArtistFilter = value || "all";
+          state.globalSearchSortMode = "set";
           void ensureCatalogManifestLoaded().then(() => {
             scrollToPageTop();
             renderAll();

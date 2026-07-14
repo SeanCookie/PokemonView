@@ -66,6 +66,22 @@ const {
 } = require("./lib/pricecharting-card-details-cache");
 const { loadPersistedPriceChartingMarketHistoryCache } = require("./lib/pricecharting-market-history-cache");
 const { requestPasswordReset, completePasswordReset, isEmailConfigured } = require("./lib/password-reset");
+const { sendPriceAlertEmail } = require("./lib/send-email");
+const {
+  ensureAlertCollections,
+  listAlertsForUser,
+  getAlertForUser,
+  createAlertForUser,
+  updateAlertForUser,
+  deleteAlertForUser,
+  listActiveAlerts,
+  expireDueAlerts,
+  evaluateAlertAgainstPrice,
+  listUnreadEventsForUser,
+  acknowledgeEventsForUser,
+  publicAlert,
+  cardIdentityKey
+} = require("./lib/poke-view-price-alerts");
 const { pullStoreFromR2, pushStoreToR2 } = require("./lib/store-r2-sync");
 const {
   pullPricingCacheFromR2,
@@ -264,6 +280,8 @@ let store = {
   users: [],
   items: [],
   pokeViewWatchlists: [],
+  pokeViewPriceAlerts: [],
+  pokeViewPriceAlertEvents: [],
   activities: [],
   refreshedAt: null
 };
@@ -442,9 +460,14 @@ async function ensureStore() {
     users: Array.isArray(parsed?.users) ? parsed.users : [],
     items: Array.isArray(parsed?.items) ? parsed.items : [],
     pokeViewWatchlists: Array.isArray(parsed?.pokeViewWatchlists) ? parsed.pokeViewWatchlists : [],
+    pokeViewPriceAlerts: Array.isArray(parsed?.pokeViewPriceAlerts) ? parsed.pokeViewPriceAlerts : [],
+    pokeViewPriceAlertEvents: Array.isArray(parsed?.pokeViewPriceAlertEvents)
+      ? parsed.pokeViewPriceAlertEvents
+      : [],
     activities: Array.isArray(parsed?.activities) ? parsed.activities : [],
     refreshedAt: parsed?.refreshedAt || null
   };
+  ensureAlertCollections(store);
 
   let storeChanged = false;
   if (migrateStoreCollections(store)) storeChanged = true;
@@ -2528,6 +2551,183 @@ function setPokeViewWatchlistForUser(userId, cards) {
   if (idx === -1) store.pokeViewWatchlists.push(payload);
   else store.pokeViewWatchlists[idx] = payload;
   return normalized;
+}
+
+const PRICE_ALERT_POLL_MS = 90_000;
+let priceAlertPollTimer = null;
+let priceAlertPollKickoffTimer = null;
+let priceAlertPollInFlight = false;
+
+async function resolveLiveMarketPriceForAlertCard(card) {
+  const setCode = String(card?.setCode || "").trim();
+  const setName = String(card?.setName || "").trim();
+  const cardNo = String(card?.cardNo || "").trim();
+  const cardName = String(card?.cardName || "").trim();
+  if (!setCode && !cardName) return null;
+  try {
+    const pc = await fetchPriceChartingUngradedPriceForCard({
+      setCode,
+      setName,
+      cardNo,
+      cardName
+    });
+    const price = Number(pc?.ungradedPrice);
+    if (pc?.ok && Number.isFinite(price) && price > 0) return price;
+  } catch {
+    /* best effort */
+  }
+  return null;
+}
+
+async function deliverTriggeredPriceAlert(alert, marketPrice) {
+  if (!alert?.notifyEmail) return { emailed: false };
+  const user = findStoreUserById(alert.userId);
+  const to = String(user?.email || "").trim();
+  if (!to || !to.includes("@")) {
+    return { emailed: false, reason: "no_email" };
+  }
+  try {
+    const result = await sendPriceAlertEmail(
+      {
+        to,
+        cardLabel: alert.cardLabel,
+        message: alert.message,
+        alertPrice: alert.price,
+        marketPrice,
+        condition: alert.condition,
+        recurrence: alert.recurrence
+      },
+      { ...env, ...process.env }
+    );
+    return { emailed: Boolean(result?.ok), loggedToConsole: Boolean(result?.loggedToConsole) };
+  } catch (err) {
+    console.warn(`[price-alerts] email failed for ${alert.id}: ${err.message || err}`);
+    return { emailed: false, error: err.message || String(err) };
+  }
+}
+
+async function applyMarketPriceToMatchingAlerts({
+  alerts,
+  marketPrice,
+  persist = true
+} = {}) {
+  const list = Array.isArray(alerts) ? alerts : [];
+  const price = Number(marketPrice);
+  if (!list.length || !Number.isFinite(price) || price <= 0) {
+    return { checked: 0, triggered: 0, events: [] };
+  }
+  ensureAlertCollections(store);
+  let triggered = 0;
+  const events = [];
+  for (const alert of list) {
+    if (!alert || alert.status !== "active") continue;
+    const result = evaluateAlertAgainstPrice(store, alert, price);
+    if (result.expired) continue;
+    if (!result.triggered) continue;
+    triggered += 1;
+    if (result.event) events.push(result.event);
+    await deliverTriggeredPriceAlert(alert, price);
+  }
+  if (persist && (triggered > 0 || list.some((a) => a && a.status === "expired"))) {
+    await persistStore();
+  }
+  return { checked: list.length, triggered, events };
+}
+
+async function reportPriceForUserCardAlerts(userId, body = {}) {
+  ensureAlertCollections(store);
+  expireDueAlerts(store);
+  const marketPrice = Number(body.marketPrice ?? body.price);
+  if (!Number.isFinite(marketPrice) || marketPrice <= 0) {
+    const err = new Error("marketPrice is required");
+    err.code = "INVALID_PRICE";
+    throw err;
+  }
+  const setCode = String(body.setCode || "").trim().toUpperCase();
+  const cardNo = String(body.cardNo || "").trim();
+  const cardName = String(body.cardName || body.card || "").trim();
+  const watchlistCardId = String(body.watchlistCardId || body.cardId || "").trim();
+  const key = cardIdentityKey({ setCode, cardNo, cardName });
+  const alerts = listAlertsForUser(store, userId, { includeInactive: false }).filter((alert) => {
+    if (watchlistCardId && alert.watchlistCardId && alert.watchlistCardId === watchlistCardId) {
+      return true;
+    }
+    if (key && alert.cardKey && alert.cardKey === key) return true;
+    if (setCode && cardNo && alert.setCode === setCode && String(alert.cardNo) === cardNo) {
+      return true;
+    }
+    return false;
+  });
+  return applyMarketPriceToMatchingAlerts({ alerts, marketPrice, persist: true });
+}
+
+async function runPriceAlertEvaluationPass() {
+  if (priceAlertPollInFlight) return { skipped: true };
+  priceAlertPollInFlight = true;
+  try {
+    ensureAlertCollections(store);
+    const expiredChanged = expireDueAlerts(store);
+    const active = listActiveAlerts(store);
+    if (!active.length) {
+      if (expiredChanged) await persistStore();
+      return { checkedCards: 0, triggered: 0 };
+    }
+
+    const byKey = new Map();
+    for (const alert of active) {
+      const key =
+        alert.cardKey ||
+        cardIdentityKey({
+          setCode: alert.setCode,
+          cardNo: alert.cardNo,
+          cardName: alert.cardName
+        }) ||
+        alert.id;
+      if (!byKey.has(key)) byKey.set(key, []);
+      byKey.get(key).push(alert);
+    }
+
+    let triggered = 0;
+    let checkedCards = 0;
+    let dirty = expiredChanged;
+    for (const [, alerts] of byKey) {
+      checkedCards += 1;
+      const sample = alerts[0];
+      const marketPrice = await resolveLiveMarketPriceForAlertCard(sample);
+      if (!Number.isFinite(marketPrice) || marketPrice <= 0) {
+        continue;
+      }
+      const result = await applyMarketPriceToMatchingAlerts({
+        alerts,
+        marketPrice,
+        persist: false
+      });
+      triggered += result.triggered;
+      if (result.triggered > 0) dirty = true;
+    }
+    if (dirty) await persistStore();
+    return { checkedCards, triggered };
+  } catch (err) {
+    console.warn(`[price-alerts] evaluation pass failed: ${err.message || err}`);
+    return { error: err.message || String(err) };
+  } finally {
+    priceAlertPollInFlight = false;
+  }
+}
+
+function startPriceAlertPollLoop() {
+  if (priceAlertPollTimer || priceAlertPollKickoffTimer) return;
+  const kickoffDelayMs = 45_000;
+  priceAlertPollKickoffTimer = setTimeout(() => {
+    priceAlertPollKickoffTimer = null;
+    void runPriceAlertEvaluationPass();
+    priceAlertPollTimer = setInterval(() => {
+      void runPriceAlertEvaluationPass();
+    }, PRICE_ALERT_POLL_MS);
+  }, kickoffDelayMs);
+  console.log(
+    `[price-alerts] watcher enabled (interval=${Math.round(PRICE_ALERT_POLL_MS / 1000)}s, first run in ${Math.round(kickoffDelayMs / 1000)}s)`
+  );
 }
 
 let showcaseSetLookupCache = null;
@@ -8251,6 +8451,133 @@ async function route(req, res) {
     return;
   }
 
+  if (pathname === "/api/poke-view/price-alerts" && req.method === "GET") {
+    const sessionUser = requireSignedInUser(req, res);
+    if (!sessionUser) return;
+    expireDueAlerts(store);
+    const setCode = String(parsedUrl.searchParams.get("setCode") || "")
+      .trim()
+      .toUpperCase();
+    const cardNo = String(parsedUrl.searchParams.get("cardNo") || "").trim();
+    const watchlistCardId = String(parsedUrl.searchParams.get("watchlistCardId") || "").trim();
+    const includeInactive = parsedUrl.searchParams.get("includeInactive") !== "0";
+    let alerts = listAlertsForUser(store, sessionUser.id, { includeInactive });
+    if (watchlistCardId) {
+      alerts = alerts.filter((a) => a.watchlistCardId === watchlistCardId);
+    } else if (setCode || cardNo) {
+      alerts = alerts.filter((a) => {
+        if (setCode && a.setCode !== setCode) return false;
+        if (cardNo && String(a.cardNo) !== cardNo) return false;
+        return true;
+      });
+    }
+    json(res, 200, {
+      ok: true,
+      alerts: alerts.map(publicAlert),
+      emailConfigured: isEmailConfigured({ ...env, ...process.env })
+    });
+    return;
+  }
+
+  if (pathname === "/api/poke-view/price-alerts" && req.method === "POST") {
+    try {
+      const sessionUser = requireSignedInUser(req, res);
+      if (!sessionUser) return;
+      const body = await readBody(req);
+      const alert = createAlertForUser(store, sessionUser.id, body || {});
+      await persistStore();
+      json(res, 200, { ok: true, alert: publicAlert(alert) });
+    } catch (err) {
+      const status = err.code === "ALERT_LIMIT" ? 400 : 400;
+      json(res, status, { ok: false, error: err.message || "Could not create alert" });
+    }
+    return;
+  }
+
+  if (pathname === "/api/poke-view/price-alerts/report-price" && req.method === "POST") {
+    try {
+      const sessionUser = requireSignedInUser(req, res);
+      if (!sessionUser) return;
+      const body = await readBody(req);
+      const result = await reportPriceForUserCardAlerts(sessionUser.id, body || {});
+      json(res, 200, {
+        ok: true,
+        checked: result.checked,
+        triggered: result.triggered,
+        events: (result.events || []).map((ev) => ({
+          id: ev.id,
+          alertId: ev.alertId,
+          title: ev.title,
+          message: ev.message,
+          price: ev.price,
+          marketPrice: ev.marketPrice,
+          cardLabel: ev.cardLabel,
+          createdAt: ev.createdAt
+        }))
+      });
+    } catch (err) {
+      json(res, 400, { ok: false, error: err.message || "Could not report price" });
+    }
+    return;
+  }
+
+  if (pathname === "/api/poke-view/price-alerts/events" && req.method === "GET") {
+    const sessionUser = requireSignedInUser(req, res);
+    if (!sessionUser) return;
+    const limit = Number(parsedUrl.searchParams.get("limit") || 20);
+    const events = listUnreadEventsForUser(store, sessionUser.id, { limit });
+    json(res, 200, { ok: true, events });
+    return;
+  }
+
+  if (pathname === "/api/poke-view/price-alerts/events/ack" && req.method === "POST") {
+    try {
+      const sessionUser = requireSignedInUser(req, res);
+      if (!sessionUser) return;
+      const body = await readBody(req);
+      const count = acknowledgeEventsForUser(store, sessionUser.id, body?.ids || body?.eventIds || []);
+      if (count > 0) await persistStore();
+      json(res, 200, { ok: true, acknowledged: count });
+    } catch (err) {
+      json(res, 400, { ok: false, error: err.message || "Could not acknowledge events" });
+    }
+    return;
+  }
+
+  const priceAlertIdMatch = pathname.match(/^\/api\/poke-view\/price-alerts\/([^/]+)$/);
+  if (priceAlertIdMatch && req.method === "PATCH") {
+    try {
+      const sessionUser = requireSignedInUser(req, res);
+      if (!sessionUser) return;
+      const alertId = decodeURIComponent(priceAlertIdMatch[1] || "").trim();
+      const body = await readBody(req);
+      const alert = updateAlertForUser(store, sessionUser.id, alertId, body || {});
+      if (!alert) {
+        json(res, 404, { ok: false, error: "Alert not found" });
+        return;
+      }
+      await persistStore();
+      json(res, 200, { ok: true, alert: publicAlert(alert) });
+    } catch (err) {
+      json(res, 400, { ok: false, error: err.message || "Could not update alert" });
+    }
+    return;
+  }
+
+  if (priceAlertIdMatch && req.method === "DELETE") {
+    const sessionUser = requireSignedInUser(req, res);
+    if (!sessionUser) return;
+    const alertId = decodeURIComponent(priceAlertIdMatch[1] || "").trim();
+    const removed = deleteAlertForUser(store, sessionUser.id, alertId);
+    if (!removed) {
+      json(res, 404, { ok: false, error: "Alert not found" });
+      return;
+    }
+    await persistStore();
+    json(res, 200, { ok: true });
+    return;
+  }
+
   if (pathname === "/api/items" && req.method === "GET") {
     try {
       const sessionUser = requireSignedInUser(req, res);
@@ -9600,6 +9927,7 @@ async function startDeferredBackgroundWork() {
   markTcgCatalogPriorityWindow(TCG_CATALOG_PRIORITY_MS);
   startRestockHourlyRefreshLoop();
   startTcgLinkPriceHourlyRefreshLoop();
+  startPriceAlertPollLoop();
   setTimeout(() => {
     maybeKickoffEnglishSetCardsImport();
     maybeKickoffEnglishSetDetailsImport();

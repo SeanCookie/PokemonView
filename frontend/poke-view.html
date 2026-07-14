@@ -492,6 +492,204 @@
       justify-content: flex-end;
       gap: 8px;
     }
+    .chart-context-menu {
+      position: fixed;
+      z-index: 40;
+      min-width: 180px;
+      padding: 6px;
+      border: 1px solid #2c394d;
+      border-radius: 8px;
+      background: #121722;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+      display: none;
+    }
+    .chart-context-menu.open { display: grid; gap: 2px; }
+    .chart-context-menu button {
+      border: 0;
+      background: transparent;
+      color: #d1d4dc;
+      text-align: left;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font: inherit;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .chart-context-menu button:hover {
+      background: rgba(41, 98, 255, 0.22);
+    }
+    .chart-context-menu button.danger { color: #f23645; }
+    .chart-context-menu .ctx-sep {
+      height: 1px;
+      margin: 4px 2px;
+      background: #2a2e39;
+    }
+    .price-alert-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(5, 9, 15, 0.72);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 45;
+      padding: 16px;
+    }
+    .price-alert-modal.open { display: flex; }
+    .price-alert-panel {
+      width: min(440px, 100%);
+      border: 1px solid #2c394d;
+      border-radius: 12px;
+      background: #131722;
+      color: #d1d4dc;
+      padding: 14px;
+      display: grid;
+      gap: 12px;
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+    }
+    .price-alert-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .price-alert-title {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+      color: #e9f1ff;
+      line-height: 1.3;
+    }
+    .price-alert-title span {
+      color: #8ab4ff;
+    }
+    .price-alert-close {
+      border: 0;
+      background: transparent;
+      color: #787b86;
+      font-size: 20px;
+      line-height: 1;
+      cursor: pointer;
+      padding: 0 2px;
+    }
+    .price-alert-close:hover { color: #d1d4dc; }
+    .price-alert-field {
+      display: grid;
+      gap: 6px;
+    }
+    .price-alert-label {
+      font-size: 12px;
+      color: #93a8c7;
+    }
+    .price-alert-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1.1fr;
+      gap: 8px;
+    }
+    .price-alert-row-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .price-alert-panel select,
+    .price-alert-panel input[type="number"],
+    .price-alert-panel input[type="datetime-local"],
+    .price-alert-panel input[type="text"] {
+      width: 100%;
+      border: 1px solid #2f3d50;
+      border-radius: 8px;
+      background: #0f1520;
+      color: #e4eeff;
+      padding: 8px 10px;
+      font: inherit;
+      font-size: 13px;
+    }
+    .price-alert-checks {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      font-size: 13px;
+    }
+    .price-alert-checks label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #d1d4dc;
+      cursor: pointer;
+    }
+    .price-alert-hint {
+      margin: 0;
+      font-size: 12px;
+      color: #7f91ad;
+    }
+    .price-alert-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .price-alert-btn {
+      border: 1px solid #2f3d50;
+      border-radius: 8px;
+      background: #1b2330;
+      color: #d1d4dc;
+      padding: 8px 14px;
+      font: inherit;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .price-alert-btn.primary {
+      background: #e9f1ff;
+      color: #0f1520;
+      border-color: #e9f1ff;
+      font-weight: 600;
+    }
+    .price-alert-btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+    .price-alert-toasts {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      z-index: 60;
+      display: grid;
+      gap: 8px;
+      width: min(360px, calc(100vw - 32px));
+      pointer-events: none;
+    }
+    .price-alert-toast {
+      pointer-events: auto;
+      border: 1px solid #2c394d;
+      border-radius: 10px;
+      background: rgba(19, 23, 34, 0.96);
+      color: #e9f1ff;
+      padding: 12px 14px;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4);
+      display: grid;
+      gap: 4px;
+      animation: price-alert-toast-in 0.22s ease;
+    }
+    .price-alert-toast strong {
+      font-size: 13px;
+    }
+    .price-alert-toast p {
+      margin: 0;
+      font-size: 12px;
+      color: #9ab0d1;
+    }
+    .price-alert-toast button {
+      justify-self: end;
+      border: 0;
+      background: transparent;
+      color: #787b86;
+      cursor: pointer;
+      font-size: 12px;
+      padding: 0;
+    }
+    @keyframes price-alert-toast-in {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
     .watchlist-action-btn {
       border: 1px solid #3a4b62;
       border-radius: 8px;
@@ -866,6 +1064,66 @@
       </div>
     </section>
   </div>
+
+  <div id="chartContextMenu" class="chart-context-menu" role="menu" aria-hidden="true">
+    <button type="button" data-ctx-action="add-alert" role="menuitem">Add price alert…</button>
+    <div class="ctx-sep" hidden data-ctx-sep></div>
+    <button type="button" class="danger" data-ctx-action="remove-alert" hidden role="menuitem">Remove nearby alert</button>
+  </div>
+
+  <div id="priceAlertModal" class="price-alert-modal" aria-hidden="true">
+    <section class="price-alert-panel" role="dialog" aria-modal="true" aria-labelledby="priceAlertTitle">
+      <div class="price-alert-header">
+        <h3 class="price-alert-title" id="priceAlertTitle">Create alert on <span id="priceAlertSymbol">Card</span></h3>
+        <button type="button" class="price-alert-close" id="priceAlertCloseBtn" aria-label="Close">×</button>
+      </div>
+      <div class="price-alert-field">
+        <div class="price-alert-label">Condition</div>
+        <div class="price-alert-row">
+          <select id="priceAlertSource" aria-label="Source">
+            <option value="price" selected>Price</option>
+          </select>
+          <select id="priceAlertCondition" aria-label="Condition">
+            <option value="crossing" selected>Crossing</option>
+            <option value="above">Crossing up</option>
+            <option value="below">Crossing down</option>
+          </select>
+          <input id="priceAlertValue" type="number" min="0" step="0.01" inputmode="decimal" aria-label="Alert price" />
+        </div>
+      </div>
+      <div class="price-alert-row-2">
+        <div class="price-alert-field">
+          <div class="price-alert-label">Trigger</div>
+          <select id="priceAlertRecurrence" aria-label="Trigger">
+            <option value="once" selected>Once only</option>
+            <option value="recurring">Every time</option>
+          </select>
+        </div>
+        <div class="price-alert-field">
+          <div class="price-alert-label">Expiration</div>
+          <input id="priceAlertExpires" type="datetime-local" aria-label="Expiration" />
+        </div>
+      </div>
+      <div class="price-alert-field">
+        <div class="price-alert-label">Message</div>
+        <input id="priceAlertMessage" type="text" maxlength="180" aria-label="Alert message" />
+      </div>
+      <div class="price-alert-field">
+        <div class="price-alert-label">Notifications</div>
+        <div class="price-alert-checks">
+          <label><input id="priceAlertNotifyToast" type="checkbox" checked /> Toast</label>
+          <label><input id="priceAlertNotifyEmail" type="checkbox" checked /> Email</label>
+        </div>
+        <p class="price-alert-hint" id="priceAlertEmailHint" hidden>Email delivery needs SMTP on the server and an email on your account.</p>
+      </div>
+      <div class="price-alert-actions">
+        <button type="button" class="price-alert-btn" id="priceAlertCancelBtn">Cancel</button>
+        <button type="button" class="price-alert-btn primary" id="priceAlertCreateBtn">Create</button>
+      </div>
+    </section>
+  </div>
+  <div id="priceAlertToasts" class="price-alert-toasts" aria-live="polite"></div>
+
   <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
   <script>
     (function () {
@@ -895,6 +1153,26 @@
       const watchlistAddConfirmBtn = document.getElementById("watchlistAddConfirmBtn");
       const watchlistPsa10Btn = document.getElementById("watchlistPsa10Btn");
       const pokeViewFooterClock = document.getElementById("pokeViewFooterClock");
+      const chartContextMenu = document.getElementById("chartContextMenu");
+      const priceAlertModal = document.getElementById("priceAlertModal");
+      const priceAlertSymbol = document.getElementById("priceAlertSymbol");
+      const priceAlertValue = document.getElementById("priceAlertValue");
+      const priceAlertCondition = document.getElementById("priceAlertCondition");
+      const priceAlertRecurrence = document.getElementById("priceAlertRecurrence");
+      const priceAlertExpires = document.getElementById("priceAlertExpires");
+      const priceAlertMessage = document.getElementById("priceAlertMessage");
+      const priceAlertNotifyToast = document.getElementById("priceAlertNotifyToast");
+      const priceAlertNotifyEmail = document.getElementById("priceAlertNotifyEmail");
+      const priceAlertEmailHint = document.getElementById("priceAlertEmailHint");
+      const priceAlertCreateBtn = document.getElementById("priceAlertCreateBtn");
+      const priceAlertCancelBtn = document.getElementById("priceAlertCancelBtn");
+      const priceAlertCloseBtn = document.getElementById("priceAlertCloseBtn");
+      const priceAlertToasts = document.getElementById("priceAlertToasts");
+
+      let lwPriceAlertLinesById = new Map();
+      let priceAlertEventPollTimer = null;
+      let priceAlertReportTimer = null;
+      let shownPriceAlertEventIds = new Set();
 
       function formatChartBarLocalTime() {
         const d = new Date();
@@ -957,6 +1235,10 @@
         chartDraft: null,
         hoverDrawPoint: null,
         chartVisibleCount: null,
+        priceAlerts: [],
+        priceAlertDraftPrice: null,
+        priceAlertEmailConfigured: true,
+        priceAlertContext: null,
         chartScroll: 0,
         priceExpand: 0.07,
         priceScaleManual: null,
@@ -1755,6 +2037,8 @@
         state.collectionPickerById = {};
         state.collectionPickerLoaded = false;
         state.watchlistPickerSource = "catalog";
+        state.priceAlerts = [];
+        clearPriceAlertLines();
         resetChartHistoryState();
         state.chartMessage = "Select a card from the watchlist to load its chart";
         syncChartSymbolHeader();
@@ -2123,6 +2407,7 @@
         };
         if (state.candles.length) touch(state.candles[state.candles.length - 1]);
         if (state.historyCandlesFull.length) touch(state.historyCandlesFull[state.historyCandlesFull.length - 1]);
+        scheduleReportLivePriceForAlerts(n);
       }
 
       function updateChartOverlay() {
@@ -3099,6 +3384,7 @@
         syncChartSymbolHeader();
         renderWatchlist();
         drawChart();
+        void loadPriceAlertsForSelectedCard();
         refreshSelectedCardLiveData({ requestId, showLoading: true });
         if (!USE_FAKE_CHART_DATA) {
           state.livePollTimer = setInterval(() => {
@@ -3767,6 +4053,458 @@
         }
       }
 
+      function clearPriceAlertLines() {
+        if (!lwCandleSeries) {
+          lwPriceAlertLinesById = new Map();
+          return;
+        }
+        for (const line of lwPriceAlertLinesById.values()) {
+          try {
+            lwCandleSeries.removePriceLine(line);
+          } catch {
+            /* ignore */
+          }
+        }
+        lwPriceAlertLinesById = new Map();
+      }
+
+      function syncPriceAlertLines() {
+        if (!lwCandleSeries) return;
+        const active = (state.priceAlerts || []).filter((a) => a && a.status === "active");
+        const keep = new Set(active.map((a) => String(a.id)));
+        for (const [id, line] of [...lwPriceAlertLinesById.entries()]) {
+          if (keep.has(id)) continue;
+          try {
+            lwCandleSeries.removePriceLine(line);
+          } catch {
+            /* ignore */
+          }
+          lwPriceAlertLinesById.delete(id);
+        }
+        for (const alert of active) {
+          const id = String(alert.id);
+          const price = Number(alert.price);
+          if (!Number.isFinite(price) || price <= 0) continue;
+          const title = `Alert ${formatPriceAxisLabel(price)}`;
+          const existing = lwPriceAlertLinesById.get(id);
+          if (existing) {
+            try {
+              existing.applyOptions({
+                price,
+                color: "#f7a600",
+                lineWidth: 1,
+                lineStyle: 2,
+                axisLabelVisible: true,
+                title
+              });
+            } catch {
+              /* ignore */
+            }
+            continue;
+          }
+          try {
+            const line = lwCandleSeries.createPriceLine({
+              price,
+              color: "#f7a600",
+              lineWidth: 1,
+              lineStyle: 2,
+              axisLabelVisible: true,
+              title
+            });
+            lwPriceAlertLinesById.set(id, line);
+          } catch {
+            /* ignore */
+          }
+        }
+      }
+
+      function hideChartContextMenu() {
+        if (!chartContextMenu) return;
+        chartContextMenu.classList.remove("open");
+        chartContextMenu.setAttribute("aria-hidden", "true");
+        state.priceAlertContext = null;
+      }
+
+      function findNearbyPriceAlert(price, tolerancePct = 0.01) {
+        const p = Number(price);
+        if (!Number.isFinite(p) || p <= 0) return null;
+        const tol = Math.max(0.01, p * tolerancePct);
+        let best = null;
+        let bestDist = Infinity;
+        for (const alert of state.priceAlerts || []) {
+          if (!alert || alert.status !== "active") continue;
+          const dist = Math.abs(Number(alert.price) - p);
+          if (dist <= tol && dist < bestDist) {
+            best = alert;
+            bestDist = dist;
+          }
+        }
+        return best;
+      }
+
+      function showChartContextMenu(clientX, clientY, price) {
+        if (!chartContextMenu) return;
+        const nearby = findNearbyPriceAlert(price);
+        state.priceAlertContext = { price, nearbyAlertId: nearby?.id || null };
+        const removeBtn = chartContextMenu.querySelector('[data-ctx-action="remove-alert"]');
+        const sep = chartContextMenu.querySelector("[data-ctx-sep]");
+        if (removeBtn) removeBtn.hidden = !nearby;
+        if (sep) sep.hidden = !nearby;
+        chartContextMenu.classList.add("open");
+        chartContextMenu.setAttribute("aria-hidden", "false");
+        const pad = 8;
+        const menuW = chartContextMenu.offsetWidth || 180;
+        const menuH = chartContextMenu.offsetHeight || 80;
+        const left = Math.min(window.innerWidth - menuW - pad, Math.max(pad, clientX));
+        const top = Math.min(window.innerHeight - menuH - pad, Math.max(pad, clientY));
+        chartContextMenu.style.left = `${left}px`;
+        chartContextMenu.style.top = `${top}px`;
+      }
+
+      function defaultAlertExpiryLocalValue() {
+        const d = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+        const pad = (n) => String(n).padStart(2, "0");
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      }
+
+      function closePriceAlertModal() {
+        if (!priceAlertModal) return;
+        priceAlertModal.classList.remove("open");
+        priceAlertModal.setAttribute("aria-hidden", "true");
+        state.priceAlertDraftPrice = null;
+      }
+
+      function selectedCardAlertLabel(item) {
+        if (!item) return "Card";
+        const name = String(item.cardName || item.card || "").trim();
+        const code = String(item.setCode || "").trim();
+        const no = String(item.cardNo || "").trim();
+        if (name && code && no) return `${name} (${code} #${no})`;
+        if (name) return name;
+        if (code && no) return `${code} #${no}`;
+        return "Card";
+      }
+
+      function syncPriceAlertMessagePreview() {
+        if (!priceAlertMessage || priceAlertMessage.dataset.userEdited === "1") return;
+        const item = getWatchlistItem(state.selectedWatchlistId);
+        const label = selectedCardAlertLabel(item);
+        const price = Number(priceAlertValue?.value);
+        const condition = priceAlertCondition?.value || "crossing";
+        const priceText = Number.isFinite(price) ? formatPriceAxisLabel(price) : "";
+        let msg = `${label} Crossing ${priceText}`;
+        if (condition === "above") msg = `${label} Crossing up ${priceText}`;
+        if (condition === "below") msg = `${label} Crossing down ${priceText}`;
+        priceAlertMessage.value = msg;
+      }
+
+      function openPriceAlertModal(price) {
+        if (!priceAlertModal) return;
+        if (!isWatchlistAccountSignedIn()) {
+          window.alert("Sign in to create price alerts.");
+          return;
+        }
+        const item = getWatchlistItem(state.selectedWatchlistId);
+        if (!item) {
+          window.alert("Select a watchlist card first.");
+          return;
+        }
+        const p = Number(price);
+        state.priceAlertDraftPrice = Number.isFinite(p) && p > 0 ? p : null;
+        if (priceAlertSymbol) priceAlertSymbol.textContent = selectedCardAlertLabel(item);
+        if (priceAlertValue) priceAlertValue.value = Number.isFinite(p) ? String(Number(p.toFixed(4))) : "";
+        if (priceAlertCondition) priceAlertCondition.value = "crossing";
+        if (priceAlertRecurrence) priceAlertRecurrence.value = "once";
+        if (priceAlertExpires) priceAlertExpires.value = defaultAlertExpiryLocalValue();
+        if (priceAlertNotifyToast) priceAlertNotifyToast.checked = true;
+        if (priceAlertNotifyEmail) priceAlertNotifyEmail.checked = true;
+        if (priceAlertMessage) {
+          priceAlertMessage.dataset.userEdited = "0";
+          syncPriceAlertMessagePreview();
+        }
+        if (priceAlertEmailHint) {
+          priceAlertEmailHint.hidden = Boolean(state.priceAlertEmailConfigured);
+        }
+        priceAlertModal.classList.add("open");
+        priceAlertModal.setAttribute("aria-hidden", "false");
+        priceAlertValue?.focus();
+      }
+
+      async function loadPriceAlertsForSelectedCard() {
+        state.priceAlerts = [];
+        clearPriceAlertLines();
+        if (!isWatchlistAccountSignedIn()) return;
+        const item = getWatchlistItem(state.selectedWatchlistId);
+        if (!item) return;
+        try {
+          const params = new URLSearchParams({
+            setCode: item.setCode || "",
+            cardNo: item.cardNo || "",
+            watchlistCardId: item.id || "",
+            includeInactive: "0"
+          });
+          const res = await fetch(`/api/poke-view/price-alerts?${params.toString()}`, {
+            credentials: "same-origin"
+          });
+          const payload = await res.json().catch(() => null);
+          if (!res.ok || !payload?.ok) return;
+          state.priceAlertEmailConfigured = payload.emailConfigured !== false;
+          state.priceAlerts = Array.isArray(payload.alerts) ? payload.alerts : [];
+          syncPriceAlertLines();
+        } catch {
+          /* ignore */
+        }
+      }
+
+      async function createPriceAlertFromModal() {
+        if (!isWatchlistAccountSignedIn()) {
+          window.alert("Sign in to create price alerts.");
+          return;
+        }
+        const item = getWatchlistItem(state.selectedWatchlistId);
+        if (!item) {
+          window.alert("Select a watchlist card first.");
+          return;
+        }
+        const price = Number(priceAlertValue?.value);
+        if (!Number.isFinite(price) || price <= 0) {
+          window.alert("Enter a valid alert price.");
+          return;
+        }
+        const notifyToast = Boolean(priceAlertNotifyToast?.checked);
+        const notifyEmail = Boolean(priceAlertNotifyEmail?.checked);
+        if (!notifyToast && !notifyEmail) {
+          window.alert("Choose toast and/or email notification.");
+          return;
+        }
+        let expiresAt = null;
+        if (priceAlertExpires?.value) {
+          const ts = Date.parse(priceAlertExpires.value);
+          if (Number.isFinite(ts)) expiresAt = new Date(ts).toISOString();
+        }
+        if (priceAlertCreateBtn) priceAlertCreateBtn.disabled = true;
+        try {
+          const res = await fetch("/api/poke-view/price-alerts", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              watchlistCardId: item.id,
+              setCode: item.setCode || "",
+              cardNo: item.cardNo || "",
+              cardName: item.cardName || item.card || "",
+              setName: item.setName || "",
+              cardLabel: selectedCardAlertLabel(item),
+              price,
+              condition: priceAlertCondition?.value || "crossing",
+              recurrence: priceAlertRecurrence?.value || "once",
+              notifyToast,
+              notifyEmail,
+              message: String(priceAlertMessage?.value || "").trim(),
+              expiresAt
+            })
+          });
+          const payload = await res.json().catch(() => null);
+          if (!res.ok || !payload?.ok) {
+            window.alert(payload?.error || "Could not create alert.");
+            return;
+          }
+          closePriceAlertModal();
+          await loadPriceAlertsForSelectedCard();
+          pushLocalPriceAlertToast({
+            title: "Alert created",
+            message: payload.alert?.message || `Watching ${formatPriceAxisLabel(price)}`
+          });
+        } catch {
+          window.alert("Network error while creating alert.");
+        } finally {
+          if (priceAlertCreateBtn) priceAlertCreateBtn.disabled = false;
+        }
+      }
+
+      async function removePriceAlertById(alertId) {
+        const id = String(alertId || "").trim();
+        if (!id || !isWatchlistAccountSignedIn()) return;
+        try {
+          const res = await fetch(`/api/poke-view/price-alerts/${encodeURIComponent(id)}`, {
+            method: "DELETE",
+            credentials: "same-origin"
+          });
+          const payload = await res.json().catch(() => null);
+          if (!res.ok || !payload?.ok) {
+            window.alert(payload?.error || "Could not remove alert.");
+            return;
+          }
+          await loadPriceAlertsForSelectedCard();
+        } catch {
+          window.alert("Network error while removing alert.");
+        }
+      }
+
+      function pushLocalPriceAlertToast({ title, message, id } = {}) {
+        if (!priceAlertToasts) return;
+        const toastId = String(id || `local_${Date.now()}`);
+        if (shownPriceAlertEventIds.has(toastId)) return;
+        shownPriceAlertEventIds.add(toastId);
+        const el = document.createElement("div");
+        el.className = "price-alert-toast";
+        el.innerHTML = `<strong></strong><p></p><button type="button">Dismiss</button>`;
+        el.querySelector("strong").textContent = title || "Price alert";
+        el.querySelector("p").textContent = message || "";
+        const dismiss = () => {
+          el.remove();
+        };
+        el.querySelector("button")?.addEventListener("click", dismiss);
+        priceAlertToasts.appendChild(el);
+        window.setTimeout(dismiss, 9000);
+      }
+
+      async function ackPriceAlertEvents(ids) {
+        if (!isWatchlistAccountSignedIn() || !ids?.length) return;
+        try {
+          await fetch("/api/poke-view/price-alerts/events/ack", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ids })
+          });
+        } catch {
+          /* ignore */
+        }
+      }
+
+      async function pollPriceAlertEvents() {
+        if (!isWatchlistAccountSignedIn()) return;
+        try {
+          const res = await fetch("/api/poke-view/price-alerts/events?limit=20", {
+            credentials: "same-origin"
+          });
+          const payload = await res.json().catch(() => null);
+          if (!res.ok || !payload?.ok || !Array.isArray(payload.events)) return;
+          const ids = [];
+          for (const ev of payload.events) {
+            const id = String(ev.id || "");
+            if (!id || shownPriceAlertEventIds.has(id)) continue;
+            pushLocalPriceAlertToast({
+              id,
+              title: ev.title || "Price alert",
+              message: ev.message || ""
+            });
+            ids.push(id);
+          }
+          if (ids.length) await ackPriceAlertEvents(ids);
+          // Refresh lines if any once-only alerts flipped.
+          if (ids.length) await loadPriceAlertsForSelectedCard();
+        } catch {
+          /* ignore */
+        }
+      }
+
+      function startPriceAlertEventPolling() {
+        if (priceAlertEventPollTimer) return;
+        void pollPriceAlertEvents();
+        priceAlertEventPollTimer = window.setInterval(() => {
+          void pollPriceAlertEvents();
+        }, 15000);
+      }
+
+      function scheduleReportLivePriceForAlerts(price) {
+        const n = Number(price);
+        if (!Number.isFinite(n) || n <= 0 || !isWatchlistAccountSignedIn()) return;
+        const item = getWatchlistItem(state.selectedWatchlistId);
+        if (!item) return;
+        if (priceAlertReportTimer) clearTimeout(priceAlertReportTimer);
+        priceAlertReportTimer = window.setTimeout(async () => {
+          priceAlertReportTimer = null;
+          try {
+            const res = await fetch("/api/poke-view/price-alerts/report-price", {
+              method: "POST",
+              credentials: "same-origin",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                marketPrice: n,
+                watchlistCardId: item.id,
+                setCode: item.setCode || "",
+                cardNo: item.cardNo || "",
+                cardName: item.cardName || item.card || ""
+              })
+            });
+            const payload = await res.json().catch(() => null);
+            if (!res.ok || !payload?.ok) return;
+            if (Array.isArray(payload.events) && payload.events.length) {
+              const ids = [];
+              for (const ev of payload.events) {
+                const id = String(ev.id || "");
+                if (!id || shownPriceAlertEventIds.has(id)) continue;
+                pushLocalPriceAlertToast({
+                  id,
+                  title: ev.title || "Price alert",
+                  message: ev.message || ""
+                });
+                ids.push(id);
+              }
+              if (ids.length) await ackPriceAlertEvents(ids);
+              await loadPriceAlertsForSelectedCard();
+            }
+          } catch {
+            /* ignore */
+          }
+        }, 400);
+      }
+
+      function handleChartContextMenu(ev) {
+        if (!chartWrap?.contains(ev.target) && ev.target !== chartContainer && ev.target !== drawCanvas) {
+          return;
+        }
+        ev.preventDefault();
+        hideChartContextMenu();
+        if (!state.selectedWatchlistId) return;
+        const pt = chartPointFromEvent(ev);
+        if (!pt || !Number.isFinite(pt.p)) return;
+        showChartContextMenu(ev.clientX, ev.clientY, pt.p);
+      }
+
+      function initPriceAlertUi() {
+        chartContextMenu?.querySelectorAll("[data-ctx-action]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const action = btn.getAttribute("data-ctx-action");
+            const ctx = state.priceAlertContext;
+            hideChartContextMenu();
+            if (action === "add-alert") {
+              openPriceAlertModal(ctx?.price);
+              return;
+            }
+            if (action === "remove-alert" && ctx?.nearbyAlertId) {
+              void removePriceAlertById(ctx.nearbyAlertId);
+            }
+          });
+        });
+        document.addEventListener("click", (ev) => {
+          if (!chartContextMenu?.classList.contains("open")) return;
+          if (chartContextMenu.contains(ev.target)) return;
+          hideChartContextMenu();
+        });
+        document.addEventListener("contextmenu", (ev) => {
+          if (chartWrap?.contains(ev.target) || ev.target === chartContainer || ev.target === drawCanvas) {
+            handleChartContextMenu(ev);
+          }
+        });
+        priceAlertCancelBtn?.addEventListener("click", closePriceAlertModal);
+        priceAlertCloseBtn?.addEventListener("click", closePriceAlertModal);
+        priceAlertCreateBtn?.addEventListener("click", () => {
+          void createPriceAlertFromModal();
+        });
+        priceAlertModal?.addEventListener("click", (ev) => {
+          if (ev.target === priceAlertModal) closePriceAlertModal();
+        });
+        priceAlertValue?.addEventListener("input", syncPriceAlertMessagePreview);
+        priceAlertCondition?.addEventListener("change", syncPriceAlertMessagePreview);
+        priceAlertMessage?.addEventListener("input", () => {
+          if (priceAlertMessage) priceAlertMessage.dataset.userEdited = "1";
+        });
+        startPriceAlertEventPolling();
+      }
+
       function initChartDrawingLayer() {
         document.querySelectorAll("[data-chart-tool]").forEach((btn) => {
           btn.addEventListener("click", () => {
@@ -3832,6 +4570,7 @@
         });
 
         drawCanvas.addEventListener("pointerdown", (ev) => {
+          if (ev.button === 2) return;
           if (state.chartTool === "cursor") return;
           ev.preventDefault();
           ev.stopPropagation();
@@ -3973,6 +4712,21 @@
           },
           crosshair: {
             mode: 2
+          },
+          handleScroll: {
+            mouseWheel: true,
+            pressedMouseMove: true,
+            horzTouchDrag: true,
+            vertTouchDrag: true
+          },
+          handleScale: {
+            axisPressedMouseMove: true,
+            mouseWheel: true,
+            pinch: true
+          },
+          kineticScroll: {
+            mouse: true,
+            touch: true
           },
           localization: {
             priceFormatter: (price) => formatPriceAxisLabel(Number(price)),
@@ -4281,6 +5035,7 @@
           syncChartSymbolHeader();
           updateChartOverlay();
           renderChartDrawingsOverlay();
+          syncPriceAlertLines();
           return;
         }
 
@@ -4305,6 +5060,7 @@
         }
         updateChartOverlay();
         renderChartDrawingsOverlay();
+        syncPriceAlertLines();
       }
 
       if (resetLayoutBtn) {
@@ -4318,6 +5074,8 @@
       }
       window.addEventListener("keydown", (event) => {
         if (event.key === "Escape") {
+          hideChartContextMenu();
+          closePriceAlertModal();
           closeWatchlistModal();
           state.chartDraft = null;
           state.axisDrag = null;
@@ -4341,6 +5099,7 @@
       updatePsa10ToggleUi();
       renderWatchlist();
       initChartDrawingLayer();
+      initPriceAlertUi();
       syncChartSymbolHeader();
       applyChartRangePreset(state.activeRangePreset);
       startFooterLocalClock();

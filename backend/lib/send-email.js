@@ -204,8 +204,59 @@ If you did not request this, you can ignore this email.
   return { ok: true };
 }
 
+async function sendPriceAlertEmail(
+  { to, cardLabel, message, alertPrice, marketPrice, condition, recurrence } = {},
+  env = {}
+) {
+  const label = String(cardLabel || "Card").trim() || "Card";
+  const bodyMessage = String(message || "").trim() || `${label} price alert`;
+  const alertP = Number(alertPrice);
+  const marketP = Number(marketPrice);
+  const alertText = Number.isFinite(alertP) ? `$${alertP.toFixed(2)}` : "—";
+  const marketText = Number.isFinite(marketP) ? `$${marketP.toFixed(2)}` : "—";
+  const cond = String(condition || "crossing").trim() || "crossing";
+  const recur = String(recurrence || "once").trim() || "once";
+  const subject = `PokemonView alert: ${label}`;
+  const text = [
+    bodyMessage,
+    "",
+    `Card: ${label}`,
+    `Condition: ${cond}`,
+    `Alert price: ${alertText}`,
+    `Market price: ${marketText}`,
+    `Trigger: ${recur}`,
+    "",
+    "Open Poke View to manage your alerts."
+  ].join("\n");
+  const html = `<!doctype html>
+<html>
+<body style="font-family:Segoe UI,Arial,sans-serif;background:#0a0f18;color:#e9f1ff;padding:24px;">
+  <h2 style="margin:0 0 12px;font-size:18px;">Price alert</h2>
+  <p style="margin:0 0 16px;font-size:15px;">${bodyMessage.replace(/</g, "&lt;")}</p>
+  <table style="border-collapse:collapse;font-size:13px;color:#c5d4ea;">
+    <tr><td style="padding:4px 12px 4px 0;color:#93a8c7;">Card</td><td>${label.replace(/</g, "&lt;")}</td></tr>
+    <tr><td style="padding:4px 12px 4px 0;color:#93a8c7;">Condition</td><td>${cond}</td></tr>
+    <tr><td style="padding:4px 12px 4px 0;color:#93a8c7;">Alert price</td><td>${alertText}</td></tr>
+    <tr><td style="padding:4px 12px 4px 0;color:#93a8c7;">Market price</td><td>${marketText}</td></tr>
+    <tr><td style="padding:4px 12px 4px 0;color:#93a8c7;">Trigger</td><td>${recur}</td></tr>
+  </table>
+  <p style="margin:20px 0 0;color:#93a8c7;font-size:13px;">Open Poke View to manage your alerts.</p>
+</body>
+</html>`;
+
+  if (!isEmailConfigured(env)) {
+    console.log(`[mail] Price alert for ${to}: ${bodyMessage} (market ${marketText})`);
+    return { ok: false, loggedToConsole: true };
+  }
+
+  await sendViaSmtp({ to, subject, text, html }, env);
+  return { ok: true };
+}
+
 module.exports = {
   getMailConfig,
   isEmailConfigured,
-  sendPasswordResetEmail
+  sendViaSmtp,
+  sendPasswordResetEmail,
+  sendPriceAlertEmail
 };
