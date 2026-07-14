@@ -6,7 +6,7 @@ const COLLECTR_ANON_USERNAME = "00000000-0000-0000-0000-000000000000";
 /** Collectr showcase infinite query pages exactly 30 rows (see getNextPageParam: 30*pages). */
 const API_PAGE_SIZE = 30;
 const PAGE_DELAY_MS = 120;
-const COLLECTR_LOADER_VERSION = "2026-07-13-page-size-30-v7";
+const COLLECTR_LOADER_VERSION = "2026-07-13-nav-paging-v8";
 const STEALTH_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
@@ -239,14 +239,21 @@ async function newStealthContext(browser) {
     Object.defineProperty(navigator, "webdriver", { get: () => undefined });
   });
 
-  // Keep only the document shell + showcase JSON. Abort the Collectr SPA so Chromium
-  // does not OOM on their profile page (root cause of "page closed during load").
+  // Keep only document shells + showcase JSON. Abort the Collectr SPA so Chromium
+  // does not OOM on their profile page.
   await context.route("**/*", async (route) => {
     const req = route.request();
     const type = req.resourceType();
     const url = req.url();
     if (url.includes("api-v2.getcollectr.com/data/showcase/")) {
-      await route.continue();
+      await route.continue({
+        headers: {
+          ...req.headers(),
+          Accept: "application/json, text/plain, */*",
+          Origin: "https://app.getcollectr.com",
+          Referer: req.headers().referer || "https://app.getcollectr.com/"
+        }
+      });
       return;
     }
     if (type === "document") {
@@ -259,24 +266,114 @@ async function newStealthContext(browser) {
   return { context };
 }
 
-async function fetchShowcasePageInBrowser(page, handle, offset) {
-  const apiUrl = buildShowcaseApiUrl(handle, offset, API_PAGE_SIZE);
-  return page.evaluate(async (url) => {
-    const res = await fetch(url, {
-      credentials: "include",
-      headers: {
-        Accept: "application/json, text/plain, */*",
-        "Accept-Language": "en-US,en;q=0.9"
+function extractProductsFromCollectrHtml(html) {
+  const markers = ['\\"products\\":[', '"products":['];
+  const endMarkers = [
+    '],\\"verified\\"',
+    '],"verified"',
+    '],\\"badges\\"',
+    '],"badges"',
+    '],\\"total_cards\\"',
+    '],"total_cards"'
+  ];
+  const byKey = new Map();
+
+  for (const marker of markers) {
+    let searchFrom = 0;
+    while (searchFrom < String(html || "").length) {
+      const start = html.indexOf(marker, searchFrom);
+      if (start < 0) break;
+      const arrStart = start + marker.length;
+      let advanced = false;
+      for (const endMarker of endMarkers) {
+        const end = html.indexOf(endMarker, arrStart);
+        if (end < 0) continue;
+        const slice = html.slice(arrStart, end);
+        try {
+          const unescaped = slice.replace(/\\"/g, '"').replace(/\\\\/g, "\\");
+          const rows = JSON.parse(`[${unescaped}]`);
+          if (Array.isArray(rows)) {
+            for (const row of rows) {
+              const key = productKey(row);
+              if (!row?.product_id || byKey.has(key)) continue;
+              byKey.set(key, row);
+            }
+          }
+        } catch {
+          // try next end marker
+        }
+        searchFrom = end + endMarker.length;
+        advanced = true;
+        break;
       }
-    });
-    if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      const err = new Error(`Collectr API ${res.status}${body ? `: ${body.slice(0, 80)}` : ""}`);
-      err.status = res.status;
-      throw err;
+      if (!advanced) searchFrom = arrStart;
     }
-    return res.json();
-  }, apiUrl);
+  }
+  return [...byKey.values()];
+}
+
+function extractTotalsFromCollectrHtml(html) {
+  const totalCardsMatch = String(html || "").match(/total_cards\\":\\"(\d+)\\"/);
+  const totalSealedMatch = String(html || "").match(/total_sealed\\":\\"(\d+)\\"/);
+  return {
+    totalCards: totalCardsMatch ? Number(totalCardsMatch[1]) : 0,
+    totalSealed: totalSealedMatch ? Number(totalSealedMatch[1]) : 0
+  };
+}
+
+/**
+ * Collectr WAF/CORS blocks page.evaluate(fetch) from a blank shell.
+ * Prefer Chromium document navigation; fall back to the browser context request API.
+ */
+async function fetchShowcasePageViaNavigation(page, handle, offset) {
+  const apiUrl = buildShowcaseApiUrl(handle, offset, API_PAGE_SIZE);
+  const profileUrl = buildShowcaseProfileUrl(handle);
+  const response = await page.goto(apiUrl, {
+    waitUntil: "domcontentloaded",
+    timeout: 45_000,
+    referer: profileUrl
+  });
+  if (!response) {
+    throw new Error("No response from Collectr API");
+  }
+  const status = response.status();
+  const text = await response.text();
+  if (status >= 400) {
+    throw new Error(`Collectr API ${status}`);
+  }
+  const trimmed = String(text || "").trim();
+  if (!trimmed || trimmed.startsWith("<")) {
+    throw new Error(`Collectr API returned non-JSON (${status})`);
+  }
+  return JSON.parse(trimmed);
+}
+
+async function fetchShowcasePageViaContextRequest(context, handle, offset) {
+  const apiUrl = buildShowcaseApiUrl(handle, offset, API_PAGE_SIZE);
+  const profileUrl = buildShowcaseProfileUrl(handle);
+  const response = await context.request.get(apiUrl, {
+    headers: {
+      Accept: "application/json, text/plain, */*",
+      Origin: "https://app.getcollectr.com",
+      Referer: profileUrl
+    }
+  });
+  if (!response.ok()) {
+    throw new Error(`Collectr API ${response.status()}`);
+  }
+  return response.json();
+}
+
+async function fetchShowcaseApiPage(page, context, handle, offset) {
+  try {
+    return await fetchShowcasePageViaNavigation(page, handle, offset);
+  } catch (navErr) {
+    try {
+      return await fetchShowcasePageViaContextRequest(context, handle, offset);
+    } catch {
+      throw navErr;
+    }
+  }
 }
 
 function buildCatalogResult({
@@ -405,27 +502,43 @@ async function fetchCollectrShowcaseCatalogViaBrowser(handle, options = {}) {
       }
     });
 
-    // Light shell only — never open /showcase/profile (that SPA OOMs the container).
-    await page.goto("https://app.getcollectr.com/", {
+    // Profile HTML shell only (SPA assets aborted). Gives cookies/referer + first ~30 rows.
+    await page.goto(profileUrl, {
       waitUntil: "domcontentloaded",
-      timeout: 60_000
+      timeout: 90_000
     });
-    await page.waitForTimeout(250);
+    await page.waitForTimeout(200);
+    try {
+      const html = await page.content();
+      const totals = extractTotalsFromCollectrHtml(html);
+      if (totals.totalCards) totalCards = totals.totalCards;
+      if (totals.totalSealed) totalSealed = totals.totalSealed;
+      const ssrRows = extractProductsFromCollectrHtml(html);
+      if (ssrRows.length) {
+        mergeProductsByKey(byKey, ssrRows);
+        lastPageSize = ssrRows.length;
+        report();
+      }
+    } catch {
+      // continue with API navigation paging
+    }
 
-    // Collectr's own infinite query: offset = 0, 30, 60, ... until a page returns no products.
-    let offset = 0;
+    // Collectr infinite query: offset = 0, 30, 60, ... until products is empty.
+    // Prefer Chromium document navigation (not page.evaluate fetch — WAF/CORS fails that).
+    let startPageIdx = byKey.size > 0 ? 1 : 0;
     let consecutiveEmpty = 0;
     const maxPages = Math.ceil(maxItems / API_PAGE_SIZE) + 5;
 
-    for (let pageIdx = 0; pageIdx < maxPages && byKey.size < maxItems && !exhausted; pageIdx += 1) {
+    for (let pageIdx = startPageIdx; pageIdx < maxPages && byKey.size < maxItems && !exhausted; pageIdx += 1) {
       if (page.isClosed() || !browser.isConnected()) {
         crashReason = crashReason || "Browser closed during Collectr paging";
         break;
       }
 
+      const offset = API_PAGE_SIZE * pageIdx;
       let payload = null;
       try {
-        payload = await fetchShowcasePageInBrowser(page, slug, offset);
+        payload = await fetchShowcaseApiPage(page, context, slug, offset);
       } catch (err) {
         const msg = String(err?.message || err || "");
         if (isClosedError(err)) {
@@ -434,7 +547,7 @@ async function fetchCollectrShowcaseCatalogViaBrowser(handle, options = {}) {
         }
         await page.waitForTimeout(900);
         try {
-          payload = await fetchShowcasePageInBrowser(page, slug, offset);
+          payload = await fetchShowcaseApiPage(page, context, slug, offset);
         } catch (err2) {
           crashReason = summarizeFailureReason(err2?.message || msg || "Collectr API fetch failed");
           break;
@@ -460,8 +573,6 @@ async function fetchCollectrShowcaseCatalogViaBrowser(handle, options = {}) {
       }
 
       if (exhausted) break;
-      // Same step Collectr uses: 30 * pagesLoaded sofar after this page.
-      offset = API_PAGE_SIZE * (pageIdx + 1);
       await page.waitForTimeout(PAGE_DELAY_MS);
     }
   } catch (err) {
