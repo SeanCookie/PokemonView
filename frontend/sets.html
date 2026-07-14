@@ -983,11 +983,24 @@
     .card-price-link-ebay {
       display: inline-flex;
       align-items: baseline;
+      gap: 2px;
       text-decoration: none;
       font-size: 12px;
       font-weight: 600;
       line-height: 1.45;
       letter-spacing: 0;
+      text-transform: none !important;
+    }
+
+    .card-price-link-ebay,
+    .card-price-link-ebay * {
+      text-transform: none !important;
+      font-variant: normal;
+    }
+
+    .card-price-link-ebay .ebay-brand {
+      display: inline-flex;
+      align-items: baseline;
     }
 
     .card-price-link-ebay span {
@@ -1006,6 +1019,7 @@
 
     .card-price-link-ebay .ebay-b {
       color: #0064d2;
+      font-weight: 700;
     }
 
     .card-price-link-ebay .ebay-a {
@@ -1019,6 +1033,11 @@
     .card-price-link-ebay .ebay-arrow {
       color: #fff;
       font-weight: 600;
+      margin-left: 2px;
+    }
+
+    .set-filter-tabs--search-toolbar {
+      margin: 0 0 12px;
     }
 
     .card-price-panel-tcg {
@@ -3138,7 +3157,7 @@
       const priceText = resolveTcgRowListingPriceText(row, pricingInfo);
       const ebayUrl = card ? buildEbaySearchUrlForCard(card, { row }) : "";
       const ebayLinkHtml = ebayUrl
-        ? `<a class="card-price-link card-price-link-ebay" href="${escapeHtml(ebayUrl)}" target="_blank" rel="noopener noreferrer" aria-label="Search eBay"><span class="ebay-e">e</span><span class="ebay-b">B</span><span class="ebay-a">a</span><span class="ebay-y">y</span><span class="ebay-arrow"> ↗</span></a>`
+        ? `<a class="card-price-link card-price-link-ebay" href="${escapeHtml(ebayUrl)}" target="_blank" rel="noopener noreferrer" aria-label="Search eBay"><span class="ebay-brand"><span class="ebay-e">e</span><span class="ebay-b">B</span><span class="ebay-a">a</span><span class="ebay-y">y</span></span><span class="ebay-arrow">↗</span></a>`
         : "";
       return `<div class="card-price-print-row">
           <span class="card-price-print-label">${escapeHtml(row.label)}</span>
@@ -3698,6 +3717,73 @@
       }
     }
 
+    function getCatalogSearchSortLabel(mode) {
+      if (mode === "set") {
+        if (state.globalSearchSortMode !== "set") return "Set";
+        return state.globalSearchSetOrder === "desc" ? "Set ▼" : "Set ▲";
+      }
+      if (mode === "number") {
+        if (state.globalSearchSortMode !== "number") return "Number";
+        return state.globalSearchCardNumberOrder === "desc" ? "Number ▼" : "Number ▲";
+      }
+      if (mode === "price") {
+        if (state.globalSearchSortMode !== "price") return "Price";
+        return state.globalSearchPriceOrder === "desc" ? "Price ▼" : "Price ▲";
+      }
+      return "";
+    }
+
+    function getCatalogSearchSortControlsMarkup() {
+      const setActive = state.globalSearchSortMode === "set";
+      const numActive = state.globalSearchSortMode === "number";
+      const priceActive = state.globalSearchSortMode === "price";
+      return `
+        <div class="set-filter-tabs set-filter-tabs--search-toolbar" role="group" aria-label="Sort search results">
+          <button type="button" class="set-filter-tab${setActive ? " active" : ""}" data-catalog-sort="set">${getCatalogSearchSortLabel("set")}</button>
+          <button type="button" class="set-filter-tab${numActive ? " active" : ""}" data-catalog-sort="number">${getCatalogSearchSortLabel("number")}</button>
+          <button type="button" class="set-filter-tab${priceActive ? " active" : ""}" data-catalog-sort="price">${getCatalogSearchSortLabel("price")}</button>
+        </div>
+      `;
+    }
+
+    function applyCatalogSearchSortMode(mode) {
+      const next = String(mode || "").trim().toLowerCase();
+      if (next === "set") {
+        if (state.globalSearchSortMode === "set") {
+          state.globalSearchSetOrder = state.globalSearchSetOrder === "asc" ? "desc" : "asc";
+        } else {
+          state.globalSearchSortMode = "set";
+        }
+      } else if (next === "number") {
+        if (state.globalSearchSortMode === "number") {
+          state.globalSearchCardNumberOrder =
+            state.globalSearchCardNumberOrder === "asc" ? "desc" : "asc";
+        } else {
+          state.globalSearchSortMode = "number";
+        }
+      } else if (next === "price") {
+        if (state.globalSearchSortMode === "price") {
+          state.globalSearchPriceOrder = state.globalSearchPriceOrder === "asc" ? "desc" : "asc";
+        } else {
+          state.globalSearchSortMode = "price";
+          state.globalSearchPriceOrder = "desc";
+        }
+        warmPricesForCatalogSearchMatches(getCatalogSearchMatches(state.query));
+      } else {
+        return;
+      }
+      renderAll();
+    }
+
+    function bindCatalogSearchSortControls(root) {
+      if (!root) return;
+      root.querySelectorAll("[data-catalog-sort]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          applyCatalogSearchSortMode(btn.getAttribute("data-catalog-sort"));
+        });
+      });
+    }
+
     function updateCatalogSearchControls() {
       const bar = document.getElementById("catalogSearchFieldBar");
       const setBtn = document.getElementById("catalogSetSortBtn");
@@ -3711,25 +3797,11 @@
         return;
       }
       bar.hidden = false;
-      const setActive = state.globalSearchSortMode === "set";
-      const numActive = state.globalSearchSortMode === "number";
-      const priceActive = state.globalSearchSortMode === "price";
-      setBtn.textContent = setActive
-        ? state.globalSearchSetOrder === "desc"
-          ? "Set ▼"
-          : "Set ▲"
-        : "Set";
-      numBtn.textContent = numActive
-        ? state.globalSearchCardNumberOrder === "desc"
-          ? "Number ▼"
-          : "Number ▲"
-        : "Number";
+      setBtn.textContent = getCatalogSearchSortLabel("set");
+      numBtn.textContent = getCatalogSearchSortLabel("number");
       if (priceBtn) {
-        priceBtn.textContent = priceActive
-          ? state.globalSearchPriceOrder === "desc"
-            ? "Price ▼"
-            : "Price ▲"
-          : "Price";
+        priceBtn.hidden = false;
+        priceBtn.textContent = getCatalogSearchSortLabel("price");
       }
     }
 
@@ -7272,6 +7344,7 @@
                 ? ` · showing first ${escapeHtml(String(displayMatches.length))} (refine search to narrow)`
                 : ""
             }</div>
+            ${getCatalogSearchSortControlsMarkup()}
             ${
               displayMatches.length
                 ? `<div class="cards-grid">
@@ -7298,7 +7371,9 @@
           </article>
         `;
 
+        bindCatalogSearchSortControls(content);
         bindCatalogSearchResultTiles(content);
+        updateCatalogSearchControls();
         return;
       }
 
@@ -7681,35 +7756,17 @@
 
     const catalogSetSortBtn = document.getElementById("catalogSetSortBtn");
     if (catalogSetSortBtn) {
-      catalogSetSortBtn.addEventListener("click", () => {
-        state.globalSearchSortMode = "set";
-        state.globalSearchSetOrder = state.globalSearchSetOrder === "asc" ? "desc" : "asc";
-        renderAll();
-      });
+      catalogSetSortBtn.addEventListener("click", () => applyCatalogSearchSortMode("set"));
     }
 
     const catalogNumberSortBtn = document.getElementById("catalogNumberSortBtn");
     if (catalogNumberSortBtn) {
-      catalogNumberSortBtn.addEventListener("click", () => {
-        state.globalSearchSortMode = "number";
-        state.globalSearchCardNumberOrder =
-          state.globalSearchCardNumberOrder === "asc" ? "desc" : "asc";
-        renderAll();
-      });
+      catalogNumberSortBtn.addEventListener("click", () => applyCatalogSearchSortMode("number"));
     }
 
     const catalogPriceSortBtn = document.getElementById("catalogPriceSortBtn");
     if (catalogPriceSortBtn) {
-      catalogPriceSortBtn.addEventListener("click", () => {
-        if (state.globalSearchSortMode === "price") {
-          state.globalSearchPriceOrder = state.globalSearchPriceOrder === "asc" ? "desc" : "asc";
-        } else {
-          state.globalSearchSortMode = "price";
-          state.globalSearchPriceOrder = "desc";
-        }
-        warmPricesForCatalogSearchMatches(getCatalogSearchMatches(state.query));
-        renderAll();
-      });
+      catalogPriceSortBtn.addEventListener("click", () => applyCatalogSearchSortMode("price"));
     }
 
     const globalArtistFilterSelect = document.getElementById("globalArtistFilterSelect");
