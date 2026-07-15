@@ -4453,12 +4453,30 @@
       }
 
       function handleChartContextMenu(ev) {
-        if (!chartWrap?.contains(ev.target) && ev.target !== chartContainer && ev.target !== drawCanvas) {
+        const onChart =
+          Boolean(chartWrap?.contains(ev.target)) ||
+          ev.target === chartContainer ||
+          ev.target === drawCanvas ||
+          Boolean(ev.target?.closest?.("#chartContainer, #chartDrawCanvas, .chart-canvas-wrap"));
+        if (!onChart) return;
+        // Always suppress the browser canvas menu over the chart.
+        ev.preventDefault();
+        ev.stopPropagation();
+        hideChartContextMenu();
+        if (!state.selectedWatchlistId) {
+          pushLocalPriceAlertToast({
+            title: "Select a card",
+            message: "Pick a watchlist card first, then right-click to add a price alert."
+          });
           return;
         }
-        ev.preventDefault();
-        hideChartContextMenu();
-        if (!state.selectedWatchlistId) return;
+        if (!isWatchlistAccountSignedIn()) {
+          pushLocalPriceAlertToast({
+            title: "Sign in required",
+            message: "Sign in to create price alerts on this chart."
+          });
+          return;
+        }
         const pt = chartPointFromEvent(ev);
         if (!pt || !Number.isFinite(pt.p)) return;
         showChartContextMenu(ev.clientX, ev.clientY, pt.p);
@@ -4484,11 +4502,17 @@
           if (chartContextMenu.contains(ev.target)) return;
           hideChartContextMenu();
         });
-        document.addEventListener("contextmenu", (ev) => {
-          if (chartWrap?.contains(ev.target) || ev.target === chartContainer || ev.target === drawCanvas) {
+        // Capture phase so Lightweight Charts' canvas "Save image" menu never wins.
+        document.addEventListener(
+          "contextmenu",
+          (ev) => {
             handleChartContextMenu(ev);
-          }
-        });
+          },
+          true
+        );
+        chartContainer?.addEventListener("contextmenu", handleChartContextMenu, true);
+        drawCanvas?.addEventListener("contextmenu", handleChartContextMenu, true);
+        chartWrap?.addEventListener("contextmenu", handleChartContextMenu, true);
         priceAlertCancelBtn?.addEventListener("click", closePriceAlertModal);
         priceAlertCloseBtn?.addEventListener("click", closePriceAlertModal);
         priceAlertCreateBtn?.addEventListener("click", () => {
