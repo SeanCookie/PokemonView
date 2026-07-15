@@ -57,6 +57,16 @@
     }
     left.appendChild(panel);
 
+    // Keep Account on the top row; move search under logo/menu/account on narrow layouts.
+    const right = nav.querySelector(".nav-right");
+    const searchWrap =
+      (right && right.querySelector(".nav-search-wrap")) ||
+      nav.querySelector(":scope > .nav-search-wrap") ||
+      null;
+    if (searchWrap && searchWrap.parentElement !== nav) {
+      nav.appendChild(searchWrap);
+    }
+
     let backdrop = document.querySelector(".nav-drawer-backdrop");
     if (!backdrop) {
       backdrop = document.createElement("button");
