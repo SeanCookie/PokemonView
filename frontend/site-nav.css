@@ -98,7 +98,7 @@ html.nav-drawer-open body {
   display: none;
   position: fixed;
   inset: 0;
-  z-index: 110;
+  z-index: 190;
   background: rgba(0, 0, 0, 0.45);
   border: 0;
   padding: 0;
@@ -132,6 +132,11 @@ html.nav-drawer-open body {
     height: auto !important;
     min-height: 56px !important;
     flex-wrap: nowrap !important;
+  }
+
+  /* Elevate the whole nav above the dim backdrop so menu links are clickable. */
+  .top-nav.nav-open {
+    z-index: 200 !important;
   }
 
   .nav-left {

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>PokemonView Poke View</title>
   <link rel="stylesheet" href="/brand-logo.css" />
-  <link rel="stylesheet" href="/site-nav.css?v=4" />
+  <link rel="stylesheet" href="/site-nav.css?v=5" />
   <style>
     :root {
       color-scheme: dark;
@@ -904,15 +904,20 @@
       }
       .terminal-main {
         grid-template-columns: 1fr;
+        grid-template-rows: minmax(0, 1fr) minmax(200px, 36vh);
+        overflow: hidden;
       }
       .chart-resizer {
         display: none;
       }
       .watchlist {
-        display: none;
+        display: grid !important;
+        border-top: 1px solid #1f2836;
+        min-height: 200px;
+        max-height: 36vh;
       }
       .chart-canvas-wrap {
-        min-height: 260px;
+        min-height: 200px;
       }
       .chart-area {
         grid-template-columns: 40px minmax(0, 1fr);
@@ -920,7 +925,7 @@
       .chart-bottom-bar {
         grid-template-columns: 1fr;
         gap: 6px;
-        padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+        padding: 8px 10px;
       }
       .chart-bottom-bar-spacer {
         display: none;
@@ -943,6 +948,13 @@
       .terminal {
         height: calc(100dvh - 76px);
         height: calc(100vh - 76px);
+      }
+      .terminal-main {
+        grid-template-rows: minmax(0, 1fr) minmax(180px, 40vh);
+      }
+      .watchlist {
+        min-height: 180px;
+        max-height: 40vh;
       }
       .chart-toolbar {
         padding: 6px 2px;
@@ -5191,7 +5203,7 @@
       window.addEventListener("beforeunload", flushWatchlistOnUnload);
     })();
   </script>
-  <script src="/site-nav.js?v=4" defer></script>
+  <script src="/site-nav.js?v=5" defer></script>
   <script src="/account-ui.js?v=7"></script>
   <script>
     queueMicrotask(() => {

@@ -86,7 +86,10 @@
     backdrop.addEventListener("click", () => closeNav(nav, backdrop));
 
     panel.querySelectorAll("a.nav-link").forEach((link) => {
-      link.addEventListener("click", () => closeNav(nav, backdrop));
+      link.addEventListener("click", () => {
+        // Let navigation proceed; just close the drawer.
+        closeNav(nav, backdrop);
+      });
     });
 
     document.addEventListener("keydown", (event) => {

@@ -9,7 +9,7 @@
   <link rel="preload" href="/api/sets/card-sky-urls?limit=500&localOnly=1" as="fetch" crossorigin="anonymous" />
   <link rel="stylesheet" href="/card-sky.css?v=8" />
   <link rel="stylesheet" href="/brand-logo.css" />
-  <link rel="stylesheet" href="/site-nav.css?v=4" />
+  <link rel="stylesheet" href="/site-nav.css?v=5" />
   <script src="/card-sky.js?v=8" defer></script>
   <style>
     :root {
@@ -7258,6 +7258,11 @@
         .some((part) => part.startsWith(normalizedQuery));
     }
 
+    function cardNameIncludesQuery(card, normalizedQuery) {
+      const name = normalize(getCardDisplayName(card) || card?.name || "");
+      return Boolean(name && normalizedQuery && name.includes(normalizedQuery));
+    }
+
     function collectGlobalCardMatches(query) {
       const rawQuery = String(query || "").trim();
       const normalizedQuery = normalize(rawQuery);
@@ -7265,6 +7270,7 @@
       rebuildCatalogSearchIndexIfNeeded();
       const seen = new Set();
       const prefixMatches = [];
+      const nameContainsMatches = [];
       const otherMatches = [];
 
       for (const entry of getNicknameEntriesForQuery(query)) {
@@ -7274,6 +7280,7 @@
         if (seen.has(key)) continue;
         seen.add(key);
         if (cardNameStartsWithQuery(card, normalizedQuery)) prefixMatches.push(card);
+        else if (cardNameIncludesQuery(card, normalizedQuery)) nameContainsMatches.push(card);
         else otherMatches.push(card);
       }
 
@@ -7281,14 +7288,17 @@
         const key = `${card.setCode}:${card.cardNo}`;
         if (seen.has(key)) continue;
         const haystack = card._haystack || "";
-        if (!haystack.includes(normalizedQuery)) continue;
+        const nameHit = cardNameIncludesQuery(card, normalizedQuery);
+        const haystackHit = haystack.includes(normalizedQuery);
+        if (!nameHit && !haystackHit) continue;
         seen.add(key);
-        // Prefix / word-start name hits first so "char" surfaces Charizard / Charmander immediately.
         if (cardNameStartsWithQuery(card, normalizedQuery)) prefixMatches.push(card);
+        else if (nameHit) nameContainsMatches.push(card);
         else otherMatches.push(card);
       }
 
-      return [...prefixMatches, ...otherMatches];
+      // Prefix first, then any name containing the query (e.g. all Charizard cards), then other haystack hits.
+      return [...prefixMatches, ...nameContainsMatches, ...otherMatches];
     }
 
     function collectCatalogSearchPriceSetEntries(matches) {
@@ -7478,18 +7488,17 @@
           state.catalogSearchPreviewMatches = matches;
           paintCatalogSearchResults(matches, eraSuffix);
         };
-        if (catalogSearchMatchesHavePricing(matches)) {
-          paintNow();
-          return;
-        }
-        content.innerHTML = `
-          <article class="era-block">
-            <h2 class="era-title">Search Results</h2>
-            <div class="sub" style="margin-bottom:10px;">Loading prices for "${escapeHtml(queryAtRender)}"…</div>
-          </article>
-        `;
-        updateCatalogSearchControls();
-        void ensurePricesForCatalogSearchMatches(matches).then(paintNow);
+        // Always paint cards immediately so big queries like "charizard" aren't stuck on "Loading prices…".
+        paintNow();
+        void ensurePricesForCatalogSearchMatches(matches).then(() => {
+          if (paintToken !== catalogSearchPricePaintToken) return;
+          if (state.query.trim() !== queryAtRender || state.selectedSetCode) return;
+          if (state.globalSearchSortMode === "price") {
+            paintNow();
+          } else {
+            updateCatalogSearchInlinePrices();
+          }
+        });
         return;
       }
 
@@ -8094,7 +8103,7 @@
       }
     })();
   </script>
-  <script src="/site-nav.js?v=4" defer></script>
+  <script src="/site-nav.js?v=5" defer></script>
   <script src="/account-ui.js?v=7"></script>
 </body>
 </html>
