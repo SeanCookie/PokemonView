@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>PokemonView Dashboard</title>
   <link rel="stylesheet" href="/showcase.css" />
-  <link rel="stylesheet" href="/site-nav.css?v=3" />
+  <link rel="stylesheet" href="/site-nav.css?v=4" />
   <style>
     :root {
       color-scheme: dark;
@@ -858,6 +858,14 @@
     .collection-gate-card .gate-btn:hover {
       border-color: #5b9dff;
     }
+  
+    /* site-nav-mobile-height: keep Account on the logo row */
+    @media (max-width: 960px) {
+      .top-nav {
+        height: auto !important;
+        min-height: 56px !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -994,7 +1002,7 @@
   <script src="/english-sets-catalog.js"></script>
   <script src="/collectr-import-client.js?v=7"></script>
   <script src="/collectr-import-ui.js?v=6"></script>
-  <script src="/site-nav.js?v=3" defer></script>
+  <script src="/site-nav.js?v=4" defer></script>
   <script src="/account-ui.js?v=7"></script>
   <script>
     const state = {

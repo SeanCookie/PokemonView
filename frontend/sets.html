@@ -9,7 +9,7 @@
   <link rel="preload" href="/api/sets/card-sky-urls?limit=500&localOnly=1" as="fetch" crossorigin="anonymous" />
   <link rel="stylesheet" href="/card-sky.css?v=8" />
   <link rel="stylesheet" href="/brand-logo.css" />
-  <link rel="stylesheet" href="/site-nav.css?v=3" />
+  <link rel="stylesheet" href="/site-nav.css?v=4" />
   <script src="/card-sky.js?v=8" defer></script>
   <style>
     :root {
@@ -1796,6 +1796,14 @@
       .set-stat:nth-child(-n+2) {
         border-top: none;
         padding-top: 4px;
+      }
+    }
+  
+    /* site-nav-mobile-height: keep Account on the logo row */
+    @media (max-width: 960px) {
+      .top-nav {
+        height: auto !important;
+        min-height: 56px !important;
       }
     }
   </style>
@@ -8086,7 +8094,7 @@
       }
     })();
   </script>
-  <script src="/site-nav.js?v=3" defer></script>
+  <script src="/site-nav.js?v=4" defer></script>
   <script src="/account-ui.js?v=7"></script>
 </body>
 </html>

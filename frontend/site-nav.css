@@ -110,46 +110,68 @@ html.nav-drawer-open body {
   display: block;
 }
 
-/* Desktop search in nav can stay fixed-ish; mobile forces full width below */
 .nav-search-wrap {
   min-width: 0;
 }
 
+/*
+ * Phone / tablet header: force one row
+ * [ logo + ☰ ] .................... [ Sign in ]
+ * Optional search row underneath.
+ */
 @media (max-width: 960px) {
   .top-nav {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    grid-template-areas:
+      "left right"
+      "search search" !important;
+    align-items: center !important;
+    column-gap: 10px !important;
+    row-gap: 8px !important;
     height: auto !important;
     min-height: 56px !important;
-    flex-wrap: wrap !important;
-    align-items: center !important;
+    flex-wrap: nowrap !important;
   }
 
   .nav-left {
-    flex: 1 1 auto !important;
+    grid-area: left !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
     flex-wrap: nowrap !important;
-    min-width: 0 !important;
     gap: 8px !important;
+    width: auto !important;
+    max-width: 100% !important;
+    flex: unset !important;
+    margin: 0 !important;
   }
 
   .nav-right {
-    flex: 0 0 auto !important;
-    flex-wrap: nowrap !important;
-    min-width: 0 !important;
-    margin-left: 0 !important;
-    gap: 8px !important;
-    justify-content: flex-end !important;
+    grid-area: right !important;
+    display: flex !important;
     align-items: center !important;
+    justify-content: flex-end !important;
+    justify-self: end !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+    width: auto !important;
+    max-width: none !important;
+    flex: unset !important;
+    margin: 0 !important;
+    order: unset !important;
   }
 
   .nav-menu-btn {
-    display: grid;
+    display: grid !important;
   }
 
   .nav-links {
-    display: none;
+    display: none !important;
   }
 
   .top-nav.nav-open .nav-links {
-    display: flex;
+    display: flex !important;
     position: fixed;
     top: calc(56px + env(safe-area-inset-top, 0px));
     left: 0;
@@ -179,11 +201,10 @@ html.nav-drawer-open body {
     background: rgba(255, 255, 255, 0.06);
   }
 
-  /* Search sits on its own row under logo / menu / account */
   .top-nav > .nav-search-wrap {
-    flex: 1 1 100%;
-    width: 100%;
-    order: 3;
+    grid-area: search !important;
+    width: 100% !important;
+    max-width: none !important;
   }
 
   .top-nav > .nav-search-wrap .search,
@@ -191,20 +212,22 @@ html.nav-drawer-open body {
     width: 100% !important;
     max-width: none !important;
   }
+
+  .nav-right .acct-button,
+  .nav-right [data-account-slot] .acct-button {
+    height: 40px !important;
+    min-height: 40px !important;
+    white-space: nowrap !important;
+  }
 }
 
 @media (max-width: 640px) {
   .top-nav {
     padding-left: max(12px, env(safe-area-inset-left, 0px));
     padding-right: max(12px, env(safe-area-inset-right, 0px));
-    gap: 8px;
   }
 
   .nav-left {
     gap: 6px !important;
-  }
-
-  .nav-right .acct-button {
-    white-space: nowrap;
   }
 }
