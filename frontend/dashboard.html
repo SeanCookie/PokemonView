@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>PokemonView Dashboard</title>
   <link rel="stylesheet" href="/showcase.css" />
+  <link rel="stylesheet" href="/site-nav.css?v=2" />
   <style>
     :root {
       color-scheme: dark;
@@ -494,6 +495,17 @@
       .collectr-import-actions { width: 100%; align-items: stretch; }
       .collectr-import-btn-row { justify-content: stretch; }
       .collectr-import-btn-row .btn-primary { flex: 1; }
+      .nav-right .search {
+        width: 100%;
+        max-width: none;
+      }
+      .page {
+        margin: 10px;
+        gap: 10px;
+      }
+      .btn-primary, .btn-ghost, .collection-toolbar button {
+        min-height: 40px;
+      }
     }
 
     .btn-primary {
@@ -982,7 +994,8 @@
   <script src="/english-sets-catalog.js"></script>
   <script src="/collectr-import-client.js?v=7"></script>
   <script src="/collectr-import-ui.js?v=6"></script>
-  <script src="/account-ui.js?v=6"></script>
+  <script src="/site-nav.js?v=2" defer></script>
+  <script src="/account-ui.js?v=7"></script>
   <script>
     const state = {
       items: [],

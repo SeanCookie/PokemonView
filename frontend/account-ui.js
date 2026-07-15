@@ -5,7 +5,8 @@
   const style = document.createElement("style");
   style.textContent = `
     .acct-button {
-      height: 34px;
+      height: 44px;
+      min-width: 44px;
       border: 1px solid #35507a;
       border-radius: 8px;
       background: #16263c;
@@ -13,6 +14,12 @@
       font-size: 12px;
       padding: 0 12px;
       cursor: pointer;
+    }
+    @media (min-width: 721px) {
+      .acct-button {
+        height: 34px;
+        min-width: 0;
+      }
     }
     .acct-button:hover { border-color: #4f6e9c; }
     .acct-button:not([data-auth-ready="1"]) {
@@ -80,11 +87,14 @@
       align-items: center;
       justify-content: center;
       z-index: 60;
-      padding: 12px;
+      padding: max(12px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
     }
     .acct-overlay.open { display: flex; }
     .acct-modal {
       width: min(460px, 100%);
+      max-height: min(90dvh, 900px);
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
       border: 1px solid #2d405e;
       border-radius: 12px;
       background: #0f1726;

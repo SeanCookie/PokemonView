@@ -2,13 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>PokemonView Sets</title>
   <link rel="preload" href="/api/pokesymbols/manifest" as="fetch" crossorigin="anonymous" />
   <link rel="preload" href="/api/sets/images" as="fetch" crossorigin="anonymous" />
   <link rel="preload" href="/api/sets/card-sky-urls?limit=500&localOnly=1" as="fetch" crossorigin="anonymous" />
   <link rel="stylesheet" href="/card-sky.css?v=8" />
   <link rel="stylesheet" href="/brand-logo.css" />
+  <link rel="stylesheet" href="/site-nav.css?v=2" />
   <script src="/card-sky.js?v=8" defer></script>
   <style>
     :root {
@@ -1745,6 +1746,7 @@
       .nav-search-wrap {
         flex: 1;
         min-width: 0;
+        width: 100%;
       }
 
       .search, .filter-search, .global-artist-select {
@@ -1752,12 +1754,37 @@
         max-width: none;
       }
 
+      .toolbar {
+        padding: 10px;
+        gap: 8px;
+      }
+
+      .toolbar-search-cluster {
+        width: 100%;
+        flex-wrap: wrap;
+      }
+
+      .search-controls-left {
+        width: 100%;
+        flex-wrap: wrap;
+      }
+
       .cards-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
       }
 
       .set-stats-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .page {
+        margin: 10px;
+        gap: 10px;
+      }
+
+      .era-title {
+        font-size: 18px;
       }
 
       .set-stat {
@@ -8059,7 +8086,8 @@
       }
     })();
   </script>
-  <script src="/account-ui.js?v=6"></script>
+  <script src="/site-nav.js?v=2" defer></script>
+  <script src="/account-ui.js?v=7"></script>
 </body>
 </html>
 

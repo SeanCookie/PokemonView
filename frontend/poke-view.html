@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>PokemonView Poke View</title>
   <link rel="stylesheet" href="/brand-logo.css" />
+  <link rel="stylesheet" href="/site-nav.css?v=2" />
   <style>
     :root {
       color-scheme: dark;
@@ -893,8 +894,13 @@
       .terminal-main { grid-template-columns: minmax(240px, 1fr) 8px minmax(220px, var(--watchlist-width)); }
     }
     @media (max-width: 1080px) {
+      .page {
+        margin: 8px;
+      }
       .terminal {
-        height: calc(100vh - 100px);
+        height: calc(100dvh - 88px);
+        height: calc(100vh - 88px);
+        border-radius: 8px;
       }
       .terminal-main {
         grid-template-columns: 1fr;
@@ -905,9 +911,55 @@
       .watchlist {
         display: none;
       }
+      .chart-canvas-wrap {
+        min-height: 260px;
+      }
+      .chart-area {
+        grid-template-columns: 40px minmax(0, 1fr);
+      }
+      .chart-bottom-bar {
+        grid-template-columns: 1fr;
+        gap: 6px;
+        padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+      }
+      .chart-bottom-bar-spacer {
+        display: none;
+      }
+      .chart-bar-clock-wrap {
+        justify-self: start;
+        max-width: 100%;
+        white-space: normal;
+      }
+      .chart-range-tabs {
+        flex-wrap: wrap;
+        justify-content: flex-start;
+      }
+      .chart-range-btn {
+        min-height: 36px;
+        padding: 6px 10px;
+      }
     }
-    @media (max-width: 760px) {
-      .nav-right { display: none; }
+    @media (max-width: 640px) {
+      .terminal {
+        height: calc(100dvh - 76px);
+        height: calc(100vh - 76px);
+      }
+      .chart-toolbar {
+        padding: 6px 2px;
+        gap: 1px;
+      }
+      .chart-tool-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 13px;
+      }
+      .chart-symbol-header {
+        max-width: calc(100% - 12px);
+        gap: 6px;
+      }
+      .chart-symbol-title {
+        font-size: 13px;
+      }
     }
   </style>
 </head>
@@ -5131,7 +5183,8 @@
       window.addEventListener("beforeunload", flushWatchlistOnUnload);
     })();
   </script>
-  <script src="/account-ui.js?v=6"></script>
+  <script src="/site-nav.js?v=2" defer></script>
+  <script src="/account-ui.js?v=7"></script>
   <script>
     queueMicrotask(() => {
       window.__pokeViewBootWatchlistAuth?.();

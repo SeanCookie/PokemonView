@@ -1,27 +1,47 @@
-/* Shared top navigation — include on every page with .top-nav */
+/* Shared top navigation + mobile Safari fixes — load after page inline CSS */
 @import url("/brand-logo.css");
 
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 .top-nav {
-  height: 56px;
+  height: auto;
+  min-height: 56px;
   border-bottom: 1px solid var(--border, #26364f);
   background: rgba(10, 15, 24, 0.92);
   backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 16px;
+  padding-top: max(8px, env(safe-area-inset-top, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
   position: sticky;
   top: 0;
   z-index: 100;
+  box-sizing: border-box;
 }
 
 .nav-left,
 .nav-right {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   flex-wrap: wrap;
   min-width: 0;
+}
+
+.nav-left {
+  flex: 1 1 auto;
+}
+
+.nav-right {
+  margin-left: auto;
 }
 
 .nav-link {
@@ -29,6 +49,8 @@
   font-size: 13px;
   text-decoration: none;
   white-space: nowrap;
+  line-height: 1.2;
+  padding: 8px 2px;
 }
 
 .nav-link:hover,
@@ -36,14 +58,155 @@
   color: var(--text, #e9f1ff);
 }
 
-@media (max-width: 900px) {
+.nav-menu-btn {
+  display: none;
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border, #2a3340);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text, #e9f1ff);
+  cursor: pointer;
+  place-items: center;
+  flex: 0 0 auto;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.nav-menu-btn:hover,
+.nav-menu-btn[aria-expanded="true"] {
+  border-color: #4f6e9c;
+  background: rgba(41, 98, 255, 0.16);
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+html.nav-drawer-open,
+html.nav-drawer-open body {
+  overflow: hidden;
+}
+
+.nav-drawer-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  background: rgba(0, 0, 0, 0.45);
+  border: 0;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+.nav-drawer-backdrop.is-open {
+  display: block;
+}
+
+/* Desktop search in nav can stay fixed-ish; mobile forces full width below */
+.nav-search-wrap {
+  min-width: 0;
+}
+
+@media (max-width: 960px) {
   .top-nav {
-    height: auto;
-    min-height: 56px;
-    padding: 8px 12px;
+    height: auto !important;
+    min-height: 56px !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
   }
 
-  .nav-left {
-    gap: 10px;
+  .nav-left,
+  .nav-right {
+    flex-wrap: wrap !important;
+    min-width: 0 !important;
+  }
+
+  .nav-menu-btn {
+    display: grid;
+  }
+
+  .nav-links {
+    display: none;
+  }
+
+  .top-nav.nav-open .nav-links {
+    display: flex;
+    position: fixed;
+    top: calc(56px + env(safe-area-inset-top, 0px));
+    left: 0;
+    right: 0;
+    z-index: 120;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+    padding: 10px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+    background: rgba(10, 15, 24, 0.98);
+    border-bottom: 1px solid var(--border, #2a3340);
+    box-shadow: 0 16px 28px rgba(0, 0, 0, 0.35);
+    max-height: min(70vh, 520px);
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .top-nav.nav-open .nav-links .nav-link {
+    display: block;
+    padding: 12px 10px;
+    font-size: 15px;
+    border-radius: 8px;
+  }
+
+  .top-nav.nav-open .nav-links .nav-link:hover,
+  .top-nav.nav-open .nav-links .nav-link.active {
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .nav-right {
+    gap: 8px;
+  }
+
+  .nav-search-wrap,
+  .nav-right > .search,
+  .nav-right input.search {
+    width: min(42vw, 160px) !important;
+    max-width: 180px;
+  }
+}
+
+@media (max-width: 640px) {
+  .top-nav {
+    padding-left: max(12px, env(safe-area-inset-left, 0px));
+    padding-right: max(12px, env(safe-area-inset-right, 0px));
+  }
+
+  .nav-right {
+    flex: 1 1 100%;
+    width: 100%;
+    justify-content: stretch;
+    order: 3;
+  }
+
+  .nav-search-wrap,
+  .nav-right > .search,
+  .nav-right input.search {
+    width: 100% !important;
+    max-width: none !important;
+    flex: 1 1 auto;
+  }
+
+  .nav-search-wrap {
+    flex: 1 1 auto;
+    width: 100%;
+  }
+
+  .nav-search-wrap .search {
+    width: 100% !important;
   }
 }
