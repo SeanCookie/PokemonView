@@ -3026,34 +3026,20 @@
 
     /**
      * User-facing TCGplayer product link.
-     * Matches TCGPlayer share format: Language + Condition + page=1 only.
-     * Lookup/cache URLs should keep using buildTcgplayerUrlWithPrinting (no Condition).
+     * Exact share shape: /product/{id}?Language=English&Condition=…&page=1
+     * (no slug, Printing, or ListingType).
      */
     function buildTcgplayerOutboundUrl(baseUrl, options = {}) {
       const condition = String(options.condition || "").trim();
-      const canonical = canonicalTcgplayerProductUrl(null, null, baseUrl) || String(baseUrl || "").trim();
-      if (!canonical) return "";
-      try {
-        const parsed = new URL(canonical);
-        parsed.searchParams.delete("Printing");
-        parsed.searchParams.delete("ListingType");
-        parsed.searchParams.delete("listingType");
-        parsed.searchParams.delete("Quantity");
-        parsed.searchParams.delete("inStock");
-        parsed.searchParams.set("Language", "English");
-        if (condition) parsed.searchParams.set("Condition", condition);
-        else parsed.searchParams.delete("Condition");
-        parsed.searchParams.set("page", "1");
-        return parsed.toString();
-      } catch {
-        const params = [
-          "Language=English",
-          condition ? `Condition=${encodeURIComponent(condition)}` : "",
-          "page=1"
-        ].filter(Boolean);
-        const bare = String(canonical).split("?")[0];
-        return `${bare}?${params.join("&")}`;
-      }
+      const productId =
+        extractTcgProductIdFromUrl(baseUrl) ||
+        extractTcgProductIdFromUrl(canonicalTcgplayerProductUrl(null, null, baseUrl) || "");
+      if (!productId) return "";
+      const params = new URLSearchParams();
+      params.set("Language", "English");
+      if (condition) params.set("Condition", condition);
+      params.set("page", "1");
+      return `https://www.tcgplayer.com/product/${productId}?${params.toString()}`;
     }
 
     function resolveTcgOutboundCondition(row, pricingInfo = null, card = null) {
@@ -3445,7 +3431,7 @@
           <span class="card-price-print-sep">:</span>
           <span class="card-price-value">${escapeHtml(priceText)}</span>
           <span class="card-price-links">
-            <a class="card-price-link" href="${escapeHtml(outboundUrl || row.tcgplayerUrl)}" target="_blank" rel="noopener noreferrer">TCGplayer ↗</a>
+            <a class="card-price-link" href="${escapeHtml(outboundUrl)}" target="_blank" rel="noopener noreferrer">TCGplayer ↗</a>
             ${ebayLinkHtml}
           </span>
         </div>`;
