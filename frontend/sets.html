@@ -2282,14 +2282,17 @@
           updateSetDetailInlinePrices();
           return;
         }
-        if (String(state.query || "").trim() && !state.selectedSetCode) {
-          updateCatalogSearchInlinePrices();
+        if (!state.selectedSetCode) {
+          refreshCatalogResultsAfterPrices();
         }
       }, 0);
     }
 
     function updateCatalogSearchInlinePrices() {
-      if (!String(state.query || "").trim() || state.selectedSetCode) return;
+      if (state.selectedSetCode) return;
+      const hasQuery = Boolean(String(state.query || "").trim());
+      const artistOn = state.catalogArtistFilter !== "all";
+      if (!hasQuery && !artistOn) return;
       const content = document.getElementById("content");
       if (!content) return;
       content.querySelectorAll(".card-tile[data-set-code][data-card-number]").forEach((tile) => {
@@ -2303,6 +2306,31 @@
             label: `#${tile.dataset.cardNumber}`
           }) || "—";
       });
+    }
+
+    function getActiveCatalogResultMatches() {
+      const q = String(state.query || "").trim();
+      if (q) return getCatalogSearchMatches(q);
+      if (state.catalogArtistFilter !== "all") {
+        const matches = applyCatalogSearchFilters(collectAllCatalogCards());
+        sortGlobalSearchMatches(matches);
+        return matches;
+      }
+      return [];
+    }
+
+    function refreshCatalogResultsAfterPrices() {
+      if (state.selectedSetCode) return;
+      const q = String(state.query || "").trim();
+      const artistOn = state.catalogArtistFilter !== "all";
+      if (!q && !artistOn) return;
+      if (state.globalSearchSortMode === "price") {
+        // Re-paint so sort order + inline prices both update once pricing is ready.
+        renderContent();
+        updateCatalogSearchControls();
+        return;
+      }
+      updateCatalogSearchInlinePrices();
     }
 
     function updateSetDetailInlinePrices() {
@@ -3810,7 +3838,14 @@
           state.globalSearchSortMode = "price";
           state.globalSearchPriceOrder = "desc";
         }
-        warmPricesForCatalogSearchMatches(getCatalogSearchMatches(state.query));
+        const matches = getActiveCatalogResultMatches();
+        renderAll();
+        void ensurePricesForCatalogSearchMatches(matches).then(() => {
+          if (state.globalSearchSortMode !== "price" || state.selectedSetCode) return;
+          // Prices are ready — re-paint sorted results with inline $ amounts (not "…").
+          refreshCatalogResultsAfterPrices();
+        });
+        return;
       } else {
         return;
       }
@@ -6132,7 +6167,12 @@
     }
 
     function getCardPricingInfo(card) {
-      const byCardNo = state.cardPricingBySetCode[card.setCode];
+      const codeRaw = String(card?.setCode || "").trim();
+      const codeUpper = codeRaw.toUpperCase();
+      const byCardNo =
+        state.cardPricingBySetCode[codeUpper] ||
+        state.cardPricingBySetCode[codeRaw] ||
+        null;
       if (!byCardNo || typeof byCardNo !== "object") return null;
 
       const rawCardNo = String(card.cardNo || "").trim();
@@ -6148,6 +6188,9 @@
         numericTail
       ].filter(Boolean);
       for (const key of candidates) {
+        if (byCardNo[key]) return byCardNo[key];
+      }
+      for (const key of cardNumberLookupKeys(card.cardNo)) {
         if (byCardNo[key]) return byCardNo[key];
       }
       return null;
@@ -7480,9 +7523,17 @@
     async function ensurePricesForCatalogSearchMatches(matches) {
       const entries = collectCatalogSearchPriceSetEntries(matches);
       if (!entries.length || state.language !== "english") return;
-      const loadKey = entries.map(([code]) => code).join(",");
+      const loadKey = [...entries.map(([code]) => code)].sort().join(",");
       if (catalogSearchPriceLoadKey === loadKey && catalogSearchPriceLoadPromise) {
         await catalogSearchPriceLoadPromise;
+        return;
+      }
+      // If this exact set set was already loaded and hydrated, skip a full reload.
+      if (
+        catalogSearchPriceLoadKey === loadKey &&
+        !catalogSearchPriceLoadPromise &&
+        catalogSearchMatchesHavePricing(matches)
+      ) {
         return;
       }
       catalogSearchPriceLoadKey = loadKey;
@@ -7545,7 +7596,7 @@
                       <div class="card-meta card-meta-row">
                         <span>${escapeHtml(card.setName)} (${escapeHtml(card.setCode)}) · ${escapeHtml(card.label)}</span>
                         <span class="card-price-inline">${escapeHtml(
-                          fillPrices ? formatCardPriceInline(card) || "—" : "…"
+                          formatCardPriceInline(card) || (fillPrices ? "—" : "…")
                         )}</span>
                       </div>
                     </button>
@@ -7648,7 +7699,7 @@
           state.catalogSearchPreviewMatches = matches;
           paintCatalogSearchResults(matches, eraSuffix, { fillPrices: Boolean(fillPrices) });
         };
-        // Names + images first; prices hydrate after so bandwidth isn't stolen by price APIs.
+        // Show any cached $ amounts immediately; unknown stay "…" until price APIs finish.
         paintNow(false);
         void ensurePricesForCatalogSearchMatches(matches).then(() => {
           if (paintToken !== catalogSearchPricePaintToken) return;
@@ -7664,10 +7715,12 @@
 
       if (state.catalogArtistFilter !== "all") {
         const baseMatches = collectAllCatalogCards();
-        const matches = applyCatalogSearchFilters(baseMatches);
+        let matches = applyCatalogSearchFilters(baseMatches);
         sortGlobalSearchMatches(matches);
         state.catalogSearchPreviewMatches = matches;
         const artistLabel = escapeHtml(state.catalogArtistFilter);
+        const paintToken = ++catalogSearchPricePaintToken;
+        const pricesReady = catalogSearchMatchesHavePricing(matches);
         content.innerHTML = `
           <article class="era-block">
             <h2 class="era-title">Artists</h2>
@@ -7686,7 +7739,12 @@
                           ? `<img class="card-thumb" src="${escapeHtml(card.imageUrl)}" alt="${escapeHtml(getCardDisplayName(card))}" loading="lazy" />`
                           : `<div class="card-thumb placeholder">No image</div>`}
                         <div>${renderCardName(card)}</div>
-                        <div class="card-meta">${escapeHtml(card.setName)} (${escapeHtml(card.setCode)}) · ${escapeHtml(card.label)}</div>
+                        <div class="card-meta card-meta-row">
+                          <span>${escapeHtml(card.setName)} (${escapeHtml(card.setCode)}) · ${escapeHtml(card.label)}</span>
+                          <span class="card-price-inline">${escapeHtml(
+                            formatCardPriceInline(card) || (pricesReady ? "—" : "…")
+                          )}</span>
+                        </div>
                       </button>
                     `).join("")}
                   </div>`
@@ -7696,6 +7754,17 @@
         `;
 
         bindCatalogSearchResultTiles(content);
+        void ensurePricesForCatalogSearchMatches(matches).then(() => {
+          if (paintToken !== catalogSearchPricePaintToken) return;
+          if (state.catalogArtistFilter === "all" || state.selectedSetCode) return;
+          if (state.globalSearchSortMode === "price" && !pricesReady) {
+            // Prices just arrived — one re-render to sort + fill inline amounts.
+            renderContent();
+            updateCatalogSearchControls();
+          } else {
+            updateCatalogSearchInlinePrices();
+          }
+        });
         return;
       }
 
