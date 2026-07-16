@@ -2203,7 +2203,7 @@
     let setDetailRenderPending = false;
     let lastPrimedSetCode = "";
     const TCG_LINK_LOCAL_CACHE_TTL_MS = 60 * 60 * 1000;
-    const TCG_LINK_PRICE_LOGIC_VERSION = 9;
+    const TCG_LINK_PRICE_LOGIC_VERSION = 10;
     let setPriceRerenderTimer = null;
     let setLinkPriceWarmupQueuedCode = "";
     let setPricesLoadToken = 0;
@@ -2215,6 +2215,7 @@
     const CATALOG_SEARCH_SKY_DEBOUNCE_MS = 700;
     const CATALOG_SEARCH_PRICE_WARMUP_SET_LIMIT = 80;
     const CATALOG_SEARCH_PRICE_LOAD_CONCURRENCY = 10;
+    const SET_INLINE_PRICE_FETCH_CONCURRENCY = 8;
     let catalogSearchRenderTimer = null;
     let catalogSearchSkyTimer = null;
     let catalogSearchPricePaintToken = 0;
@@ -2235,6 +2236,11 @@
       void (async () => {
         try {
           await ensureSetPricingLoaded(code, setName);
+          if (loadToken !== setPricesLoadToken) return;
+          if (String(state.selectedSetCode || "").toUpperCase() === code) {
+            scheduleSetPriceRerender();
+            await warmMissingInlinePricesForActiveSet(code, setName, loadToken);
+          }
         } catch {
           /* best effort */
         } finally {
@@ -2244,6 +2250,46 @@
           if (viewingThisSet || catalogSearchOpen) scheduleSetPriceRerender();
         }
       })();
+    }
+
+    /**
+     * Fetch live TCGPlayer link prices for set tiles still showing "—" after cache hydrate,
+     * so inline prices appear without clicking Price sort.
+     */
+    async function warmMissingInlinePricesForActiveSet(setCode, setName = "", loadToken = setPricesLoadToken) {
+      const code = String(setCode || "").trim().toUpperCase();
+      if (!code || state.language !== "english") return;
+      if (String(state.selectedSetCode || "").toUpperCase() !== code) return;
+      if (state.selectedCardNumber) return;
+
+      const selectedSet = getSetByCode(code);
+      if (!selectedSet) return;
+      const setConfig = detailedSetConfigs[code] || null;
+      const cards = getSetCards(selectedSet, setConfig);
+      const jobs = [];
+      for (const card of cards) {
+        if (formatCardPriceInline(card)) continue;
+        const info = getCardPricingInfo(card);
+        const urls = collectTcgPriceLookupUrlsForCard(card, info);
+        if (!urls.length) continue;
+        // One primary URL per card is enough for the tile inline price.
+        jobs.push({ card, url: urls[0] });
+      }
+      if (!jobs.length) return;
+
+      for (let i = 0; i < jobs.length; i += SET_INLINE_PRICE_FETCH_CONCURRENCY) {
+        if (loadToken !== setPricesLoadToken) return;
+        if (String(state.selectedSetCode || "").toUpperCase() !== code) return;
+        const chunk = jobs.slice(i, i + SET_INLINE_PRICE_FETCH_CONCURRENCY);
+        await Promise.all(
+          chunk.map(({ card, url }) =>
+            ensureTcgLinkPriceLoaded(url, card).catch(() => {
+              /* best effort */
+            })
+          )
+        );
+        scheduleSetPriceRerender();
+      }
     }
 
     async function openSetView(code, name = "", options = {}) {
@@ -8545,7 +8591,7 @@
     })();
   </script>
   <script src="/site-nav.js?v=11" defer></script>
-  <script src="/account-ui.js?v=7"></script>
+  <script src="/account-ui.js?v=8"></script>
 </body>
 </html>
 

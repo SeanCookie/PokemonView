@@ -242,7 +242,7 @@ const TCG_LINK_PRICE_ADMIN_REFRESH_MAX_AGE_MS = 1000 * 60 * 60;
 /** Persist TCG link cache to disk every N processed cards during bulk refresh (reduces IO stalls). */
 const TCG_LINK_PRICE_PERSIST_EVERY = 1000;
 /** Bump when link-price selection rules change (invalidates persisted cache). */
-const TCG_LINK_PRICE_LOGIC_VERSION = 9;
+const TCG_LINK_PRICE_LOGIC_VERSION = 10;
 const TCG_PRICE_GUIDE_INDEX_TTL_MS = 1000 * 60 * 60 * 6;
 /** App set code → TCGplayer price guide slug when auto-matching is unreliable. */
 const TCG_GUIDE_SLUG_BY_SET_CODE = {
@@ -4042,44 +4042,59 @@ function parseTcgStorefrontAsLowAs(plain) {
   return match ? parseUsdAmount(match[1]) : null;
 }
 
-function parseTcgStorefrontNmWithShippingMatches(plain) {
-  const re =
-    /Near Mint(?:\s+Holofoil|\s+Normal)?\s*\$([0-9,]+\.[0-9]{2})\s*\+\s*(?:\$([0-9,]+\.[0-9]{2})\s*Shipping|Free Shipping)/gi;
+function parseTcgStorefrontConditionWithShippingMatches(plain) {
+  const re = new RegExp(
+    `(${TCG_LISTING_CONDITION_PRIORITY.map((c) => c.replace(/\s+/g, "\\s+")).join("|")})(?:\\s+Holofoil|\\s+Normal)?\\s*\\$([0-9,]+\\.[0-9]{2})\\s*\\+\\s*(?:\\$([0-9,]+\\.[0-9]{2})\\s*Shipping|Free Shipping)`,
+    "gi"
+  );
   const out = [];
   let match = re.exec(String(plain || ""));
   while (match) {
-    const price = parseUsdAmount(match[1]);
-    let shipping = match[2] != null ? parseUsdAmount(match[2]) : null;
+    const condition = normalizeTcgListingCondition(match[1]);
+    const price = parseUsdAmount(match[2]);
+    let shipping = match[3] != null ? parseUsdAmount(match[3]) : null;
     if (shipping == null && /Free Shipping/i.test(match[0])) shipping = 0;
-    if (Number.isFinite(price) && price > 0 && Number.isFinite(shipping) && shipping >= 0) {
-      out.push({ price, shipping });
+    if (condition && Number.isFinite(price) && price > 0 && Number.isFinite(shipping) && shipping >= 0) {
+      out.push({ condition, price, shipping });
     }
     match = re.exec(String(plain || ""));
   }
   return out;
 }
 
+function parseTcgStorefrontNmWithShippingMatches(plain) {
+  return parseTcgStorefrontConditionWithShippingMatches(plain).filter(
+    (row) => row.condition === "Near Mint"
+  );
+}
+
 function selectTcgStorefrontFeaturedListing(plain) {
   const asLowAs = parseTcgStorefrontAsLowAs(plain);
-  const nmMatches = parseTcgStorefrontNmWithShippingMatches(plain);
-  const firstNm = nmMatches[0] || null;
+  const conditionMatches = parseTcgStorefrontConditionWithShippingMatches(plain);
   const tolerance = 0.02;
 
-  if (Number.isFinite(asLowAs) && asLowAs > 0) {
-    const atAsLow = nmMatches.filter((row) => Math.abs(row.price - asLowAs) <= tolerance);
-    if (atAsLow.length) {
-      atAsLow.sort((a, b) => a.shipping - b.shipping || a.price - b.price);
-      return { condition: "Near Mint", price: atAsLow[0].price, shipping: atAsLow[0].shipping };
+  // Prefer Near Mint, then Lightly Played → Moderately Played → Heavily Played → Damaged.
+  for (const condition of TCG_LISTING_CONDITION_PRIORITY) {
+    const rows = conditionMatches.filter((row) => row.condition === condition);
+    if (!rows.length) continue;
+
+    if (Number.isFinite(asLowAs) && asLowAs > 0) {
+      const atAsLow = rows.filter((row) => Math.abs(row.price - asLowAs) <= tolerance);
+      if (atAsLow.length) {
+        atAsLow.sort((a, b) => a.shipping - b.shipping || a.price - b.price);
+        return { condition, price: atAsLow[0].price, shipping: atAsLow[0].shipping };
+      }
     }
-    if (firstNm && asLowAs >= firstNm.price) {
-      return { condition: "Near Mint", price: asLowAs, shipping: 0 };
+
+    rows.sort((a, b) => a.price - b.price || a.shipping - b.shipping);
+    const first = rows[0];
+    if (Number.isFinite(asLowAs) && asLowAs > 0 && asLowAs >= first.price && condition === "Near Mint") {
+      return { condition, price: asLowAs, shipping: 0 };
     }
+    return { condition, price: first.price, shipping: first.shipping };
   }
 
-  if (firstNm) {
-    return { condition: "Near Mint", price: firstNm.price, shipping: firstNm.shipping };
-  }
-
+  // Last resort: page "As low as" with unknown condition (still better than no price).
   if (Number.isFinite(asLowAs) && asLowAs > 0) {
     return { condition: "Near Mint", price: asLowAs, shipping: 0 };
   }
@@ -4284,6 +4299,12 @@ function isEnglishTcgSearchProduct(row) {
 
 function getBestEnglishListingPrice(row, { nearMintOnly = false } = {}) {
   const listings = Array.isArray(row?.listings) ? row.listings : [];
+  if (!nearMintOnly) {
+    const picked = pickCheapestTcgListingByCondition(listings);
+    if (picked && Number.isFinite(picked.listingPrice) && picked.listingPrice > 0) {
+      return picked.listingPrice;
+    }
+  }
   let best = null;
   for (const listing of listings) {
     if (!isEnglishTcgListing(listing)) continue;
@@ -5321,7 +5342,12 @@ async function getCardMarketHistoryManifest({
 }
 
 function getNearMintAddToCartPrice(row) {
-  return getBestEnglishListingPrice(row, { nearMintOnly: true });
+  // Prefer Near Mint, then fall through LP → MP → HP → Damaged.
+  const picked = pickBestTcgListing(Array.isArray(row?.listings) ? row.listings : []);
+  if (picked && Number.isFinite(picked.listingPrice) && picked.listingPrice > 0) {
+    return picked.listingPrice;
+  }
+  return getBestEnglishListingPrice(row, { nearMintOnly: false });
 }
 
 /** Best English NM buy price from embedded search listings (price + shipping), else market. */
@@ -7591,17 +7617,26 @@ async function route(req, res) {
   if (pathname === "/api/auth/signin" && req.method === "POST") {
     try {
       const body = await readBody(req);
-      const login = String(body.login ?? body.email ?? "").trim();
-      const email = normalizeEmail(login);
-      const username = normalizeUsername(login);
+      const login = String(body.login ?? body.email ?? body.username ?? "").trim();
       const password = String(body.password || "");
+      if (!login || !password) {
+        json(res, 400, { ok: false, error: "Username and password are required" });
+        return;
+      }
+
+      // Prefer username match; also accept email for the same field.
+      const loginAsEmail = login.includes("@") ? normalizeEmail(login) : "";
+      const loginAsUsername = normalizeUsername(login);
       const user = store.users.find((entry) => {
-        const entryEmail = normalizeEmail(entry.email);
         const entryUsername = normalizeUsername(entry.username);
-        return entryEmail === email || (username && entryUsername === username);
+        if (loginAsUsername && entryUsername && entryUsername === loginAsUsername) return true;
+        if (loginAsEmail) {
+          return normalizeEmail(entry.email) === loginAsEmail;
+        }
+        return false;
       });
       if (!user) {
-        json(res, 401, { ok: false, error: "Invalid email/username or password" });
+        json(res, 401, { ok: false, error: "Invalid username or password" });
         return;
       }
       if (user.googleSub && (user.passwordHash == null || user.passwordHash === "")) {
@@ -7612,7 +7647,7 @@ async function route(req, res) {
         return;
       }
       if (!verifyPassword(password, user.passwordHash)) {
-        json(res, 401, { ok: false, error: "Invalid email/username or password" });
+        json(res, 401, { ok: false, error: "Invalid username or password" });
         return;
       }
       user.lastLoginAt = new Date().toISOString();

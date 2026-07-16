@@ -154,6 +154,15 @@
       color: #93a8c7;
       line-height: 1.45;
     }
+    .acct-login-hint {
+      margin: -2px 0 0;
+      font-size: 11px;
+      color: #7d92af;
+      line-height: 1.35;
+    }
+    .acct-login-hint[hidden] {
+      display: none !important;
+    }
     .acct-tab.active {
       background: #20324c;
       color: #e9f1ff;
@@ -266,8 +275,9 @@
       <form id="acctForm" class="acct-form">
         <input id="acctName" class="acct-input" placeholder="Display name (optional)" autocomplete="name" style="display:none;" />
         <input id="acctUsername" class="acct-input" placeholder="Username" autocomplete="username" style="display:none;" />
-        <input id="acctEmail" class="acct-input" placeholder="Email or username" autocomplete="username email" required />
+        <input id="acctEmail" class="acct-input" placeholder="Username" autocomplete="username" required />
         <input id="acctPassword" class="acct-input" placeholder="Password" type="password" autocomplete="current-password" required />
+        <p class="acct-login-hint" id="acctLoginHint">You can also sign in with your email.</p>
         <label class="acct-remember" id="acctRememberWrap">
           <input type="checkbox" id="acctRemember" />
           Remember me
@@ -289,6 +299,7 @@
   const acctTabCreate = document.getElementById("acctTabCreate");
   const acctTabForgot = document.getElementById("acctTabForgot");
   const acctForgotHint = document.getElementById("acctForgotHint");
+  const acctLoginHint = document.getElementById("acctLoginHint");
   const acctForm = document.getElementById("acctForm");
   const acctName = document.getElementById("acctName");
   const acctUsername = document.getElementById("acctUsername");
@@ -476,11 +487,14 @@
     acctTabCreate.classList.toggle("active", isSignup);
     acctTabForgot.classList.toggle("active", isForgot);
     if (acctForgotHint) acctForgotHint.hidden = !isForgot;
+    if (acctLoginHint) acctLoginHint.hidden = mode !== "signin";
     acctName.style.display = isSignup ? "block" : "none";
     acctUsername.style.display = isSignup ? "block" : "none";
     acctUsername.required = isSignup;
-    acctEmail.placeholder = isSignup ? "Email" : isForgot ? "Email on your account" : "Email or username";
+    acctEmail.placeholder = isSignup ? "Email" : isForgot ? "Email on your account" : "Username";
     acctEmail.type = isSignup || isForgot ? "email" : "text";
+    acctEmail.autocomplete = isSignup || isForgot ? "email" : "username";
+    acctEmail.setAttribute("inputmode", isSignup || isForgot ? "email" : "text");
     acctPassword.style.display = isForgot ? "none" : "block";
     acctPassword.required = !isForgot;
     acctPassword.autocomplete = isSignup ? "new-password" : "current-password";
@@ -761,7 +775,7 @@
     }
 
     if (!login || !password) {
-      setStatus("Email/username and password are required.", true);
+      setStatus("Username and password are required.", true);
       return;
     }
     setStatus("Working...");
