@@ -23,11 +23,9 @@ html {
   padding-right: max(16px, env(safe-area-inset-right, 0px));
   position: sticky;
   top: 0;
-  /* Beat per-page .top-nav z-index overrides so the drawer stays tappable. */
   z-index: 10000 !important;
   box-sizing: border-box;
 }
-
 
 .nav-left,
 .nav-right {
@@ -40,10 +38,26 @@ html {
 
 .nav-left {
   flex: 1 1 auto;
+  order: 1;
 }
 
 .nav-right {
   margin-left: auto;
+  order: 3;
+}
+
+/* If search was misplaced as a sibling after Sign In, pull it before Account. */
+.top-nav > .nav-search-wrap {
+  order: 2;
+  margin-left: auto;
+}
+
+.nav-right > .nav-search-wrap {
+  order: 1;
+}
+
+.nav-right > [data-account-slot] {
+  order: 2;
 }
 
 .nav-link {
@@ -113,15 +127,14 @@ html.nav-drawer-open body {
   display: block;
 }
 
-
 .nav-search-wrap {
   min-width: 0;
 }
 
 /*
- * Phone / tablet header: force one row
- * [ logo + ☰ ] .................... [ Sign in ]
- * Search on a full-width row underneath.
+ * Phone / tablet:
+ * Row 1: [ logo + ☰ ] .............. [ Sign In ]
+ * Row 2: [ search ........................... ]
  */
 @media (max-width: 960px) {
   .top-nav {
@@ -138,13 +151,13 @@ html.nav-drawer-open body {
     flex-wrap: nowrap !important;
   }
 
-  /* Elevate the whole nav above the dim backdrop so the hamburger stays usable. */
   .top-nav.nav-open {
     z-index: 10050 !important;
   }
 
   .nav-left {
     grid-area: left !important;
+    order: unset !important;
     display: flex !important;
     align-items: center !important;
     justify-content: flex-start !important;
@@ -156,29 +169,30 @@ html.nav-drawer-open body {
     margin: 0 !important;
   }
 
-  /*
-   * Flatten nav-right so search + account become direct grid children of .top-nav.
-   * That keeps Sign In on the logo row and forces search onto the row below —
-   * even if JS has not moved the search node yet.
-   */
   .nav-right {
-    display: contents !important;
-  }
-
-  .nav-right > [data-account-slot] {
     grid-area: right !important;
+    order: unset !important;
     display: flex !important;
     align-items: center !important;
     justify-content: flex-end !important;
     justify-self: end !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+    width: auto !important;
+    max-width: none !important;
+    flex: unset !important;
     margin: 0 !important;
+  }
+
+  /* Failsafe: never keep search beside Sign In on the logo row. */
+  .nav-right > .nav-search-wrap {
+    display: none !important;
   }
 
   .nav-menu-btn {
     display: grid !important;
   }
 
-  /* Hidden until opened; panel is often portaled to body on mobile. */
   .nav-links {
     display: none !important;
   }
@@ -223,9 +237,10 @@ html.nav-drawer-open body {
     background: rgba(255, 255, 255, 0.06);
   }
 
-  .top-nav > .nav-search-wrap,
-  .nav-right > .nav-search-wrap {
+  .top-nav > .nav-search-wrap {
     grid-area: search !important;
+    order: unset !important;
+    margin: 0 !important;
     width: 100% !important;
     max-width: none !important;
     min-width: 0 !important;
@@ -234,9 +249,7 @@ html.nav-drawer-open body {
   }
 
   .top-nav > .nav-search-wrap .search,
-  .top-nav > .nav-search-wrap > input,
-  .nav-right > .nav-search-wrap .search,
-  .nav-right > .nav-search-wrap > input {
+  .top-nav > .nav-search-wrap > input {
     width: 100% !important;
     max-width: none !important;
   }

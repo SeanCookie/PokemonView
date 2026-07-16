@@ -33,24 +33,36 @@
       if (panel.parentElement !== left) left.appendChild(panel);
       panel.classList.remove("is-open");
     } else if (panel.parentElement !== document.body) {
-      // Body portal avoids sticky/nav stacking contexts covering links on iOS Safari.
       document.body.appendChild(panel);
     }
   }
 
+  function findSearchWrap(nav, right) {
+    return (
+      (right && right.querySelector(".nav-search-wrap")) ||
+      nav.querySelector(":scope > .nav-search-wrap") ||
+      nav.querySelector(".nav-search-wrap") ||
+      null
+    );
+  }
+
   function placeSearchForViewport(nav, right, searchWrap) {
-    if (!searchWrap) return;
+    if (!nav || !searchWrap) return;
     if (isDesktopNav()) {
-      // Desktop: search sits left of Account inside nav-right.
+      // Desktop: [search][Sign In] inside nav-right — never after Sign In.
       if (!right) return;
       const account = right.querySelector("[data-account-slot]");
-      if (searchWrap.parentElement !== right || (account && searchWrap.nextElementSibling !== account)) {
+      if (searchWrap.parentElement !== right) {
         if (account) right.insertBefore(searchWrap, account);
         else right.appendChild(searchWrap);
+      } else if (account && searchWrap.nextElementSibling !== account) {
+        right.insertBefore(searchWrap, account);
       }
-    } else if (searchWrap.parentElement !== nav) {
-      // Mobile: search is its own grid row under logo / menu / account.
-      nav.appendChild(searchWrap);
+    } else {
+      // Mobile: search on its own row under the logo / Sign In row.
+      if (searchWrap.parentElement !== nav) {
+        nav.appendChild(searchWrap);
+      }
     }
   }
 
@@ -87,14 +99,12 @@
       left.appendChild(btn);
     }
 
-    placePanelForViewport(nav, left, panel);
-
     const right = nav.querySelector(".nav-right");
-    const searchWrap =
-      (right && right.querySelector(".nav-search-wrap")) ||
-      nav.querySelector(":scope > .nav-search-wrap") ||
-      null;
+    let searchWrap = findSearchWrap(nav, right);
+
+    placePanelForViewport(nav, left, panel);
     placeSearchForViewport(nav, right, searchWrap);
+    searchWrap = findSearchWrap(nav, right);
 
     let backdrop = document.querySelector(".nav-drawer-backdrop");
     if (!backdrop) {
@@ -106,11 +116,16 @@
       document.body.appendChild(backdrop);
     }
 
+    const syncLayout = () => {
+      searchWrap = findSearchWrap(nav, right);
+      placePanelForViewport(nav, left, panel);
+      placeSearchForViewport(nav, right, searchWrap);
+    };
+
     btn.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      placePanelForViewport(nav, left, panel);
-      placeSearchForViewport(nav, right, searchWrap);
+      syncLayout();
       if (nav.classList.contains("nav-open") || panel.classList.contains("is-open")) {
         closeNav(nav, backdrop, panel);
       } else {
@@ -153,12 +168,16 @@
     window.addEventListener(
       "resize",
       () => {
-        placePanelForViewport(nav, left, panel);
-        placeSearchForViewport(nav, right, searchWrap);
+        syncLayout();
         if (isDesktopNav()) closeNav(nav, backdrop, panel);
       },
       { passive: true }
     );
+
+    // Account UI mounts async — re-assert search/account order after it paints.
+    window.setTimeout(syncLayout, 0);
+    window.setTimeout(syncLayout, 250);
+    window.setTimeout(syncLayout, 1000);
   }
 
   function boot() {
