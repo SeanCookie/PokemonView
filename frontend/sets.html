@@ -2475,10 +2475,23 @@
       const content = document.getElementById("content");
       if (!content) return;
       const allCards = getSetCards(selectedSet, setConfig);
-      const cardByNo = new Map(allCards.map((card) => [String(card.cardNo), card]));
+      const cardByNo = new Map();
+      for (const card of allCards) {
+        const raw = String(card.cardNo || "");
+        if (raw) cardByNo.set(raw, card);
+        for (const key of cardNumberLookupKeys(card.cardNo)) {
+          if (key && !cardByNo.has(key)) cardByNo.set(key, card);
+        }
+      }
       content.querySelectorAll(".card-tile-shell[data-card-number]").forEach((shell) => {
         const cardNo = shell.getAttribute("data-card-number");
-        const card = cardByNo.get(String(cardNo || ""));
+        let card = cardByNo.get(String(cardNo || ""));
+        if (!card) {
+          for (const key of cardNumberLookupKeys(cardNo)) {
+            card = cardByNo.get(key);
+            if (card) break;
+          }
+        }
         const priceEl = shell.querySelector(".card-price-inline");
         if (!priceEl || !card) return;
         priceEl.textContent = formatCardPriceInline(card) || "—";
@@ -2835,12 +2848,16 @@
         parsed.searchParams.delete("Language");
         parsed.searchParams.delete("Printing");
         parsed.searchParams.delete("Condition");
+        parsed.searchParams.delete("ListingType");
+        parsed.searchParams.delete("listingType");
+        parsed.searchParams.delete("Quantity");
+        parsed.searchParams.delete("inStock");
         const out = parsed.toString();
         return out.endsWith("?") ? out.slice(0, -1) : out;
       } catch {
         return String(url || "")
           .trim()
-          .replace(/([?&])(Language|Printing|Condition)=[^&]*/gi, "")
+          .replace(/([?&])(Language|Printing|Condition|ListingType|listingType|Quantity|inStock)=[^&]*/gi, "")
           .replace(/[?&]$/, "");
       }
     }
@@ -2906,6 +2923,10 @@
         parsed.searchParams.delete("Language");
         parsed.searchParams.delete("Printing");
         parsed.searchParams.delete("Condition");
+        parsed.searchParams.delete("ListingType");
+        parsed.searchParams.delete("listingType");
+        parsed.searchParams.delete("Quantity");
+        parsed.searchParams.delete("inStock");
         if (printing) {
           parsed.searchParams.set("Language", "English");
           parsed.searchParams.set("Printing", printing);
@@ -2995,6 +3016,11 @@
       if (!finish) return url;
       try {
         const parsed = new URL(url);
+        parsed.searchParams.delete("Condition");
+        parsed.searchParams.delete("ListingType");
+        parsed.searchParams.delete("listingType");
+        parsed.searchParams.delete("Quantity");
+        parsed.searchParams.delete("inStock");
         parsed.searchParams.set("Language", "English");
         parsed.searchParams.set("Printing", finish);
         return parsed.toString();
@@ -3002,6 +3028,53 @@
         const joiner = url.includes("?") ? "&" : "?";
         return `${url}${joiner}Language=English&Printing=${encodeURIComponent(finish)}`;
       }
+    }
+
+    /**
+     * User-facing TCGplayer product link.
+     * Sets Condition from our priced listing (e.g. Near Mint) and ListingType=All so
+     * TCGPlayer does not keep its default "Listings Without Photos" filter selected.
+     * Lookup/cache URLs should keep using buildTcgplayerUrlWithPrinting (no Condition).
+     */
+    function buildTcgplayerOutboundUrl(baseUrl, options = {}) {
+      const printing = String(options.printing || extractTcgPrintingFromUrl(baseUrl) || "").trim();
+      const condition = String(options.condition || "").trim();
+      const canonical = canonicalTcgplayerProductUrl(null, null, baseUrl) || String(baseUrl || "").trim();
+      if (!canonical) return "";
+      try {
+        const parsed = new URL(canonical);
+        parsed.searchParams.delete("ListingType");
+        parsed.searchParams.delete("listingType");
+        parsed.searchParams.delete("Quantity");
+        parsed.searchParams.delete("inStock");
+        parsed.searchParams.set("Language", "English");
+        if (printing) parsed.searchParams.set("Printing", printing);
+        else parsed.searchParams.delete("Printing");
+        if (condition) parsed.searchParams.set("Condition", condition);
+        else parsed.searchParams.delete("Condition");
+        // "All" clears session/default ListingWithoutPhotos (standard) on TCGPlayer product pages.
+        parsed.searchParams.set("ListingType", "All");
+        return parsed.toString();
+      } catch {
+        const params = [
+          "Language=English",
+          printing ? `Printing=${encodeURIComponent(printing)}` : "",
+          condition ? `Condition=${encodeURIComponent(condition)}` : "",
+          "ListingType=All"
+        ].filter(Boolean);
+        const bare = String(canonical).split("?")[0];
+        return `${bare}?${params.join("&")}`;
+      }
+    }
+
+    function resolveTcgOutboundCondition(row, pricingInfo = null, card = null) {
+      const lookupUrl = row?.priceLookupUrl || row?.tcgplayerUrl || "";
+      const node = getTcgLinkPriceForUrl(lookupUrl) || getTcgLinkPriceNodeForCard(card, pricingInfo);
+      const fromNode = getTcgListingConditionBase(node);
+      if (fromNode) return fromNode;
+      const fromRow = getTcgListingConditionBase({ listingCondition: row?.listingCondition });
+      if (fromRow) return fromRow;
+      return "Near Mint";
     }
 
     function isTcgPrintFinishLabel(label) {
@@ -3370,6 +3443,11 @@
       const pricingInfo = options.pricingInfo || null;
       const card = options.card || null;
       const priceText = resolveTcgRowListingPriceText(row, pricingInfo);
+      const condition = resolveTcgOutboundCondition(row, pricingInfo, card);
+      const outboundUrl = buildTcgplayerOutboundUrl(row.tcgplayerUrl || row.priceLookupUrl || "", {
+        printing: row.printing || extractTcgPrintingFromUrl(row.tcgplayerUrl || row.priceLookupUrl || ""),
+        condition
+      });
       const ebayUrl = card ? buildEbaySearchUrlForCard(card, { row }) : "";
       const ebayLinkHtml = ebayUrl
         ? `<a class="card-price-link card-price-link-ebay" href="${escapeHtml(ebayUrl)}" target="_blank" rel="noopener noreferrer" aria-label="Search eBay"><span class="ebay-brand"><span class="ebay-e">e</span><span class="ebay-b">B</span><span class="ebay-a">a</span><span class="ebay-y">y</span></span><span class="ebay-arrow">↗</span></a>`
@@ -3379,7 +3457,7 @@
           <span class="card-price-print-sep">:</span>
           <span class="card-price-value">${escapeHtml(priceText)}</span>
           <span class="card-price-links">
-            <a class="card-price-link" href="${escapeHtml(row.tcgplayerUrl)}" target="_blank" rel="noopener noreferrer">TCGplayer ↗</a>
+            <a class="card-price-link" href="${escapeHtml(outboundUrl || row.tcgplayerUrl)}" target="_blank" rel="noopener noreferrer">TCGplayer ↗</a>
             ${ebayLinkHtml}
           </span>
         </div>`;
@@ -4664,14 +4742,18 @@
           if (card?.cardNo) params.set("cardNo", String(card.cardNo || "").trim());
           if (card?.name) params.set("cardName", String(card.name || "").trim());
           const setEntry = getSetByCode(card?.setCode);
-          const setName = String(setEntry?.name || "").trim();
+          const setName = String(setEntry?.name || card?.setName || "").trim();
           if (setName) params.set("setName", setName);
           const response = await fetch(`/api/tcgplayer/price-from-link?${params.toString()}`);
           return response.ok || response.status === 202 ? await response.json() : null;
         };
 
         let payload = await fetchPrice(true);
-        if (!payload?.ok && card?.setCode && card?.cardNo) {
+        const cacheLogic = Number(payload?.logicVersion);
+        const cacheIsStaleLogic =
+          Number.isFinite(cacheLogic) && cacheLogic > 0 && cacheLogic !== TCG_LINK_PRICE_LOGIC_VERSION;
+        // Live-fetch when cache miss/pending, or when server cache is behind current price logic.
+        if (!payload?.ok || cacheIsStaleLogic) {
           payload = await fetchPrice(false);
         }
 
@@ -7588,7 +7670,11 @@
       const vaultFilteredCards = applySetShinyVaultFilter(rarityFilteredCards, selectedSet.code);
       const visibleCards = filterCardsBySetQuery(vaultFilteredCards, state.setCardQuery);
       const setCodeKey = String(selectedSet.code || "").toUpperCase();
-      if (lastPrimedSetCode !== setCodeKey) {
+      const pricingMap = state.cardPricingBySetCode[setCodeKey];
+      const hasPricing = Boolean(pricingMap && Object.keys(pricingMap).length);
+      const linkHydrated = Boolean(state.setLinkPricesHydratedBySetCode[setCodeKey]);
+      // Re-prime when pricing/hydration never finished (price updates can race ahead of first paint).
+      if (lastPrimedSetCode !== setCodeKey || !hasPricing || !linkHydrated) {
         lastPrimedSetCode = setCodeKey;
         primeActiveSetPrices(selectedSet.code, selectedSet.name);
       }
@@ -7819,6 +7905,13 @@
           renderAll();
         });
       });
+
+      // Always sync prices after paint. Async pricing can finish mid-render and get wiped by
+      // innerHTML, or finish before tiles exist — without this pass, tiles stay on "—".
+      updateSetDetailInlinePrices();
+      if (hasPricing && linkHydrated && state.language === "english") {
+        void warmMissingInlinePricesForActiveSet(selectedSet.code, selectedSet.name, setPricesLoadToken);
+      }
       } finally {
         setDetailRenderLock = false;
         updateSetsCardSky();
