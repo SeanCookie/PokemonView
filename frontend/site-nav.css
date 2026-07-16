@@ -121,7 +121,7 @@ html.nav-drawer-open body {
 /*
  * Phone / tablet header: force one row
  * [ logo + ☰ ] .................... [ Sign in ]
- * Optional search row underneath.
+ * Search on a full-width row underneath.
  */
 @media (max-width: 960px) {
   .top-nav {
@@ -143,7 +143,6 @@ html.nav-drawer-open body {
     z-index: 10050 !important;
   }
 
-
   .nav-left {
     grid-area: left !important;
     display: flex !important;
@@ -157,19 +156,22 @@ html.nav-drawer-open body {
     margin: 0 !important;
   }
 
+  /*
+   * Flatten nav-right so search + account become direct grid children of .top-nav.
+   * That keeps Sign In on the logo row and forces search onto the row below —
+   * even if JS has not moved the search node yet.
+   */
   .nav-right {
+    display: contents !important;
+  }
+
+  .nav-right > [data-account-slot] {
     grid-area: right !important;
     display: flex !important;
     align-items: center !important;
     justify-content: flex-end !important;
     justify-self: end !important;
-    flex-wrap: nowrap !important;
-    gap: 8px !important;
-    width: auto !important;
-    max-width: none !important;
-    flex: unset !important;
     margin: 0 !important;
-    order: unset !important;
   }
 
   .nav-menu-btn {
@@ -203,7 +205,6 @@ html.nav-drawer-open body {
     touch-action: manipulation;
   }
 
-
   .top-nav.nav-open .nav-links .nav-link,
   .nav-links.is-open .nav-link {
     display: block;
@@ -222,20 +223,26 @@ html.nav-drawer-open body {
     background: rgba(255, 255, 255, 0.06);
   }
 
-  .top-nav > .nav-search-wrap {
+  .top-nav > .nav-search-wrap,
+  .nav-right > .nav-search-wrap {
     grid-area: search !important;
     width: 100% !important;
     max-width: none !important;
+    min-width: 0 !important;
+    display: flex !important;
+    align-items: center !important;
   }
 
   .top-nav > .nav-search-wrap .search,
-  .top-nav > .nav-search-wrap > input {
+  .top-nav > .nav-search-wrap > input,
+  .nav-right > .nav-search-wrap .search,
+  .nav-right > .nav-search-wrap > input {
     width: 100% !important;
     max-width: none !important;
   }
 
-  .nav-right .acct-button,
-  .nav-right [data-account-slot] .acct-button {
+  .nav-right [data-account-slot] .acct-button,
+  .nav-right .acct-button {
     height: 40px !important;
     min-height: 40px !important;
     white-space: nowrap !important;
