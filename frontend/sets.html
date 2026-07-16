@@ -3026,38 +3026,30 @@
 
     /**
      * User-facing TCGplayer product link.
-     * Sets Condition from our priced listing (e.g. Near Mint).
-     * ListingType must be custom|standard (both): TCGPlayer only accepts those values, and
-     * having both selected is how their UI marks "Show all listing types". ListingType=All
-     * is ignored, so the session default "Listings Without Photos" (standard) stays on.
+     * Matches TCGPlayer share format: Language + Condition + page=1 only.
      * Lookup/cache URLs should keep using buildTcgplayerUrlWithPrinting (no Condition).
      */
     function buildTcgplayerOutboundUrl(baseUrl, options = {}) {
-      const printing = String(options.printing || extractTcgPrintingFromUrl(baseUrl) || "").trim();
       const condition = String(options.condition || "").trim();
       const canonical = canonicalTcgplayerProductUrl(null, null, baseUrl) || String(baseUrl || "").trim();
       if (!canonical) return "";
-      // Keep | unencoded — TCGPlayer's own router writes ListingType=custom|standard that way.
-      const listingTypeAll = "custom|standard";
       try {
         const parsed = new URL(canonical);
+        parsed.searchParams.delete("Printing");
         parsed.searchParams.delete("ListingType");
         parsed.searchParams.delete("listingType");
         parsed.searchParams.delete("Quantity");
         parsed.searchParams.delete("inStock");
         parsed.searchParams.set("Language", "English");
-        if (printing) parsed.searchParams.set("Printing", printing);
-        else parsed.searchParams.delete("Printing");
         if (condition) parsed.searchParams.set("Condition", condition);
         else parsed.searchParams.delete("Condition");
-        parsed.searchParams.set("ListingType", listingTypeAll);
-        return parsed.toString().replace(/ListingType=custom%7Cstandard/gi, `ListingType=${listingTypeAll}`);
+        parsed.searchParams.set("page", "1");
+        return parsed.toString();
       } catch {
         const params = [
           "Language=English",
-          printing ? `Printing=${encodeURIComponent(printing)}` : "",
           condition ? `Condition=${encodeURIComponent(condition)}` : "",
-          `ListingType=${listingTypeAll}`
+          "page=1"
         ].filter(Boolean);
         const bare = String(canonical).split("?")[0];
         return `${bare}?${params.join("&")}`;
@@ -3442,7 +3434,6 @@
       const priceText = resolveTcgRowListingPriceText(row, pricingInfo);
       const condition = resolveTcgOutboundCondition(row, pricingInfo, card);
       const outboundUrl = buildTcgplayerOutboundUrl(row.tcgplayerUrl || row.priceLookupUrl || "", {
-        printing: row.printing || extractTcgPrintingFromUrl(row.tcgplayerUrl || row.priceLookupUrl || ""),
         condition
       });
       const ebayUrl = card ? buildEbaySearchUrlForCard(card, { row }) : "";
