@@ -38,6 +38,22 @@
     }
   }
 
+  function placeSearchForViewport(nav, right, searchWrap) {
+    if (!searchWrap) return;
+    if (isDesktopNav()) {
+      // Desktop: search sits left of Account inside nav-right.
+      if (!right) return;
+      const account = right.querySelector("[data-account-slot]");
+      if (searchWrap.parentElement !== right || (account && searchWrap.nextElementSibling !== account)) {
+        if (account) right.insertBefore(searchWrap, account);
+        else right.appendChild(searchWrap);
+      }
+    } else if (searchWrap.parentElement !== nav) {
+      // Mobile: search is its own grid row under logo / menu / account.
+      nav.appendChild(searchWrap);
+    }
+  }
+
   function enhanceNav(nav) {
     if (!nav || nav.dataset.mobileNav === "1") return;
     nav.dataset.mobileNav = "1";
@@ -73,15 +89,12 @@
 
     placePanelForViewport(nav, left, panel);
 
-    // Keep Account on the top row; move search under logo/menu/account on narrow layouts.
     const right = nav.querySelector(".nav-right");
     const searchWrap =
       (right && right.querySelector(".nav-search-wrap")) ||
       nav.querySelector(":scope > .nav-search-wrap") ||
       null;
-    if (searchWrap && searchWrap.parentElement !== nav) {
-      nav.appendChild(searchWrap);
-    }
+    placeSearchForViewport(nav, right, searchWrap);
 
     let backdrop = document.querySelector(".nav-drawer-backdrop");
     if (!backdrop) {
@@ -97,6 +110,7 @@
       event.preventDefault();
       event.stopPropagation();
       placePanelForViewport(nav, left, panel);
+      placeSearchForViewport(nav, right, searchWrap);
       if (nav.classList.contains("nav-open") || panel.classList.contains("is-open")) {
         closeNav(nav, backdrop, panel);
       } else {
@@ -110,7 +124,6 @@
       closeNav(nav, backdrop, panel);
     });
 
-    // Navigate explicitly so iOS Safari never "eats" the tap under overlays.
     panel.addEventListener(
       "click",
       (event) => {
@@ -121,7 +134,6 @@
           closeNav(nav, backdrop, panel);
           return;
         }
-        // Preserve new-tab / modified clicks.
         if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
           window.setTimeout(() => closeNav(nav, backdrop, panel), 0);
           return;
@@ -142,6 +154,7 @@
       "resize",
       () => {
         placePanelForViewport(nav, left, panel);
+        placeSearchForViewport(nav, right, searchWrap);
         if (isDesktopNav()) closeNav(nav, backdrop, panel);
       },
       { passive: true }

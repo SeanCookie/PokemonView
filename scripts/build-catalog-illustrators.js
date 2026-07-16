@@ -3,7 +3,8 @@
  * Writes:
  *   backend/data/catalog-illustrators.json       (artists + bySet)
  *   frontend/catalog-illustrators.json           (same)
- *   frontend/catalog-illustrator-names.json      (artists only — tiny, instant dropdown)
+ *   frontend/catalog-illustrator-names.json      (artists only — tiny JSON)
+ *   frontend/catalog-illustrator-names.js        (embedded window global for instant dropdown)
  */
 const fs = require("fs");
 const path = require("path");
@@ -13,6 +14,7 @@ const DETAILS_FILE = path.join(ROOT, "backend", "data", "set-card-details.json")
 const OUT_BACKEND = path.join(ROOT, "backend", "data", "catalog-illustrators.json");
 const OUT_FRONTEND = path.join(ROOT, "frontend", "catalog-illustrators.json");
 const OUT_NAMES = path.join(ROOT, "frontend", "catalog-illustrator-names.json");
+const OUT_NAMES_JS = path.join(ROOT, "frontend", "catalog-illustrator-names.js");
 
 function normalizeIllustratorName(raw) {
   let s = String(raw || "").trim();
@@ -77,12 +79,18 @@ function main() {
   fs.writeFileSync(OUT_BACKEND, `${JSON.stringify(payload)}\n`, "utf8");
   fs.writeFileSync(OUT_FRONTEND, `${JSON.stringify(payload)}\n`, "utf8");
   fs.writeFileSync(OUT_NAMES, `${JSON.stringify(namesOnly)}\n`, "utf8");
+  fs.writeFileSync(
+    OUT_NAMES_JS,
+    `window.__POKEMONVIEW_CATALOG_ARTISTS__=${JSON.stringify(artistList)};\n`,
+    "utf8"
+  );
   console.log(
     `Wrote ${artistList.length} artists across ${payload.setCount} sets (${cardCount} cards)`
   );
   console.log(`  ${path.relative(ROOT, OUT_BACKEND)}`);
   console.log(`  ${path.relative(ROOT, OUT_FRONTEND)}`);
   console.log(`  ${path.relative(ROOT, OUT_NAMES)}`);
+  console.log(`  ${path.relative(ROOT, OUT_NAMES_JS)}`);
 }
 
 main();

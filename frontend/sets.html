@@ -11,7 +11,8 @@
   <link rel="preload" href="/catalog-illustrators.json" as="fetch" crossorigin="anonymous" />
   <link rel="stylesheet" href="/card-sky.css?v=8" />
   <link rel="stylesheet" href="/brand-logo.css" />
-  <link rel="stylesheet" href="/site-nav.css?v=6" />
+  <link rel="stylesheet" href="/site-nav.css?v=7" />
+  <script src="/catalog-illustrator-names.js?v=1"></script>
   <script src="/card-sky.js?v=8" defer></script>
   <style>
     :root {
@@ -4299,6 +4300,15 @@
       return true;
     }
 
+    function hydrateCatalogIllustratorsFromEmbedded() {
+      const artists = window.__POKEMONVIEW_CATALOG_ARTISTS__;
+      if (!Array.isArray(artists) || !artists.length) return false;
+      return applyIllustratorsIndexPayload(
+        { ok: true, artists: artists.slice() },
+        { persist: true }
+      );
+    }
+
     function hydrateCatalogIllustratorsFromCache() {
       const cached = readCachedCatalogIllustrators();
       if (!cached) return false;
@@ -4306,17 +4316,12 @@
     }
 
     async function loadCatalogIllustratorsIndex() {
-      // Static prebuilt files load instantly (no scanning set-card-details).
-      // Names-only first so the dropdown fills ASAP; full bySet map follows.
-      const tryUrls = [
-        "/catalog-illustrator-names.json",
-        "/catalog-illustrators.json",
-        "/api/sets/illustrators"
-      ];
+      // Names come from embedded script; still load bySet for filtering.
+      const tryUrls = ["/catalog-illustrators.json", "/api/sets/illustrators"];
       let applied = false;
       for (const url of tryUrls) {
         try {
-          const response = await fetch(url, { cache: "force-cache" });
+          const response = await fetch(url);
           if (!response.ok) continue;
           const payload = await response.json();
           if (!payload || payload.ok === false) continue;
@@ -8238,7 +8243,7 @@
     }
 
     (async function bootstrapSetsPage() {
-      hydrateCatalogIllustratorsFromCache();
+      hydrateCatalogIllustratorsFromEmbedded() || hydrateCatalogIllustratorsFromCache();
       renderAll();
       try {
         await Promise.all([
@@ -8260,7 +8265,7 @@
       }
     })();
   </script>
-  <script src="/site-nav.js?v=6" defer></script>
+  <script src="/site-nav.js?v=7" defer></script>
   <script src="/account-ui.js?v=7"></script>
 </body>
 </html>
