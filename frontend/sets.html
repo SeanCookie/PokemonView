@@ -1124,11 +1124,11 @@
     }
 
     .mph-stat-card-value.up {
-      color: #36d18d;
+      color: #089981;
     }
 
     .mph-stat-card-value.down {
-      color: #ff8f4d;
+      color: #f23645;
     }
 
     .mph-stat-card-value.flat {
@@ -1146,34 +1146,42 @@
     .mph-filters {
       display: flex;
       flex-wrap: wrap;
-      gap: 6px;
+      align-items: center;
+      gap: 1px;
       justify-content: flex-end;
     }
 
     .mph-filter {
-      border: 1px solid var(--filter-border);
-      background: var(--filter-tab-bg);
-      color: var(--filter-tab-text);
-      border-radius: 999px;
-      padding: 5px 12px;
+      border: none;
+      background: transparent;
+      color: #787b86;
+      border-radius: 2px;
+      padding: 5px 9px;
       font-size: 11px;
-      font-weight: 600;
+      font-weight: 500;
+      font-family: inherit;
+      line-height: 1.2;
       cursor: pointer;
     }
 
+    .mph-filter:hover {
+      color: #d1d4dc;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
     .mph-filter.active {
-      background: #f5c518;
-      border-color: #f5c518;
-      color: #1a1400;
+      color: #d1d4dc;
+      background: rgba(255, 255, 255, 0.1);
     }
 
     .mph-chart-wrap {
       position: relative;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      background: rgba(6, 10, 18, 0.75);
-      padding: 10px;
-      min-height: 240px;
+      border: 1px solid #2a2e39;
+      border-radius: 0;
+      background: #131722;
+      padding: 0;
+      min-height: 280px;
+      overflow: hidden;
     }
 
     .mph-chart-wrap.is-loading .mph-chart {
@@ -1192,6 +1200,8 @@
       z-index: 1;
       pointer-events: none;
       text-align: center;
+      color: #787b86;
+      font-size: 12px;
     }
 
     .mph-chart-legend {
@@ -1202,47 +1212,61 @@
       flex-wrap: wrap;
       gap: 10px 14px;
       font-size: 11px;
-      color: var(--muted);
+      color: #787b86;
       justify-content: flex-end;
       z-index: 2;
     }
 
     .mph-chart {
       width: 100%;
-      height: 210px;
+      height: 280px;
       display: block;
       cursor: crosshair;
+      background: #131722;
     }
 
     .mph-chart-tooltip {
       position: absolute;
       pointer-events: none;
       z-index: 4;
-      padding: 6px 10px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: rgba(12, 20, 32, 0.96);
+      padding: 8px 10px;
+      border-radius: 4px;
+      border: 1px solid #2a2e39;
+      background: rgba(19, 23, 34, 0.96);
       font-size: 11px;
       line-height: 1.35;
-      color: var(--text);
-      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+      color: #d1d4dc;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
       white-space: nowrap;
       transform: translate(12px, -12px);
       display: none;
+      font-family: Inter, "Segoe UI", Arial, sans-serif;
     }
 
     .mph-chart-crosshair {
       position: absolute;
-      top: 10px;
-      bottom: 8px;
-      width: 1px;
-      background: rgba(147, 168, 199, 0.45);
+      top: 0;
+      bottom: 0;
+      width: 0;
+      border-left: 1px dashed rgba(209, 212, 220, 0.45);
       pointer-events: none;
       z-index: 2;
       display: none;
     }
 
-    .mph-chart-crosshair.visible {
+    .mph-chart-crosshair-h {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 0;
+      border-top: 1px dashed rgba(209, 212, 220, 0.45);
+      pointer-events: none;
+      z-index: 2;
+      display: none;
+    }
+
+    .mph-chart-crosshair.visible,
+    .mph-chart-crosshair-h.visible {
       display: block;
     }
 
@@ -1251,6 +1275,12 @@
       align-items: center;
       justify-content: space-between;
       gap: 12px;
+    }
+
+    .mph-chart-tooltip .mph-tip-date {
+      color: #787b86;
+      margin-bottom: 4px;
+      font-variant-numeric: tabular-nums;
     }
 
     .mph-chart-tooltip .mph-tip-row + .mph-tip-row {
@@ -1265,10 +1295,25 @@
     }
 
     .mph-chart-tooltip .mph-tip-swatch {
-      width: 8px;
-      height: 8px;
+      width: 14px;
+      height: 14px;
       border-radius: 2px;
       flex-shrink: 0;
+      object-fit: contain;
+      display: inline-block;
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+    }
+
+    .mph-chart-tooltip .mph-tip-swatch.is-symbol {
+      background-color: transparent !important;
+      border-radius: 0;
+    }
+
+    .mph-chart-tooltip .mph-tip-swatch.is-psa {
+      background: #9c27b0 !important;
+      border-radius: 2px;
     }
 
     .mph-chart-tooltip.visible {
@@ -1368,10 +1413,25 @@
     }
 
     .mph-dot {
-      width: 9px;
-      height: 9px;
+      width: 16px;
+      height: 16px;
       border-radius: 2px;
       flex-shrink: 0;
+      object-fit: contain;
+      display: inline-block;
+      vertical-align: middle;
+    }
+
+    .mph-dot.is-symbol {
+      background: transparent !important;
+      border-radius: 0;
+    }
+
+    .mph-dot.is-psa {
+      background: #9c27b0 !important;
+      border-radius: 2px;
+      width: 12px;
+      height: 12px;
     }
 
     .mph-variant-rows {
@@ -1745,13 +1805,7 @@
         grid-template-columns: 1fr;
       }
 
-      .nav-search-wrap {
-        flex: 1;
-        min-width: 0;
-        width: 100%;
-      }
-
-      .search, .filter-search, .global-artist-select {
+      .filter-search, .global-artist-select {
         width: 100%;
         max-width: none;
       }
@@ -1809,7 +1863,7 @@
       }
     }
   </style>
-  <link rel="stylesheet" href="/site-nav.css?v=10" />
+  <link rel="stylesheet" href="/site-nav.css?v=11" />
   <script>
     (function () {
       try {
@@ -1836,10 +1890,10 @@
       <a href="/scan-your-cards.html" class="nav-link">Scan Your Cards</a>
       <a href="/restock-tracker.html" class="nav-link">Restock Tracker</a>
     </div>
-    <div class="nav-search-wrap">
-      <input id="topSearch" class="search" placeholder="Search cards..." />
-    </div>
     <div class="nav-right">
+      <div class="nav-search-wrap">
+        <input id="topSearch" class="search" placeholder="Search cards..." />
+      </div>
       <div data-account-slot></div>
     </div>
   </nav>
@@ -5253,28 +5307,89 @@
       return option ? option.label : "All Time";
     }
 
+    /* Align series colors with Poke View / TradingView palette */
     const MARKET_HISTORY_COLOR_BY_LABEL = {
-      Normal: "#f5c518",
-      Holofoil: "#b88cff",
-      "Reverse Holofoil": "#c0c8d4",
-      "Holo Rare": "#b88cff",
-      Common: "#f5c518",
-      Uncommon: "#4a9eff",
-      Rare: "#b88cff",
-      "Secret Rare": "#ff7f6a",
-      "PSA 10": "#b88cff"
+      Normal: "#089981",
+      Holofoil: "#2962ff",
+      "Reverse Holofoil": "#d1d4dc",
+      "Holo Rare": "#2962ff",
+      Common: "#089981",
+      Uncommon: "#42a5f5",
+      Rare: "#2962ff",
+      "Secret Rare": "#f23645",
+      "PSA 10": "#9c27b0"
     };
 
-    const MARKET_HISTORY_COLOR_FALLBACK = ["#f5c518", "#4a9eff", "#b88cff", "#36d18d", "#ff7f6a"];
+    const MARKET_HISTORY_COLOR_FALLBACK = ["#089981", "#2962ff", "#42a5f5", "#f23645", "#ff9800"];
+    const MARKET_HISTORY_PSA10_COLOR = "#9c27b0";
+
+    // Rarity glyphs from https://pokesymbols.com/tcg/rarities
+    const MARKET_HISTORY_RARITY_SYMBOL_BY_LABEL = {
+      Common: "common.png",
+      Uncommon: "uncommon.png",
+      Rare: "rare.png",
+      "Holo Rare": "rare.png",
+      "Double Rare": "double-rare.png",
+      "ACE SPEC Rare": "ace-spec-rare.png",
+      "ACE SPEC": "ace-spec-rare.png",
+      "Shiny Rare": "shiny-rare.png",
+      "Shiny Ultra Rare": "shiny-ultra-rare.png",
+      "Ultra Rare": "ultra-rare.png",
+      "Mega Attack Rare": "mega-attack-rare.png",
+      "Illustration Rare": "illustration-rare.png",
+      "Special Illustration Rare": "special-illustration-rare.png",
+      "Hyper Rare": "hyper-rare.png",
+      "Black White Rare": "black-white-rare.png",
+      "Black & White Rare": "black-white-rare.png",
+      "Mega Hyper Rare": "mega-hyper-rare.png",
+      // Finish stand-ins when label is a TCGPlayer printing, not a rarity
+      Normal: "common.png",
+      Holofoil: "rare.png",
+      "Reverse Holofoil": "uncommon.png"
+    };
 
     function getMarketHistoryCacheKey(card) {
       return `${String(card.setCode || "").toUpperCase()}:${String(card.cardNo || "").trim()}`;
     }
 
+    function isMarketHistoryPsa10Label(label) {
+      const key = String(label || "").trim();
+      return key === "PSA 10" || /^psa\s*10$/i.test(key);
+    }
+
     function marketHistoryColorForLabel(label, index = 0) {
       const key = String(label || "").trim();
+      if (isMarketHistoryPsa10Label(key)) return MARKET_HISTORY_PSA10_COLOR;
       if (MARKET_HISTORY_COLOR_BY_LABEL[key]) return MARKET_HISTORY_COLOR_BY_LABEL[key];
       return MARKET_HISTORY_COLOR_FALLBACK[index % MARKET_HISTORY_COLOR_FALLBACK.length];
+    }
+
+    function marketHistoryRaritySymbolUrl(label) {
+      if (isMarketHistoryPsa10Label(label)) return "";
+      const key = String(label || "").trim();
+      let file = MARKET_HISTORY_RARITY_SYMBOL_BY_LABEL[key];
+      if (!file) {
+        // Fuzzy match e.g. "Double Rare ex" / casing variants
+        const lower = key.toLowerCase();
+        const entry = Object.entries(MARKET_HISTORY_RARITY_SYMBOL_BY_LABEL).find(([name]) => {
+          const n = name.toLowerCase();
+          return lower === n || lower.includes(n) || n.includes(lower);
+        });
+        file = entry ? entry[1] : "";
+      }
+      if (!file) return "";
+      return `/pokesymbols/rarities/${file}`;
+    }
+
+    function marketHistoryVariantBadgeHtml(label, color, className = "mph-dot") {
+      if (isMarketHistoryPsa10Label(label)) {
+        return `<span class="${className} is-psa" style="background:${MARKET_HISTORY_PSA10_COLOR};" title="PSA 10" aria-hidden="true"></span>`;
+      }
+      const symbolUrl = marketHistoryRaritySymbolUrl(label);
+      if (symbolUrl) {
+        return `<img class="${className} is-symbol" src="${escapeHtml(symbolUrl)}" alt="" loading="lazy" decoding="async" />`;
+      }
+      return `<span class="${className}" style="background:${escapeHtml(color)};" aria-hidden="true"></span>`;
     }
 
     function marketHistoryVariantMatchesTcgPrintings(variantKey, tcgPrintings) {
@@ -5577,10 +5692,12 @@
       const rect = canvas.getBoundingClientRect();
       const x = clientX - rect.left;
       const y = clientY - rect.top;
-      const { padL, padT, plotW, plotH, minTs, maxTs, list } = chart;
+      const { padL, padT, plotW, plotH, minTs, maxTs, chartMin, chartMax, list } = chart;
       if (x < padL || x > padL + plotW || y < padT || y > padT + plotH) return null;
 
       const ts = minTs + ((x - padL) / plotW) * (maxTs - minTs);
+      const priceAtY =
+        chartMax - ((Math.min(padT + plotH, Math.max(padT, y)) - padT) / plotH) * (chartMax - chartMin);
       const entries = [];
       list.forEach((row, index) => {
         const sample = interpolateMarketHistoryPriceAtTs(row.points, ts);
@@ -5594,9 +5711,22 @@
       });
       if (!entries.length) return null;
 
+      // Snap horizontal crosshair to nearest series price at this time
+      let snapY = y;
+      let bestDist = Infinity;
+      entries.forEach((entry) => {
+        const ey = padT + plotH - ((entry.price - chartMin) / (chartMax - chartMin)) * plotH;
+        const dist = Math.abs(ey - y);
+        if (dist < bestDist) {
+          bestDist = dist;
+          snapY = ey;
+        }
+      });
+
       return {
         x,
-        y,
+        y: snapY,
+        priceAtY,
         ts,
         date: entries[0].date,
         entries
@@ -5607,10 +5737,10 @@
       const rows = hover.entries
         .map((entry) => {
           const priceText = formatUsd(entry.price) || `$${Number(entry.price).toFixed(2)}`;
-          return `<div class="mph-tip-row"><span class="mph-tip-series"><span class="mph-tip-swatch" style="background:${entry.color};"></span>${escapeHtml(entry.label)}</span><span class="mph-tip-values"><span class="mph-tip-price">${escapeHtml(priceText)}</span></span></div>`;
+          return `<div class="mph-tip-row"><span class="mph-tip-series">${marketHistoryVariantBadgeHtml(entry.label, entry.color, "mph-tip-swatch")}${escapeHtml(entry.label)}</span><span class="mph-tip-values"><span class="mph-tip-price">${escapeHtml(priceText)}</span></span></div>`;
         })
         .join("");
-      return `<div>${escapeHtml(hover.date)}</div>${rows}`;
+      return `<div class="mph-tip-date">${escapeHtml(hover.date)}</div>${rows}`;
     }
 
     async function ensureMarketHistoryLoaded(card) {
@@ -5676,29 +5806,39 @@
       const list = Array.isArray(series) ? series.filter((s) => Array.isArray(s.points) && s.points.length) : [];
       const rect = canvas.getBoundingClientRect();
       const cssW = Math.max(280, Math.floor(rect.width || canvas.clientWidth || 280));
-      const cssH = Math.max(160, Math.floor(rect.height || 210));
+      const cssH = Math.max(200, Math.floor(rect.height || 280));
       const dpr = window.devicePixelRatio || 1;
       canvas.width = Math.floor(cssW * dpr);
       canvas.height = Math.floor(cssH * dpr);
       const ctx = canvas.getContext("2d");
       if (!ctx) return null;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0, 0, cssW, cssH);
+
+      const bg = "#131722";
+      const grid = "rgba(42, 46, 57, 0.55)";
+      const axis = "#2a2e39";
+      const label = "#787b86";
+      const font = '11px Inter, "Segoe UI", Arial, sans-serif';
+
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, cssW, cssH);
 
       if (!list.length) {
-        ctx.fillStyle = "#93a8c7";
-        ctx.font = "12px Inter, Segoe UI, Arial, sans-serif";
+        ctx.fillStyle = label;
+        ctx.font = font;
+        ctx.textAlign = "left";
         ctx.fillText("No market history available for this range.", 14, cssH / 2);
         canvas._mphChartState = null;
         return null;
       }
 
-      const padL = 44;
-      const padR = 12;
-      const padT = 8;
-      const padB = 26;
-      const plotW = cssW - padL - padR;
-      const plotH = cssH - padT - padB;
+      // TradingView-style: plot left, price scale on the right
+      const padL = 8;
+      const padR = 64;
+      const padT = 10;
+      const padB = 24;
+      const plotW = Math.max(40, cssW - padL - padR);
+      const plotH = Math.max(40, cssH - padT - padB);
 
       let minTs = Infinity;
       let maxTs = -Infinity;
@@ -5719,37 +5859,80 @@
       if (!Number.isFinite(minPrice) || minPrice <= 0) minPrice = maxPrice;
       if (maxPrice <= minPrice) maxPrice = minPrice + 0.05;
       const pricePad = Math.max(0.02, (maxPrice - minPrice) * 0.08);
-      const chartMin = Math.max(0.01, minPrice - pricePad);
+      const chartMin = Math.max(0, minPrice - pricePad);
       const chartMax = maxPrice + pricePad;
 
       const xAt = (ts) => padL + ((ts - minTs) / (maxTs - minTs)) * plotW;
       const yAt = (price) => padT + plotH - ((price - chartMin) / (chartMax - chartMin)) * plotH;
 
-      ctx.strokeStyle = "rgba(147, 168, 199, 0.1)";
-      ctx.lineWidth = 1;
       const gridLines = 5;
+      ctx.strokeStyle = grid;
+      ctx.lineWidth = 1;
       for (let i = 0; i <= gridLines; i += 1) {
         const y = padT + (plotH / gridLines) * i;
         ctx.beginPath();
         ctx.moveTo(padL, y);
         ctx.lineTo(padL + plotW, y);
         ctx.stroke();
-        const price = chartMax - ((chartMax - chartMin) / gridLines) * i;
-        ctx.fillStyle = "#7d92af";
-        ctx.font = "10px Inter, Segoe UI, Arial, sans-serif";
-        ctx.textAlign = "right";
-        ctx.fillText(`$${price.toFixed(2)}`, padL - 6, y + 3);
       }
 
       const tickCount = 5;
+      for (let i = 0; i <= tickCount; i += 1) {
+        const x = padL + (plotW / tickCount) * i;
+        ctx.beginPath();
+        ctx.moveTo(x, padT);
+        ctx.lineTo(x, padT + plotH);
+        ctx.stroke();
+      }
+
+      // Axis borders
+      ctx.strokeStyle = axis;
+      ctx.beginPath();
+      ctx.moveTo(padL + plotW + 0.5, padT);
+      ctx.lineTo(padL + plotW + 0.5, padT + plotH);
+      ctx.moveTo(padL, padT + plotH + 0.5);
+      ctx.lineTo(padL + plotW, padT + plotH + 0.5);
+      ctx.stroke();
+
+      ctx.fillStyle = label;
+      ctx.font = font;
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      for (let i = 0; i <= gridLines; i += 1) {
+        const y = padT + (plotH / gridLines) * i;
+        const price = chartMax - ((chartMax - chartMin) / gridLines) * i;
+        const priceText =
+          price >= 100 ? `$${price.toFixed(0)}` : price >= 10 ? `$${price.toFixed(1)}` : `$${price.toFixed(2)}`;
+        ctx.fillText(priceText, padL + plotW + 8, y);
+      }
+
       ctx.textAlign = "center";
+      ctx.textBaseline = "alphabetic";
       for (let i = 0; i <= tickCount; i += 1) {
         const ts = minTs + ((maxTs - minTs) / tickCount) * i;
         const x = xAt(ts);
         const d = new Date(ts);
-        const label = `${d.getMonth() + 1}/${d.getDate()}`;
-        ctx.fillStyle = "#7d92af";
-        ctx.fillText(label, x, cssH - 6);
+        const labelText = `${d.getMonth() + 1}/${d.getDate()}`;
+        ctx.fillStyle = label;
+        ctx.fillText(labelText, x, cssH - 6);
+      }
+
+      // Soft fill under the first series (Poke View depth feel)
+      if (list[0] && list[0].points.length > 1) {
+        const fillColor = marketHistoryColorForLabel(list[0].label, 0);
+        const pts = list[0].points;
+        ctx.beginPath();
+        pts.forEach((point, pointIndex) => {
+          const x = xAt(point.ts);
+          const y = yAt(point.price);
+          if (pointIndex === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        });
+        ctx.lineTo(xAt(pts[pts.length - 1].ts), padT + plotH);
+        ctx.lineTo(xAt(pts[0].ts), padT + plotH);
+        ctx.closePath();
+        ctx.fillStyle = fillColor.length === 7 ? `${fillColor}22` : "rgba(8, 153, 129, 0.12)";
+        ctx.fill();
       }
 
       list.forEach((row, index) => {
@@ -5759,7 +5942,7 @@
           const p = points[0];
           const y = yAt(p.price);
           ctx.strokeStyle = color;
-          ctx.lineWidth = 2.5;
+          ctx.lineWidth = 2;
           ctx.lineJoin = "round";
           ctx.lineCap = "round";
           ctx.beginPath();
@@ -5769,7 +5952,7 @@
           return;
         }
         ctx.strokeStyle = color;
-        ctx.lineWidth = 2.5;
+        ctx.lineWidth = 2;
         ctx.lineJoin = "round";
         ctx.lineCap = "round";
         ctx.beginPath();
@@ -5780,6 +5963,15 @@
           else ctx.lineTo(x, y);
         });
         ctx.stroke();
+
+        // Last value marker (TradingView-style)
+        const last = points[points.length - 1];
+        const lx = xAt(last.ts);
+        const ly = yAt(last.price);
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(lx, ly, 3, 0, Math.PI * 2);
+        ctx.fill();
       });
 
       const chartState = {
@@ -5788,6 +5980,7 @@
         cssH,
         padL,
         padT,
+        padR,
         padB,
         plotW,
         plotH,
@@ -5841,7 +6034,7 @@
               const selected = isMarketHistorySeriesSelected(historyCacheKey, seriesKey, series);
               const selectTitle = `Add or remove ${row.label} on chart`;
               return `<div class="mph-variant-delta-row${selected ? " is-selected" : ""}" data-mph-series-id="${escapeHtml(seriesKey)}">
-                <button type="button" class="mph-variant-label mph-series-select${selected ? " is-selected" : ""}" data-mph-series-id="${escapeHtml(seriesKey)}" aria-pressed="${selected ? "true" : "false"}" title="${escapeHtml(selectTitle)}"><span class="mph-dot" style="background:${color};"></span>${escapeHtml(row.label)}</button>
+                <button type="button" class="mph-variant-label mph-series-select${selected ? " is-selected" : ""}" data-mph-series-id="${escapeHtml(seriesKey)}" aria-pressed="${selected ? "true" : "false"}" title="${escapeHtml(selectTitle)}">${marketHistoryVariantBadgeHtml(row.label, color)}${escapeHtml(row.label)}</button>
                 ${buildMarketHistoryStatCard("Price Change", rangeLabel, formatMarketDeltaValue(row.priceChange), priceDir)}
                 ${buildMarketHistoryStatCard("Percent Change", rangeLabel, formatMarketDeltaPercent(row.percentChange), pctDir)}
               </div>`;
@@ -5856,6 +6049,7 @@
         <div class="mph-chart-wrap${showLoading ? " is-loading" : ""}">
           <canvas id="marketPriceHistoryChart" class="mph-chart" aria-label="Market price history chart for ${escapeHtml(rangeLabel)}"></canvas>
           <div id="marketPriceHistoryCrosshair" class="mph-chart-crosshair" aria-hidden="true"></div>
+          <div id="marketPriceHistoryCrosshairH" class="mph-chart-crosshair-h" aria-hidden="true"></div>
           <div id="marketPriceHistoryTooltip" class="mph-chart-tooltip" role="tooltip"></div>
           ${showLoading ? `<p class="mph-empty mph-chart-loading">Loading market history…</p>` : ""}
           ${!showLoading && !series.length ? `<p class="mph-empty mph-chart-empty">No market history available for this range.</p>` : ""}
@@ -5895,6 +6089,7 @@
       const chartWrap = panel.querySelector(".mph-chart-wrap");
       const tooltip = panel.querySelector("#marketPriceHistoryTooltip");
       const crosshair = panel.querySelector("#marketPriceHistoryCrosshair");
+      const crosshairH = panel.querySelector("#marketPriceHistoryCrosshairH");
 
       const syncSeriesSelectUi = () => {
         const selected = getMarketHistorySelectedSet(cacheKey, chartSeries);
@@ -5916,12 +6111,13 @@
           if (ctx) {
             const rect = canvas.getBoundingClientRect();
             const cssW = Math.max(280, Math.floor(rect.width || 280));
-            const cssH = Math.max(160, Math.floor(rect.height || 210));
+            const cssH = Math.max(200, Math.floor(rect.height || 280));
             const dpr = window.devicePixelRatio || 1;
             canvas.width = Math.floor(cssW * dpr);
             canvas.height = Math.floor(cssH * dpr);
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-            ctx.clearRect(0, 0, cssW, cssH);
+            ctx.fillStyle = "#131722";
+            ctx.fillRect(0, 0, cssW, cssH);
           }
           canvas._mphChartState = null;
           syncSeriesSelectUi();
@@ -5935,14 +6131,15 @@
           if (ctx) {
             const rect = canvas.getBoundingClientRect();
             const cssW = Math.max(280, Math.floor(rect.width || 280));
-            const cssH = Math.max(160, Math.floor(rect.height || 210));
+            const cssH = Math.max(200, Math.floor(rect.height || 280));
             const dpr = window.devicePixelRatio || 1;
             canvas.width = Math.floor(cssW * dpr);
             canvas.height = Math.floor(cssH * dpr);
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-            ctx.clearRect(0, 0, cssW, cssH);
-            ctx.fillStyle = "#93a8c7";
-            ctx.font = "12px Inter, Segoe UI, Arial, sans-serif";
+            ctx.fillStyle = "#131722";
+            ctx.fillRect(0, 0, cssW, cssH);
+            ctx.fillStyle = "#787b86";
+            ctx.font = '11px Inter, "Segoe UI", Arial, sans-serif';
             ctx.fillText("Select a variant above to view its chart.", 14, cssH / 2);
           }
           canvas._mphChartState = null;
@@ -5967,6 +6164,7 @@
           if (!hover) {
             tooltip.classList.remove("visible");
             if (crosshair) crosshair.classList.remove("visible");
+            if (crosshairH) crosshairH.classList.remove("visible");
             return;
           }
           const wrapRect = chartWrap.getBoundingClientRect();
@@ -5977,15 +6175,27 @@
           tooltip.style.top = `${pointerTop}px`;
           tooltip.innerHTML = buildMarketHistoryTooltipHtml(hover);
           tooltip.classList.add("visible");
+          const offsetLeft = canvasRect.left - wrapRect.left;
+          const offsetTop = canvasRect.top - wrapRect.top;
           if (crosshair) {
-            const crossLeft = canvasRect.left - wrapRect.left + hover.x;
-            crosshair.style.left = `${crossLeft}px`;
+            crosshair.style.left = `${offsetLeft + hover.x}px`;
+            crosshair.style.top = `${offsetTop + (canvas._mphChartState?.padT || 0)}px`;
+            crosshair.style.bottom = "auto";
+            crosshair.style.height = `${canvas._mphChartState?.plotH || canvasRect.height}px`;
             crosshair.classList.add("visible");
+          }
+          if (crosshairH) {
+            crosshairH.style.top = `${offsetTop + hover.y}px`;
+            crosshairH.style.left = `${offsetLeft + (canvas._mphChartState?.padL || 0)}px`;
+            crosshairH.style.width = `${canvas._mphChartState?.plotW || canvasRect.width}px`;
+            crosshairH.style.right = "auto";
+            crosshairH.classList.add("visible");
           }
         };
         const onLeave = () => {
           tooltip.classList.remove("visible");
           if (crosshair) crosshair.classList.remove("visible");
+          if (crosshairH) crosshairH.classList.remove("visible");
         };
         canvas.addEventListener("mousemove", onMove);
         canvas.addEventListener("mouseleave", onLeave);
@@ -8334,7 +8544,7 @@
       }
     })();
   </script>
-  <script src="/site-nav.js?v=10" defer></script>
+  <script src="/site-nav.js?v=11" defer></script>
   <script src="/account-ui.js?v=7"></script>
 </body>
 </html>

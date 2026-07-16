@@ -7,9 +7,8 @@ html {
 }
 
 /*
- * Canonical header structure:
- *   .nav-left | .nav-search-wrap | .nav-right(account)
- * Desktop: one row. Mobile: Sign In stays with logo; search drops under.
+ * Header: logo/links on the left; search + Sign In clustered on the right.
+ * Sign In is always immediately to the right of the search field.
  */
 .top-nav {
   height: auto !important;
@@ -17,12 +16,10 @@ html {
   border-bottom: 1px solid var(--border, #26364f);
   background: rgba(10, 15, 24, 0.92);
   backdrop-filter: blur(8px);
-  display: grid !important;
-  grid-template-columns: minmax(0, 1fr) auto auto !important;
-  grid-template-areas: "left search right" !important;
+  display: flex !important;
   align-items: center !important;
-  column-gap: 10px !important;
-  row-gap: 8px !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
   flex-wrap: nowrap !important;
   padding: 8px 16px !important;
   padding-top: max(8px, env(safe-area-inset-top, 0px)) !important;
@@ -35,43 +32,57 @@ html {
 }
 
 .nav-left {
-  grid-area: left !important;
   display: flex !important;
   align-items: center !important;
   gap: 12px !important;
-  flex-wrap: wrap !important;
+  flex-wrap: nowrap !important;
   min-width: 0 !important;
+  flex: 1 1 auto !important;
   margin: 0 !important;
-  flex: unset !important;
-  order: unset !important;
+  order: 0 !important;
 }
 
+.nav-right {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 10px !important;
+  flex-wrap: nowrap !important;
+  flex: 0 1 auto !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  margin-left: auto !important;
+  order: 1 !important;
+}
+
+/* Search lives inside .nav-right, immediately left of Sign In. */
 .nav-search-wrap {
-  grid-area: search !important;
   display: flex !important;
   align-items: center !important;
   gap: 8px !important;
   min-width: 0 !important;
+  flex: 1 1 auto !important;
   margin: 0 !important;
-  order: unset !important;
+  order: 0 !important;
 }
 
-.nav-right {
-  grid-area: right !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: flex-end !important;
-  gap: 12px !important;
-  flex-wrap: nowrap !important;
-  min-width: 0 !important;
-  margin: 0 !important;
-  flex: unset !important;
-  order: unset !important;
-}
-
-/* Search must never sit inside .nav-right visually beside Sign In. */
 .nav-right > .nav-search-wrap {
-  display: none !important;
+  display: flex !important;
+}
+
+.nav-right .search,
+.nav-search-wrap .search,
+.nav-search-wrap > input {
+  width: min(240px, 42vw) !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+.nav-right .acct-button,
+.nav-right [data-account-slot],
+.nav-right [data-account-slot] .acct-button {
+  flex: 0 0 auto !important;
+  white-space: nowrap !important;
 }
 
 .nav-link {
@@ -143,10 +154,7 @@ html.nav-drawer-open body {
 
 @media (max-width: 960px) {
   .top-nav {
-    grid-template-columns: minmax(0, 1fr) auto !important;
-    grid-template-areas:
-      "left right"
-      "search search" !important;
+    z-index: 10000 !important;
   }
 
   .top-nav.nav-open {
@@ -154,7 +162,7 @@ html.nav-drawer-open body {
   }
 
   .nav-left {
-    flex-wrap: nowrap !important;
+    flex: 0 1 auto !important;
     gap: 8px !important;
   }
 
@@ -206,22 +214,22 @@ html.nav-drawer-open body {
     background: rgba(255, 255, 255, 0.06);
   }
 
-  .nav-search-wrap {
-    width: 100% !important;
-    max-width: none !important;
+  .nav-right {
+    flex: 1 1 auto !important;
+    max-width: min(100%, 420px) !important;
   }
 
+  .nav-right .search,
   .nav-search-wrap .search,
   .nav-search-wrap > input {
     width: 100% !important;
-    max-width: none !important;
+    min-width: 0 !important;
   }
 
   .nav-right .acct-button,
   .nav-right [data-account-slot] .acct-button {
     height: 40px !important;
     min-height: 40px !important;
-    white-space: nowrap !important;
   }
 }
 

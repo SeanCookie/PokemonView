@@ -1,5 +1,9 @@
 import { Container } from "@cloudflare/containers";
 import { tryServeCardImageFromR2 } from "./card-images-r2.js";
+import {
+  maybeRewriteHtmlNav,
+  tryServeNavAssetOverride
+} from "./frontend-overrides.js";
 
 const SECRET_KEYS = [
   "GOOGLE_CLIENT_ID",
@@ -285,8 +289,13 @@ export default {
     const imageResponse = await tryServeCardImageFromR2(request, env);
     if (imageResponse) return imageResponse;
 
+    // Shared nav CSS/JS — serve from Worker so Sign In/search layout is not stuck on a stale image.
+    const navAsset = tryServeNavAssetOverride(request);
+    if (navAsset) return navAsset;
+
     // Fresh DO so the container boots with current secrets + latest image after CI rebuild.
     const container = env.POKEMONVIEW.getByName("main-v11");
-    return container.fetch(request);
+    const response = await container.fetch(request);
+    return maybeRewriteHtmlNav(request, response);
   }
 };

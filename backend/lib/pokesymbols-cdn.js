@@ -3,7 +3,8 @@ const fs = require("fs");
 const path = require("path");
 const { isLfsPointer } = require("./github-lfs-materialize");
 
-const POKESYMBOLS_CDN_ORIGIN = "https://pokesymbols.com/images/tcg/sets";
+const POKESYMBOLS_SETS_CDN_ORIGIN = "https://pokesymbols.com/images/tcg/sets";
+const POKESYMBOLS_TCG_CDN_ORIGIN = "https://pokesymbols.com/images/tcg";
 
 const CDN_PATH_ALIASES = {
   "symbols/fire-red-and-leafgreen.png": "symbols/firered-leafgreen.png",
@@ -24,10 +25,16 @@ function resolveCdnRelativePath(relativePath) {
   return normalized;
 }
 
+function pokesymbolsCdnBaseForRelative(relativePath) {
+  const normalized = String(relativePath || "").replace(/\\/g, "/").replace(/^\/+/, "");
+  if (normalized.startsWith("rarities/")) return POKESYMBOLS_TCG_CDN_ORIGIN;
+  return POKESYMBOLS_SETS_CDN_ORIGIN;
+}
+
 function pokesymbolsCdnUrl(relativePath) {
   const normalized = resolveCdnRelativePath(relativePath);
   if (!normalized) return "";
-  return `${POKESYMBOLS_CDN_ORIGIN}/${normalized}`;
+  return `${pokesymbolsCdnBaseForRelative(normalized)}/${normalized}`;
 }
 
 async function fetchPokesymbolBytes(relativePath, { cachePath = "" } = {}) {
@@ -39,7 +46,7 @@ async function fetchPokesymbolBytes(relativePath, { cachePath = "" } = {}) {
 
   let lastError = null;
   for (const rel of candidates) {
-    const remoteUrl = `${POKESYMBOLS_CDN_ORIGIN}/${rel}`;
+    const remoteUrl = `${pokesymbolsCdnBaseForRelative(rel)}/${rel}`;
     try {
       const res = await fetch(remoteUrl);
       if (!res.ok) {

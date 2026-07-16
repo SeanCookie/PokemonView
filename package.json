@@ -6,7 +6,9 @@
   "scripts": {
     "build": "node scripts/cf-build.js",
     "build:illustrators": "node scripts/build-catalog-illustrators.js",
+    "embed:nav": "node scripts/embed-frontend-overrides.js",
     "cf:ci": "npm run build && npm run deploy:cloudflare",
+    "deploy:worker-only": "node scripts/embed-frontend-overrides.js && wrangler deploy --config wrangler.toml --containers-rollout=none",
     "localize": "node scripts/localize-catalog.js",
     "upload:card-images": "node scripts/upload-card-images-to-r2.js",
     "upload:static-assets": "node scripts/upload-static-assets-to-r2.js",
@@ -14,7 +16,7 @@
     "setup:r2": "node scripts/setup-r2-card-images.js",
     "dev": "node app.js",
     "start": "node app.js",
-    "deploy:cloudflare": "node scripts/prune-docker-context.js && wrangler deploy --config wrangler.toml"
+    "deploy:cloudflare": "node scripts/embed-frontend-overrides.js && node scripts/prune-docker-context.js && wrangler deploy --config wrangler.toml"
   },
   "dependencies": {
     "@cloudflare/containers": "^0.3.7",

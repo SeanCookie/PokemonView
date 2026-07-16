@@ -38,23 +38,20 @@
   }
 
   /**
-   * Canonical DOM: .nav-left, .nav-search-wrap, .nav-right(account only).
-   * CSS grid places search left of Sign In on desktop, under the logo row on mobile.
+   * Keep search inside .nav-right, immediately before the account slot,
+   * so Sign In stays to the right of the search bar.
    */
-  function placeSearchForViewport(nav, right, searchWrap) {
-    if (!nav || !searchWrap) return;
-    if (right) {
-      // Pull search out of the account cluster if needed.
-      if (searchWrap.parentElement === right || searchWrap.closest(".nav-right") === right) {
-        nav.insertBefore(searchWrap, right);
-        return;
+  function placeSearchWithAccount(nav, right, searchWrap) {
+    if (!nav || !searchWrap || !right) return;
+    if (searchWrap.parentElement !== right) {
+      const account = right.querySelector("[data-account-slot]");
+      if (account) right.insertBefore(searchWrap, account);
+      else right.insertBefore(searchWrap, right.firstChild);
+    } else {
+      const account = right.querySelector("[data-account-slot]");
+      if (account && searchWrap.nextElementSibling !== account) {
+        right.insertBefore(searchWrap, account);
       }
-      // Keep search as a direct child immediately before account.
-      if (searchWrap.parentElement === nav && searchWrap.nextElementSibling !== right) {
-        nav.insertBefore(searchWrap, right);
-      }
-    } else if (searchWrap.parentElement !== nav) {
-      nav.appendChild(searchWrap);
     }
   }
 
@@ -100,11 +97,17 @@
       left.appendChild(btn);
     }
 
-    const right = nav.querySelector(".nav-right");
+    let right = nav.querySelector(".nav-right");
+    if (!right) {
+      right = document.createElement("div");
+      right.className = "nav-right";
+      nav.appendChild(right);
+    }
+
     let searchWrap = findSearchWrap(nav, right);
 
     placePanelForViewport(nav, left, panel);
-    placeSearchForViewport(nav, right, searchWrap);
+    placeSearchWithAccount(nav, right, searchWrap);
 
     let backdrop = document.querySelector(".nav-drawer-backdrop");
     if (!backdrop) {
@@ -119,7 +122,7 @@
     const syncLayout = () => {
       searchWrap = findSearchWrap(nav, right);
       placePanelForViewport(nav, left, panel);
-      placeSearchForViewport(nav, right, searchWrap);
+      placeSearchWithAccount(nav, right, searchWrap);
     };
 
     btn.addEventListener("click", (event) => {
