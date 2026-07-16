@@ -242,7 +242,7 @@ const TCG_LINK_PRICE_ADMIN_REFRESH_MAX_AGE_MS = 1000 * 60 * 60;
 /** Persist TCG link cache to disk every N processed cards during bulk refresh (reduces IO stalls). */
 const TCG_LINK_PRICE_PERSIST_EVERY = 1000;
 /** Bump when link-price selection rules change (invalidates persisted cache). */
-const TCG_LINK_PRICE_LOGIC_VERSION = 10;
+const TCG_LINK_PRICE_LOGIC_VERSION = 11;
 const TCG_PRICE_GUIDE_INDEX_TTL_MS = 1000 * 60 * 60 * 6;
 /** App set code → TCGplayer price guide slug when auto-matching is unreliable. */
 const TCG_GUIDE_SLUG_BY_SET_CODE = {
@@ -3863,10 +3863,13 @@ async function fetchTcgProductListingRows(productId, printingFilter) {
   const pid = Number(productId);
   if (!Number.isFinite(pid) || pid <= 0) return [];
 
-  const requestRows = async (printingTerm) => {
+  const requestRows = async (printingTerm, conditions) => {
+    const conditionList = Array.isArray(conditions) && conditions.length
+      ? conditions
+      : TCG_LISTING_CONDITION_PRIORITY;
     const term = {
       sellerStatus: "Live",
-      condition: TCG_LISTING_CONDITION_PRIORITY,
+      condition: conditionList,
       language: ["English"]
     };
     if (printingTerm) term.printing = [printingTerm];
@@ -3881,7 +3884,8 @@ async function fetchTcgProductListingRows(productId, printingFilter) {
       body: JSON.stringify({
         filters: { term },
         sort: { field: "price", order: "asc" },
-        size: 50,
+        // Keep window small per request; NM is fetched alone so it is not crowded out by cheaper LP/MP.
+        size: 40,
         from: 0
       })
     });
@@ -3891,13 +3895,21 @@ async function fetchTcgProductListingRows(productId, printingFilter) {
     return results[0] && Array.isArray(results[0].results) ? results[0].results : [];
   };
 
-  let rows = await requestRows(printingFilter || "");
+  const loadForPrinting = async (printingTerm) => {
+    // 1) Near Mint only — expensive NM cards were missing from mixed top-50 (LP filled the page).
+    let rows = await requestRows(printingTerm, ["Near Mint"]);
+    if (rows.length) return rows;
+    // 2) Fall through cheaper conditions when no live NM exists.
+    return requestRows(printingTerm, TCG_LISTING_CONDITION_PRIORITY.slice(1));
+  };
+
+  let rows = await loadForPrinting(printingFilter || "");
   const want = normalizeTcgListingPrinting(printingFilter);
   if (!rows.length && want === "Normal") {
-    rows = await requestRows("Holofoil");
+    rows = await loadForPrinting("Holofoil");
   }
   if (!rows.length && printingFilter) {
-    rows = await requestRows("");
+    rows = await loadForPrinting("");
   }
   return resolveListingsForPrintingFilter(rows, printingFilter);
 }
@@ -4009,11 +4021,8 @@ function buildTcgPickFromFeaturedListing(featured, printing = "Holofoil") {
 }
 
 function pickTcgListingForProductDisplay(rows, opts = {}) {
-  const asLowAs = Number(opts.asLowAsPrice);
-  if (Number.isFinite(asLowAs) && asLowAs > 0) {
-    const matched = pickTcgListingNearAsLowAsPrice(rows, asLowAs);
-    if (matched) return matched;
-  }
+  // Prefer condition priority (NM → LP → …). Do not snap to page "As low as" —
+  // that number is often a lower-condition listing and used to poison Near Mint picks.
   return pickCheapestTcgListingByCondition(rows, opts);
 }
 
@@ -4074,6 +4083,7 @@ function selectTcgStorefrontFeaturedListing(plain) {
   const tolerance = 0.02;
 
   // Prefer Near Mint, then Lightly Played → Moderately Played → Heavily Played → Damaged.
+  // Never treat bare "As low as" as Near Mint — that value is often a lower-condition listing.
   for (const condition of TCG_LISTING_CONDITION_PRIORITY) {
     const rows = conditionMatches.filter((row) => row.condition === condition);
     if (!rows.length) continue;
@@ -4087,16 +4097,7 @@ function selectTcgStorefrontFeaturedListing(plain) {
     }
 
     rows.sort((a, b) => a.price - b.price || a.shipping - b.shipping);
-    const first = rows[0];
-    if (Number.isFinite(asLowAs) && asLowAs > 0 && asLowAs >= first.price && condition === "Near Mint") {
-      return { condition, price: asLowAs, shipping: 0 };
-    }
-    return { condition, price: first.price, shipping: first.shipping };
-  }
-
-  // Last resort: page "As low as" with unknown condition (still better than no price).
-  if (Number.isFinite(asLowAs) && asLowAs > 0) {
-    return { condition: "Near Mint", price: asLowAs, shipping: 0 };
+    return { condition, price: rows[0].price, shipping: rows[0].shipping };
   }
 
   return null;
@@ -4563,30 +4564,9 @@ async function fetchTcgPriceFromProductLink(rawUrl = "", options = {}) {
         fetchTcgStorefrontPlain(rawUrl, productId)
       ]);
       const asLowAsPrice = parseTcgStorefrontAsLowAs(storefrontPlain);
-      if (Number.isFinite(asLowAsPrice) && asLowAsPrice > 0 && storefrontPlain) {
-        const featured = selectTcgStorefrontFeaturedListing(storefrontPlain);
-        const fromFeatured = buildTcgPickFromFeaturedListing(
-          featured,
-          printingNorm === "Normal" ? "Holofoil" : printingNorm || "Holofoil"
-        );
-        if (fromFeatured) {
-          return stampTcgLinkPriceResult({
-            ok: true,
-            productId,
-            price: fromFeatured.totalPrice,
-            totalPrice: fromFeatured.totalPrice,
-            nearMintPrice: fromFeatured.listingPrice,
-            shippingPrice: fromFeatured.shippingPrice,
-            listingCondition: fromFeatured.listingCondition,
-            nearMintWithShipping: fromFeatured.nearMintWithShipping,
-            sellerName: fromFeatured.sellerName,
-            listingId: null,
-            source: "tcgplayer-storefront",
-            marketPrice: marketPriceFromDetails,
-            error: ""
-          });
-        }
-      }
+
+      // Prefer live listings (NM-first). Do NOT early-return on storefront "As low as" —
+      // that figure is often a lower condition and was poisoning the cache as fake Near Mint.
 
       let pickRows = printingRows;
       if (printingNorm === "Reverse Holofoil") {
@@ -4604,13 +4584,23 @@ async function fetchTcgPriceFromProductLink(rawUrl = "", options = {}) {
         higherTierListingFloor: printingNorm === "Reverse Holofoil" ? 0.1 : 0.05
       });
 
-      if (picked && tcgListingPickLooksLikeBait(picked, asLowAsPrice) && storefrontPlain) {
+      if ((!picked || tcgListingPickLooksLikeBait(picked, asLowAsPrice)) && storefrontPlain) {
         const featured = selectTcgStorefrontFeaturedListing(storefrontPlain);
         const fromFeatured = buildTcgPickFromFeaturedListing(
           featured,
           printingNorm === "Normal" ? "Holofoil" : printingNorm || "Holofoil"
         );
-        if (fromFeatured) picked = fromFeatured;
+        if (fromFeatured) {
+          // Prefer an explicit NM storefront match over a bait/cheap listing pick.
+          if (!picked || tcgListingPickLooksLikeBait(picked, asLowAsPrice)) {
+            picked = fromFeatured;
+          } else if (
+            normalizeTcgListingCondition(fromFeatured.listingCondition) === "Near Mint" &&
+            normalizeTcgListingCondition(picked.listingCondition) !== "Near Mint"
+          ) {
+            picked = fromFeatured;
+          }
+        }
       }
 
       if (picked) {

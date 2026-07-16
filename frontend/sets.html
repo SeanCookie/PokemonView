@@ -743,9 +743,9 @@
       position: absolute;
       top: 6px;
       left: 6px;
-      right: 36px;
+      right: 6px;
       z-index: 2;
-      padding: 4px 8px;
+      padding: 4px 6px 4px 8px;
       border-radius: 6px;
       background: rgba(12, 24, 18, 0.92);
       border: 1px solid rgba(51, 209, 143, 0.65);
@@ -753,11 +753,44 @@
       font-size: 11px;
       font-weight: 700;
       text-align: center;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
       pointer-events: none;
     }
 
     .card-tile-shell--owned:hover .card-owned-chip {
-      display: block;
+      display: flex;
+    }
+
+    .card-owned-remove {
+      pointer-events: auto;
+      flex: 0 0 auto;
+      width: 22px;
+      height: 22px;
+      padding: 0;
+      margin: 0;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 107, 107, 0.75);
+      background: rgba(48, 16, 18, 0.95);
+      color: #ff8a8a;
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+    }
+
+    .card-owned-remove:hover:not(:disabled) {
+      border-color: rgba(255, 120, 120, 0.95);
+      color: #ffb0b0;
+      background: rgba(72, 18, 22, 0.98);
+    }
+
+    .card-owned-remove:disabled {
+      opacity: 0.55;
+      cursor: wait;
     }
 
     .collection-owned-banner {
@@ -2195,6 +2228,7 @@
       collectionOwnedSyncInFlight: "",
       collectionSignedIn: false,
       collectionAddInFlight: "",
+      collectionRemoveInFlight: "",
       /** Admin-defined hidden search nicknames → setCode + cardNumber */
       cardNicknames: []
     };
@@ -2203,7 +2237,7 @@
     let setDetailRenderPending = false;
     let lastPrimedSetCode = "";
     const TCG_LINK_LOCAL_CACHE_TTL_MS = 60 * 60 * 1000;
-    const TCG_LINK_PRICE_LOGIC_VERSION = 10;
+    const TCG_LINK_PRICE_LOGIC_VERSION = 11;
     let setPriceRerenderTimer = null;
     let setLinkPriceWarmupQueuedCode = "";
     let setPricesLoadToken = 0;
@@ -7149,6 +7183,30 @@
       for (const key of cardNumberLookupKeys(item.cardNumber || "")) keys.add(key);
     }
 
+    function findCollectionItemForCard(setCode, cardNo) {
+      const code = String(setCode || "").toUpperCase();
+      const wanted = new Set(cardNumberLookupKeys(cardNo));
+      if (!code || !wanted.size || !Array.isArray(state.collectionItemsCache)) return null;
+      for (const item of state.collectionItemsCache) {
+        if (!item || item.type !== "single" || !item.id) continue;
+        if (resolveCollectionItemSetCode(item) !== code) continue;
+        const keys = cardNumberLookupKeys(item.cardNumber || "");
+        if (keys.some((key) => wanted.has(key))) return item;
+      }
+      return null;
+    }
+
+    function removeCardFromCollectionCache(itemId, setCode) {
+      const id = String(itemId || "");
+      if (Array.isArray(state.collectionItemsCache) && id) {
+        state.collectionItemsCache = state.collectionItemsCache.filter((item) => String(item?.id || "") !== id);
+      }
+      const code = String(setCode || "").toUpperCase();
+      if (!code) return;
+      // Rebuild keys for this set so duplicate copies of the same number stay marked owned.
+      state.collectionOwnedKeysBySetCode[code] = buildOwnedKeysForSetFromItems(code, state.collectionItemsCache || []);
+    }
+
     function buildOwnedKeysForSetFromItems(setCode, items) {
       const code = String(setCode || "").toUpperCase();
       const keys = new Set();
@@ -7291,11 +7349,71 @@
       }
     }
 
+    async function handleRemoveCardFromCollection(removeBtn, setCode, cardNo, allCards) {
+      const code = String(setCode || "").toUpperCase();
+      const number = String(cardNo || "").trim();
+      if (!code || !number) return;
+      const flightKey = `${code}:${number}`;
+      if (state.collectionRemoveInFlight === flightKey) return;
+
+      if (!isCollectionSignedIn()) {
+        window.InfinityAccount?.openSignIn?.();
+        return;
+      }
+
+      const item = findCollectionItemForCard(code, number);
+      if (!item || !item.id) {
+        window.alert("Could not find that card in your collection.");
+        return;
+      }
+
+      state.collectionRemoveInFlight = flightKey;
+      removeBtn.disabled = true;
+      try {
+        const res = await fetch(`/api/items/${encodeURIComponent(String(item.id))}`, {
+          method: "DELETE",
+          credentials: "same-origin"
+        });
+        if (!res.ok) {
+          const payload = await res.json().catch(() => ({}));
+          window.alert(payload && payload.error ? String(payload.error) : `Could not remove card (${res.status})`);
+          return;
+        }
+        removeCardFromCollectionCache(item.id, code);
+        patchCollectionOwnedUI(code, allCards);
+      } catch {
+        window.alert("Network error while removing the card.");
+      } finally {
+        state.collectionRemoveInFlight = "";
+        removeBtn.disabled = false;
+      }
+    }
+
     function initCollectionAddDelegation() {
       const content = document.getElementById("content");
       if (!content || content.dataset.collectionAddDelegation === "1") return;
       content.dataset.collectionAddDelegation = "1";
       content.addEventListener("click", (event) => {
+        const removeBtn = event.target.closest("[data-remove-from-collection]");
+        if (removeBtn) {
+          const shell = removeBtn.closest(".card-tile-shell[data-card-number]");
+          if (!shell || !shell.closest(".set-detail")) return;
+          event.preventDefault();
+          event.stopPropagation();
+          if (!state.selectedSetCode || state.selectedCardNumber) return;
+          const setEntry = getSetByCode(state.selectedSetCode);
+          if (!setEntry) return;
+          const setConfig = detailedSetConfigs[setEntry.code];
+          const allCards = getSetCards(setEntry, setConfig);
+          void handleRemoveCardFromCollection(
+            removeBtn,
+            setEntry.code,
+            shell.getAttribute("data-card-number") || "",
+            allCards
+          );
+          return;
+        }
+
         const addBtn = event.target.closest("[data-add-to-collection]");
         if (!addBtn) return;
         const shell = addBtn.closest(".card-tile-shell[data-card-number]");
@@ -7341,7 +7459,7 @@
               : ownedInSet > 0
                 ? " — complete set!"
                 : ""
-          }. <span class="hint"> Green border = in your collection. Use <strong>+</strong> to add cards you are missing.</span>`;
+          }. <span class="hint"> Green border = in your collection. Use <strong>+</strong> to add cards you are missing, or <strong style="color:#ff8a8a;">−</strong> on owned cards to remove.</span>`;
         }
       } else {
         document.getElementById("collectionOwnedBanner")?.remove();
@@ -7363,12 +7481,30 @@
         if (owned) {
           tile?.setAttribute("title", "In your collection");
           shell.querySelector(".card-add-btn")?.remove();
-          if (!shell.querySelector(".card-owned-chip")) {
-            const chip = document.createElement("span");
+          let chip = shell.querySelector(".card-owned-chip");
+          if (!chip) {
+            chip = document.createElement("span");
             chip.className = "card-owned-chip";
-            chip.textContent = "In your collection";
+            chip.appendChild(document.createTextNode("In your collection"));
+            const removeBtn = document.createElement("button");
+            removeBtn.type = "button";
+            removeBtn.className = "card-owned-remove";
+            removeBtn.setAttribute("data-remove-from-collection", "");
+            removeBtn.setAttribute("aria-label", "Remove from collection");
+            removeBtn.setAttribute("title", "Remove from collection");
+            removeBtn.textContent = "−";
+            chip.appendChild(removeBtn);
             if (tile) tile.insertBefore(chip, tile.firstChild);
             else shell.insertBefore(chip, shell.firstChild);
+          } else if (!chip.querySelector("[data-remove-from-collection]")) {
+            const removeBtn = document.createElement("button");
+            removeBtn.type = "button";
+            removeBtn.className = "card-owned-remove";
+            removeBtn.setAttribute("data-remove-from-collection", "");
+            removeBtn.setAttribute("aria-label", "Remove from collection");
+            removeBtn.setAttribute("title", "Remove from collection");
+            removeBtn.textContent = "−";
+            chip.appendChild(removeBtn);
           }
         } else {
           tile?.removeAttribute("title");
