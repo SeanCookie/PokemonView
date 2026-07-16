@@ -163,6 +163,7 @@ const MIN_ENGLISH_DETAIL_SETS_FOR_COMPLETE = 80;
 const SET_CARD_DETAILS_FILE = path.join(DATA_DIR, "set-card-details.json");
 const SET_CARD_DETAILS_BY_CODE_DIR = path.join(DATA_DIR, "set-card-details", "by-code");
 const SET_CARD_DETAILS_IMPORT_STATUS_FILE = path.join(DATA_DIR, "set-card-details-import-status.json");
+const CATALOG_ILLUSTRATORS_FILE = path.join(DATA_DIR, "catalog-illustrators.json");
 const RESTOCK_TRACKER_FILE = path.join(DATA_DIR, "restock-tracker.json");
 const RESTOCK_MANUAL_ITEMS_FILE = path.join(DATA_DIR, "restock-manual-items.json");
 const CARD_NICKNAMES_FILE = path.join(DATA_DIR, "card-nicknames.json");
@@ -417,6 +418,8 @@ function isTcgCatalogPriorityActive() {
 }
 let setCardListsDiskCache = { mtimeMs: 0, parsed: null };
 let setCardDetailsDiskCache = { mtimeMs: 0, parsed: null };
+/** Lightweight illustrator index derived from set-card-details (artists list + per-card map). */
+let setIllustratorsIndexCache = { mtimeMs: 0, payload: null };
 let localCardImageIndexCache = { mtimeMs: 0, index: null };
 let localCardImageIndexInFlight = null;
 let englishSetCardsImportChild = null;
@@ -5951,6 +5954,7 @@ async function loadSetCardDetailsParsed() {
     return parsed;
   } catch (err) {
     setCardDetailsDiskCache = { mtimeMs: 0, parsed: null };
+    setIllustratorsIndexCache = { mtimeMs: 0, payload: null };
     throw err;
   }
 }
@@ -5977,6 +5981,7 @@ function maybeKickoffEnglishSetDetailsImport() {
       .then((fin) => {
         if (fin.ok) {
           setCardDetailsDiskCache = { mtimeMs: 0, parsed: null };
+          setIllustratorsIndexCache = { mtimeMs: 0, payload: null };
           console.log(
             `[details-local] Finalized local card-details (${fin.setCount} sets, ${fin.cardCount} cards)`
           );
@@ -6001,6 +6006,7 @@ function maybeKickoffEnglishSetDetailsImport() {
   englishSetDetailsImportChild.on("exit", (code) => {
     englishSetDetailsImportChild = null;
     setCardDetailsDiskCache = { mtimeMs: 0, parsed: null };
+    setIllustratorsIndexCache = { mtimeMs: 0, payload: null };
     loadSetCardDetailsParsed()
       .then(async (parsed) => {
         const sets = countEnglishDetailSetsInParsed(parsed);
@@ -6011,6 +6017,7 @@ function maybeKickoffEnglishSetDetailsImport() {
           });
           if (fin.ok) {
             setCardDetailsDiskCache = { mtimeMs: 0, parsed: null };
+            setIllustratorsIndexCache = { mtimeMs: 0, payload: null };
             console.log(
               `[details-local] Saved local-only card-details (${fin.setCount} sets, ${fin.cardCount} cards)`
             );
@@ -6189,6 +6196,88 @@ async function getSetCardDetailsManifest(setCode = "") {
       source: "",
       byCode: {},
       error: err && err.message ? err.message : "Failed to load set card details"
+    };
+  }
+}
+
+function normalizeIllustratorNameServer(raw) {
+  let s = String(raw || "").trim();
+  if (!s) return "";
+  s = s.replace(/&#(\d+);/g, (_, n) => {
+    const code = Number(n);
+    return Number.isFinite(code) ? String.fromCharCode(code) : _;
+  });
+  s = s.replace(/&#x([0-9a-f]+);/gi, (_, h) => {
+    const code = parseInt(h, 16);
+    return Number.isFinite(code) ? String.fromCharCode(code) : _;
+  });
+  s = s.replace(/&quot;/gi, '"').replace(/&amp;/gi, "&").replace(/&lt;/gi, "<").replace(/&gt;/gi, ">");
+  s = s.replace(/\u201c/g, '"').replace(/\u201d/g, '"');
+  s = s.replace(/\u2018/g, "'").replace(/\u2019/g, "'");
+  return s.trim();
+}
+
+function buildIllustratorsIndexFromParsed(parsed) {
+  const byCode = parsed && parsed.byCode && typeof parsed.byCode === "object" ? parsed.byCode : {};
+  const artists = new Set();
+  const bySet = {};
+  for (const [code, entry] of Object.entries(byCode)) {
+    const codeKey = String(code || "").trim().toUpperCase();
+    if (!codeKey) continue;
+    const cards = entry && entry.cards && typeof entry.cards === "object" ? entry.cards : {};
+    const map = {};
+    for (const [cardNo, card] of Object.entries(cards)) {
+      const illustrator = normalizeIllustratorNameServer(card && card.illustrator);
+      if (!illustrator) continue;
+      artists.add(illustrator);
+      map[String(cardNo)] = illustrator;
+    }
+    if (Object.keys(map).length) bySet[codeKey] = map;
+  }
+  return {
+    ok: true,
+    generatedAt: parsed && parsed.generatedAt ? parsed.generatedAt : null,
+    artists: [...artists].sort((a, b) => a.localeCompare(b)),
+    bySet
+  };
+}
+
+async function getSetIllustratorsIndex() {
+  // Prefer the prebuilt static index (instant) over scanning set-card-details.json (~19MB).
+  try {
+    const raw = await fsp.readFile(CATALOG_ILLUSTRATORS_FILE, "utf8");
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.ok && Array.isArray(parsed.artists)) {
+      const payload = {
+        ok: true,
+        generatedAt: parsed.generatedAt || null,
+        artists: parsed.artists,
+        bySet: parsed.bySet && typeof parsed.bySet === "object" ? parsed.bySet : {}
+      };
+      setIllustratorsIndexCache = { mtimeMs: Date.now(), payload };
+      return payload;
+    }
+  } catch {
+    /* fall through to live build */
+  }
+
+  try {
+    const stat = await fsp.stat(SET_CARD_DETAILS_FILE);
+    if (setIllustratorsIndexCache.payload && setIllustratorsIndexCache.mtimeMs === stat.mtimeMs) {
+      return setIllustratorsIndexCache.payload;
+    }
+    const parsed = await loadSetCardDetailsParsed();
+    const payload = buildIllustratorsIndexFromParsed(parsed);
+    setIllustratorsIndexCache = { mtimeMs: stat.mtimeMs, payload };
+    return payload;
+  } catch (err) {
+    setIllustratorsIndexCache = { mtimeMs: 0, payload: null };
+    return {
+      ok: false,
+      generatedAt: null,
+      artists: [],
+      bySet: {},
+      error: err && err.message ? err.message : "Failed to load illustrators"
     };
   }
 }
@@ -8755,6 +8844,27 @@ async function route(req, res) {
       json(res, manifest.ok ? 200 : 500, manifest, cacheHeader);
     } catch (err) {
       json(res, 500, { ok: false, error: err.message || "Failed to load set card details" });
+    }
+    return;
+  }
+
+  if (pathname === "/api/sets/illustrators" && req.method === "GET") {
+    try {
+      const namesOnly =
+        String(parsedUrl.searchParams.get("namesOnly") || "").trim() === "1" ||
+        String(parsedUrl.searchParams.get("namesOnly") || "").toLowerCase() === "true";
+      const index = await getSetIllustratorsIndex();
+      const body = namesOnly
+        ? { ok: index.ok, generatedAt: index.generatedAt, artists: index.artists || [] }
+        : index;
+      json(res, index.ok ? 200 : 500, body, { "Cache-Control": API_CATALOG_CACHE_CONTROL });
+    } catch (err) {
+      json(res, 500, {
+        ok: false,
+        artists: [],
+        bySet: {},
+        error: err.message || "Failed to load illustrators"
+      });
     }
     return;
   }

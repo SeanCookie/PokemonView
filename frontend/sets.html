@@ -7,6 +7,8 @@
   <link rel="preload" href="/api/pokesymbols/manifest" as="fetch" crossorigin="anonymous" />
   <link rel="preload" href="/api/sets/images" as="fetch" crossorigin="anonymous" />
   <link rel="preload" href="/api/sets/card-sky-urls?limit=500&localOnly=1" as="fetch" crossorigin="anonymous" />
+  <link rel="preload" href="/catalog-illustrator-names.json" as="fetch" crossorigin="anonymous" />
+  <link rel="preload" href="/catalog-illustrators.json" as="fetch" crossorigin="anonymous" />
   <link rel="stylesheet" href="/card-sky.css?v=8" />
   <link rel="stylesheet" href="/brand-logo.css" />
   <link rel="stylesheet" href="/site-nav.css?v=6" />
@@ -2081,6 +2083,10 @@
       cardSourceBySetCode: {},
       cardDetailsBySetCode: {},
       cardDetailsLoadingBySetCode: {},
+      /** Lightweight illustrator map: setCode -> { cardNo: illustratorName }. */
+      cardIllustratorsBySetCode: {},
+      /** Sorted unique illustrator names for the global Artists dropdown. */
+      catalogIllustrators: [],
       cardManifestLoadingBySetCode: {},
       cardPricingBySetCode: {},
       cardVariantsBySetCode: {},
@@ -3853,10 +3859,27 @@
     function updateGlobalArtistFilterSelect() {
       const sel = document.getElementById("globalArtistFilterSelect");
       if (!sel) return;
-      const all = collectAllCatalogCards();
-      const illustrators = [...new Set(all.map((c) => getCardIllustrator(c)).filter(Boolean))].sort((a, b) =>
-        a.localeCompare(b)
-      );
+      let illustrators = Array.isArray(state.catalogIllustrators) ? state.catalogIllustrators.slice() : [];
+      if (!illustrators.length) {
+        // Fallback: derive from whatever details/index are already in memory.
+        const fromIndex = new Set();
+        for (const map of Object.values(state.cardIllustratorsBySetCode || {})) {
+          if (!map || typeof map !== "object") continue;
+          for (const name of Object.values(map)) {
+            const n = normalizeIllustratorName(name);
+            if (n) fromIndex.add(n);
+          }
+        }
+        if (fromIndex.size) {
+          illustrators = [...fromIndex].sort((a, b) => a.localeCompare(b));
+        } else {
+          const all = collectAllCatalogCards();
+          illustrators = [...new Set(all.map((c) => getCardIllustrator(c)).filter(Boolean))].sort((a, b) =>
+            a.localeCompare(b)
+          );
+        }
+        if (illustrators.length) state.catalogIllustrators = illustrators;
+      }
       if (state.catalogArtistFilter !== "all" && !illustrators.includes(state.catalogArtistFilter)) {
         state.catalogArtistFilter = "all";
       }
@@ -4193,6 +4216,130 @@
       } catch {
         state.cardDetailsBySetCode = {};
       }
+    }
+
+    const CATALOG_ILLUSTRATORS_STORAGE_KEY = "pokemonview.catalogIllustrators.v1";
+
+    function readCachedCatalogIllustrators() {
+      try {
+        const raw = localStorage.getItem(CATALOG_ILLUSTRATORS_STORAGE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== "object") return null;
+        const artists = Array.isArray(parsed.artists)
+          ? parsed.artists.map((n) => normalizeIllustratorName(n)).filter(Boolean)
+          : [];
+        const bySet =
+          parsed.bySet && typeof parsed.bySet === "object" && !Array.isArray(parsed.bySet)
+            ? parsed.bySet
+            : {};
+        if (!artists.length && !Object.keys(bySet).length) return null;
+        return {
+          artists: [...new Set(artists)].sort((a, b) => a.localeCompare(b)),
+          bySet,
+          generatedAt: parsed.generatedAt || null
+        };
+      } catch {
+        return null;
+      }
+    }
+
+    function writeCachedCatalogIllustrators(artists, bySet, generatedAt) {
+      try {
+        const payload = {
+          generatedAt: generatedAt || null,
+          savedAt: Date.now(),
+          artists: Array.isArray(artists) ? artists : [],
+          bySet: bySet && typeof bySet === "object" ? bySet : {}
+        };
+        localStorage.setItem(CATALOG_ILLUSTRATORS_STORAGE_KEY, JSON.stringify(payload));
+      } catch {
+        /* quota / private mode */
+      }
+    }
+
+    function applyIllustratorsIndexPayload(payload, { persist = true } = {}) {
+      if (!payload || typeof payload !== "object") return false;
+      const bySetRaw = payload.bySet && typeof payload.bySet === "object" ? payload.bySet : {};
+      const bySet = {};
+      for (const [code, map] of Object.entries(bySetRaw)) {
+        const codeKey = String(code || "").trim().toUpperCase();
+        if (!codeKey || !map || typeof map !== "object") continue;
+        const next = {};
+        for (const [cardNo, name] of Object.entries(map)) {
+          const n = normalizeIllustratorName(name);
+          if (n) next[String(cardNo)] = n;
+        }
+        if (Object.keys(next).length) bySet[codeKey] = next;
+      }
+      let artists = Array.isArray(payload.artists)
+        ? payload.artists.map((n) => normalizeIllustratorName(n)).filter(Boolean)
+        : [];
+      if (!artists.length) {
+        const fromMaps = new Set();
+        for (const map of Object.values(bySet)) {
+          for (const name of Object.values(map)) if (name) fromMaps.add(name);
+        }
+        artists = [...fromMaps];
+      }
+      artists = [...new Set(artists)].sort((a, b) => a.localeCompare(b));
+      const hasBySet = Object.keys(bySet).length > 0;
+      if (!artists.length && !hasBySet) return false;
+      if (artists.length) state.catalogIllustrators = artists;
+      // Names-only payloads must not wipe an existing bySet map.
+      if (hasBySet) state.cardIllustratorsBySetCode = bySet;
+      invalidateCatalogSearchIndex();
+      if (persist) {
+        writeCachedCatalogIllustrators(
+          state.catalogIllustrators,
+          state.cardIllustratorsBySetCode,
+          payload.generatedAt || null
+        );
+      }
+      return true;
+    }
+
+    function hydrateCatalogIllustratorsFromCache() {
+      const cached = readCachedCatalogIllustrators();
+      if (!cached) return false;
+      return applyIllustratorsIndexPayload(cached, { persist: false });
+    }
+
+    async function loadCatalogIllustratorsIndex() {
+      // Static prebuilt files load instantly (no scanning set-card-details).
+      // Names-only first so the dropdown fills ASAP; full bySet map follows.
+      const tryUrls = [
+        "/catalog-illustrator-names.json",
+        "/catalog-illustrators.json",
+        "/api/sets/illustrators"
+      ];
+      let applied = false;
+      for (const url of tryUrls) {
+        try {
+          const response = await fetch(url, { cache: "force-cache" });
+          if (!response.ok) continue;
+          const payload = await response.json();
+          if (!payload || payload.ok === false) continue;
+          if (!Array.isArray(payload.artists) || !payload.artists.length) continue;
+          const hasBySet =
+            payload.bySet && typeof payload.bySet === "object" && Object.keys(payload.bySet).length > 0;
+          applyIllustratorsIndexPayload(
+            {
+              ok: true,
+              generatedAt: payload.generatedAt || null,
+              artists: payload.artists,
+              bySet: hasBySet ? payload.bySet : undefined
+            },
+            { persist: true }
+          );
+          applied = true;
+          updateGlobalArtistFilterSelect();
+          if (hasBySet) return true;
+        } catch {
+          /* try next */
+        }
+      }
+      return applied;
     }
 
     async function ensureSetPricingLoaded(setCode, setName = "") {
@@ -4951,8 +5098,16 @@
 
     function getCardIllustrator(card) {
       const detail = getCardDetailForCard(card);
-      const raw = String(detail && detail.illustrator ? detail.illustrator : "").trim();
-      return normalizeIllustratorName(raw);
+      const fromDetail = String(detail && detail.illustrator ? detail.illustrator : "").trim();
+      if (fromDetail) return normalizeIllustratorName(fromDetail);
+      const setCode = String(card && card.setCode ? card.setCode : "").trim().toUpperCase();
+      const map = setCode ? state.cardIllustratorsBySetCode[setCode] : null;
+      if (!map || typeof map !== "object") return "";
+      for (const key of cardNumberLookupKeys(card && card.cardNo)) {
+        const raw = map[key];
+        if (raw) return normalizeIllustratorName(raw);
+      }
+      return "";
     }
 
     function getSetIllustrators(cards) {
@@ -8083,13 +8238,15 @@
     }
 
     (async function bootstrapSetsPage() {
+      hydrateCatalogIllustratorsFromCache();
       renderAll();
       try {
         await Promise.all([
           loadPokesymbolsManifest(),
           loadSetImageManifest(),
           loadCardNicknames(),
-          loadSetCatalog(state.language)
+          loadSetCatalog(state.language),
+          loadCatalogIllustratorsIndex()
         ]);
         renderAll();
         await applySetsDeepLink();

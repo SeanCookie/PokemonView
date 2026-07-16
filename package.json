@@ -5,6 +5,7 @@
   "main": "app.js",
   "scripts": {
     "build": "node scripts/cf-build.js",
+    "build:illustrators": "node scripts/build-catalog-illustrators.js",
     "cf:ci": "npm run build && npm run deploy:cloudflare",
     "localize": "node scripts/localize-catalog.js",
     "upload:card-images": "node scripts/upload-card-images-to-r2.js",

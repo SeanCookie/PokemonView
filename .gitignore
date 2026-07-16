@@ -51,6 +51,7 @@ scripts/*
 !scripts/upload-card-images-to-r2.js
 !scripts/upload-static-assets-to-r2.js
 !scripts/split-set-card-details.js
+!scripts/build-catalog-illustrators.js
 
 # Runtime caches (rebuilt on server)
 backend/data/tcg-link-prices-cache.json
