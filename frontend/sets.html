@@ -706,7 +706,8 @@
       box-shadow: 0 0 12px rgba(51, 209, 143, 0.2);
     }
 
-    .card-add-btn {
+    .card-add-btn,
+    .card-owned-remove {
       position: absolute;
       top: 6px;
       right: 6px;
@@ -714,17 +715,24 @@
       width: 28px;
       height: 28px;
       padding: 0;
+      margin: 0;
       border-radius: 8px;
-      border: 1px solid rgba(147, 168, 199, 0.55);
-      background: rgba(16, 24, 37, 0.94);
-      color: #e9f1ff;
-      font-size: 18px;
+      font-size: 20px;
       font-weight: 700;
       line-height: 1;
       cursor: pointer;
-      display: grid;
-      place-items: center;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+      /* Optical vertical centering for + / − glyphs */
+      padding-bottom: 1px;
+    }
+
+    .card-add-btn {
+      border: 1px solid rgba(147, 168, 199, 0.55);
+      background: rgba(16, 24, 37, 0.94);
+      color: #e9f1ff;
     }
 
     .card-add-btn:hover:not(:disabled) {
@@ -733,7 +741,8 @@
       background: rgba(18, 36, 28, 0.96);
     }
 
-    .card-add-btn:disabled {
+    .card-add-btn:disabled,
+    .card-owned-remove:disabled {
       opacity: 0.55;
       cursor: wait;
     }
@@ -743,9 +752,9 @@
       position: absolute;
       top: 6px;
       left: 6px;
-      right: 6px;
+      right: 40px;
       z-index: 2;
-      padding: 4px 6px 4px 8px;
+      padding: 4px 8px;
       border-radius: 6px;
       background: rgba(12, 24, 18, 0.92);
       border: 1px solid rgba(51, 209, 143, 0.65);
@@ -753,44 +762,23 @@
       font-size: 11px;
       font-weight: 700;
       text-align: center;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
       pointer-events: none;
     }
 
     .card-tile-shell--owned:hover .card-owned-chip {
-      display: flex;
+      display: block;
     }
 
     .card-owned-remove {
-      pointer-events: auto;
-      flex: 0 0 auto;
-      width: 22px;
-      height: 22px;
-      padding: 0;
-      margin: 0;
-      border-radius: 6px;
       border: 1px solid rgba(255, 107, 107, 0.75);
       background: rgba(48, 16, 18, 0.95);
       color: #ff8a8a;
-      font-size: 16px;
-      font-weight: 700;
-      line-height: 1;
-      cursor: pointer;
-      display: grid;
-      place-items: center;
     }
 
     .card-owned-remove:hover:not(:disabled) {
       border-color: rgba(255, 120, 120, 0.95);
       color: #ffb0b0;
       background: rgba(72, 18, 22, 0.98);
-    }
-
-    .card-owned-remove:disabled {
-      opacity: 0.55;
-      cursor: wait;
     }
 
     .collection-owned-banner {
@@ -2259,6 +2247,7 @@
     let catalogSearchIndex = { language: "", revision: 0, cards: [] };
     let catalogSearchCache = { key: "", matches: [] };
     const setPricingLoadPromisesByCode = Object.create(null);
+    const setPricingManifestPromisesByCode = Object.create(null);
     const setLinkHydratePromisesByCode = Object.create(null);
 
     /** Load pricing manifest + server link-price cache for the set the user is viewing (not idle-deferred). */
@@ -2349,16 +2338,21 @@
         state.savedSetGridScrollY = null;
       }
 
-      primeActiveSetPrices(setCode, setName);
       try {
+        // Wait for pricing manifest (card price values) with cards so inline prices paint immediately.
         await Promise.all([
           ensureSetCardsLoaded(setCode),
-          ensureSetCardDetailsLoaded(setCode)
+          ensureSetCardDetailsLoaded(setCode),
+          ensureSetPricingManifestLoaded(setCode, setName).catch(() => {
+            /* best effort — tiles can still warm later */
+          })
         ]);
       } catch {
         /* ignore */
       }
       if (String(state.selectedSetCode || "").toUpperCase() !== setCode) return;
+      // Link-cache hydrate + missing live fetches continue in background after first paint.
+      primeActiveSetPrices(setCode, setName);
       scrollToPageTop();
       renderAll();
     }
@@ -3032,8 +3026,10 @@
 
     /**
      * User-facing TCGplayer product link.
-     * Sets Condition from our priced listing (e.g. Near Mint) and ListingType=All so
-     * TCGPlayer does not keep its default "Listings Without Photos" filter selected.
+     * Sets Condition from our priced listing (e.g. Near Mint).
+     * ListingType must be custom|standard (both): TCGPlayer only accepts those values, and
+     * having both selected is how their UI marks "Show all listing types". ListingType=All
+     * is ignored, so the session default "Listings Without Photos" (standard) stays on.
      * Lookup/cache URLs should keep using buildTcgplayerUrlWithPrinting (no Condition).
      */
     function buildTcgplayerOutboundUrl(baseUrl, options = {}) {
@@ -3041,6 +3037,8 @@
       const condition = String(options.condition || "").trim();
       const canonical = canonicalTcgplayerProductUrl(null, null, baseUrl) || String(baseUrl || "").trim();
       if (!canonical) return "";
+      // Keep | unencoded — TCGPlayer's own router writes ListingType=custom|standard that way.
+      const listingTypeAll = "custom|standard";
       try {
         const parsed = new URL(canonical);
         parsed.searchParams.delete("ListingType");
@@ -3052,15 +3050,14 @@
         else parsed.searchParams.delete("Printing");
         if (condition) parsed.searchParams.set("Condition", condition);
         else parsed.searchParams.delete("Condition");
-        // "All" clears session/default ListingWithoutPhotos (standard) on TCGPlayer product pages.
-        parsed.searchParams.set("ListingType", "All");
-        return parsed.toString();
+        parsed.searchParams.set("ListingType", listingTypeAll);
+        return parsed.toString().replace(/ListingType=custom%7Cstandard/gi, `ListingType=${listingTypeAll}`);
       } catch {
         const params = [
           "Language=English",
           printing ? `Printing=${encodeURIComponent(printing)}` : "",
           condition ? `Condition=${encodeURIComponent(condition)}` : "",
-          "ListingType=All"
+          `ListingType=${listingTypeAll}`
         ].filter(Boolean);
         const bare = String(canonical).split("?")[0];
         return `${bare}?${params.join("&")}`;
@@ -4594,22 +4591,26 @@
       return applied;
     }
 
-    async function ensureSetPricingLoaded(setCode, setName = "") {
+    function hasSetPricingManifest(setCode) {
       const code = String(setCode || "").trim().toUpperCase();
-      if (!code || state.language !== "english") return;
+      if (!code) return false;
       const cached = state.cardPricingBySetCode[code];
       const hasVariantsIndex = Object.prototype.hasOwnProperty.call(state.cardVariantsBySetCode, code);
-      if (cached && Object.keys(cached).length > 0 && hasVariantsIndex) {
-        await hydrateSetLinkPricesFromCache(code, setName);
-        return;
-      }
-      if (setPricingLoadPromisesByCode[code]) {
-        await setPricingLoadPromisesByCode[code];
+      return Boolean(cached && Object.keys(cached).length > 0 && hasVariantsIndex);
+    }
+
+    /** Load set pricing manifest only (fast). Does not wait on link-price hydrate. */
+    async function ensureSetPricingManifestLoaded(setCode, setName = "") {
+      const code = String(setCode || "").trim().toUpperCase();
+      if (!code || state.language !== "english") return;
+      if (hasSetPricingManifest(code)) return;
+      if (setPricingManifestPromisesByCode[code]) {
+        await setPricingManifestPromisesByCode[code];
         return;
       }
 
       state.cardPricingLoadingBySetCode[code] = true;
-      setPricingLoadPromisesByCode[code] = (async () => {
+      setPricingManifestPromisesByCode[code] = (async () => {
         try {
           const params = new URLSearchParams({ setCode: code });
           const cleanName = String(setName || "").trim();
@@ -4631,10 +4632,28 @@
           state.cardVariantsBySetCode[code] = {};
         } finally {
           delete state.cardPricingLoadingBySetCode[code];
-          await hydrateSetLinkPricesFromCache(code, setName);
-          if (state.selectedSetCode === code && state.selectedCardNumber) {
-            updateCardDetailTcgPanelPrices();
-          }
+        }
+      })();
+      try {
+        await setPricingManifestPromisesByCode[code];
+      } finally {
+        delete setPricingManifestPromisesByCode[code];
+      }
+    }
+
+    async function ensureSetPricingLoaded(setCode, setName = "") {
+      const code = String(setCode || "").trim().toUpperCase();
+      if (!code || state.language !== "english") return;
+      if (setPricingLoadPromisesByCode[code]) {
+        await setPricingLoadPromisesByCode[code];
+        return;
+      }
+
+      setPricingLoadPromisesByCode[code] = (async () => {
+        await ensureSetPricingManifestLoaded(code, setName);
+        await hydrateSetLinkPricesFromCache(code, setName);
+        if (state.selectedSetCode === code && state.selectedCardNumber) {
+          updateCardDetailTcgPanelPrices();
         }
       })();
       try {
@@ -6605,6 +6624,43 @@
       return null;
     }
 
+    function parseTcgPriceWithShippingTotal(text) {
+      const raw = String(text || "").trim();
+      if (!raw) return null;
+      const withShip = raw.match(
+        /\$([0-9,]+\.[0-9]{2})\s*\+\s*(?:Free Shipping|\$([0-9,]+\.[0-9]{2})\s*Shipping)/i
+      );
+      if (withShip) {
+        const listing = Number(String(withShip[1]).replace(/,/g, ""));
+        const shipping = withShip[2] != null ? Number(String(withShip[2]).replace(/,/g, "")) : 0;
+        if (!Number.isFinite(listing) || listing <= 0) return null;
+        if (!Number.isFinite(shipping) || shipping < 0) return null;
+        return Number((listing + shipping).toFixed(2));
+      }
+      const only = raw.match(/^\$([0-9,]+\.[0-9]{2})$/);
+      if (!only) return null;
+      const n = Number(String(only[1]).replace(/,/g, ""));
+      return Number.isFinite(n) && n > 0 ? n : null;
+    }
+
+    /** Same card price value used by the TCG panel, for immediate set-tile inclines. */
+    function getManifestCardPriceValue(pricingInfo) {
+      const info = pricingInfo && typeof pricingInfo === "object" ? pricingInfo : null;
+      if (!info) return null;
+
+      const nm = Number(info.nearMintPrice ?? info.nearMintAddToCartPrice);
+      const ship = Number(info.shippingPrice);
+      if (Number.isFinite(nm) && nm > 0 && Number.isFinite(ship) && ship >= 0) {
+        return Number((nm + ship).toFixed(2));
+      }
+
+      const fromLabel = parseTcgPriceWithShippingTotal(info.nearMintWithShipping);
+      if (Number.isFinite(fromLabel) && fromLabel > 0) return fromLabel;
+
+      const fallback = Number(info.tcgplayerPrice);
+      return Number.isFinite(fallback) && fallback > 0 ? fallback : null;
+    }
+
     function getEffectiveTcgplayerPrice(pricingInfo, card = null) {
       const info =
         pricingInfo && typeof pricingInfo === "object"
@@ -6627,8 +6683,7 @@
           if (Number.isFinite(resolved) && resolved > 0) return resolved;
         }
       }
-      const fallback = Number(info.tcgplayerPrice);
-      return Number.isFinite(fallback) && fallback > 0 ? fallback : null;
+      return getManifestCardPriceValue(info);
     }
 
     function formatCardPriceInline(card) {
@@ -7373,6 +7428,7 @@
 
     function ensureCardAddButton(shell) {
       if (!shell || shell.querySelector(".card-add-btn")) return;
+      shell.querySelector(".card-owned-remove")?.remove();
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "card-add-btn";
@@ -7380,6 +7436,19 @@
       btn.setAttribute("aria-label", "Add to collection");
       btn.setAttribute("title", "Add to collection");
       btn.textContent = "+";
+      shell.appendChild(btn);
+    }
+
+    function ensureCardRemoveButton(shell) {
+      if (!shell || shell.querySelector(".card-owned-remove")) return;
+      shell.querySelector(".card-add-btn")?.remove();
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "card-owned-remove";
+      btn.setAttribute("data-remove-from-collection", "");
+      btn.setAttribute("aria-label", "Remove from collection");
+      btn.setAttribute("title", "Remove from collection");
+      btn.textContent = "−";
       shell.appendChild(btn);
     }
 
@@ -7555,6 +7624,7 @@
           tile?.removeAttribute("title");
           shell.querySelector(".card-owned-chip")?.remove();
           shell.querySelector(".card-add-btn")?.remove();
+          shell.querySelector(".card-owned-remove")?.remove();
           return;
         }
 
@@ -7563,34 +7633,21 @@
         if (owned) {
           tile?.setAttribute("title", "In your collection");
           shell.querySelector(".card-add-btn")?.remove();
+          ensureCardRemoveButton(shell);
           let chip = shell.querySelector(".card-owned-chip");
           if (!chip) {
             chip = document.createElement("span");
             chip.className = "card-owned-chip";
-            chip.appendChild(document.createTextNode("In your collection"));
-            const removeBtn = document.createElement("button");
-            removeBtn.type = "button";
-            removeBtn.className = "card-owned-remove";
-            removeBtn.setAttribute("data-remove-from-collection", "");
-            removeBtn.setAttribute("aria-label", "Remove from collection");
-            removeBtn.setAttribute("title", "Remove from collection");
-            removeBtn.textContent = "−";
-            chip.appendChild(removeBtn);
+            chip.textContent = "In your collection";
             if (tile) tile.insertBefore(chip, tile.firstChild);
             else shell.insertBefore(chip, shell.firstChild);
-          } else if (!chip.querySelector("[data-remove-from-collection]")) {
-            const removeBtn = document.createElement("button");
-            removeBtn.type = "button";
-            removeBtn.className = "card-owned-remove";
-            removeBtn.setAttribute("data-remove-from-collection", "");
-            removeBtn.setAttribute("aria-label", "Remove from collection");
-            removeBtn.setAttribute("title", "Remove from collection");
-            removeBtn.textContent = "−";
-            chip.appendChild(removeBtn);
+          } else {
+            chip.textContent = "In your collection";
           }
         } else {
           tile?.removeAttribute("title");
           shell.querySelector(".card-owned-chip")?.remove();
+          shell.querySelector(".card-owned-remove")?.remove();
           ensureCardAddButton(shell);
         }
       });
@@ -8745,8 +8802,13 @@
       state.showcaseReturnUrl = showcaseReturn || null;
 
       await ensureSetCardDetailsLoaded(setCode);
-      if (resolvedCard && state.language === "english") {
-        await ensureSetPricingLoaded(setCode, entry.name || "");
+      if (state.language === "english") {
+        if (resolvedCard) {
+          await ensureSetPricingLoaded(setCode, entry.name || "");
+        } else {
+          await ensureSetPricingManifestLoaded(setCode, entry.name || "").catch(() => {});
+          primeActiveSetPrices(setCode, entry.name || "");
+        }
       }
 
       scrollToPageTop();
