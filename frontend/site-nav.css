@@ -1,4 +1,4 @@
-/* Shared top navigation + mobile Safari fixes — load after page inline CSS */
+/* Shared top navigation + mobile Safari fixes — load AFTER page inline CSS */
 @import url("/brand-logo.css");
 
 html {
@@ -6,58 +6,72 @@ html {
   text-size-adjust: 100%;
 }
 
+/*
+ * Canonical header structure:
+ *   .nav-left | .nav-search-wrap | .nav-right(account)
+ * Desktop: one row. Mobile: Sign In stays with logo; search drops under.
+ */
 .top-nav {
-  height: auto;
-  min-height: 56px;
+  height: auto !important;
+  min-height: 56px !important;
   border-bottom: 1px solid var(--border, #26364f);
   background: rgba(10, 15, 24, 0.92);
   backdrop-filter: blur(8px);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  flex-wrap: wrap;
-  padding: 8px 16px;
-  padding-top: max(8px, env(safe-area-inset-top, 0px));
-  padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px));
-  position: sticky;
-  top: 0;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto auto !important;
+  grid-template-areas: "left search right" !important;
+  align-items: center !important;
+  column-gap: 10px !important;
+  row-gap: 8px !important;
+  flex-wrap: nowrap !important;
+  padding: 8px 16px !important;
+  padding-top: max(8px, env(safe-area-inset-top, 0px)) !important;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)) !important;
+  padding-right: max(16px, env(safe-area-inset-right, 0px)) !important;
+  position: sticky !important;
+  top: 0 !important;
   z-index: 10000 !important;
-  box-sizing: border-box;
-}
-
-.nav-left,
-.nav-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  min-width: 0;
+  box-sizing: border-box !important;
 }
 
 .nav-left {
-  flex: 1 1 auto;
-  order: 1;
+  grid-area: left !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  flex-wrap: wrap !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  flex: unset !important;
+  order: unset !important;
+}
+
+.nav-search-wrap {
+  grid-area: search !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  order: unset !important;
 }
 
 .nav-right {
-  margin-left: auto;
-  order: 3;
+  grid-area: right !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 12px !important;
+  flex-wrap: nowrap !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  flex: unset !important;
+  order: unset !important;
 }
 
-/* If search was misplaced as a sibling after Sign In, pull it before Account. */
-.top-nav > .nav-search-wrap {
-  order: 2;
-  margin-left: auto;
-}
-
+/* Search must never sit inside .nav-right visually beside Sign In. */
 .nav-right > .nav-search-wrap {
-  order: 1;
-}
-
-.nav-right > [data-account-slot] {
-  order: 2;
+  display: none !important;
 }
 
 .nav-link {
@@ -127,28 +141,12 @@ html.nav-drawer-open body {
   display: block;
 }
 
-.nav-search-wrap {
-  min-width: 0;
-}
-
-/*
- * Phone / tablet:
- * Row 1: [ logo + ☰ ] .............. [ Sign In ]
- * Row 2: [ search ........................... ]
- */
 @media (max-width: 960px) {
   .top-nav {
-    display: grid !important;
     grid-template-columns: minmax(0, 1fr) auto !important;
     grid-template-areas:
       "left right"
       "search search" !important;
-    align-items: center !important;
-    column-gap: 10px !important;
-    row-gap: 8px !important;
-    height: auto !important;
-    min-height: 56px !important;
-    flex-wrap: nowrap !important;
   }
 
   .top-nav.nav-open {
@@ -156,37 +154,8 @@ html.nav-drawer-open body {
   }
 
   .nav-left {
-    grid-area: left !important;
-    order: unset !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: flex-start !important;
     flex-wrap: nowrap !important;
     gap: 8px !important;
-    width: auto !important;
-    max-width: 100% !important;
-    flex: unset !important;
-    margin: 0 !important;
-  }
-
-  .nav-right {
-    grid-area: right !important;
-    order: unset !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: flex-end !important;
-    justify-self: end !important;
-    flex-wrap: nowrap !important;
-    gap: 8px !important;
-    width: auto !important;
-    max-width: none !important;
-    flex: unset !important;
-    margin: 0 !important;
-  }
-
-  /* Failsafe: never keep search beside Sign In on the logo row. */
-  .nav-right > .nav-search-wrap {
-    display: none !important;
   }
 
   .nav-menu-btn {
@@ -237,25 +206,19 @@ html.nav-drawer-open body {
     background: rgba(255, 255, 255, 0.06);
   }
 
-  .top-nav > .nav-search-wrap {
-    grid-area: search !important;
-    order: unset !important;
-    margin: 0 !important;
-    width: 100% !important;
-    max-width: none !important;
-    min-width: 0 !important;
-    display: flex !important;
-    align-items: center !important;
-  }
-
-  .top-nav > .nav-search-wrap .search,
-  .top-nav > .nav-search-wrap > input {
+  .nav-search-wrap {
     width: 100% !important;
     max-width: none !important;
   }
 
-  .nav-right [data-account-slot] .acct-button,
-  .nav-right .acct-button {
+  .nav-search-wrap .search,
+  .nav-search-wrap > input {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .nav-right .acct-button,
+  .nav-right [data-account-slot] .acct-button {
     height: 40px !important;
     min-height: 40px !important;
     white-space: nowrap !important;
@@ -264,8 +227,8 @@ html.nav-drawer-open body {
 
 @media (max-width: 640px) {
   .top-nav {
-    padding-left: max(12px, env(safe-area-inset-left, 0px));
-    padding-right: max(12px, env(safe-area-inset-right, 0px));
+    padding-left: max(12px, env(safe-area-inset-left, 0px)) !important;
+    padding-right: max(12px, env(safe-area-inset-right, 0px)) !important;
   }
 
   .nav-left {

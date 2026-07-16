@@ -37,6 +37,27 @@
     }
   }
 
+  /**
+   * Canonical DOM: .nav-left, .nav-search-wrap, .nav-right(account only).
+   * CSS grid places search left of Sign In on desktop, under the logo row on mobile.
+   */
+  function placeSearchForViewport(nav, right, searchWrap) {
+    if (!nav || !searchWrap) return;
+    if (right) {
+      // Pull search out of the account cluster if needed.
+      if (searchWrap.parentElement === right || searchWrap.closest(".nav-right") === right) {
+        nav.insertBefore(searchWrap, right);
+        return;
+      }
+      // Keep search as a direct child immediately before account.
+      if (searchWrap.parentElement === nav && searchWrap.nextElementSibling !== right) {
+        nav.insertBefore(searchWrap, right);
+      }
+    } else if (searchWrap.parentElement !== nav) {
+      nav.appendChild(searchWrap);
+    }
+  }
+
   function findSearchWrap(nav, right) {
     return (
       (right && right.querySelector(".nav-search-wrap")) ||
@@ -44,26 +65,6 @@
       nav.querySelector(".nav-search-wrap") ||
       null
     );
-  }
-
-  function placeSearchForViewport(nav, right, searchWrap) {
-    if (!nav || !searchWrap) return;
-    if (isDesktopNav()) {
-      // Desktop: [search][Sign In] inside nav-right — never after Sign In.
-      if (!right) return;
-      const account = right.querySelector("[data-account-slot]");
-      if (searchWrap.parentElement !== right) {
-        if (account) right.insertBefore(searchWrap, account);
-        else right.appendChild(searchWrap);
-      } else if (account && searchWrap.nextElementSibling !== account) {
-        right.insertBefore(searchWrap, account);
-      }
-    } else {
-      // Mobile: search on its own row under the logo / Sign In row.
-      if (searchWrap.parentElement !== nav) {
-        nav.appendChild(searchWrap);
-      }
-    }
   }
 
   function enhanceNav(nav) {
@@ -104,7 +105,6 @@
 
     placePanelForViewport(nav, left, panel);
     placeSearchForViewport(nav, right, searchWrap);
-    searchWrap = findSearchWrap(nav, right);
 
     let backdrop = document.querySelector(".nav-drawer-backdrop");
     if (!backdrop) {
@@ -174,10 +174,8 @@
       { passive: true }
     );
 
-    // Account UI mounts async — re-assert search/account order after it paints.
     window.setTimeout(syncLayout, 0);
     window.setTimeout(syncLayout, 250);
-    window.setTimeout(syncLayout, 1000);
   }
 
   function boot() {
