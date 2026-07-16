@@ -23,9 +23,11 @@ html {
   padding-right: max(16px, env(safe-area-inset-right, 0px));
   position: sticky;
   top: 0;
-  z-index: 100;
+  /* Beat per-page .top-nav z-index overrides so the drawer stays tappable. */
+  z-index: 10000 !important;
   box-sizing: border-box;
 }
+
 
 .nav-left,
 .nav-right {
@@ -98,17 +100,19 @@ html.nav-drawer-open body {
   display: none;
   position: fixed;
   inset: 0;
-  z-index: 190;
+  z-index: 10040;
   background: rgba(0, 0, 0, 0.45);
   border: 0;
   padding: 0;
   margin: 0;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .nav-drawer-backdrop.is-open {
   display: block;
 }
+
 
 .nav-search-wrap {
   min-width: 0;
@@ -134,10 +138,11 @@ html.nav-drawer-open body {
     flex-wrap: nowrap !important;
   }
 
-  /* Elevate the whole nav above the dim backdrop so menu links are clickable. */
+  /* Elevate the whole nav above the dim backdrop so the hamburger stays usable. */
   .top-nav.nav-open {
-    z-index: 200 !important;
+    z-index: 10050 !important;
   }
+
 
   .nav-left {
     grid-area: left !important;
@@ -171,17 +176,19 @@ html.nav-drawer-open body {
     display: grid !important;
   }
 
+  /* Hidden until opened; panel is often portaled to body on mobile. */
   .nav-links {
     display: none !important;
   }
 
-  .top-nav.nav-open .nav-links {
+  .top-nav.nav-open .nav-links,
+  .nav-links.is-open {
     display: flex !important;
     position: fixed;
     top: calc(56px + env(safe-area-inset-top, 0px));
     left: 0;
     right: 0;
-    z-index: 120;
+    z-index: 10060 !important;
     flex-direction: column;
     align-items: stretch;
     gap: 2px;
@@ -192,17 +199,26 @@ html.nav-drawer-open body {
     max-height: min(70vh, 520px);
     overflow: auto;
     -webkit-overflow-scrolling: touch;
+    pointer-events: auto !important;
+    touch-action: manipulation;
   }
 
-  .top-nav.nav-open .nav-links .nav-link {
+
+  .top-nav.nav-open .nav-links .nav-link,
+  .nav-links.is-open .nav-link {
     display: block;
-    padding: 12px 10px;
-    font-size: 15px;
+    padding: 14px 12px;
+    font-size: 16px;
     border-radius: 8px;
+    color: var(--text, #e9f1ff);
+    text-decoration: none;
+    -webkit-tap-highlight-color: rgba(41, 98, 255, 0.25);
   }
 
   .top-nav.nav-open .nav-links .nav-link:hover,
-  .top-nav.nav-open .nav-links .nav-link.active {
+  .top-nav.nav-open .nav-links .nav-link.active,
+  .nav-links.is-open .nav-link:hover,
+  .nav-links.is-open .nav-link.active {
     background: rgba(255, 255, 255, 0.06);
   }
 

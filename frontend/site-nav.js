@@ -1,7 +1,8 @@
 (() => {
-  function closeNav(nav, backdrop) {
+  function closeNav(nav, backdrop, panel) {
     if (!nav) return;
     nav.classList.remove("nav-open");
+    if (panel) panel.classList.remove("is-open");
     const btn = nav.querySelector(".nav-menu-btn");
     if (btn) btn.setAttribute("aria-expanded", "false");
     if (backdrop) {
@@ -11,8 +12,9 @@
     document.documentElement.classList.remove("nav-drawer-open");
   }
 
-  function openNav(nav, backdrop) {
+  function openNav(nav, backdrop, panel) {
     nav.classList.add("nav-open");
+    if (panel) panel.classList.add("is-open");
     const btn = nav.querySelector(".nav-menu-btn");
     if (btn) btn.setAttribute("aria-expanded", "true");
     if (backdrop) {
@@ -20,6 +22,20 @@
       backdrop.classList.add("is-open");
     }
     document.documentElement.classList.add("nav-drawer-open");
+  }
+
+  function isDesktopNav() {
+    return window.matchMedia("(min-width: 961px)").matches;
+  }
+
+  function placePanelForViewport(nav, left, panel) {
+    if (isDesktopNav()) {
+      if (panel.parentElement !== left) left.appendChild(panel);
+      panel.classList.remove("is-open");
+    } else if (panel.parentElement !== document.body) {
+      // Body portal avoids sticky/nav stacking contexts covering links on iOS Safari.
+      document.body.appendChild(panel);
+    }
   }
 
   function enhanceNav(nav) {
@@ -34,9 +50,9 @@
     );
     if (!links.length) return;
 
-    const panel = document.createElement("div");
+    const panel = document.createElement("nav");
     panel.className = "nav-links";
-    panel.setAttribute("role", "navigation");
+    panel.id = "siteNavLinks";
     panel.setAttribute("aria-label", "Primary");
     links.forEach((link) => panel.appendChild(link));
 
@@ -46,8 +62,7 @@
     btn.setAttribute("aria-label", "Open menu");
     btn.setAttribute("aria-expanded", "false");
     btn.setAttribute("aria-controls", "siteNavLinks");
-    panel.id = panel.id || "siteNavLinks";
-    btn.innerHTML = "<span aria-hidden=\"true\">☰</span>";
+    btn.innerHTML = '<span aria-hidden="true">☰</span>';
 
     const brand = left.querySelector(".brand");
     if (brand && brand.nextSibling) {
@@ -55,7 +70,8 @@
     } else {
       left.appendChild(btn);
     }
-    left.appendChild(panel);
+
+    placePanelForViewport(nav, left, panel);
 
     // Keep Account on the top row; move search under logo/menu/account on narrow layouts.
     const right = nav.querySelector(".nav-right");
@@ -78,28 +94,55 @@
     }
 
     btn.addEventListener("click", (event) => {
+      event.preventDefault();
       event.stopPropagation();
-      if (nav.classList.contains("nav-open")) closeNav(nav, backdrop);
-      else openNav(nav, backdrop);
+      placePanelForViewport(nav, left, panel);
+      if (nav.classList.contains("nav-open") || panel.classList.contains("is-open")) {
+        closeNav(nav, backdrop, panel);
+      } else {
+        openNav(nav, backdrop, panel);
+      }
     });
 
-    backdrop.addEventListener("click", () => closeNav(nav, backdrop));
-
-    panel.querySelectorAll("a.nav-link").forEach((link) => {
-      link.addEventListener("click", () => {
-        // Let navigation proceed; just close the drawer.
-        closeNav(nav, backdrop);
-      });
+    backdrop.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      closeNav(nav, backdrop, panel);
     });
+
+    // Navigate explicitly so iOS Safari never "eats" the tap under overlays.
+    panel.addEventListener(
+      "click",
+      (event) => {
+        const link = event.target && event.target.closest ? event.target.closest("a.nav-link") : null;
+        if (!link || !panel.contains(link)) return;
+        const href = link.getAttribute("href");
+        if (!href || href.startsWith("#")) {
+          closeNav(nav, backdrop, panel);
+          return;
+        }
+        // Preserve new-tab / modified clicks.
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
+          window.setTimeout(() => closeNav(nav, backdrop, panel), 0);
+          return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        closeNav(nav, backdrop, panel);
+        window.location.assign(href);
+      },
+      true
+    );
 
     document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") closeNav(nav, backdrop);
+      if (event.key === "Escape") closeNav(nav, backdrop, panel);
     });
 
     window.addEventListener(
       "resize",
       () => {
-        if (window.matchMedia("(min-width: 961px)").matches) closeNav(nav, backdrop);
+        placePanelForViewport(nav, left, panel);
+        if (isDesktopNav()) closeNav(nav, backdrop, panel);
       },
       { passive: true }
     );

@@ -9,7 +9,7 @@
   <link rel="preload" href="/api/sets/card-sky-urls?limit=500&localOnly=1" as="fetch" crossorigin="anonymous" />
   <link rel="stylesheet" href="/card-sky.css?v=8" />
   <link rel="stylesheet" href="/brand-logo.css" />
-  <link rel="stylesheet" href="/site-nav.css?v=5" />
+  <link rel="stylesheet" href="/site-nav.css?v=6" />
   <script src="/card-sky.js?v=8" defer></script>
   <style>
     :root {
@@ -2498,14 +2498,7 @@
     function scheduleCatalogSearchUpdate() {
       setCatalogSearchSkyFrozen(true);
       if (catalogSearchRenderTimer) clearTimeout(catalogSearchRenderTimer);
-      const queryAtSchedule = String(state.query || "").trim();
-      // Start pulling prices during debounce so results can paint with numbers, not dashes.
-      if (queryAtSchedule) {
-        void ensureCatalogManifestLoaded().then(() => {
-          if (String(state.query || "").trim() !== queryAtSchedule) return;
-          warmPricesForCatalogSearchMatches(getCatalogSearchMatches(queryAtSchedule));
-        });
-      }
+      // Do not warm prices during debounce — card images/names must win the network first.
       catalogSearchRenderTimer = setTimeout(() => {
         catalogSearchRenderTimer = null;
         setCatalogSearchSkyFrozen(false);
@@ -7362,10 +7355,11 @@
       });
     }
 
-    function paintCatalogSearchResults(matches, eraSuffix = "") {
+    function paintCatalogSearchResults(matches, eraSuffix = "", { fillPrices = false } = {}) {
       const content = document.getElementById("content");
       if (!content) return;
       const q = state.query.trim();
+      const eagerLimit = 24;
       content.innerHTML = `
         <article class="era-block">
           <h2 class="era-title">Search Results</h2>
@@ -7373,7 +7367,7 @@
           ${
             matches.length
               ? `<div class="cards-grid">
-                  ${matches.map((card) => `
+                  ${matches.map((card, index) => `
                     <button
                       type="button"
                       class="card-tile"
@@ -7381,12 +7375,18 @@
                       data-card-number="${escapeHtml(card.cardNo)}"
                     >
                       ${card.imageUrl
-                        ? `<img class="card-thumb" src="${escapeHtml(card.imageUrl)}" alt="${escapeHtml(getCardDisplayName(card))}" loading="lazy" />`
+                        ? `<img class="card-thumb" src="${escapeHtml(card.imageUrl)}" alt="${escapeHtml(getCardDisplayName(card))}" ${
+                            index < eagerLimit
+                              ? `loading="eager" fetchpriority="${index < 8 ? "high" : "auto"}"`
+                              : `loading="lazy"`
+                          } />`
                         : `<div class="card-thumb placeholder">No image</div>`}
                       <div>${renderCardName(card)}</div>
                       <div class="card-meta card-meta-row">
                         <span>${escapeHtml(card.setName)} (${escapeHtml(card.setCode)}) · ${escapeHtml(card.label)}</span>
-                        <span class="card-price-inline">${escapeHtml(formatCardPriceInline(card) || "—")}</span>
+                        <span class="card-price-inline">${escapeHtml(
+                          fillPrices ? formatCardPriceInline(card) || "—" : "…"
+                        )}</span>
                       </div>
                     </button>
                   `).join("")}
@@ -7481,20 +7481,20 @@
         let matches = getCatalogSearchMatches(queryAtRender);
         state.catalogSearchPreviewMatches = matches;
         const paintToken = ++catalogSearchPricePaintToken;
-        const paintNow = () => {
+        const paintNow = (fillPrices) => {
           if (paintToken !== catalogSearchPricePaintToken) return;
           if (state.query.trim() !== queryAtRender || state.selectedSetCode) return;
           matches = getCatalogSearchMatches(queryAtRender);
           state.catalogSearchPreviewMatches = matches;
-          paintCatalogSearchResults(matches, eraSuffix);
+          paintCatalogSearchResults(matches, eraSuffix, { fillPrices: Boolean(fillPrices) });
         };
-        // Always paint cards immediately so big queries like "charizard" aren't stuck on "Loading prices…".
-        paintNow();
+        // Names + images first; prices hydrate after so bandwidth isn't stolen by price APIs.
+        paintNow(false);
         void ensurePricesForCatalogSearchMatches(matches).then(() => {
           if (paintToken !== catalogSearchPricePaintToken) return;
           if (state.query.trim() !== queryAtRender || state.selectedSetCode) return;
           if (state.globalSearchSortMode === "price") {
-            paintNow();
+            paintNow(true);
           } else {
             updateCatalogSearchInlinePrices();
           }
@@ -8103,7 +8103,7 @@
       }
     })();
   </script>
-  <script src="/site-nav.js?v=5" defer></script>
+  <script src="/site-nav.js?v=6" defer></script>
   <script src="/account-ui.js?v=7"></script>
 </body>
 </html>
