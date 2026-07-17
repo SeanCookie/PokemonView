@@ -177,7 +177,38 @@
         : "—";
     }
 
-    if (totalLinks > 0 && priced > 0 && priced < totalLinks * 0.5 && !tcgBusy) {
+    if (tcgBusy) {
+      const detail = String(tcg.detail || "").trim();
+      const workingSet = String(tcg.currentSetName || tcg.currentSetCode || tcg.setName || tcg.setCode || "").trim();
+      const workingCard = [
+        String(tcg.currentCardName || "").trim(),
+        tcg.currentCardNo ? `#${String(tcg.currentCardNo).trim()}` : ""
+      ]
+        .filter(Boolean)
+        .join(" ");
+      let statusLine = detail;
+      if (!statusLine) {
+        if (collecting) {
+          statusLine = workingSet
+            ? `Collecting TCGplayer links from ${workingSet}…`
+            : "Collecting TCGplayer links from sets…";
+        } else if (workingCard && workingSet) {
+          statusLine = `Pricing ${workingCard} · ${workingSet}`;
+        } else if (workingCard) {
+          statusLine = `Pricing ${workingCard}…`;
+        } else if (workingSet) {
+          statusLine = `Pricing links in ${workingSet}…`;
+        } else {
+          statusLine = "TCG price check running…";
+        }
+      }
+      const counts = total
+        ? ` · ${done.toLocaleString()}/${total.toLocaleString()} (${pct}%)`
+        : collecting && setsTotal
+          ? ` · sets ${setsDone.toLocaleString()}/${setsTotal.toLocaleString()} (${pct}%)`
+          : "";
+      setStatus(tcgStatusMsg, `${statusLine}${counts}`, "");
+    } else if (totalLinks > 0 && priced > 0 && priced < totalLinks * 0.5) {
       setStatus(
         tcgStatusMsg,
         `Only ${priced.toLocaleString()} of ${totalLinks.toLocaleString()} links are priced in cache. Run “Update all TCG prices” again and keep the server running until priced count catches up.`,
@@ -232,6 +263,26 @@
         : pcBusy
           ? "Starting PriceCharting pass…"
           : "—";
+    }
+
+    if (pcBusy) {
+      const detail = String(pc.detail || "").trim();
+      const workingSet = String(pc.currentSetName || pc.currentSetCode || pc.setName || pc.setCode || "").trim();
+      const workingCard = [
+        String(pc.currentCardName || "").trim(),
+        pc.currentCardNo ? `#${String(pc.currentCardNo).trim()}` : ""
+      ]
+        .filter(Boolean)
+        .join(" ");
+      let statusLine = detail;
+      if (!statusLine) {
+        if (workingCard && workingSet) statusLine = `Fetching ${workingCard} · ${workingSet}`;
+        else if (workingCard) statusLine = `Fetching ${workingCard}…`;
+        else if (workingSet) statusLine = `Refreshing PriceCharting details for ${workingSet}…`;
+        else statusLine = "PriceCharting details refresh running…";
+      }
+      const counts = total ? ` · ${done.toLocaleString()}/${total.toLocaleString()} (${pct}%)` : "";
+      setStatus(pcStatusMsg, `${statusLine}${counts}`, "");
     }
 
     if (btnPcDetailsUpdate) {

@@ -282,15 +282,21 @@ async function refreshPriceChartingCardDetailsBatch(
   let fail = 0;
   let skipped = 0;
   let processed = 0;
+  let currentCard = null;
 
   const reportProgress = () => {
     if (typeof onProgress !== "function") return;
+    const card = currentCard && typeof currentCard === "object" ? currentCard : {};
     onProgress({
       total: list.length,
       done: ok + fail + skipped,
       ok,
       fail,
       skipped,
+      currentSetCode: String(card.setCode || "").trim().toUpperCase(),
+      currentSetName: String(card.setName || "").trim(),
+      currentCardNo: String(card.cardNo || "").trim(),
+      currentCardName: String(card.cardName || "").trim(),
       ...getPriceChartingCardDetailsCacheMeta()
     });
   };
@@ -302,6 +308,8 @@ async function refreshPriceChartingCardDetailsBatch(
         if (shouldCancel()) break;
         const card = list[cursor];
         cursor += 1;
+        currentCard = card;
+        reportProgress();
         try {
           if (skipValidCached && readCachedCardDetails(card.setCode, card.cardNo)) {
             skipped += 1;
@@ -326,7 +334,7 @@ async function refreshPriceChartingCardDetailsBatch(
         if (persistEvery > 0 && processed % persistEvery === 0) {
           await enqueuePersistPriceChartingCardDetailsCacheNow();
         }
-        if (processed % 10 === 0 || processed === list.length) reportProgress();
+        if (processed % 3 === 0 || processed === list.length) reportProgress();
       }
     });
 

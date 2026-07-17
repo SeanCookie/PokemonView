@@ -383,7 +383,13 @@ let tcgBulkPriceCheckMeta = {
   pricedInCacheCount: 0,
   phase: null,
   setCode: null,
-  setName: null
+  setName: null,
+  currentSetCode: null,
+  currentSetName: null,
+  currentCardNo: null,
+  currentCardName: null,
+  currentUrl: null,
+  detail: null
 };
 let tcgBulkPriceCheckJob = null;
 let priceChartingDetailsPrewarmJob = null;
@@ -398,7 +404,14 @@ let priceChartingBulkMeta = {
   progress: { total: 0, done: 0, ok: 0, fail: 0, skipped: 0 },
   lastError: null,
   cacheSavedAt: null,
-  cacheEntryCount: 0
+  cacheEntryCount: 0,
+  setCode: null,
+  setName: null,
+  currentSetCode: null,
+  currentSetName: null,
+  currentCardNo: null,
+  currentCardName: null,
+  detail: null
 };
 const priceChartingFailLinks = new Map();
 let priceChartingFailLinksPersistTimer = null;
@@ -520,7 +533,13 @@ function buildTcgLinkPriceCacheFilePayload(entries) {
       pricedInCacheCount: tcgBulkPriceCheckMeta.pricedInCacheCount,
       phase: tcgBulkPriceCheckMeta.phase,
       setCode: tcgBulkPriceCheckMeta.setCode,
-      setName: tcgBulkPriceCheckMeta.setName
+      setName: tcgBulkPriceCheckMeta.setName,
+      currentSetCode: tcgBulkPriceCheckMeta.currentSetCode,
+      currentSetName: tcgBulkPriceCheckMeta.currentSetName,
+      currentCardNo: tcgBulkPriceCheckMeta.currentCardNo,
+      currentCardName: tcgBulkPriceCheckMeta.currentCardName,
+      currentUrl: tcgBulkPriceCheckMeta.currentUrl,
+      detail: tcgBulkPriceCheckMeta.detail
     },
     entries: Array.isArray(entries) ? entries : []
   };
@@ -965,10 +984,25 @@ async function refreshTcgLinkPricesForUrls(
   let fail = 0;
   let skipped = 0;
   let processed = 0;
+  let currentUrl = "";
+  let currentCtx = null;
   const reportProgress = () => {
     const live = syncTcgBulkPriceCheckCacheCount();
     if (typeof onProgress !== "function") return;
-    onProgress({ total: list.length, done: ok + fail + skipped, ok, fail, skipped, ...live });
+    const ctx = currentCtx && typeof currentCtx === "object" ? currentCtx : {};
+    onProgress({
+      total: list.length,
+      done: ok + fail + skipped,
+      ok,
+      fail,
+      skipped,
+      currentUrl: currentUrl || "",
+      currentSetCode: String(ctx.setCode || "").trim().toUpperCase(),
+      currentSetName: String(ctx.setName || "").trim(),
+      currentCardNo: String(ctx.cardNo || "").trim(),
+      currentCardName: String(ctx.cardName || "").trim(),
+      ...live
+    });
   };
   tcgLinkPriceBulkPersistSuspended = true;
   try {
@@ -977,6 +1011,9 @@ async function refreshTcgLinkPricesForUrls(
         if (isTcgPriceCheckCancelled()) break;
         const url = list[cursor];
         cursor += 1;
+        currentUrl = url;
+        currentCtx = pcContextByUrl.get(url) || null;
+        reportProgress();
         try {
           const productId = extractTcgplayerProductIdFromUrl(url);
           if (skipValidCached && productId && isTcgLinkPriceCacheFresh(productId, url, freshnessMs)) {
@@ -1005,7 +1042,7 @@ async function refreshTcgLinkPricesForUrls(
         if (persistEvery > 0 && processed % persistEvery === 0) {
           await enqueuePersistTcgLinkPriceCacheNow();
         }
-        if (processed % 8 === 0 || processed === list.length) reportProgress();
+        if (processed % 4 === 0 || processed === list.length) reportProgress();
       }
     });
     await Promise.all(workers);
@@ -1111,13 +1148,17 @@ async function collectAllTcgplayerUrlsForPrewarm({ onProgress } = {}) {
   const targets = (await listEnglishSetPricingTargets()).filter((target) => target?.setCode);
   const totalSets = targets.length;
   let setsDone = 0;
+  let currentSetCode = "";
+  let currentSetName = "";
   const report = (phase = "collecting") => {
     if (typeof onProgress !== "function") return;
     onProgress({
       phase,
       setsDone,
       setsTotal: totalSets,
-      linkCount: urls.size
+      linkCount: urls.size,
+      currentSetCode,
+      currentSetName
     });
   };
   report("collecting");
@@ -1129,6 +1170,9 @@ async function collectAllTcgplayerUrlsForPrewarm({ onProgress } = {}) {
       if (isTcgPriceCheckCancelled()) break;
       const target = targets[cursor];
       cursor += 1;
+      currentSetCode = String(target.setCode || "").trim().toUpperCase();
+      currentSetName = String(target.setName || "").trim();
+      report("collecting");
       try {
         const manifest = await getSetCardPricingManifest(target.setCode, target.setName);
         for (const url of collectTcgplayerUrlsFromPricingManifest(manifest)) {
@@ -1146,13 +1190,13 @@ async function collectAllTcgplayerUrlsForPrewarm({ onProgress } = {}) {
         // best effort per set
       }
       setsDone += 1;
-      if (setsDone === 1 || setsDone === totalSets || setsDone % 3 === 0) {
-        report("collecting");
-      }
+      report("collecting");
       await sleep(TCG_LINK_PRICE_SET_MANIFEST_DELAY_MS);
     }
   });
   await Promise.all(workers);
+  currentSetCode = "";
+  currentSetName = "";
   report("collected");
   return { urls: [...urls], priceChartingContextByUrl };
 }
@@ -1185,6 +1229,13 @@ function runPriceChartingDetailsPrewarmBackground(triggeredBy = "", options = {}
     lastError: null,
     setCode: onlySetCode || null,
     setName: onlySetName || null,
+    currentSetCode: onlySetCode || null,
+    currentSetName: onlySetName || null,
+    currentCardNo: null,
+    currentCardName: null,
+    detail: onlySetCode
+      ? `Starting PriceCharting refresh for ${onlySetName || onlySetCode}…`
+      : "Starting PriceCharting details refresh…",
     progress: { total: 0, done: 0, ok: 0, fail: 0, skipped: 0 }
   };
   priceChartingDetailsPrewarmJob = (async () => {
@@ -1227,6 +1278,27 @@ function runPriceChartingDetailsPrewarmBackground(triggeredBy = "", options = {}
             fail: progress.fail,
             skipped: Number(progress.skipped) || 0
           };
+          priceChartingBulkMeta.currentSetCode =
+            String(progress.currentSetCode || onlySetCode || "").trim().toUpperCase() || null;
+          priceChartingBulkMeta.currentSetName =
+            String(progress.currentSetName || onlySetName || "").trim() || null;
+          priceChartingBulkMeta.currentCardNo = String(progress.currentCardNo || "").trim() || null;
+          priceChartingBulkMeta.currentCardName = String(progress.currentCardName || "").trim() || null;
+          const setLabel =
+            priceChartingBulkMeta.currentSetName || priceChartingBulkMeta.currentSetCode || "";
+          const cardLabel = [
+            priceChartingBulkMeta.currentCardName,
+            priceChartingBulkMeta.currentCardNo ? `#${priceChartingBulkMeta.currentCardNo}` : ""
+          ]
+            .filter(Boolean)
+            .join(" ");
+          if (cardLabel && setLabel) {
+            priceChartingBulkMeta.detail = `Fetching ${cardLabel} · ${setLabel}`;
+          } else if (cardLabel) {
+            priceChartingBulkMeta.detail = `Fetching ${cardLabel}`;
+          } else {
+            priceChartingBulkMeta.detail = "Fetching PriceCharting card details…";
+          }
           const pcMeta = getPriceChartingCardDetailsCacheMeta();
           priceChartingBulkMeta.cacheEntryCount = pcMeta.cacheEntryCount;
           priceChartingBulkMeta.cacheSavedAt = pcMeta.cacheSavedAt;
@@ -1935,6 +2007,12 @@ async function runAdminBulkTcgPriceCheck(triggeredBy = "") {
       phase: "collecting",
       setCode: null,
       setName: null,
+      currentSetCode: null,
+      currentSetName: null,
+      currentCardNo: null,
+      currentCardName: null,
+      currentUrl: null,
+      detail: "Collecting TCGplayer links from sets…",
       progress: { total: 0, done: 0, ok: 0, fail: 0, skipped: 0, setsDone: 0, setsTotal: 0 }
     };
     try {
@@ -1943,6 +2021,15 @@ async function runAdminBulkTcgPriceCheck(triggeredBy = "") {
       const { urls, priceChartingContextByUrl } = await collectAllTcgplayerUrlsForPrewarm({
         onProgress: (info) => {
           tcgBulkPriceCheckMeta.phase = String(info?.phase || "collecting");
+          tcgBulkPriceCheckMeta.currentSetCode = String(info?.currentSetCode || "").trim().toUpperCase() || null;
+          tcgBulkPriceCheckMeta.currentSetName = String(info?.currentSetName || "").trim() || null;
+          tcgBulkPriceCheckMeta.currentCardNo = null;
+          tcgBulkPriceCheckMeta.currentCardName = null;
+          tcgBulkPriceCheckMeta.currentUrl = null;
+          const setLabel = tcgBulkPriceCheckMeta.currentSetName || tcgBulkPriceCheckMeta.currentSetCode;
+          tcgBulkPriceCheckMeta.detail = setLabel
+            ? `Collecting links from ${setLabel}`
+            : "Collecting TCGplayer links from sets…";
           tcgBulkPriceCheckMeta.progress = {
             ...tcgBulkPriceCheckMeta.progress,
             total: Number(info?.linkCount) || tcgBulkPriceCheckMeta.progress?.total || 0,
@@ -1961,6 +2048,7 @@ async function runAdminBulkTcgPriceCheck(triggeredBy = "") {
       tcgBulkPriceCheckMeta.phase = "pricing";
       tcgBulkPriceCheckMeta.totalLinkCount = urls.length;
       tcgBulkPriceCheckMeta.progress.total = urls.length;
+      tcgBulkPriceCheckMeta.detail = `Pricing ${urls.length.toLocaleString()} TCGplayer links…`;
       syncTcgBulkPriceCheckCacheCount();
       if (isTcgPriceCheckCancelled()) {
         await persistTcgLinkPriceCacheNow();
@@ -1998,6 +2086,29 @@ async function runAdminBulkTcgPriceCheck(triggeredBy = "") {
             fail: progress.fail,
             skipped: Number(progress.skipped) || 0
           };
+          tcgBulkPriceCheckMeta.currentSetCode =
+            String(progress.currentSetCode || "").trim().toUpperCase() || null;
+          tcgBulkPriceCheckMeta.currentSetName = String(progress.currentSetName || "").trim() || null;
+          tcgBulkPriceCheckMeta.currentCardNo = String(progress.currentCardNo || "").trim() || null;
+          tcgBulkPriceCheckMeta.currentCardName = String(progress.currentCardName || "").trim() || null;
+          tcgBulkPriceCheckMeta.currentUrl = String(progress.currentUrl || "").trim() || null;
+          const setLabel =
+            tcgBulkPriceCheckMeta.currentSetName || tcgBulkPriceCheckMeta.currentSetCode || "";
+          const cardLabel = [
+            tcgBulkPriceCheckMeta.currentCardName,
+            tcgBulkPriceCheckMeta.currentCardNo ? `#${tcgBulkPriceCheckMeta.currentCardNo}` : ""
+          ]
+            .filter(Boolean)
+            .join(" ");
+          if (cardLabel && setLabel) {
+            tcgBulkPriceCheckMeta.detail = `Pricing ${cardLabel} · ${setLabel}`;
+          } else if (cardLabel) {
+            tcgBulkPriceCheckMeta.detail = `Pricing ${cardLabel}`;
+          } else if (tcgBulkPriceCheckMeta.currentUrl) {
+            tcgBulkPriceCheckMeta.detail = `Pricing link ${progress.done + 1} of ${progress.total}`;
+          } else {
+            tcgBulkPriceCheckMeta.detail = `Pricing TCGplayer links…`;
+          }
           if (Number.isFinite(progress.pricedInCacheCount)) {
             tcgBulkPriceCheckMeta.pricedInCacheCount = progress.pricedInCacheCount;
             tcgBulkPriceCheckMeta.cacheEntryCount = progress.cachedCount ?? progress.pricedInCacheCount;
@@ -2083,6 +2194,12 @@ async function runAdminTcgPriceCheckForSet(setCode = "", setName = "", triggered
       phase: "collecting",
       setCode: code,
       setName: resolvedName,
+      currentSetCode: code,
+      currentSetName: resolvedName,
+      currentCardNo: null,
+      currentCardName: null,
+      currentUrl: null,
+      detail: `Collecting links for ${resolvedName || code}…`,
       progress: { total: 0, done: 0, ok: 0, fail: 0, skipped: 0, setsDone: 0, setsTotal: 1 }
     };
     try {
@@ -2105,6 +2222,7 @@ async function runAdminTcgPriceCheckForSet(setCode = "", setName = "", triggered
         setsTotal: 1
       };
       tcgBulkPriceCheckMeta.totalLinkCount = urls.length;
+      tcgBulkPriceCheckMeta.detail = `Pricing ${urls.length.toLocaleString()} links in ${resolvedName || code}…`;
       syncTcgBulkPriceCheckCacheCount();
       if (!urls.length) {
         tcgBulkPriceCheckMeta.lastError = `No TCGplayer links found for set ${code}.`;
@@ -2125,6 +2243,22 @@ async function runAdminTcgPriceCheckForSet(setCode = "", setName = "", triggered
             setsDone: 1,
             setsTotal: 1
           };
+          tcgBulkPriceCheckMeta.currentSetCode =
+            String(progress.currentSetCode || code).trim().toUpperCase() || code;
+          tcgBulkPriceCheckMeta.currentSetName =
+            String(progress.currentSetName || resolvedName).trim() || resolvedName;
+          tcgBulkPriceCheckMeta.currentCardNo = String(progress.currentCardNo || "").trim() || null;
+          tcgBulkPriceCheckMeta.currentCardName = String(progress.currentCardName || "").trim() || null;
+          tcgBulkPriceCheckMeta.currentUrl = String(progress.currentUrl || "").trim() || null;
+          const cardLabel = [
+            tcgBulkPriceCheckMeta.currentCardName,
+            tcgBulkPriceCheckMeta.currentCardNo ? `#${tcgBulkPriceCheckMeta.currentCardNo}` : ""
+          ]
+            .filter(Boolean)
+            .join(" ");
+          tcgBulkPriceCheckMeta.detail = cardLabel
+            ? `Pricing ${cardLabel} · ${resolvedName || code}`
+            : `Pricing ${resolvedName || code}…`;
           if (Number.isFinite(progress.pricedInCacheCount)) {
             tcgBulkPriceCheckMeta.pricedInCacheCount = progress.pricedInCacheCount;
             tcgBulkPriceCheckMeta.cacheEntryCount = progress.cachedCount ?? progress.pricedInCacheCount;

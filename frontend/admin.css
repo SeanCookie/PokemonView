@@ -162,9 +162,16 @@
   min-height: 36px;
   border-radius: 8px;
   border: 1px solid var(--border);
-  background: rgba(0, 0, 0, 0.25);
-  color: inherit;
+  background: #0c1420;
+  color: #e9f1ff;
   padding: 6px 10px;
+  color-scheme: dark;
+}
+
+.admin-set-refresh select option,
+.admin-set-refresh select optgroup {
+  background: #0c1420;
+  color: #e9f1ff;
 }
 
 .admin-set-refresh .admin-btn {
