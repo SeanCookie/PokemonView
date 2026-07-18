@@ -275,6 +275,74 @@ async function handleDurableAppDataRequest(request, env) {
   });
 }
 
+/**
+ * Older container images omit user.preferences on /api/auth/me while /api/dashboard
+ * already exposes them. Fill prefs from durable R2 so Settings switches match Home.
+ */
+async function enrichAuthMePreferences(request, response, env) {
+  const url = new URL(request.url);
+  if (url.pathname !== "/api/auth/me" || request.method !== "GET") return response;
+  if (!response.ok) return response;
+  const contentType = response.headers.get("content-type") || "";
+  if (!contentType.includes("application/json")) return response;
+
+  let payload;
+  try {
+    payload = await response.json();
+  } catch {
+    return response;
+  }
+
+  if (!payload?.signedIn || !payload?.user?.id) {
+    return Response.json(payload, {
+      status: response.status,
+      headers: { "cache-control": "no-store" }
+    });
+  }
+
+  if (payload.user.preferences && typeof payload.user.preferences === "object") {
+    return Response.json(payload, {
+      status: response.status,
+      headers: { "cache-control": "no-store" }
+    });
+  }
+
+  try {
+    const bucket = env.CARD_IMAGES;
+    if (!bucket) {
+      payload.user.preferences = { showCostBasis: false, showUnrealizedPnL: false };
+      return Response.json(payload, {
+        status: response.status,
+        headers: { "cache-control": "no-store" }
+      });
+    }
+    const object = await bucket.get(STORE_R2_KEY);
+    if (!object) {
+      payload.user.preferences = { showCostBasis: false, showUnrealizedPnL: false };
+      return Response.json(payload, {
+        status: response.status,
+        headers: { "cache-control": "no-store" }
+      });
+    }
+    const store = JSON.parse(await object.text());
+    const users = Array.isArray(store?.users) ? store.users : [];
+    const row = users.find((entry) => entry && entry.id === payload.user.id);
+    const raw = row?.preferences && typeof row.preferences === "object" ? row.preferences : {};
+    payload.user.preferences = {
+      showCostBasis: raw.showCostBasis === true,
+      showUnrealizedPnL: raw.showUnrealizedPnL === true
+    };
+  } catch (err) {
+    console.warn("[pokemonview] enrich /api/auth/me preferences failed:", err?.message || err);
+    payload.user.preferences = { showCostBasis: false, showUnrealizedPnL: false };
+  }
+
+  return Response.json(payload, {
+    status: response.status,
+    headers: { "cache-control": "no-store" }
+  });
+}
+
 export default {
   async fetch(request, env) {
     // Durable account store — handled at the Worker (no container), so boot can restore without deadlock.
@@ -294,8 +362,12 @@ export default {
     if (navAsset) return navAsset;
 
     // Fresh DO so the container boots with current secrets + latest image after CI rebuild.
-    const container = env.POKEMONVIEW.getByName("main-v11");
-    const response = await container.fetch(request);
+    const container = env.POKEMONVIEW.getByName("main-v12");
+    const response = await enrichAuthMePreferences(
+      request,
+      await container.fetch(request),
+      env
+    );
     return maybeRewriteHtmlNav(request, response);
   }
 };

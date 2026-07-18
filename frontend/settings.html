@@ -146,23 +146,28 @@
       text-transform: uppercase;
       color: var(--muted);
     }
+    .settings-switch.is-on,
     .settings-switch:has(input:checked) {
       border-color: rgba(103, 178, 255, 0.55);
       background: rgba(31, 79, 134, 0.28);
       box-shadow: inset 0 0 0 1px rgba(103, 178, 255, 0.18);
     }
+    .settings-switch.is-on .settings-switch-track,
     .settings-switch:has(input:checked) .settings-switch-track {
       background: #2f79d0;
       border-color: #67b2ff;
       box-shadow: 0 0 0 2px rgba(103, 178, 255, 0.18);
     }
+    .settings-switch.is-on .settings-switch-thumb,
     .settings-switch:has(input:checked) .settings-switch-thumb {
       transform: translateX(20px);
       background: #fff;
     }
+    .settings-switch.is-on .settings-switch-state,
     .settings-switch:has(input:checked) .settings-switch-state {
       color: #8fd3ff;
     }
+    .settings-switch.is-on .settings-switch-state::before,
     .settings-switch:has(input:checked) .settings-switch-state::before {
       content: none;
     }
@@ -780,11 +785,23 @@
 
     function syncPreferenceSwitch(input) {
       if (!input) return;
-      const stateEl = input.closest(".settings-switch")?.querySelector(".settings-switch-state");
-      if (!stateEl) return;
+      const wrap = input.closest(".settings-switch");
+      const stateEl = wrap?.querySelector(".settings-switch-state");
       const on = Boolean(input.checked);
-      stateEl.textContent = on ? stateEl.getAttribute("data-on") || "On" : stateEl.getAttribute("data-off") || "Off";
+      if (wrap) wrap.classList.toggle("is-on", on);
+      if (stateEl) {
+        stateEl.textContent = on ? stateEl.getAttribute("data-on") || "On" : stateEl.getAttribute("data-off") || "Off";
+      }
       input.setAttribute("aria-checked", on ? "true" : "false");
+    }
+
+    function applyDisplayPreferences(prefs) {
+      const showCost = prefs?.showCostBasis === true;
+      const showPnL = prefs?.showUnrealizedPnL === true;
+      byId("showCostBasis").checked = showCost;
+      byId("showUnrealizedPnL").checked = showPnL;
+      syncPreferenceSwitch(byId("showCostBasis"));
+      syncPreferenceSwitch(byId("showUnrealizedPnL"));
     }
 
     function wirePreferenceSwitches() {
@@ -800,8 +817,24 @@
       });
     }
 
+    async function loadDisplayPreferences(fallbackPrefs) {
+      // Same source Home/Collection use — authoritative even when /api/auth/me is stale.
+      try {
+        const res = await fetch("/api/dashboard", { credentials: "same-origin", cache: "no-store" });
+        if (res.ok) {
+          const dash = await res.json();
+          if (dash?.preferences && typeof dash.preferences === "object") {
+            return dash.preferences;
+          }
+        }
+      } catch {
+        // fall through
+      }
+      return fallbackPrefs && typeof fallbackPrefs === "object" ? fallbackPrefs : {};
+    }
+
     async function loadMe() {
-      const res = await fetch("/api/auth/me", { credentials: "same-origin" });
+      const res = await fetch("/api/auth/me", { credentials: "same-origin", cache: "no-store" });
       const payload = res.ok ? await res.json() : {};
       if (!payload.signedIn || !payload.user) {
         window.location.replace("/");
@@ -811,12 +844,17 @@
       byId("displayName").value = user.name || "";
       byId("email").value = user.email || "";
       byId("username").value = user.username || "";
-      byId("showCostBasis").checked = user.preferences?.showCostBasis === true;
-      byId("showUnrealizedPnL").checked = user.preferences?.showUnrealizedPnL === true;
       applyPasswordUi();
+      const prefs = await loadDisplayPreferences(user.preferences);
+      user.preferences = {
+        showCostBasis: prefs.showCostBasis === true,
+        showUnrealizedPnL: prefs.showUnrealizedPnL === true
+      };
+      applyDisplayPreferences(user.preferences);
       await loadShowcaseSettings();
       // Sync switch visuals after all checkboxes are set (profile + showcase).
       wirePreferenceSwitches();
+      applyDisplayPreferences(user.preferences);
       await loadRecentActivity();
       return true;
     }
@@ -957,8 +995,10 @@
           return;
         }
         user = payload.user;
-        byId("showCostBasis").checked = user.preferences?.showCostBasis === true;
-        byId("showUnrealizedPnL").checked = user.preferences?.showUnrealizedPnL === true;
+        applyDisplayPreferences(user.preferences || {
+          showCostBasis,
+          showUnrealizedPnL
+        });
         wirePreferenceSwitches();
         applyPasswordUi();
         setText(status, "Profile saved.", "ok");
