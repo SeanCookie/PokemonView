@@ -2432,6 +2432,7 @@ function getCurrentUser(req) {
   if (!session) return null;
   const user = store.users.find((entry) => entry.id === session.userId);
   if (!user) return null;
+  const preferences = ensureUserPreferences(user);
   const out = withAdminFlag(
     {
       id: user.id,
@@ -2439,7 +2440,8 @@ function getCurrentUser(req) {
       username: user.username || "",
       name: user.name || "",
       role: user.role || "",
-      hasPassword: Boolean(user.passwordHash)
+      hasPassword: Boolean(user.passwordHash),
+      preferences: { ...preferences }
     },
     adminUsernames
   );

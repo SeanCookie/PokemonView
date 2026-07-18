@@ -813,9 +813,10 @@
       byId("username").value = user.username || "";
       byId("showCostBasis").checked = user.preferences?.showCostBasis === true;
       byId("showUnrealizedPnL").checked = user.preferences?.showUnrealizedPnL === true;
-      wirePreferenceSwitches();
       applyPasswordUi();
       await loadShowcaseSettings();
+      // Sync switch visuals after all checkboxes are set (profile + showcase).
+      wirePreferenceSwitches();
       await loadRecentActivity();
       return true;
     }
@@ -956,6 +957,9 @@
           return;
         }
         user = payload.user;
+        byId("showCostBasis").checked = user.preferences?.showCostBasis === true;
+        byId("showUnrealizedPnL").checked = user.preferences?.showUnrealizedPnL === true;
+        wirePreferenceSwitches();
         applyPasswordUi();
         setText(status, "Profile saved.", "ok");
       } catch {
