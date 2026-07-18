@@ -12,21 +12,28 @@ const {
 } = require("./finalize-local-card-details");
 
 const HTTP_URL = /^https?:\/\//i;
-const PKMN_HOST = /pkmncards\.com/i;
 
 function stripRemoteUrlsFromEntry(entry, diskLocalImages) {
   if (!entry || typeof entry !== "object") return entry;
   const hydrated = mergeLocalImagesIntoEntry(entry, diskLocalImages);
   const localImages =
     hydrated.localImages && typeof hydrated.localImages === "object" ? { ...hydrated.localImages } : {};
+  // Keep only local card-image paths (drop any remote https leftovers).
+  for (const [cardNo, url] of Object.entries(localImages)) {
+    const s = String(url || "").trim();
+    if (!s.startsWith("/card-images/") && !s.startsWith("/card-images-japanese/")) {
+      delete localImages[cardNo];
+    }
+  }
   const out = { ...hydrated };
   delete out.images;
+  delete out.shinyVaultSource;
   if (Object.keys(localImages).length) {
     out.localImages = localImages;
   } else {
     delete out.localImages;
   }
-  if (out.sourceHref && PKMN_HOST.test(String(out.sourceHref))) {
+  if (out.sourceHref && HTTP_URL.test(String(out.sourceHref))) {
     delete out.sourceHref;
   }
   return out;

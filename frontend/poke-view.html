@@ -1360,6 +1360,8 @@
         const r = String(remote || "").trim();
         if (l.startsWith("/card-images/") || l.startsWith("/card-images-japanese/")) return l;
         if (r.startsWith("/card-images/") || r.startsWith("/card-images-japanese/")) return r;
+        if (/^https?:\/\//i.test(l)) return l;
+        if (/^https?:\/\//i.test(r)) return r;
         return "";
       }
 

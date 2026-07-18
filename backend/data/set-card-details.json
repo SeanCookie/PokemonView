@@ -3,7 +3,7 @@
   "source": "local",
   "complete": true,
   "localizedAt": "2026-07-09T02:40:49.144Z",
-  "runtimeNote": "Card text/details served from this file only; PkmnCards not required at runtime.",
+  "runtimeNote": "Card text/details served from this file only; no external card hosts required at runtime.",
   "setCount": 179,
   "cardCount": 20603,
   "byCode": {
@@ -164329,8 +164329,8 @@
           "number": "SV49",
           "label": "#SV49",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM3-SV49-charizard_gx-yaa-049ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV49.jpg",
+          "imageUrl": "/card-images/HIF/SV49.jpg"
         },
         "SV69": {
           "cardNo": "SV69",
@@ -164338,8 +164338,8 @@
           "number": "SV69",
           "label": "#SV69",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM1-SV69-umbreon_gx-yaa-069ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV69.jpg",
+          "imageUrl": "/card-images/HIF/SV69.jpg"
         },
         "SV59": {
           "cardNo": "SV59",
@@ -164347,8 +164347,8 @@
           "number": "SV59",
           "label": "#SV59",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SL-SV59-mewtwo_gx-yaa-059ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV59.jpg",
+          "imageUrl": "/card-images/HIF/SV59.jpg"
         },
         "SV56": {
           "cardNo": "SV56",
@@ -164356,8 +164356,8 @@
           "number": "SV56",
           "label": "#SV56",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM6-SV56-greninja_gx-yaa-056ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV56.jpg",
+          "imageUrl": "/card-images/HIF/SV56.jpg"
         },
         "SV76": {
           "cardNo": "SV76",
@@ -164365,8 +164365,8 @@
           "number": "SV76",
           "label": "#SV76",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM2-SV76-sylveon_gx-yaa-076ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV76.jpg",
+          "imageUrl": "/card-images/HIF/SV76.jpg"
         },
         "SV60": {
           "cardNo": "SV60",
@@ -164374,8 +164374,8 @@
           "number": "SV60",
           "label": "#SV60",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM1-SV60-espeon_gx-yaa-060ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV60.jpg",
+          "imageUrl": "/card-images/HIF/SV60.jpg"
         },
         "SV82": {
           "cardNo": "SV82",
@@ -164383,8 +164383,8 @@
           "number": "SV82",
           "label": "#SV82",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM5-SV82-cynthia-yaa-082ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV82.jpg",
+          "imageUrl": "/card-images/HIF/SV82.jpg"
         },
         "SV64": {
           "cardNo": "SV64",
@@ -164392,8 +164392,8 @@
           "number": "SV64",
           "label": "#SV64",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM6-SV64-lucario_gx-yaa-064ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV64.jpg",
+          "imageUrl": "/card-images/HIF/SV64.jpg"
         },
         "SV51": {
           "cardNo": "SV51",
@@ -164401,8 +164401,8 @@
           "number": "SV51",
           "label": "#SV51",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-DM-SV51-reshiram_gx-yaa-051ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV51.jpg",
+          "imageUrl": "/card-images/HIF/SV51.jpg"
         },
         "SV6": {
           "cardNo": "SV6",
@@ -164410,8 +164410,8 @@
           "number": "SV6",
           "label": "#SV6",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-DM-SV6-charmander-yaa-006ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV6.jpg",
+          "imageUrl": "/card-images/HIF/SV6.jpg"
         },
         "SV70": {
           "cardNo": "SV70",
@@ -164419,8 +164419,8 @@
           "number": "SV70",
           "label": "#SV70",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM3-SV70-darkrai_gx-yaa-070ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV70.jpg",
+          "imageUrl": "/card-images/HIF/SV70.jpg"
         },
         "SV55": {
           "cardNo": "SV55",
@@ -164428,8 +164428,8 @@
           "number": "SV55",
           "label": "#SV55",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM5-SV55-glaceon_gx-yaa-055ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV55.jpg",
+          "imageUrl": "/card-images/HIF/SV55.jpg"
         },
         "SV54": {
           "cardNo": "SV54",
@@ -164437,8 +164437,8 @@
           "number": "SV54",
           "label": "#SV54",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM7-SV54-articuno_gx-yaa-054ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV54.jpg",
+          "imageUrl": "/card-images/HIF/SV54.jpg"
         },
         "SV50": {
           "cardNo": "SV50",
@@ -164446,8 +164446,8 @@
           "number": "SV50",
           "label": "#SV50",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM3-SV50-ho_oh_gx-yaa-050ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV50.jpg",
+          "imageUrl": "/card-images/HIF/SV50.jpg"
         },
         "SV53": {
           "cardNo": "SV53",
@@ -164455,8 +164455,8 @@
           "number": "SV53",
           "label": "#SV53",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM2-SV53-alolan_ninetales_gx-yaa-053ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV53.jpg",
+          "imageUrl": "/card-images/HIF/SV53.jpg"
         },
         "SV41": {
           "cardNo": "SV41",
@@ -164464,8 +164464,8 @@
           "number": "SV41",
           "label": "#SV41",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM1-SV41-eevee-yaa-041ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV41.jpg",
+          "imageUrl": "/card-images/HIF/SV41.jpg"
         },
         "SV65": {
           "cardNo": "SV65",
@@ -164473,8 +164473,8 @@
           "number": "SV65",
           "label": "#SV65",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM6-SV65-zygarde_gx-yaa-065ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV65.jpg",
+          "imageUrl": "/card-images/HIF/SV65.jpg"
         },
         "SV46": {
           "cardNo": "SV46",
@@ -164482,8 +164482,8 @@
           "number": "SV46",
           "label": "#SV46",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM5-SV46-leafeon_gx-yaa-046ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV46.jpg",
+          "imageUrl": "/card-images/HIF/SV46.jpg"
         },
         "SV72": {
           "cardNo": "SV72",
@@ -164491,8 +164491,8 @@
           "number": "SV72",
           "label": "#SV72",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM7-SV72-scizor_gx-yaa-072ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV72.jpg",
+          "imageUrl": "/card-images/HIF/SV72.jpg"
         },
         "SV75": {
           "cardNo": "SV75",
@@ -164500,8 +164500,8 @@
           "number": "SV75",
           "label": "#SV75",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM3-SV75-gardevoir_gx-yaa-075ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV75.jpg",
+          "imageUrl": "/card-images/HIF/SV75.jpg"
         },
         "SV7": {
           "cardNo": "SV7",
@@ -164509,8 +164509,8 @@
           "number": "SV7",
           "label": "#SV7",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-DM-SV7-charmeleon-yaa-007ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV7.jpg",
+          "imageUrl": "/card-images/HIF/SV7.jpg"
         },
         "SV22": {
           "cardNo": "SV22",
@@ -164518,8 +164518,8 @@
           "number": "SV22",
           "label": "#SV22",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM5-SV22-lucario-yaa-022ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV22.jpg",
+          "imageUrl": "/card-images/HIF/SV22.jpg"
         },
         "SV88": {
           "cardNo": "SV88",
@@ -164527,8 +164527,8 @@
           "number": "SV88",
           "label": "#SV88",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM2-SV88-brooklet_hill-yaa-088ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV88.jpg",
+          "imageUrl": "/card-images/HIF/SV88.jpg"
         },
         "SV47": {
           "cardNo": "SV47",
@@ -164536,8 +164536,8 @@
           "number": "SV47",
           "label": "#SV47",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM2-SV47-decidueye_gx-yaa-047ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV47.jpg",
+          "imageUrl": "/card-images/HIF/SV47.jpg"
         },
         "SV67": {
           "cardNo": "SV67",
@@ -164545,8 +164545,8 @@
           "number": "SV67",
           "label": "#SV67",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM9-SV67-lycanroc_gx-yaa-067ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV67.jpg",
+          "imageUrl": "/card-images/HIF/SV67.jpg"
         },
         "SV11": {
           "cardNo": "SV11",
@@ -164554,8 +164554,8 @@
           "number": "SV11",
           "label": "#SV11",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM6-SV11-froakie-yaa-011ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV11.jpg",
+          "imageUrl": "/card-images/HIF/SV11.jpg"
         },
         "SV63": {
           "cardNo": "SV63",
@@ -164563,8 +164563,8 @@
           "number": "SV63",
           "label": "#SV63",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM6-SV63-naganadel_gx-yaa-063ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV63.jpg",
+          "imageUrl": "/card-images/HIF/SV63.jpg"
         },
         "SV71": {
           "cardNo": "SV71",
@@ -164572,8 +164572,8 @@
           "number": "SV71",
           "label": "#SV71",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM4-SV71-guzzlord_gx-yaa-071ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV71.jpg",
+          "imageUrl": "/card-images/HIF/SV71.jpg"
         },
         "SV61": {
           "cardNo": "SV61",
@@ -164581,8 +164581,8 @@
           "number": "SV61",
           "label": "#SV61",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM7-SV61-banette_gx-yaa-061ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV61.jpg",
+          "imageUrl": "/card-images/HIF/SV61.jpg"
         },
         "SV8": {
           "cardNo": "SV8",
@@ -164590,8 +164590,8 @@
           "number": "SV8",
           "label": "#SV8",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM2-SV8-alolan_vulpix-yaa-008ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV8.jpg",
+          "imageUrl": "/card-images/HIF/SV8.jpg"
         },
         "SV77": {
           "cardNo": "SV77",
@@ -164599,8 +164599,8 @@
           "number": "SV77",
           "label": "#SV77",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-DM-SV77-altaria_gx-yaa-077ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV77.jpg",
+          "imageUrl": "/card-images/HIF/SV77.jpg"
         },
         "SV9": {
           "cardNo": "SV9",
@@ -164608,8 +164608,8 @@
           "number": "SV9",
           "label": "#SV9",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-DM-SV9-wooper-yaa-009ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV9.jpg",
+          "imageUrl": "/card-images/HIF/SV9.jpg"
         },
         "SV66": {
           "cardNo": "SV66",
@@ -164617,8 +164617,8 @@
           "number": "SV66",
           "label": "#SV66",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM2-SV66-lycanroc_gx-yaa-066ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV66.jpg",
+          "imageUrl": "/card-images/HIF/SV66.jpg"
         },
         "SV68": {
           "cardNo": "SV68",
@@ -164626,8 +164626,8 @@
           "number": "SV68",
           "label": "#SV68",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM4-SV68-buzzwole_gx-yaa-068ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV68.jpg",
+          "imageUrl": "/card-images/HIF/SV68.jpg"
         },
         "SV93": {
           "cardNo": "SV93",
@@ -164635,8 +164635,8 @@
           "number": "SV93",
           "label": "#SV93",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM2-SV93-tapu_koko_gx-yaa-093ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV93.jpg",
+          "imageUrl": "/card-images/HIF/SV93.jpg"
         },
         "SV40": {
           "cardNo": "SV40",
@@ -164644,8 +164644,8 @@
           "number": "SV40",
           "label": "#SV40",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM5-SV40-garchomp-yaa-040ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV40.jpg",
+          "imageUrl": "/card-images/HIF/SV40.jpg"
         },
         "SV1": {
           "cardNo": "SV1",
@@ -164653,8 +164653,8 @@
           "number": "SV1",
           "label": "#SV1",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM7-SV1-scyther-yaa-001ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV1.jpg",
+          "imageUrl": "/card-images/HIF/SV1.jpg"
         },
         "SV58": {
           "cardNo": "SV58",
@@ -164662,8 +164662,8 @@
           "number": "SV58",
           "label": "#SV58",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM5-SV58-xurkitree_gx-yaa-058ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV58.jpg",
+          "imageUrl": "/card-images/HIF/SV58.jpg"
         },
         "SV21": {
           "cardNo": "SV21",
@@ -164671,8 +164671,8 @@
           "number": "SV21",
           "label": "#SV21",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM5-SV21-riolu-yaa-021ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV21.jpg",
+          "imageUrl": "/card-images/HIF/SV21.jpg"
         },
         "SV57": {
           "cardNo": "SV57",
@@ -164680,8 +164680,8 @@
           "number": "SV57",
           "label": "#SV57",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM7-SV57-electrode_gx-yaa-057ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV57.jpg",
+          "imageUrl": "/card-images/HIF/SV57.jpg"
         },
         "SV48": {
           "cardNo": "SV48",
@@ -164689,8 +164689,8 @@
           "number": "SV48",
           "label": "#SV48",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM3-SV48-golisopod_gx-yaa-048ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV48.jpg",
+          "imageUrl": "/card-images/HIF/SV48.jpg"
         },
         "SV73": {
           "cardNo": "SV73",
@@ -164698,8 +164698,8 @@
           "number": "SV73",
           "label": "#SV73",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM4-SV73-kartana_gx-yaa-073ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV73.jpg",
+          "imageUrl": "/card-images/HIF/SV73.jpg"
         },
         "SV10": {
           "cardNo": "SV10",
@@ -164707,8 +164707,8 @@
           "number": "SV10",
           "label": "#SV10",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-DM-SV10-quagsire-yaa-010ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV10.jpg",
+          "imageUrl": "/card-images/HIF/SV10.jpg"
         },
         "SV78": {
           "cardNo": "SV78",
@@ -164716,8 +164716,8 @@
           "number": "SV78",
           "label": "#SV78",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM3-SV78-noivern_gx-yaa-078ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV78.jpg",
+          "imageUrl": "/card-images/HIF/SV78.jpg"
         },
         "SV34": {
           "cardNo": "SV34",
@@ -164725,8 +164725,8 @@
           "number": "SV34",
           "label": "#SV34",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM3-SV34-ralts-yaa-034ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV34.jpg",
+          "imageUrl": "/card-images/HIF/SV34.jpg"
         },
         "SV86": {
           "cardNo": "SV86",
@@ -164734,8 +164734,8 @@
           "number": "SV86",
           "label": "#SV86",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM6-SV86-lady-yaa-086ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV86.jpg",
+          "imageUrl": "/card-images/HIF/SV86.jpg"
         },
         "SV38": {
           "cardNo": "SV38",
@@ -164743,8 +164743,8 @@
           "number": "SV38",
           "label": "#SV38",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM5-SV38-gible-yaa-038ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV38.jpg",
+          "imageUrl": "/card-images/HIF/SV38.jpg"
         },
         "SV94": {
           "cardNo": "SV94",
@@ -164752,8 +164752,8 @@
           "number": "SV94",
           "label": "#SV94",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM2-SV94-tapu_lele_gx-yaa-094ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV94.jpg",
+          "imageUrl": "/card-images/HIF/SV94.jpg"
         },
         "SV12": {
           "cardNo": "SV12",
@@ -164761,8 +164761,8 @@
           "number": "SV12",
           "label": "#SV12",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM6-SV12-frogadier-yaa-012ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV12.jpg",
+          "imageUrl": "/card-images/HIF/SV12.jpg"
         },
         "SV92": {
           "cardNo": "SV92",
@@ -164770,8 +164770,8 @@
           "number": "SV92",
           "label": "#SV92",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM3-SV92-tapu_fini_gx-yaa-092ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV92.jpg",
+          "imageUrl": "/card-images/HIF/SV92.jpg"
         },
         "SV62": {
           "cardNo": "SV62",
@@ -164779,8 +164779,8 @@
           "number": "SV62",
           "label": "#SV62",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM4-SV62-nihilego_gx-yaa-062ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV62.jpg",
+          "imageUrl": "/card-images/HIF/SV62.jpg"
         },
         "SV25": {
           "cardNo": "SV25",
@@ -164788,8 +164788,8 @@
           "number": "SV25",
           "label": "#SV25",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SL-SV25-zorua-yaa-025ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV25.jpg",
+          "imageUrl": "/card-images/HIF/SV25.jpg"
         },
         "SV2": {
           "cardNo": "SV2",
@@ -164797,8 +164797,8 @@
           "number": "SV2",
           "label": "#SV2",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM1-SV2-rowlet-yaa-002ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV2.jpg",
+          "imageUrl": "/card-images/HIF/SV2.jpg"
         },
         "SV91": {
           "cardNo": "SV91",
@@ -164806,8 +164806,8 @@
           "number": "SV91",
           "label": "#SV91",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM3-SV91-tapu_bulu_gx-yaa-091ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV91.jpg",
+          "imageUrl": "/card-images/HIF/SV91.jpg"
         },
         "SV45": {
           "cardNo": "SV45",
@@ -164815,8 +164815,8 @@
           "number": "SV45",
           "label": "#SV45",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM4-SV45-type_null-yaa-045ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV45.jpg",
+          "imageUrl": "/card-images/HIF/SV45.jpg"
         },
         "SV80": {
           "cardNo": "SV80",
@@ -164824,8 +164824,8 @@
           "number": "SV80",
           "label": "#SV80",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM2-SV80-drampa_gx-yaa-080ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV80.jpg",
+          "imageUrl": "/card-images/HIF/SV80.jpg"
         },
         "SV52": {
           "cardNo": "SV52",
@@ -164833,8 +164833,8 @@
           "number": "SV52",
           "label": "#SV52",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM2-SV52-turtonator_gx-yaa-052ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV52.jpg",
+          "imageUrl": "/card-images/HIF/SV52.jpg"
         },
         "SV79": {
           "cardNo": "SV79",
@@ -164842,8 +164842,8 @@
           "number": "SV79",
           "label": "#SV79",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM4-SV79-silvally_gx-yaa-079ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV79.jpg",
+          "imageUrl": "/card-images/HIF/SV79.jpg"
         },
         "SV27": {
           "cardNo": "SV27",
@@ -164851,8 +164851,8 @@
           "number": "SV27",
           "label": "#SV27",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM5-SV27-magnemite-yaa-027ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV27.jpg",
+          "imageUrl": "/card-images/HIF/SV27.jpg"
         },
         "SV37": {
           "cardNo": "SV37",
@@ -164860,8 +164860,8 @@
           "number": "SV37",
           "label": "#SV37",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-DM-SV37-altaria-yaa-037ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV37.jpg",
+          "imageUrl": "/card-images/HIF/SV37.jpg"
         },
         "SV30": {
           "cardNo": "SV30",
@@ -164869,8 +164869,8 @@
           "number": "SV30",
           "label": "#SV30",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM2-SV30-beldum-yaa-030ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV30.jpg",
+          "imageUrl": "/card-images/HIF/SV30.jpg"
         },
         "SV23": {
           "cardNo": "SV23",
@@ -164878,8 +164878,8 @@
           "number": "SV23",
           "label": "#SV23",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM6-SV23-rockruff-yaa-023ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV23.jpg",
+          "imageUrl": "/card-images/HIF/SV23.jpg"
         },
         "SV42": {
           "cardNo": "SV42",
@@ -164887,8 +164887,8 @@
           "number": "SV42",
           "label": "#SV42",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-DM-SV42-swablu-yaa-042ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV42.jpg",
+          "imageUrl": "/card-images/HIF/SV42.jpg"
         },
         "SV81": {
           "cardNo": "SV81",
@@ -164896,8 +164896,8 @@
           "number": "SV81",
           "label": "#SV81",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM8-SV81-aether_foundation_employee-yaa-081ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV81.jpg",
+          "imageUrl": "/card-images/HIF/SV81.jpg"
         },
         "SV39": {
           "cardNo": "SV39",
@@ -164905,8 +164905,8 @@
           "number": "SV39",
           "label": "#SV39",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM5-SV39-gabite-yaa-039ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV39.jpg",
+          "imageUrl": "/card-images/HIF/SV39.jpg"
         },
         "SV74": {
           "cardNo": "SV74",
@@ -164914,8 +164914,8 @@
           "number": "SV74",
           "label": "#SV74",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM7-SV74-stakataka_gx-yaa-074ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV74.jpg",
+          "imageUrl": "/card-images/HIF/SV74.jpg"
         },
         "SV84": {
           "cardNo": "SV84",
@@ -164923,8 +164923,8 @@
           "number": "SV84",
           "label": "#SV84",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM3-SV84-guzma-yaa-084ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV84.jpg",
+          "imageUrl": "/card-images/HIF/SV84.jpg"
         },
         "SV31": {
           "cardNo": "SV31",
@@ -164932,8 +164932,8 @@
           "number": "SV31",
           "label": "#SV31",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM2-SV31-metang-yaa-031ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV31.jpg",
+          "imageUrl": "/card-images/HIF/SV31.jpg"
         },
         "SV35": {
           "cardNo": "SV35",
@@ -164941,8 +164941,8 @@
           "number": "SV35",
           "label": "#SV35",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM3-SV35-kirlia-yaa-035ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV35.jpg",
+          "imageUrl": "/card-images/HIF/SV35.jpg"
         },
         "SV20": {
           "cardNo": "SV20",
@@ -164950,8 +164950,8 @@
           "number": "SV20",
           "label": "#SV20",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM2-SV20-sudowoodo-yaa-020ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV20.jpg",
+          "imageUrl": "/card-images/HIF/SV20.jpg"
         },
         "SV28": {
           "cardNo": "SV28",
@@ -164959,8 +164959,8 @@
           "number": "SV28",
           "label": "#SV28",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM5-SV28-magneton-yaa-028ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV28.jpg",
+          "imageUrl": "/card-images/HIF/SV28.jpg"
         },
         "SV17": {
           "cardNo": "SV17",
@@ -164968,8 +164968,8 @@
           "number": "SV17",
           "label": "#SV17",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM6-SV17-inkay-yaa-017ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV17.jpg",
+          "imageUrl": "/card-images/HIF/SV17.jpg"
         },
         "SV13": {
           "cardNo": "SV13",
@@ -164977,8 +164977,8 @@
           "number": "SV13",
           "label": "#SV13",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM7-SV13-voltorb-yaa-013ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV13.jpg",
+          "imageUrl": "/card-images/HIF/SV13.jpg"
         },
         "SV26": {
           "cardNo": "SV26",
@@ -164986,8 +164986,8 @@
           "number": "SV26",
           "label": "#SV26",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM6-SV26-guzzlord-yaa-026ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV26.jpg",
+          "imageUrl": "/card-images/HIF/SV26.jpg"
         },
         "SV16": {
           "cardNo": "SV16",
@@ -164995,8 +164995,8 @@
           "number": "SV16",
           "label": "#SV16",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM7-SV16-shuppet-yaa-016ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV16.jpg",
+          "imageUrl": "/card-images/HIF/SV16.jpg"
         },
         "SV19": {
           "cardNo": "SV19",
@@ -165004,8 +165004,8 @@
           "number": "SV19",
           "label": "#SV19",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM6-SV19-poipole-yaa-019ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV19.jpg",
+          "imageUrl": "/card-images/HIF/SV19.jpg"
         },
         "SV36": {
           "cardNo": "SV36",
@@ -165013,8 +165013,8 @@
           "number": "SV36",
           "label": "#SV36",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM3-SV36-diancie-yaa-036ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV36.jpg",
+          "imageUrl": "/card-images/HIF/SV36.jpg"
         },
         "SV43": {
           "cardNo": "SV43",
@@ -165022,8 +165022,8 @@
           "number": "SV43",
           "label": "#SV43",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM3-SV43-noibat-yaa-043ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV43.jpg",
+          "imageUrl": "/card-images/HIF/SV43.jpg"
         },
         "SV15": {
           "cardNo": "SV15",
@@ -165031,8 +165031,8 @@
           "number": "SV15",
           "label": "#SV15",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM3-SV15-seviper-yaa-015ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV15.jpg",
+          "imageUrl": "/card-images/HIF/SV15.jpg"
         },
         "SV5": {
           "cardNo": "SV5",
@@ -165040,8 +165040,8 @@
           "number": "SV5",
           "label": "#SV5",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM6-SV5-pheromosa-yaa-005ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV5.jpg",
+          "imageUrl": "/card-images/HIF/SV5.jpg"
         },
         "SV24": {
           "cardNo": "SV24",
@@ -165049,8 +165049,8 @@
           "number": "SV24",
           "label": "#SV24",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM6-SV24-buzzwole-yaa-024ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV24.jpg",
+          "imageUrl": "/card-images/HIF/SV24.jpg"
         },
         "SV18": {
           "cardNo": "SV18",
@@ -165058,8 +165058,8 @@
           "number": "SV18",
           "label": "#SV18",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM6-SV18-malamar-yaa-018ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV18.jpg",
+          "imageUrl": "/card-images/HIF/SV18.jpg"
         },
         "SV3": {
           "cardNo": "SV3",
@@ -165067,8 +165067,8 @@
           "number": "SV3",
           "label": "#SV3",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM1-SV3-dartrix-yaa-003ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV3.jpg",
+          "imageUrl": "/card-images/HIF/SV3.jpg"
         },
         "SV85": {
           "cardNo": "SV85",
@@ -165076,8 +165076,8 @@
           "number": "SV85",
           "label": "#SV85",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM7-SV85-hiker-yaa-085ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV85.jpg",
+          "imageUrl": "/card-images/HIF/SV85.jpg"
         },
         "SV83": {
           "cardNo": "SV83",
@@ -165085,8 +165085,8 @@
           "number": "SV83",
           "label": "#SV83",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM7-SV83-fisherman-yaa-083ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV83.jpg",
+          "imageUrl": "/card-images/HIF/SV83.jpg"
         },
         "SV29": {
           "cardNo": "SV29",
@@ -165094,8 +165094,8 @@
           "number": "SV29",
           "label": "#SV29",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM5-SV29-magnezone-yaa-029ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV29.jpg",
+          "imageUrl": "/card-images/HIF/SV29.jpg"
         },
         "SV90": {
           "cardNo": "SV90",
@@ -165103,8 +165103,8 @@
           "number": "SV90",
           "label": "#SV90",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM7-SV90-shrine_of_punishment-yaa-090ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV90.jpg",
+          "imageUrl": "/card-images/HIF/SV90.jpg"
         },
         "SV33": {
           "cardNo": "SV33",
@@ -165112,8 +165112,8 @@
           "number": "SV33",
           "label": "#SV33",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM7-SV33-kartana-yaa-033ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV33.jpg",
+          "imageUrl": "/card-images/HIF/SV33.jpg"
         },
         "SV32": {
           "cardNo": "SV32",
@@ -165121,8 +165121,8 @@
           "number": "SV32",
           "label": "#SV32",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM7-SV32-celesteela-yaa-032ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV32.jpg",
+          "imageUrl": "/card-images/HIF/SV32.jpg"
         },
         "SV14": {
           "cardNo": "SV14",
@@ -165130,8 +165130,8 @@
           "number": "SV14",
           "label": "#SV14",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM6-SV14-xurkitree-yaa-014ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV14.jpg",
+          "imageUrl": "/card-images/HIF/SV14.jpg"
         },
         "SV44": {
           "cardNo": "SV44",
@@ -165139,8 +165139,8 @@
           "number": "SV44",
           "label": "#SV44",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM1-SV44-oranguru-yaa-044ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV44.jpg",
+          "imageUrl": "/card-images/HIF/SV44.jpg"
         },
         "SV89": {
           "cardNo": "SV89",
@@ -165148,8 +165148,8 @@
           "number": "SV89",
           "label": "#SV89",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM5-SV89-mt_coronet-yaa-089ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV89.jpg",
+          "imageUrl": "/card-images/HIF/SV89.jpg"
         },
         "SV4": {
           "cardNo": "SV4",
@@ -165157,8 +165157,8 @@
           "number": "SV4",
           "label": "#SV4",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM3-SV4-wimpod-yaa-004ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV4.jpg",
+          "imageUrl": "/card-images/HIF/SV4.jpg"
         },
         "SV87": {
           "cardNo": "SV87",
@@ -165166,8 +165166,8 @@
           "number": "SV87",
           "label": "#SV87",
           "rarity": "Shiny Rare",
-          "source": "https://pkmncards.com/collection/shiny-vault/",
-          "localImageUrl": "https://pkmncards.com/wp-content/uploads/en_US-SM2-SV87-aether_paradise_conservation_area-yaa-087ya.jpg"
+          "localImageUrl": "/card-images/HIF/SV87.jpg",
+          "imageUrl": "/card-images/HIF/SV87.jpg"
         }
       }
     },
@@ -412351,5 +412351,6 @@
         }
       }
     }
-  }
+  },
+  "updatedAt": "2026-07-18T04:24:56.570Z"
 }

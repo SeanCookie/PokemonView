@@ -3,7 +3,7 @@ const path = require("path");
 const { writeJsonAtomic } = require("./write-json-atomic");
 const { cardNoLookupKeys } = require("./local-card-images");
 
-const PKMN_HOST = /pkmncards\.com/i;
+const EXTERNAL_HOST = /^https?:\/\//i;
 
 function pickLocalImageUrl(localImages, cardNo) {
   if (!localImages || typeof localImages !== "object") return "";
@@ -19,10 +19,13 @@ function stripExternalDetailUrls(card, localImageUrl) {
   if (localImageUrl) {
     out.localImageUrl = localImageUrl;
   }
-  if (out.cardUrl && PKMN_HOST.test(String(out.cardUrl))) {
+  if (out.cardUrl && EXTERNAL_HOST.test(String(out.cardUrl))) {
     delete out.cardUrl;
   }
-  if (out.imageUrl && PKMN_HOST.test(String(out.imageUrl))) {
+  if (out.source && EXTERNAL_HOST.test(String(out.source))) {
+    delete out.source;
+  }
+  if (out.imageUrl && EXTERNAL_HOST.test(String(out.imageUrl))) {
     if (localImageUrl) {
       out.imageUrl = localImageUrl;
     } else {
@@ -43,7 +46,7 @@ function getListsByCode(parsedLists) {
 }
 
 /**
- * Make card-details self-contained: local image paths only, no PkmnCards URLs required at runtime.
+ * Make card-details self-contained: local image paths only, no external card hosts at runtime.
  */
 function finalizeCardDetailsPayload(detailsPayload, listsPayload) {
   const listsByCode = getListsByCode(listsPayload);
@@ -83,7 +86,7 @@ function finalizeCardDetailsPayload(detailsPayload, listsPayload) {
     source: "local",
     complete: true,
     localizedAt: new Date().toISOString(),
-    runtimeNote: "Card text/details served from this file only; PkmnCards not required at runtime.",
+    runtimeNote: "Card text/details served from this file only; no external card hosts required at runtime.",
     setCount: Object.keys(outByCode).length,
     cardCount,
     byCode: outByCode

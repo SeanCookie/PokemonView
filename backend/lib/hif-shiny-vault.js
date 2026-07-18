@@ -1,13 +1,4 @@
-const PKMN_SHINY_VAULT_URL = "https://pkmncards.com/collection/shiny-vault/";
 const SET_CODE = "HIF";
-
-function decodeHtmlName(name) {
-  return String(name || "")
-    .replace(/&#038;/g, "&")
-    .replace(/&#8217;/g, "'")
-    .replace(/&amp;/g, "&")
-    .trim();
-}
 
 function sortShinyVaultKeys(keys) {
   return [...keys].sort((a, b) => {
@@ -22,41 +13,33 @@ function isShinyVaultCardKey(key) {
   return /^SV\d+$/i.test(String(key || "").trim());
 }
 
-function parseShinyVaultFromPkmncardsHtml(html) {
-  const cards = {};
-  const images = {};
-  const re =
-    /<a href="https:\/\/pkmncards\.com\/card\/[^"]+" title="([^"]+)" class="card-image-link"><img[^>]*src="([^"]+)"/g;
-  let match;
-  while ((match = re.exec(String(html || "")))) {
-    const title = decodeHtmlName(match[1]);
-    const imageUrl = String(match[2] || "").trim();
-    const titleMatch = title.match(/^(.*?) · .*?#\s*([A-Za-z0-9-]+)$/);
-    if (!titleMatch) continue;
-    const name = decodeHtmlName(titleMatch[1]);
-    const cardNo = String(titleMatch[2] || "").trim().toUpperCase();
-    if (!isShinyVaultCardKey(cardNo) || !name) continue;
-    cards[cardNo] = name;
-    if (imageUrl) images[cardNo] = imageUrl;
-  }
-  return { cards, images };
+function localShinyVaultImageUrl(cardNo) {
+  const no = String(cardNo || "").trim().toUpperCase();
+  if (!isShinyVaultCardKey(no)) return "";
+  return `/card-images/${SET_CODE}/${encodeURIComponent(no)}.jpg`;
 }
 
-function mergeShinyVaultIntoHifEntry(hifEntry, shiny, source = PKMN_SHINY_VAULT_URL) {
+/**
+ * Ensure HIF Shiny Vault cards keep local /card-images/HIF/SVn.jpg paths.
+ * Does not fetch remote hosts — SV art must already live under card-images/HIF.
+ */
+function mergeShinyVaultIntoHifEntry(hifEntry, shiny) {
   if (!hifEntry || !shiny?.cards) return 0;
   hifEntry.cards = hifEntry.cards && typeof hifEntry.cards === "object" ? hifEntry.cards : {};
-  hifEntry.images = hifEntry.images && typeof hifEntry.images === "object" ? hifEntry.images : {};
   hifEntry.localImages =
     hifEntry.localImages && typeof hifEntry.localImages === "object" ? hifEntry.localImages : {};
 
   let added = 0;
   for (const [cardNo, name] of Object.entries(shiny.cards)) {
+    if (!isShinyVaultCardKey(cardNo)) continue;
     if (!hifEntry.cards[cardNo]) added += 1;
     hifEntry.cards[cardNo] = name;
-    if (shiny.images?.[cardNo]) hifEntry.images[cardNo] = shiny.images[cardNo];
+    const localUrl = localShinyVaultImageUrl(cardNo);
+    if (localUrl) hifEntry.localImages[cardNo] = localUrl;
   }
+  delete hifEntry.images;
+  delete hifEntry.shinyVaultSource;
   hifEntry.totalCards = Object.keys(hifEntry.cards).length;
-  hifEntry.shinyVaultSource = source;
   return added;
 }
 
@@ -64,7 +47,6 @@ function preserveShinyVaultFromPrevious(hifEntry, prevEntry) {
   if (!hifEntry || !prevEntry?.cards) return 0;
   let preserved = 0;
   hifEntry.cards = hifEntry.cards && typeof hifEntry.cards === "object" ? hifEntry.cards : {};
-  hifEntry.images = hifEntry.images && typeof hifEntry.images === "object" ? hifEntry.images : {};
   hifEntry.localImages =
     hifEntry.localImages && typeof hifEntry.localImages === "object" ? hifEntry.localImages : {};
 
@@ -72,12 +54,15 @@ function preserveShinyVaultFromPrevious(hifEntry, prevEntry) {
     if (!isShinyVaultCardKey(cardNo)) continue;
     if (!hifEntry.cards[cardNo]) preserved += 1;
     hifEntry.cards[cardNo] = name;
-    if (prevEntry.images?.[cardNo]) hifEntry.images[cardNo] = prevEntry.images[cardNo];
-    if (prevEntry.localImages?.[cardNo]) hifEntry.localImages[cardNo] = prevEntry.localImages[cardNo];
+    const prevLocal = prevEntry.localImages?.[cardNo];
+    if (prevLocal && String(prevLocal).startsWith("/card-images/")) {
+      hifEntry.localImages[cardNo] = prevLocal;
+    } else {
+      hifEntry.localImages[cardNo] = localShinyVaultImageUrl(cardNo);
+    }
   }
-  if (prevEntry.shinyVaultSource && !hifEntry.shinyVaultSource) {
-    hifEntry.shinyVaultSource = prevEntry.shinyVaultSource;
-  }
+  delete hifEntry.images;
+  delete hifEntry.shinyVaultSource;
   hifEntry.totalCards = Object.keys(hifEntry.cards).length;
   return preserved;
 }
@@ -87,26 +72,6 @@ function countShinyVaultCards(entry) {
   return Object.keys(entry.cards).filter(isShinyVaultCardKey).length;
 }
 
-async function fetchPkmnShinyVaultHtml() {
-  const response = await fetch(PKMN_SHINY_VAULT_URL, {
-    headers: { "User-Agent": "Mozilla/5.0 (compatible; PokemonView/1.0)" }
-  });
-  if (!response.ok) {
-    throw new Error(`PkmnCards shiny vault failed (${response.status})`);
-  }
-  return response.text();
-}
-
-async function fetchShinyVaultFromPkmncards() {
-  const html = await fetchPkmnShinyVaultHtml();
-  const shiny = parseShinyVaultFromPkmncardsHtml(html);
-  const keys = Object.keys(shiny.cards);
-  if (keys.length < 80) {
-    throw new Error(`Expected ~94 SV cards from PkmnCards, found ${keys.length}`);
-  }
-  return shiny;
-}
-
 function applyShinyVaultToByCode(byCode, shiny) {
   if (!byCode || typeof byCode !== "object") return 0;
   const hif = byCode[SET_CODE];
@@ -114,28 +79,37 @@ function applyShinyVaultToByCode(byCode, shiny) {
   return mergeShinyVaultIntoHifEntry(hif, shiny);
 }
 
+/**
+ * Ensure local Shiny Vault image paths are set for existing SV card keys.
+ * No network — returns skipped if already complete.
+ */
 async function ensureHifShinyVaultInByCode(byCode, { force = false } = {}) {
   const hif = byCode?.[SET_CODE];
   if (!hif) return { added: 0, total: 0, skipped: true };
   const existing = countShinyVaultCards(hif);
-  if (!force && existing >= 94) {
-    return { added: 0, total: existing, skipped: true };
+  hif.localImages = hif.localImages && typeof hif.localImages === "object" ? hif.localImages : {};
+  let linked = 0;
+  for (const cardNo of Object.keys(hif.cards || {})) {
+    if (!isShinyVaultCardKey(cardNo)) continue;
+    const url = localShinyVaultImageUrl(cardNo);
+    if (!force && hif.localImages[cardNo] === url) continue;
+    hif.localImages[cardNo] = url;
+    linked += 1;
   }
-  const shiny = await fetchShinyVaultFromPkmncards();
-  const added = applyShinyVaultToByCode(byCode, shiny);
-  return { added, total: countShinyVaultCards(byCode[SET_CODE]), skipped: false };
+  delete hif.images;
+  delete hif.shinyVaultSource;
+  hif.totalCards = Object.keys(hif.cards || {}).length;
+  return { added: linked, total: existing, skipped: !force && linked === 0 };
 }
 
 module.exports = {
-  PKMN_SHINY_VAULT_URL,
   SET_CODE,
   isShinyVaultCardKey,
   sortShinyVaultKeys,
-  parseShinyVaultFromPkmncardsHtml,
+  localShinyVaultImageUrl,
   mergeShinyVaultIntoHifEntry,
   preserveShinyVaultFromPrevious,
   countShinyVaultCards,
-  fetchShinyVaultFromPkmncards,
   applyShinyVaultToByCode,
   ensureHifShinyVaultInByCode
 };

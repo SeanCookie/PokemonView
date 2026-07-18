@@ -152,11 +152,11 @@ const CARD_IMAGE_DIR = path.join(DATA_DIR, "card-images");
 const CARD_IMAGE_JAPANESE_DIR = path.join(DATA_DIR, "card-images-japanese");
 const SET_CARD_LIST_FILE = path.join(DATA_DIR, "set-card-lists.json");
 const SET_CARD_IMPORT_STATUS_FILE = path.join(DATA_DIR, "set-card-import-status.json");
-const SET_CARD_IMPORT_SCRIPT = path.join(__dirname, "scripts", "import-pkmncards-set-cards.js");
+const SET_CARD_IMPORT_SCRIPT = path.join(__dirname, "scripts", "import-set-cards.js");
 const SET_CARD_DETAILS_IMPORT_SCRIPT = path.join(
   __dirname,
   "scripts",
-  "import-pkmncards-all-set-details.js"
+  "import-all-set-details.js"
 );
 const MIN_ENGLISH_SETS_FOR_COMPLETE = 80;
 const MIN_ENGLISH_DETAIL_SETS_FOR_COMPLETE = 80;
@@ -5945,7 +5945,7 @@ async function buildCardDetailsImportStatusResponse() {
     localized,
     complete: localized,
     minSetsForComplete: MIN_ENGLISH_DETAIL_SETS_FOR_COMPLETE,
-    runtimeSource: localized ? "local" : "pkmncards",
+    runtimeSource: localized ? "local" : "incomplete",
     ...status
   });
 }
@@ -7143,6 +7143,42 @@ function makeSyntheticCardImageUrl(setCode, cardNo) {
   return `/card-images/${encodeURIComponent(code)}/${encodeURIComponent(no)}.jpg`;
 }
 
+function isUsableCardImageUrl(url) {
+  const s = String(url || "").trim();
+  if (!s) return false;
+  if (s.startsWith("/card-images/") || s.startsWith("/card-images-japanese/")) return true;
+  if (/^https?:\/\//i.test(s)) return true;
+  return false;
+}
+
+function assignCardImageAliases(map, cardNo, url) {
+  if (!map || !isUsableCardImageUrl(url)) return;
+  const s = String(url).trim();
+  const keys = new Set([String(cardNo || "").trim()]);
+  const n = Number(cardNo);
+  if (Number.isFinite(n)) {
+    keys.add(String(n));
+    keys.add(String(n).padStart(3, "0"));
+  }
+  for (const key of keys) {
+    if (!key) continue;
+    if (!map[key]) map[key] = s;
+  }
+}
+
+function lookupCardImageInMap(map, cardNo) {
+  if (!map || typeof map !== "object") return "";
+  const direct = map[cardNo];
+  if (isUsableCardImageUrl(direct)) return String(direct).trim();
+  const n = Number(cardNo);
+  if (Number.isFinite(n)) {
+    for (const key of [String(n), String(n).padStart(3, "0")]) {
+      if (isUsableCardImageUrl(map[key])) return String(map[key]).trim();
+    }
+  }
+  return "";
+}
+
 /**
  * When card art lives on R2 (Cloudflare) there is no local card-images disk tree.
  * Build the same /card-images/{SET}/{no}.jpg map the frontend expects from card keys.
@@ -7153,29 +7189,38 @@ function synthesizeLocalImagesFromCards(setCode, cards) {
   for (const cardNo of Object.keys(cards)) {
     const url = makeSyntheticCardImageUrl(setCode, cardNo);
     if (!url) continue;
-    out[cardNo] = url;
-    const n = Number(cardNo);
-    if (Number.isFinite(n)) {
-      out[String(n)] = url;
-      out[String(n).padStart(3, "0")] = url;
-    }
+    assignCardImageAliases(out, cardNo, url);
   }
   return out;
 }
 
 function sanitizeManifestEntryForClient(entry, setCode = "") {
   if (!entry || typeof entry !== "object") return entry;
-  let localImages =
-    entry.localImages && typeof entry.localImages === "object" ? { ...entry.localImages } : {};
   const cards = entry.cards && typeof entry.cards === "object" ? entry.cards : {};
-  if (!Object.keys(localImages).length && Object.keys(cards).length) {
-    localImages = synthesizeLocalImagesFromCards(setCode || entry.setCode || "", cards);
+  const remoteImages = entry.images && typeof entry.images === "object" ? entry.images : {};
+  const localImages =
+    entry.localImages && typeof entry.localImages === "object" ? entry.localImages : {};
+
+  const outImages = {};
+  for (const [cardNo, url] of Object.entries(localImages)) {
+    if (isUsableCardImageUrl(url)) assignCardImageAliases(outImages, cardNo, url);
   }
+  // Hidden Fates Shiny Vault (and similar) keep remote art in `images` when R2 has no file.
+  for (const [cardNo, url] of Object.entries(remoteImages)) {
+    if (lookupCardImageInMap(outImages, cardNo)) continue;
+    if (isUsableCardImageUrl(url)) assignCardImageAliases(outImages, cardNo, url);
+  }
+  for (const cardNo of Object.keys(cards)) {
+    if (lookupCardImageInMap(outImages, cardNo)) continue;
+    const synthetic = makeSyntheticCardImageUrl(setCode || entry.setCode || "", cardNo);
+    if (synthetic) assignCardImageAliases(outImages, cardNo, synthetic);
+  }
+
   const { images, sourceHref, ...rest } = entry;
   const out = { ...rest };
-  if (Object.keys(localImages).length) {
-    out.localImages = localImages;
-    out.images = { ...localImages };
+  if (Object.keys(outImages).length) {
+    out.localImages = outImages;
+    out.images = { ...outImages };
   }
   return out;
 }

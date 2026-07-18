@@ -53,6 +53,7 @@ scripts/*
 !scripts/split-set-card-details.js
 !scripts/build-catalog-illustrators.js
 !scripts/embed-frontend-overrides.js
+!scripts/download-hif-shiny-vault-images.js
 
 # Runtime caches (rebuilt on server)
 backend/data/tcg-link-prices-cache.json

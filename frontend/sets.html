@@ -2338,23 +2338,46 @@
         state.savedSetGridScrollY = null;
       }
 
+      const hadCards = Object.keys(state.cardNamesBySetCode[setCode] || {}).length > 0;
+      scrollToPageTop();
+      // Paint immediately — do not block the first set view on details/pricing APIs.
+      renderAll();
+
       try {
-        // Wait for pricing manifest (card price values) with cards so inline prices paint immediately.
+        await ensureSetCardsLoaded(setCode);
+      } catch {
+        /* ignore */
+      }
+      if (String(state.selectedSetCode || "").toUpperCase() !== setCode) return;
+      if (!hadCards) renderAll();
+
+      void enrichOpenSetView(setCode, setName);
+    }
+
+    async function enrichOpenSetView(setCode, setName = "") {
+      const code = String(setCode || "").trim().toUpperCase();
+      if (!code) return;
+      try {
         await Promise.all([
-          ensureSetCardsLoaded(setCode),
-          ensureSetCardDetailsLoaded(setCode),
-          ensureSetPricingManifestLoaded(setCode, setName).catch(() => {
+          ensureSetCardDetailsLoaded(code),
+          ensureSetPricingManifestLoaded(code, setName).catch(() => {
             /* best effort — tiles can still warm later */
           })
         ]);
       } catch {
         /* ignore */
       }
-      if (String(state.selectedSetCode || "").toUpperCase() !== setCode) return;
-      // Link-cache hydrate + missing live fetches continue in background after first paint.
-      primeActiveSetPrices(setCode, setName);
-      scrollToPageTop();
-      renderAll();
+      if (String(state.selectedSetCode || "").toUpperCase() !== code) return;
+      primeActiveSetPrices(code, setName);
+      const y = window.scrollY;
+      if (state.selectedCardNumber) {
+        renderAll();
+      } else {
+        renderSelectedSetDetail();
+      }
+      if (Math.abs(window.scrollY - y) > 2) {
+        window.scrollTo(0, y);
+      }
     }
 
     function scheduleDeferredSetPricing(setCode, setName = "") {
@@ -3635,7 +3658,7 @@
     /**
      * Escape card detail text but render energy tags as icons: `{C}` / `{ C }` (Colorless), `{R}` / `{ R }` (Fire),
      * `{W}` / `{ W }` (Water), `{G}` / `{ G }` (Grass), `{L}` / `{ L }` (Lightning), `{P}` / `{ P }` (Psychic),
-     * `{F}` / `{ F }` (Fighting), `{M}` / `{ M }` (Metal), `{D}` / `{ D }` (Dark). Matches PkmnCards-style abbreviations.
+     * `{F}` / `{ F }` (Fighting), `{M}` / `{ M }` (Metal), `{D}` / `{ D }` (Dark). Matches common energy abbreviations.
      */
     function formatCardDetailsEnergyText(text) {
       const raw = String(text || "");
@@ -4132,15 +4155,35 @@
     }
 
     function mergeSetCardImageMaps(localImages, remoteImages) {
-      const local = localImages && typeof localImages === "object" ? localImages : {};
       const out = {};
-      for (const [cardNo, url] of Object.entries(local)) {
-        const s = String(url || "").trim();
-        if (!s.startsWith("/card-images/") && !s.startsWith("/card-images-japanese/")) continue;
-        for (const key of cardNumberLookupKeys(cardNo)) {
-          out[key] = s;
+      const apply = (map) => {
+        if (!map || typeof map !== "object") return;
+        for (const [cardNo, url] of Object.entries(map)) {
+          const s = String(url || "").trim();
+          if (
+            !s.startsWith("/card-images/") &&
+            !s.startsWith("/card-images-japanese/") &&
+            !/^https?:\/\//i.test(s)
+          ) {
+            continue;
+          }
+          for (const key of cardNumberLookupKeys(cardNo)) {
+            // Prefer local /card-images paths over remote hosts when both exist.
+            const existing = out[key];
+            if (
+              existing &&
+              (existing.startsWith("/card-images/") || existing.startsWith("/card-images-japanese/")) &&
+              /^https?:\/\//i.test(s)
+            ) {
+              continue;
+            }
+            out[key] = s;
+          }
         }
-      }
+      };
+      // Remotes first, then locals win for the same card key.
+      apply(remoteImages);
+      apply(localImages);
       return out;
     }
 
@@ -5014,7 +5057,7 @@
     };
 
     /**
-     * App set code → pokesymbols.com URL slug when it differs from pkmncards import slug,
+     * App set code → pokesymbols.com URL slug when it differs from the catalog slug,
      * or when one TCG “Online Code” is shared by multiple sets (we pick the main expansion).
      * Keys: PokemonView `setEntry.code` (see setsByEra). Values: keys of manifest.bySlug.
      */
@@ -8778,18 +8821,28 @@
       state.savedSetGridScrollY = null;
       state.showcaseReturnUrl = showcaseReturn || null;
 
-      await ensureSetCardDetailsLoaded(setCode);
-      if (state.language === "english") {
-        if (resolvedCard) {
-          await ensureSetPricingLoaded(setCode, entry.name || "");
-        } else {
-          await ensureSetPricingManifestLoaded(setCode, entry.name || "").catch(() => {});
-          primeActiveSetPrices(setCode, entry.name || "");
-        }
-      }
-
       scrollToPageTop();
       renderAll();
+
+      void (async () => {
+        try {
+          await ensureSetCardDetailsLoaded(setCode);
+          if (state.language === "english") {
+            if (resolvedCard) {
+              await ensureSetPricingLoaded(setCode, entry.name || "");
+            } else {
+              await ensureSetPricingManifestLoaded(setCode, entry.name || "").catch(() => {});
+              primeActiveSetPrices(setCode, entry.name || "");
+            }
+          }
+        } catch {
+          /* ignore */
+        }
+        if (String(state.selectedSetCode || "").toUpperCase() !== setCode) return;
+        const y = window.scrollY;
+        renderAll();
+        if (Math.abs(window.scrollY - y) > 2) window.scrollTo(0, y);
+      })();
 
       const urlParams = new URLSearchParams({ set: setCode });
       if (resolvedCard) urlParams.set("card", resolvedCard.cardNo);

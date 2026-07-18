@@ -452,12 +452,26 @@
   }
 
   function renderCardNicknames(nicknames) {
-    const list = Array.isArray(nicknames) ? nicknames : [];
+    const list = Array.isArray(nicknames) ? [...nicknames] : [];
     if (!nicknameBody) return;
     if (!list.length) {
       nicknameBody.innerHTML = `<tr><td colspan="6" style="color:var(--muted)">No nicknames yet.</td></tr>`;
       return;
     }
+    list.sort((a, b) => {
+      const nickCmp = String(a.nickname || "").localeCompare(String(b.nickname || ""), undefined, {
+        sensitivity: "base"
+      });
+      if (nickCmp !== 0) return nickCmp;
+      const setCmp = String(a.setCode || "").localeCompare(String(b.setCode || ""), undefined, {
+        sensitivity: "base"
+      });
+      if (setCmp !== 0) return setCmp;
+      return String(a.cardNumber || "").localeCompare(String(b.cardNumber || ""), undefined, {
+        numeric: true,
+        sensitivity: "base"
+      });
+    });
     nicknameBody.innerHTML = list
       .map((row) => {
         const searchUrl = `/sets.html?q=${encodeURIComponent(row.nickname || "")}`;
@@ -736,12 +750,17 @@
     }
   }
 
-  function resetNicknameForm() {
+  function resetNicknameForm({ keepNickname = false } = {}) {
+    const keptNickname = keepNickname ? String(nicknameText?.value || "").trim() : "";
+    const keptLanguage = keepNickname
+      ? String(nicknameLanguage?.value || "english")
+      : "english";
     nicknameForm?.reset();
-    if (nicknameLanguage) nicknameLanguage.value = "english";
-    if (nicknameText) nicknameText.value = "";
+    if (nicknameLanguage) nicknameLanguage.value = keptLanguage;
+    if (nicknameText) nicknameText.value = keptNickname;
     clearNicknameCardSelection();
-    nicknameText?.focus();
+    if (keptNickname) nicknameCardSearch?.focus();
+    else nicknameText?.focus();
   }
 
   function renderManualRestock(items) {
@@ -1612,8 +1631,8 @@
           language: nicknameLanguage?.value || "english"
         })
       });
-      resetNicknameForm();
-      setStatus(nicknameFormMsg, "Nickname added.", "ok");
+      resetNicknameForm({ keepNickname: true });
+      setStatus(nicknameFormMsg, "Card linked. Pick another card to add it under the same nickname.", "ok");
       await loadCardNicknames();
     } catch (err) {
       setStatus(nicknameFormMsg, err.message, "error");
@@ -1624,7 +1643,7 @@
     const btn = event.target.closest("[data-remove-nickname-id]");
     if (!btn) return;
     const id = btn.getAttribute("data-remove-nickname-id");
-    if (!id || !window.confirm("Remove this nickname?")) return;
+    if (!id || !window.confirm("Remove this card from the nickname?")) return;
     setStatus(nicknameFormMsg, "");
     try {
       await api(`/api/admin/card-nicknames/${encodeURIComponent(id)}`, { method: "DELETE" });

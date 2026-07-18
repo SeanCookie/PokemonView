@@ -89,12 +89,12 @@ async function buildLocalImageIndexFromDisk(cardImageDir) {
 function mergeLocalImagesIntoEntry(entry, diskLocalImages) {
   if (!entry) return entry;
   if (!diskLocalImages || !Object.keys(diskLocalImages).length) {
-    const { localImages, ...rest } = entry;
-    return rest;
+    return entry;
   }
   return {
     ...entry,
-    localImages: { ...diskLocalImages }
+    // Disk wins per key, but keep any catalog-only entries (e.g. HIF SV remote art).
+    localImages: { ...(entry.localImages || {}), ...diskLocalImages }
   };
 }
 

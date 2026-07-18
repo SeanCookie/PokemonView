@@ -57,11 +57,23 @@ function normalizeCardNicknameEntry(input = {}, existing = null) {
   };
 }
 
+function nicknameCardIdentityKey(row) {
+  const key = row?.nicknameKey || normalizeNicknameText(row?.nickname);
+  const setCode = String(row?.setCode || "")
+    .trim()
+    .toUpperCase();
+  const cardNumber = String(row?.cardNumber || row?.cardNo || "").trim();
+  const language =
+    String(row?.language || "english").trim().toLowerCase() === "japanese" ? "japanese" : "english";
+  return `${key}::${setCode}::${cardNumber}::${language}`;
+}
+
 async function addCardNickname(filePath, input = {}) {
   const entry = normalizeCardNicknameEntry(input);
   const nicknames = await loadCardNicknames(filePath);
-  const dup = nicknames.some((row) => row.nicknameKey === entry.nicknameKey);
-  if (dup) throw new Error("This nickname already exists");
+  const identity = nicknameCardIdentityKey(entry);
+  const dup = nicknames.some((row) => nicknameCardIdentityKey(row) === identity);
+  if (dup) throw new Error("This card is already linked to that nickname");
   nicknames.unshift(entry);
   await saveCardNicknames(filePath, nicknames);
   return entry;
@@ -117,5 +129,6 @@ module.exports = {
   addCardNickname,
   removeCardNickname,
   findNicknamesForQuery,
-  publicNicknamePayload
+  publicNicknamePayload,
+  nicknameCardIdentityKey
 };

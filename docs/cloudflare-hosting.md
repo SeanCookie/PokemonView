@@ -80,7 +80,7 @@ The Worker name in the dashboard **must match** `name = "pokemonview"` in `wrang
 
 **Card images (~3 GB)** are **not** baked into the Docker image — Cloudflare’s build runners run out of disk above ~3 GB. They are served from **R2** at the edge (`CARD_IMAGES` → `pokemonview-card-images`). **Pokesymbols and set cover art** can also be served from the same R2 bucket for faster edge caching. See **Upload assets to R2** below.
 
-Production runs with **`SELF_HOSTED=1`**: no runtime requests to pkmncards.com or pokesymbols.com CDN.
+Production runs with **`SELF_HOSTED=1`**: card catalogs and art are served from this app / R2 only (no external card-host CDNs at runtime).
 
 ### Upload assets to R2
 
