@@ -232,7 +232,7 @@ const RESTOCK_AUTO_REFRESH_MS = 60 * 60 * 1000;
 const SET_PRICING_CACHE_TTL_MS = 1000 * 60 * 60;
 const SET_PRICING_ERROR_CACHE_TTL_MS = 1000 * 60 * 2;
 /** Bump when pricing manifest shape/rules change (invalidates set pricing cache). */
-const SET_PRICING_MANIFEST_VERSION = 3;
+const SET_PRICING_MANIFEST_VERSION = 4;
 /** Persisted admin TCG link prices; long TTL so Sets inline prices stay valid between restarts. */
 const TCG_LINK_PRICE_CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 /** Soft age after which background/admin refresh should re-fetch even if TTL is still valid. */
@@ -246,7 +246,22 @@ const TCG_LINK_PRICE_LOGIC_VERSION = 11;
 const TCG_PRICE_GUIDE_INDEX_TTL_MS = 1000 * 60 * 60 * 6;
 /** App set code → TCGplayer price guide slug when auto-matching is unreliable. */
 const TCG_GUIDE_SLUG_BY_SET_CODE = {
-  CRI: "me04-chaos-rising"
+  CRI: "me04-chaos-rising",
+  HIF: "hidden-fates",
+  SHF: "shining-fates"
+};
+/**
+ * Extra TCGplayer guides to merge into a set's pricing manifest.
+ * Hidden Fates / Shining Fates keep Shiny Vault (#SV…) as a separate price guide.
+ * @see https://www.tcgplayer.com/categories/trading-and-collectible-card-games/pokemon/price-guides/hidden-fates-shiny-vault
+ */
+const TCG_SUPPLEMENTAL_GUIDE_SLUGS_BY_SET_CODE = {
+  HIF: ["hidden-fates-shiny-vault"],
+  SHF: ["shining-fates-shiny-vault"]
+};
+const TCG_SUPPLEMENTAL_GUIDE_LABEL_BY_SLUG = {
+  "hidden-fates-shiny-vault": "Hidden Fates: Shiny Vault",
+  "shining-fates-shiny-vault": "Shining Fates: Shiny Vault"
 };
 
 let env = {};
@@ -5029,6 +5044,69 @@ async function fetchTcgProductsByGuideSetName(bestGuideRow) {
   };
 }
 
+function mergeTcgPricingMaps(targetByCardNo, targetVariantsByCardNo, source) {
+  if (!source || typeof source !== "object") return 0;
+  let added = 0;
+  for (const [key, entry] of Object.entries(source.byCardNo || {})) {
+    if (!targetByCardNo[key]) added += 1;
+    upsertSetPriceEntry(targetByCardNo, key, entry);
+  }
+  for (const [key, list] of Object.entries(source.variantsByCardNo || {})) {
+    for (const variant of Array.isArray(list) ? list : []) {
+      appendTcgVariantToIndex(targetVariantsByCardNo, key, variant);
+    }
+  }
+  return added;
+}
+
+async function mergeSupplementalTcgGuidesForSet(setCode, byCardNo, variantsByCardNo) {
+  const code = String(setCode || "").trim().toUpperCase();
+  const slugs = TCG_SUPPLEMENTAL_GUIDE_SLUGS_BY_SET_CODE[code];
+  if (!Array.isArray(slugs) || !slugs.length) return { mergedCards: 0, guides: [] };
+
+  let guideRows = [];
+  try {
+    guideRows = await fetchTcgPriceGuideIndex(false);
+  } catch {
+    guideRows = [];
+  }
+
+  let mergedCards = 0;
+  const guides = [];
+  for (const rawSlug of slugs) {
+    const slug = String(rawSlug || "").trim().toLowerCase();
+    if (!slug) continue;
+    const hit = (Array.isArray(guideRows) ? guideRows : []).find(
+      (row) => String(row?.slug || "").trim().toLowerCase() === slug
+    );
+    const label =
+      String(hit?.label || "").trim() ||
+      TCG_SUPPLEMENTAL_GUIDE_LABEL_BY_SLUG[slug] ||
+      slug.replace(/-/g, " ");
+    const guideRow = hit || {
+      slug,
+      label,
+      abbreviation: code,
+      href: `https://www.tcgplayer.com/categories/trading-and-collectible-card-games/pokemon/price-guides/${slug}`
+    };
+    if (!String(guideRow.label || "").trim()) guideRow.label = label;
+    try {
+      const extra = await fetchTcgProductsByGuideSetName(guideRow);
+      if (!extra || !Object.keys(extra.byCardNo || {}).length) continue;
+      mergedCards += mergeTcgPricingMaps(byCardNo, variantsByCardNo, extra);
+      guides.push({
+        slug,
+        label: extra.guideSetName || label,
+        href: guideRow.href || "",
+        cards: Object.keys(extra.byCardNo || {}).length
+      });
+    } catch (err) {
+      console.warn(`[tcg] supplemental guide ${slug} failed: ${err.message || err}`);
+    }
+  }
+  return { mergedCards, guides };
+}
+
 async function fetchTcgSearchRequest(payload) {
   const response = await fetch("https://mp-search-api.tcgplayer.com/v1/search/request", {
     method: "POST",
@@ -5691,6 +5769,13 @@ async function getSetCardPricingManifest(setCode = "", setName = "") {
       if (bestGuideRow?.label) {
         const directGuide = await fetchTcgProductsByGuideSetName(bestGuideRow);
         if (directGuide && Object.keys(directGuide.byCardNo).length > 0) {
+          const byCardNo = { ...directGuide.byCardNo };
+          const variantsByCardNo = { ...(directGuide.variantsByCardNo || {}) };
+          const supplemental = await mergeSupplementalTcgGuidesForSet(
+            requestedSetCode,
+            byCardNo,
+            variantsByCardNo
+          );
           return {
             ok: true,
             available: true,
@@ -5699,8 +5784,9 @@ async function getSetCardPricingManifest(setCode = "", setName = "") {
             guideSetName: directGuide.guideSetName,
             guideSetUrlValue: directGuide.guideSetUrlValue,
             guideIndexUrl: bestGuideRow.href || "",
-            byCardNo: directGuide.byCardNo,
-            variantsByCardNo: directGuide.variantsByCardNo || {}
+            supplementalGuides: supplemental.guides || [],
+            byCardNo,
+            variantsByCardNo
           };
         }
       }
@@ -5736,6 +5822,27 @@ async function getSetCardPricingManifest(setCode = "", setName = "") {
       }
 
       if (!preflight) {
+        const byCardNo = {};
+        const variantsByCardNo = {};
+        const supplemental = await mergeSupplementalTcgGuidesForSet(
+          requestedSetCode,
+          byCardNo,
+          variantsByCardNo
+        );
+        if (Object.keys(byCardNo).length) {
+          return {
+            ok: true,
+            available: true,
+            setCode: requestedSetCode,
+            setName: requestedSetName,
+            guideSetName: supplemental.guides?.[0]?.label || "",
+            guideSetUrlValue: supplemental.guides?.[0]?.slug || "",
+            guideIndexUrl: supplemental.guides?.[0]?.href || "",
+            supplementalGuides: supplemental.guides || [],
+            byCardNo,
+            variantsByCardNo
+          };
+        }
         return {
           ok: true,
           available: false,
@@ -5796,6 +5903,11 @@ async function getSetCardPricingManifest(setCode = "", setName = "") {
         ingestTcgSearchRowsIntoByCardNo(rows, byCardNo, setNameNorm, setUrlNorm, variantsByCardNo);
       }
       await enrichVariantsByCardNoWithTcgPrintings(byCardNo, variantsByCardNo);
+      const supplemental = await mergeSupplementalTcgGuidesForSet(
+        requestedSetCode,
+        byCardNo,
+        variantsByCardNo
+      );
 
       return {
         ok: true,
@@ -5805,6 +5917,7 @@ async function getSetCardPricingManifest(setCode = "", setName = "") {
         guideSetName,
         guideSetUrlValue,
         guideIndexUrl: bestGuideRow?.href || "",
+        supplementalGuides: supplemental.guides || [],
         byCardNo,
         variantsByCardNo
       };
