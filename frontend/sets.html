@@ -2339,15 +2339,12 @@
       }
 
       const hadCards = Object.keys(state.cardNamesBySetCode[setCode] || {}).length > 0;
+      // Start card fetch before first paint so the loading flag is set (avoids bouncing back to catalog).
+      const cardsPromise = ensureSetCardsLoaded(setCode).catch(() => {});
       scrollToPageTop();
-      // Paint immediately — do not block the first set view on details/pricing APIs.
       renderAll();
 
-      try {
-        await ensureSetCardsLoaded(setCode);
-      } catch {
-        /* ignore */
-      }
+      await cardsPromise;
       if (String(state.selectedSetCode || "").toUpperCase() !== setCode) return;
       if (!hadCards) renderAll();
 
@@ -7715,13 +7712,24 @@
       const content = document.getElementById("content");
       const allCards = getSetCards(selectedSet, setConfig);
       if (!allCards.length) {
-        if (state.cardManifestLoadingBySetCode[selectedSet.code]) {
-          content.innerHTML = `<div class="card-meta" style="padding:16px;">Loading cards…</div>`;
-          return;
-        }
-        state.selectedSetCode = null;
-        state.selectedSetName = "";
-        renderAll();
+        content.innerHTML = `<div class="card-meta" style="padding:16px;">Loading ${escapeHtml(selectedSet.name || "set")}…</div>`;
+        void ensureSetCardsLoaded(selectedSet.code)
+          .then(() => {
+            if (String(state.selectedSetCode || "").toUpperCase() !== String(selectedSet.code || "").toUpperCase()) {
+              return;
+            }
+            if (Object.keys(state.cardNamesBySetCode[selectedSet.code] || {}).length > 0) {
+              renderSelectedSetDetail();
+              return;
+            }
+            content.innerHTML = `<div class="card-meta" style="padding:16px;">Could not load cards for this set.</div>`;
+          })
+          .catch(() => {
+            if (String(state.selectedSetCode || "").toUpperCase() !== String(selectedSet.code || "").toUpperCase()) {
+              return;
+            }
+            content.innerHTML = `<div class="card-meta" style="padding:16px;">Could not load cards for this set.</div>`;
+          });
         return;
       }
       const illustrators = getSetIllustrators(allCards);
@@ -8385,6 +8393,15 @@
           state.savedSetsCatalogScrollY = window.scrollY;
           void openSetView(code, name);
         });
+        node.addEventListener(
+          "pointerenter",
+          () => {
+            const code = node.dataset.setCode || "";
+            if (!canOpenSet(code)) return;
+            void ensureSetCardsLoaded(code).catch(() => {});
+          },
+          { once: true }
+        );
       });
     }
 

@@ -1,13 +1,14 @@
 /**
  * Edge overrides for shared nav assets + HTML structure.
  * Keeps Sign In immediately to the right of the search bar even when the container image is stale.
+ * Also serves a fresh /sets.html so set-open perf fixes are not stuck on an old Docker image.
  */
-import { SITE_NAV_CSS, SITE_NAV_JS } from "./frontend-overrides.generated.js";
+import { SITE_NAV_CSS, SITE_NAV_JS, SETS_HTML } from "./frontend-overrides.generated.js";
 
 const NAV_ASSET_CACHE = "no-store";
 
 /**
- * Serve fresh site-nav.css / site-nav.js from the Worker bundle.
+ * Serve fresh site-nav.css / site-nav.js / sets.html from the Worker bundle.
  * @param {Request} request
  * @returns {Response|null}
  */
@@ -33,6 +34,16 @@ export function tryServeNavAssetOverride(request) {
     };
     if (request.method === "HEAD") return new Response(null, { status: 200, headers });
     return new Response(SITE_NAV_JS, { status: 200, headers });
+  }
+
+  if (path === "/sets.html" || path === "/sets") {
+    const html = clusterNavSearchWithAccount(SETS_HTML);
+    const headers = {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": NAV_ASSET_CACHE
+    };
+    if (request.method === "HEAD") return new Response(null, { status: 200, headers });
+    return new Response(html, { status: 200, headers });
   }
 
   return null;
