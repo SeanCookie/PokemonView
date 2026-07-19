@@ -112,7 +112,8 @@ const ALLOWED_APP_DATA_FILES = new Set([
   "tcg-link-prices-cache.json",
   "pricecharting-card-details-cache.json",
   "tcg-link-price-fail-links.json",
-  "pricecharting-card-details-fail-links.json"
+  "pricecharting-card-details-fail-links.json",
+  "admin-set-refresh-timestamps.json"
 ]);
 
 async function handleDurableStoreRequest(request, env) {
@@ -382,7 +383,7 @@ export default {
     if (navAsset) return navAsset;
 
     // Fresh DO so the container boots with current secrets + latest image after CI rebuild.
-    const container = env.POKEMONVIEW.getByName("main-v17");
+    const container = env.POKEMONVIEW.getByName("main-v18");
     const response = await enrichAuthMePreferences(
       request,
       await container.fetch(request),

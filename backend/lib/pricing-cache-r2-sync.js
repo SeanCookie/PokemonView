@@ -16,7 +16,8 @@ const ALLOWED_FILES = new Set([
   "tcg-link-prices-cache.json",
   "pricecharting-card-details-cache.json",
   "tcg-link-price-fail-links.json",
-  "pricecharting-card-details-fail-links.json"
+  "pricecharting-card-details-fail-links.json",
+  "admin-set-refresh-timestamps.json"
 ]);
 
 /** Prefer gzip when payload exceeds this (keeps small files simple). */

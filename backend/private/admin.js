@@ -1182,28 +1182,47 @@
     }
   });
 
+  function formatSetRefreshStamp(value) {
+    const text = String(value || "").trim();
+    if (!text) return "";
+    const d = new Date(text);
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toLocaleString(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit"
+    });
+  }
+
   async function loadTcgSetOptions() {
     if (!tcgSetRefreshSelect && !pcSetRefreshSelect) return;
     try {
       const payload = await api("/api/admin/tcg-price-check/sets");
       const sets = Array.isArray(payload.sets) ? payload.sets : [];
-      const optionsHtml =
+      const buildOptions = (kind) =>
         `<option value="">Select a set…</option>` +
         sets
           .map((row) => {
             const code = escapeHtml(row.setCode || "");
             const name = escapeHtml(row.setName || row.setCode || "");
-            return `<option value="${code}" data-set-name="${name}">${name} (${code})</option>`;
+            const stampRaw =
+              kind === "tcg" ? row.tcgLastRefreshAt : row.priceChartingLastRefreshAt;
+            const stamp = formatSetRefreshStamp(stampRaw);
+            const label = stamp
+              ? `${name} (${code}) — ${escapeHtml(stamp)}`
+              : `${name} (${code})`;
+            return `<option value="${code}" data-set-name="${name}">${label}</option>`;
           })
           .join("");
       if (tcgSetRefreshSelect) {
         const current = tcgSetRefreshSelect.value;
-        tcgSetRefreshSelect.innerHTML = optionsHtml;
+        tcgSetRefreshSelect.innerHTML = buildOptions("tcg");
         if (current) tcgSetRefreshSelect.value = current;
       }
       if (pcSetRefreshSelect) {
         const current = pcSetRefreshSelect.value;
-        pcSetRefreshSelect.innerHTML = optionsHtml;
+        pcSetRefreshSelect.innerHTML = buildOptions("pricecharting");
         if (current) pcSetRefreshSelect.value = current;
       }
     } catch {

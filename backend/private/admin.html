@@ -62,7 +62,7 @@
     <section class="admin-grid admin-grid--pricing">
       <article class="admin-card" id="tcgCacheCard">
         <h2>TCG Price Check cache</h2>
-        <p class="admin-hint">TCGplayer listing prices. Cache and failed links save to R2 every <strong>1000</strong> cards. Starting this while PriceCharting is running will <strong>stop and save</strong> PriceCharting first. Keep this admin tab open while it runs.</p>
+        <p class="admin-hint">TCGplayer listing prices by product + printing (Normal, Reverse Holofoil, etc.). Cache and failed links save to R2 every <strong>1000</strong> cards. Totals count unique print keys, not duplicate URL shapes. One-set refresh stores a timestamp next to that set in the dropdown. Starting this while PriceCharting is running will <strong>stop and save</strong> PriceCharting first.</p>
         <div class="admin-stat">
           <span class="label">Last successful full check</span>
           <span class="value mono" id="tcgLastSuccess">—</span>
@@ -80,7 +80,7 @@
           <span class="value" id="tcgPricedCount">—</span>
         </div>
         <div class="admin-stat">
-          <span class="label">Total TCG links</span>
+          <span class="label">Total TCG print links</span>
           <span class="value" id="tcgTotalLinks">—</span>
         </div>
         <div class="admin-stat">
@@ -115,7 +115,7 @@
 
       <article class="admin-card" id="pcCacheCard">
         <h2>PriceCharting details cache</h2>
-        <p class="admin-hint">Sold listings and graded guides. Separate from TCG listing prices. Saves every <strong>1000</strong> cards (gzip + fail-links to R2). Starting this while TCG is running will <strong>stop and save</strong> TCG first. Use <strong>Update all</strong> for every set, or refresh one set below.</p>
+        <p class="admin-hint">Sold listings and graded guides. Separate from TCG listing prices. Saves every <strong>1000</strong> cards (gzip + fail-links to R2). One-set refresh stores a timestamp next to that set in the dropdown. Starting this while TCG is running will <strong>stop and save</strong> TCG first.</p>
         <div class="admin-stat">
           <span class="label">Last successful refresh</span>
           <span class="value mono" id="pcLastSuccess">—</span>

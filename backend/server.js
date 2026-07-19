@@ -202,6 +202,8 @@ const TCG_LINK_PRICE_FAIL_LINKS_MAX = 2000;
 const PRICECHARTING_DETAILS_FAIL_LINKS_FILE = path.join(DATA_DIR, "pricecharting-card-details-fail-links.json");
 const PRICECHARTING_DETAILS_FAIL_LINKS_MAX = 2000;
 const PRICECHARTING_DETAILS_PERSIST_EVERY = 1000;
+const ADMIN_SET_REFRESH_TIMESTAMPS_FILE = path.join(DATA_DIR, "admin-set-refresh-timestamps.json");
+const ADMIN_SET_REFRESH_TIMESTAMPS_R2 = "admin-set-refresh-timestamps.json";
 const SHOWCASE_AVATAR_DIR = path.join(DATA_DIR, "showcase-avatars");
 const TCG_PRICE_LEDGER_FILE = path.join(DATA_DIR, "tcg-price-ledger.json");
 const MARKET_HISTORY_RANGE_DAYS = {
@@ -433,6 +435,12 @@ let priceChartingBulkMeta = {
 };
 const priceChartingFailLinks = new Map();
 let priceChartingFailLinksPersistTimer = null;
+/** Per-set last refresh stamps for admin dropdowns. Survives restarts via R2. */
+let adminSetRefreshTimestamps = {
+  tcg: Object.create(null),
+  pricecharting: Object.create(null)
+};
+let adminSetRefreshTimestampsPersistTimer = null;
 const TCG_LINK_PRICE_PREWARM_DELAY_MS = 140;
 const TCG_LINK_PRICE_SET_MANIFEST_DELAY_MS = 80;
 const TCG_LINK_PRICE_PREWARM_STARTUP_DELAY_MS = 180_000;
@@ -1058,14 +1066,12 @@ async function refreshTcgLinkPricesForUrls(
     priceChartingContextByUrl = null
   } = {}
 ) {
-  const pcContextByUrl = normalizePriceChartingContextByUrl(priceChartingContextByUrl);
+  const deduped = dedupeTcgUrlsByCacheKey(urls, priceChartingContextByUrl);
+  const pcContextByUrl = normalizePriceChartingContextByUrl(deduped.priceChartingContextByUrl);
   const freshnessMs = Number.isFinite(Number(maxAgeMs))
     ? Math.max(0, Number(maxAgeMs))
     : TCG_LINK_PRICE_REFRESH_MAX_AGE_MS;
-  const list = [...new Set((Array.isArray(urls) ? urls : []).map((u) => String(u || "").trim()).filter(Boolean))].slice(
-    0,
-    max
-  );
+  const list = deduped.urls.slice(0, max);
   if (!list.length) return { ok: 0, fail: 0, skipped: 0, total: 0 };
   let cursor = 0;
   let ok = 0;
@@ -1427,6 +1433,10 @@ async function runPriceChartingDetailsPrewarmBackground(triggeredBy = "", option
         fail: pcResult.fail,
         skipped: Number(pcResult.skipped) || 0
       };
+      if (onlySetCode) {
+        // Stamp whenever a one-set run finishes and saves (including Stop after partial work).
+        recordAdminSetRefresh("pricecharting", onlySetCode, finishedAt);
+      }
       console.log(
         `[pricing] PriceCharting card details ${stopped ? "stopped" : "done"}${scopeLabel}: cards=${pcCards.length}, ok=${pcResult.ok}, fail=${pcResult.fail}, skipped=${pcResult.skipped || 0}`
       );
@@ -1463,7 +1473,9 @@ async function refreshTcgLinkPricesHourlyTick(options = {}) {
   let skipped = 0;
   try {
     console.log("[pricing-hourly] collecting TCGplayer links from all English sets...");
-    const { urls, priceChartingContextByUrl } = await collectAllTcgplayerUrlsForPrewarm();
+    const { urls: rawUrls, priceChartingContextByUrl } = await collectAllTcgplayerUrlsForPrewarm();
+    const deduped = dedupeTcgUrlsByCacheKey(rawUrls, priceChartingContextByUrl);
+    const urls = deduped.urls;
     tcgBulkPriceCheckMeta.totalLinkCount = urls.length;
     syncTcgBulkPriceCheckCacheCount();
     const targets = forceRefresh
@@ -1478,13 +1490,13 @@ async function refreshTcgLinkPricesHourlyTick(options = {}) {
           return true;
         });
     console.log(
-      `[pricing-hourly] prewarming ${targets.length} TCG link prices (${urls.length} total, ${skipped} fresh within ${Math.round(maxAgeMs / 3600000)}h)`
+      `[pricing-hourly] prewarming ${targets.length} TCG print keys (${urls.length} unique / ${rawUrls.length} raw, ${skipped} fresh within ${Math.round(maxAgeMs / 3600000)}h)`
     );
     const { ok, fail, cancelled } = await refreshTcgLinkPricesForUrls(targets, {
-      concurrency: 6,
+      concurrency: 4,
       max: targets.length,
       persistEvery: TCG_LINK_PRICE_PERSIST_EVERY,
-      priceChartingContextByUrl
+      priceChartingContextByUrl: deduped.priceChartingContextByUrl
     });
     await persistTcgLinkPriceCacheNow();
     const elapsedSec = Math.round((Date.now() - startedAt) / 1000);
@@ -1861,6 +1873,118 @@ async function clearPriceChartingFailLinks() {
   await flushPersistPriceChartingFailLinks();
 }
 
+function normalizeAdminSetRefreshKind(kind = "") {
+  const key = String(kind || "")
+    .trim()
+    .toLowerCase();
+  if (key === "tcg" || key === "pricecharting") return key;
+  return "";
+}
+
+function getAdminSetRefreshTimestampsSnapshot() {
+  return {
+    tcg: { ...(adminSetRefreshTimestamps.tcg || {}) },
+    pricecharting: { ...(adminSetRefreshTimestamps.pricecharting || {}) }
+  };
+}
+
+async function persistAdminSetRefreshTimestampsNow() {
+  if (adminSetRefreshTimestampsPersistTimer) {
+    clearTimeout(adminSetRefreshTimestampsPersistTimer);
+    adminSetRefreshTimestampsPersistTimer = null;
+  }
+  const body = `${JSON.stringify({
+    updatedAt: new Date().toISOString(),
+    tcg: adminSetRefreshTimestamps.tcg || {},
+    pricecharting: adminSetRefreshTimestamps.pricecharting || {}
+  })}\n`;
+  await fsp.mkdir(DATA_DIR, { recursive: true });
+  await fsp.writeFile(ADMIN_SET_REFRESH_TIMESTAMPS_FILE, body, "utf8");
+  const r2 = await pushPricingCacheToR2(ADMIN_SET_REFRESH_TIMESTAMPS_R2, body, {
+    ...env,
+    ...process.env
+  });
+  if (r2?.ok) {
+    console.log("[pricing-cache] admin set-refresh timestamps saved (R2 ok)");
+  } else if (!r2?.skipped) {
+    console.warn("[pricing-cache] admin set-refresh timestamps saved to disk but R2 push failed");
+  }
+}
+
+function schedulePersistAdminSetRefreshTimestamps() {
+  if (adminSetRefreshTimestampsPersistTimer) return;
+  adminSetRefreshTimestampsPersistTimer = setTimeout(() => {
+    adminSetRefreshTimestampsPersistTimer = null;
+    void persistAdminSetRefreshTimestampsNow().catch((err) => {
+      console.warn(`[pricing-cache] set-refresh timestamps persist failed: ${err?.message || err}`);
+    });
+  }, 250);
+}
+
+async function loadPersistedAdminSetRefreshTimestamps() {
+  let raw = null;
+  try {
+    raw = await fsp.readFile(ADMIN_SET_REFRESH_TIMESTAMPS_FILE, "utf8");
+  } catch {
+    // try R2 below
+  }
+  if (!raw || raw.length < 2) {
+    raw = await pullPricingCacheFromR2(ADMIN_SET_REFRESH_TIMESTAMPS_R2, { ...env, ...process.env });
+    if (raw) {
+      try {
+        await fsp.mkdir(DATA_DIR, { recursive: true });
+        await fsp.writeFile(
+          ADMIN_SET_REFRESH_TIMESTAMPS_FILE,
+          raw.endsWith("\n") ? raw : `${raw}\n`,
+          "utf8"
+        );
+      } catch {
+        // best effort
+      }
+    }
+  }
+  if (!raw) return;
+  try {
+    const parsed = JSON.parse(raw);
+    const tcg = parsed?.tcg && typeof parsed.tcg === "object" ? parsed.tcg : {};
+    const pc =
+      parsed?.pricecharting && typeof parsed.pricecharting === "object" ? parsed.pricecharting : {};
+    const nextTcg = Object.create(null);
+    const nextPc = Object.create(null);
+    for (const [code, at] of Object.entries(tcg)) {
+      const setCode = String(code || "").trim().toUpperCase();
+      const iso = String(at || "").trim();
+      if (setCode && iso && Number.isFinite(Date.parse(iso))) nextTcg[setCode] = iso;
+    }
+    for (const [code, at] of Object.entries(pc)) {
+      const setCode = String(code || "").trim().toUpperCase();
+      const iso = String(at || "").trim();
+      if (setCode && iso && Number.isFinite(Date.parse(iso))) nextPc[setCode] = iso;
+    }
+    adminSetRefreshTimestamps = { tcg: nextTcg, pricecharting: nextPc };
+    const count = Object.keys(nextTcg).length + Object.keys(nextPc).length;
+    if (count > 0) {
+      console.log(`[pricing-cache] restored ${count} admin set-refresh timestamp(s)`);
+    }
+  } catch (err) {
+    console.warn(`[pricing-cache] set-refresh timestamps parse failed: ${err?.message || err}`);
+  }
+}
+
+function recordAdminSetRefresh(kind = "", setCode = "", at = "") {
+  const bucket = normalizeAdminSetRefreshKind(kind);
+  const code = String(setCode || "").trim().toUpperCase();
+  if (!bucket || !code) return null;
+  const iso = String(at || "").trim() || new Date().toISOString();
+  if (!Number.isFinite(Date.parse(iso))) return null;
+  if (!adminSetRefreshTimestamps[bucket] || typeof adminSetRefreshTimestamps[bucket] !== "object") {
+    adminSetRefreshTimestamps[bucket] = Object.create(null);
+  }
+  adminSetRefreshTimestamps[bucket][code] = iso;
+  schedulePersistAdminSetRefreshTimestamps();
+  return iso;
+}
+
 function getPriceChartingAdminMeta() {
   const disk = getPriceChartingCardDetailsCacheMeta();
   const cacheEntryCount = Number(priceChartingBulkMeta.cacheEntryCount) || disk.cacheEntryCount || 0;
@@ -2224,9 +2348,12 @@ async function runAdminBulkTcgPriceCheck(triggeredBy = "") {
         }
       });
       tcgBulkPriceCheckMeta.phase = "pricing";
-      tcgBulkPriceCheckMeta.totalLinkCount = urls.length;
-      tcgBulkPriceCheckMeta.progress.total = urls.length;
-      tcgBulkPriceCheckMeta.detail = `Pricing ${urls.length.toLocaleString()} TCGplayer links…`;
+      const dedupedLinks = dedupeTcgUrlsByCacheKey(urls, priceChartingContextByUrl);
+      const pricingUrls = dedupedLinks.urls;
+      const pricingCtx = dedupedLinks.priceChartingContextByUrl;
+      tcgBulkPriceCheckMeta.totalLinkCount = pricingUrls.length;
+      tcgBulkPriceCheckMeta.progress.total = pricingUrls.length;
+      tcgBulkPriceCheckMeta.detail = `Pricing ${pricingUrls.length.toLocaleString()} TCGplayer print links (${urls.length.toLocaleString()} raw URLs)…`;
       syncTcgBulkPriceCheckCacheCount();
       if (isTcgPriceCheckCancelled()) {
         await persistTcgLinkPriceCacheNow();
@@ -2240,22 +2367,22 @@ async function runAdminBulkTcgPriceCheck(triggeredBy = "") {
         );
         return { stopped: true, urls: urls.length, ok: 0, fail: 0 };
       }
-      if (!urls.length) {
+      if (!pricingUrls.length) {
         tcgBulkPriceCheckMeta.lastError =
           "No TCGplayer product links found. Check TCGplayer API keys in backend/.env and set pricing manifests.";
         console.warn("[admin] bulk TCG price check: 0 TCGplayer links collected");
       }
       console.log(
-        `[admin] collected ${urls.length} TCG links; refreshing prices older than ${Math.round(TCG_LINK_PRICE_ADMIN_REFRESH_MAX_AGE_MS / 60000)}m`
+        `[admin] collected ${urls.length} TCG URLs → ${pricingUrls.length} unique print keys; refreshing prices older than ${Math.round(TCG_LINK_PRICE_ADMIN_REFRESH_MAX_AGE_MS / 60000)}m`
       );
       // Re-fetch stale/missing prices. Fresh entries (within admin max-age) are skipped so runs finish.
-      const { ok, fail, skipped, cancelled } = await refreshTcgLinkPricesForUrls(urls, {
+      const { ok, fail, skipped, cancelled } = await refreshTcgLinkPricesForUrls(pricingUrls, {
         concurrency: 4,
-        max: urls.length,
+        max: pricingUrls.length,
         skipValidCached: true,
         maxAgeMs: TCG_LINK_PRICE_ADMIN_REFRESH_MAX_AGE_MS,
         persistEvery: TCG_LINK_PRICE_PERSIST_EVERY,
-        priceChartingContextByUrl,
+        priceChartingContextByUrl: pricingCtx,
         onProgress: (progress) => {
           tcgBulkPriceCheckMeta.progress = {
             total: progress.total,
@@ -2306,8 +2433,8 @@ async function runAdminBulkTcgPriceCheck(triggeredBy = "") {
         tcgBulkPriceCheckMeta.lastSuccessfulAt = finishedAt;
       }
       tcgBulkPriceCheckMeta.progress = {
-        total: urls.length,
-        done: stopped ? Number(tcgBulkPriceCheckMeta.progress?.done) || 0 : urls.length,
+        total: pricingUrls.length,
+        done: stopped ? Number(tcgBulkPriceCheckMeta.progress?.done) || 0 : pricingUrls.length,
         ok,
         fail,
         skipped: Number(skipped) || 0
@@ -2315,15 +2442,16 @@ async function runAdminBulkTcgPriceCheck(triggeredBy = "") {
       tcgLinkPricePrewarmStatus = {
         lastRunAt: finishedAt,
         lastElapsedSec: Math.round((Date.now() - Date.parse(startedAt)) / 1000),
-        lastUrls: urls.length,
+        lastUrls: pricingUrls.length,
+        lastRawUrls: urls.length,
         lastOk: ok,
         lastFail: fail,
         lastSkipped: Number(skipped) || 0
       };
       console.log(
-        `[admin] bulk TCG price check ${stopped ? "stopped" : "done"}: urls=${urls.length}, ok=${ok}, fail=${fail}, skipped=${skipped || 0}`
+        `[admin] bulk TCG price check ${stopped ? "stopped" : "done"}: printKeys=${pricingUrls.length}, rawUrls=${urls.length}, ok=${ok}, fail=${fail}, skipped=${skipped || 0}`
       );
-      return { urls: urls.length, ok, fail, stopped };
+      return { urls: pricingUrls.length, rawUrls: urls.length, ok, fail, stopped };
     } catch (err) {
       tcgBulkPriceCheckMeta.status = "error";
       tcgBulkPriceCheckMeta.finishedAt = new Date().toISOString();
@@ -2472,6 +2600,8 @@ async function runAdminTcgPriceCheckForSet(setCode = "", setName = "", triggered
         setsDone: 1,
         setsTotal: 1
       };
+      // Stamp whenever a one-set run finishes and saves (including Stop after partial work).
+      recordAdminSetRefresh("tcg", code, finishedAt);
       console.log(
         `[admin] set TCG price check ${stopped ? "stopped" : "done"} for ${code}: urls=${urls.length}, ok=${ok}, fail=${fail}, skipped=${skipped || 0}`
       );
@@ -4456,6 +4586,47 @@ function getTcgLinkPriceCacheKey(rawUrl = "", productId = null) {
   if (!Number.isFinite(pid) || pid <= 0) return "";
   const printing = extractTcgPrintingFromUrl(rawUrl);
   return printing ? `${pid}::${printing.toLowerCase()}` : String(pid);
+}
+
+/**
+ * Bulk refresh must count unique print keys, not raw URL strings.
+ * Manifests + cache rebuild often yield 2+ URL shapes for the same product/printing
+ * (slug vs bare id, query order, etc.), which inflated "Total TCG links" to ~2x cache size
+ * and made Update-all look stuck at ~50% when every print was already priced.
+ */
+function dedupeTcgUrlsByCacheKey(urls, priceChartingContextByUrl = null) {
+  const ctxIn = normalizePriceChartingContextByUrl(priceChartingContextByUrl);
+  const byKey = new Map();
+  const ctxByKey = new Map();
+  for (const raw of Array.isArray(urls) ? urls : []) {
+    const url = String(raw || "").trim();
+    if (!url) continue;
+    const pid = extractTcgplayerProductIdFromUrl(url);
+    const key = getTcgLinkPriceCacheKey(url, pid) || url.toLowerCase();
+    const prev = byKey.get(key);
+    if (!prev) {
+      byKey.set(key, url);
+    } else {
+      const prevPrint = extractTcgPrintingFromUrl(prev);
+      const nextPrint = extractTcgPrintingFromUrl(url);
+      // Prefer a URL that carries Printing= so reverse/holo finishes stay distinct.
+      if (nextPrint && !prevPrint) byKey.set(key, url);
+    }
+    const ctx = ctxIn.get(url);
+    if (ctx && !ctxByKey.has(key)) ctxByKey.set(key, ctx);
+  }
+  const deduped = [];
+  const ctxOut = new Map();
+  for (const [key, url] of byKey.entries()) {
+    deduped.push(url);
+    const ctx = ctxByKey.get(key);
+    if (ctx) ctxOut.set(url, ctx);
+  }
+  return {
+    urls: deduped,
+    uniqueKeyCount: deduped.length,
+    priceChartingContextByUrl: ctxOut
+  };
 }
 
 function extractTcgplayerProductIdFromUrl(rawUrl = "") {
@@ -9787,12 +9958,22 @@ async function route(req, res) {
   if (pathname === "/api/admin/tcg-price-check/sets" && req.method === "GET") {
     const admin = requireAdmin(req, res);
     if (!admin) return;
+    const stamps = getAdminSetRefreshTimestampsSnapshot();
     const sets = await listEnglishSetPricingTargets();
     json(res, 200, {
       ok: true,
       sets: sets
         .filter((row) => row.setCode)
         .sort((a, b) => String(a.setName || a.setCode).localeCompare(String(b.setName || b.setCode)))
+        .map((row) => {
+          const code = String(row.setCode || "").trim().toUpperCase();
+          return {
+            setCode: code,
+            setName: String(row.setName || "").trim(),
+            tcgLastRefreshAt: stamps.tcg[code] || null,
+            priceChartingLastRefreshAt: stamps.pricecharting[code] || null
+          };
+        })
     });
     return;
   }
@@ -10606,6 +10787,7 @@ async function bootstrapServer({ hosted = false } = {}) {
         })
         .catch(() => {});
       loadPersistedPriceChartingFailLinks().catch(() => {});
+      loadPersistedAdminSetRefreshTimestamps().catch(() => {});
       getPokesymbolsManifestCached().catch(() => {});
       getLocalCardImageIndex().catch((err) => {
         console.warn(`[startup] Deferred image index failed: ${err.message}`);
@@ -10628,6 +10810,7 @@ async function bootstrapServer({ hosted = false } = {}) {
   await loadPersistedPriceChartingMarketHistoryCache().catch(() => {});
   await loadPersistedTcgLinkPriceFailLinks().catch(() => {});
   loadPersistedPriceChartingFailLinks().catch(() => {});
+  loadPersistedAdminSetRefreshTimestamps().catch(() => {});
   pruneNonPokemonTcgFailLinks({ concurrency: 4, max: 300 })
     .then((result) => {
       if (result?.removed > 0) {
