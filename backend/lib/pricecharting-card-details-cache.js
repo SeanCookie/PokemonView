@@ -14,7 +14,7 @@ const CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const CACHE_VERSION = 2;
 const PERSIST_DEBOUNCE_MS = 500;
 /** Default for admin bulk runs — save to disk/R2 every N processed cards (not on every write). */
-const DEFAULT_BULK_PERSIST_EVERY = 100;
+const DEFAULT_BULK_PERSIST_EVERY = 1000;
 
 const memCache = new Map();
 let persistTimer = null;
@@ -53,17 +53,49 @@ function readCachedCardDetails(setCode = "", cardNo = "") {
     if (row) memCache.delete(key);
     return null;
   }
-  return { ...row.value, cached: true };
+  const soldGuides = normalizeSoldGuides(row.value);
+  return {
+    ...row.value,
+    soldListings: soldGuides[0]?.listings || row.value.soldListings || [],
+    soldGuides,
+    cached: true
+  };
+}
+
+function normalizeSoldGuides(value) {
+  if (Array.isArray(value?.soldGuides) && value.soldGuides.length) {
+    return value.soldGuides
+      .map((guide) => ({
+        variant: String(guide?.variant || "normal").trim() || "normal",
+        title: String(guide?.title || "").trim(),
+        productUrl: String(guide?.productUrl || "").trim(),
+        listings: Array.isArray(guide?.listings) ? guide.listings : []
+      }))
+      .filter((guide) => guide.listings.length > 0);
+  }
+  const listings = Array.isArray(value?.soldListings) ? value.soldListings : [];
+  if (!listings.length) return [];
+  return [
+    {
+      variant: "normal",
+      title: "",
+      productUrl: String(value?.productUrl || "").trim(),
+      listings
+    }
+  ];
 }
 
 function writeCachedCardDetails(setCode = "", cardNo = "", value) {
   const key = cacheKeyForCard(setCode, cardNo);
   if (!key || !cacheValueValid(value)) return false;
+  const soldGuides = normalizeSoldGuides(value);
+  const soldListings = soldGuides[0]?.listings || (Array.isArray(value.soldListings) ? value.soldListings : []);
   memCache.set(key, {
     value: {
       ok: true,
       productUrl: String(value.productUrl || ""),
-      soldListings: Array.isArray(value.soldListings) ? value.soldListings : [],
+      soldListings,
+      soldGuides,
       gradedGuides: Array.isArray(value.gradedGuides) ? value.gradedGuides : []
     },
     expiresAt: Date.now() + CACHE_TTL_MS
@@ -122,13 +154,15 @@ async function persistPriceChartingCardDetailsCacheNow() {
   const payload = buildCacheFilePayload();
   cacheMeta.savedAt = payload.savedAt;
   cacheMeta.entryCount = payload.meta.entryCount;
-  const body = `${JSON.stringify(payload, null, 2)}\n`;
+  // Compact JSON — pretty-print ballooned past the Workers ~100MB body limit around ~4k cards.
+  const body = `${JSON.stringify(payload)}\n`;
   await fsp.mkdir(DATA_DIR, { recursive: true });
   await fsp.writeFile(CACHE_FILE, body, "utf8");
   const r2 = await pushPricingCacheToR2(CACHE_R2_NAME, body);
   if (r2?.ok) {
+    const gzipNote = r2.gzip ? `, gzip ${Number(r2.bytes || 0).toLocaleString()}B` : "";
     console.log(
-      `[pricing-cache] PriceCharting details saved (${payload.meta.entryCount} entries, R2 ok)`
+      `[pricing-cache] PriceCharting details saved (${payload.meta.entryCount} entries, R2 ok${gzipNote})`
     );
   } else if (!r2?.skipped) {
     console.warn("[pricing-cache] PriceCharting details saved to disk but R2 push failed");
@@ -219,6 +253,7 @@ async function getOrFetchPriceChartingCardDetails(
       cached: false,
       productUrl: "",
       soldListings: [],
+      soldGuides: [],
       gradedGuides: []
     };
   }
@@ -260,6 +295,26 @@ async function collectEnglishCardsForPriceChartingPrewarm(options = {}) {
     }
   }
   return cards;
+}
+
+/** Full English catalog size for admin “Total PriceCharting Sections”. Cached briefly. */
+let englishCardUniverseCache = { expiresAt: 0, count: 0 };
+
+async function getPriceChartingEnglishCardUniverseCount() {
+  const now = Date.now();
+  if (englishCardUniverseCache.expiresAt > now && englishCardUniverseCache.count > 0) {
+    return englishCardUniverseCache.count;
+  }
+  try {
+    const cards = await collectEnglishCardsForPriceChartingPrewarm();
+    englishCardUniverseCache = {
+      expiresAt: now + 1000 * 60 * 30,
+      count: cards.length
+    };
+    return cards.length;
+  } catch {
+    return englishCardUniverseCache.count || 0;
+  }
 }
 
 async function refreshPriceChartingCardDetailsBatch(
@@ -367,6 +422,7 @@ module.exports = {
   writeCachedCardDetails,
   getOrFetchPriceChartingCardDetails,
   collectEnglishCardsForPriceChartingPrewarm,
+  getPriceChartingEnglishCardUniverseCount,
   refreshPriceChartingCardDetailsBatch,
   DEFAULT_BULK_PERSIST_EVERY
 };

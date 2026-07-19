@@ -1,7 +1,16 @@
 /**
  * Sync large pricing cache JSON files to R2 via the Worker.
  * Container disk is ephemeral — without this, admin price caches vanish on restart.
+ *
+ * Large files (PriceCharting details) are gzip-compressed for PUT/GET so they stay
+ * under the Workers request body limit (~100MB). Uncompressed objects still load.
  */
+
+const zlib = require("zlib");
+const { promisify } = require("util");
+
+const gzipAsync = promisify(zlib.gzip);
+const gunzipAsync = promisify(zlib.gunzip);
 
 const ALLOWED_FILES = new Set([
   "tcg-link-prices-cache.json",
@@ -9,6 +18,9 @@ const ALLOWED_FILES = new Set([
   "tcg-link-price-fail-links.json",
   "pricecharting-card-details-fail-links.json"
 ]);
+
+/** Prefer gzip when payload exceeds this (keeps small files simple). */
+const GZIP_MIN_BYTES = 256 * 1024;
 
 /** Merged with process.env on each call (file-loaded secrets may not be on process.env). */
 let defaultSyncEnv = {};
@@ -38,6 +50,21 @@ function assertAllowedFile(name) {
   return file;
 }
 
+function looksLikeGzip(buffer) {
+  return Buffer.isBuffer(buffer) && buffer.length >= 2 && buffer[0] === 0x1f && buffer[1] === 0x8b;
+}
+
+async function decodeMaybeGzipBody(buffer, contentEncoding = "") {
+  const encoding = String(contentEncoding || "")
+    .trim()
+    .toLowerCase();
+  if (encoding.includes("gzip") || looksLikeGzip(buffer)) {
+    const inflated = await gunzipAsync(buffer);
+    return inflated.toString("utf8");
+  }
+  return buffer.toString("utf8");
+}
+
 async function pullPricingCacheFromR2(fileName, env = {}) {
   const cfg = getSyncConfig(env);
   if (!cfg.enabled) return null;
@@ -53,7 +80,9 @@ async function pullPricingCacheFromR2(fileName, env = {}) {
       console.warn(`[pricing-r2] pull ${file} failed: HTTP ${res.status}`);
       return null;
     }
-    const text = await res.text();
+    const buffer = Buffer.from(await res.arrayBuffer());
+    if (!buffer.length) return null;
+    const text = await decodeMaybeGzipBody(buffer, res.headers.get("content-encoding"));
     if (!text || text.length < 2) return null;
     console.log(`[pricing-r2] restored ${file} (${text.length.toLocaleString()} bytes)`);
     return text;
@@ -71,20 +100,30 @@ async function pushPricingCacheToR2(fileName, bodyText, env = {}) {
   if (body.length < 2) return { ok: false, skipped: true };
   try {
     const url = `${cfg.baseUrl}?file=${encodeURIComponent(file)}`;
+    const raw = Buffer.from(body, "utf8");
+    const useGzip = raw.length >= GZIP_MIN_BYTES;
+    const payload = useGzip ? await gzipAsync(raw, { level: 6 }) : raw;
+    const headers = {
+      "content-type": "application/json; charset=utf-8",
+      "x-store-sync-secret": cfg.secret
+    };
+    if (useGzip) headers["content-encoding"] = "gzip";
     const res = await fetch(url, {
       method: "PUT",
-      headers: {
-        "content-type": "application/json; charset=utf-8",
-        "x-store-sync-secret": cfg.secret
-      },
-      body
+      headers,
+      body: payload
     });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       console.warn(`[pricing-r2] push ${file} failed: HTTP ${res.status} ${text.slice(0, 200)}`);
       return { ok: false };
     }
-    return { ok: true, bytes: body.length };
+    return {
+      ok: true,
+      bytes: payload.length,
+      rawBytes: raw.length,
+      gzip: useGzip
+    };
   } catch (err) {
     console.warn(`[pricing-r2] push ${fileName} error: ${err.message || err}`);
     return { ok: false };

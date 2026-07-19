@@ -59,6 +59,7 @@ const {
   getOrFetchPriceChartingCardDetails,
   getPriceChartingCardDetailsCacheMeta,
   collectEnglishCardsForPriceChartingPrewarm,
+  getPriceChartingEnglishCardUniverseCount,
   refreshPriceChartingCardDetailsBatch,
   enqueuePersistPriceChartingCardDetailsCacheNow,
   writeCachedCardDetails,
@@ -200,7 +201,7 @@ const TCG_LINK_PRICE_FAIL_LINKS_FILE = path.join(DATA_DIR, "tcg-link-price-fail-
 const TCG_LINK_PRICE_FAIL_LINKS_MAX = 2000;
 const PRICECHARTING_DETAILS_FAIL_LINKS_FILE = path.join(DATA_DIR, "pricecharting-card-details-fail-links.json");
 const PRICECHARTING_DETAILS_FAIL_LINKS_MAX = 2000;
-const PRICECHARTING_DETAILS_PERSIST_EVERY = 100;
+const PRICECHARTING_DETAILS_PERSIST_EVERY = 1000;
 const SHOWCASE_AVATAR_DIR = path.join(DATA_DIR, "showcase-avatars");
 const TCG_PRICE_LEDGER_FILE = path.join(DATA_DIR, "tcg-price-ledger.json");
 const MARKET_HISTORY_RANGE_DAYS = {
@@ -420,6 +421,8 @@ let priceChartingBulkMeta = {
   lastError: null,
   cacheSavedAt: null,
   cacheEntryCount: 0,
+  updatedSuccessfullyCount: 0,
+  totalCardCount: 0,
   setCode: null,
   setName: null,
   currentSetCode: null,
@@ -579,11 +582,14 @@ async function persistTcgLinkPriceCacheNow() {
   }
   tcgBulkPriceCheckMeta.cacheEntryCount = entries.length;
   tcgBulkPriceCheckMeta.cacheSavedAt = new Date().toISOString();
-  const body = JSON.stringify(buildTcgLinkPriceCacheFilePayload(entries), null, 2);
+  syncTcgBulkPriceCheckCacheCount();
+  // Compact JSON — pretty-print is fine under 100MB today but grows with every variant URL.
+  const body = `${JSON.stringify(buildTcgLinkPriceCacheFilePayload(entries))}\n`;
   await fsp.writeFile(TCG_LINK_PRICE_CACHE_FILE, body, "utf8");
   const r2 = await pushPricingCacheToR2("tcg-link-prices-cache.json", body, { ...env, ...process.env });
   if (r2?.ok) {
-    console.log(`[pricing-cache] TCG link prices saved (${entries.length} entries, R2 ok)`);
+    const gzipNote = r2.gzip ? `, gzip ${Number(r2.bytes || 0).toLocaleString()}B` : "";
+    console.log(`[pricing-cache] TCG link prices saved (${entries.length} entries, R2 ok${gzipNote})`);
   } else if (!r2?.skipped) {
     console.warn("[pricing-cache] TCG link prices saved to disk but R2 push failed");
   }
@@ -710,12 +716,19 @@ function getTcgLinkPriceCacheFetchedAt(value) {
 }
 
 function isTcgLinkPriceCacheFresh(productId, rawUrl = "", maxAgeMs = TCG_LINK_PRICE_REFRESH_MAX_AGE_MS) {
-  const cached = readTcgLinkPriceFromCache(productId, rawUrl);
-  if (!cached) return false;
-  const fetchedAt = getTcgLinkPriceCacheFetchedAt(cached);
+  // Exact URL/printing key only — never treat a sibling printing (e.g. Normal) as
+  // covering Reverse Holofoil, or bulk refresh permanently stalls around ~half of total links.
+  const pid = Number(productId) || extractTcgplayerProductIdFromUrl(rawUrl);
+  const cacheKey = getTcgLinkPriceCacheKey(rawUrl, pid) || (pid ? String(pid) : "");
+  if (!cacheKey) return false;
+  const row = tcgLinkPriceCache.get(cacheKey);
+  if (!row || row.expiresAt <= Date.now() || !tcgLinkPriceCacheValueValid(row.value)) {
+    return false;
+  }
+  const fetchedAt = getTcgLinkPriceCacheFetchedAt(row.value);
   // Legacy rows without fetchedAt are treated as stale so the next refresh updates them.
   if (!fetchedAt) return false;
-  const ageLimit = Number.isFinite(maxAgeMs) ? Math.max(0, maxAgeMs) : TCG_LINK_PRICE_REFRESH_MAX_AGE_MS;
+  const ageLimit = Number.isFinite(maxAgeMs) ? Math.max(0, Number(maxAgeMs)) : TCG_LINK_PRICE_REFRESH_MAX_AGE_MS;
   return Date.now() - fetchedAt < ageLimit;
 }
 
@@ -977,7 +990,7 @@ async function refreshTcgLinkPricesForUrls(
   urls,
   {
     concurrency = 6,
-    max = 50_000,
+    max = 250_000,
     onProgress,
     skipValidCached = false,
     maxAgeMs = TCG_LINK_PRICE_REFRESH_MAX_AGE_MS,
@@ -1266,6 +1279,10 @@ function runPriceChartingDetailsPrewarmBackground(triggeredBy = "", options = {}
       if (onlySetCode && !pcCards.length) {
         throw new Error(`No English cards found for set ${onlySetCode}`);
       }
+      const universeCount = onlySetCode
+        ? pcCards.length
+        : (await getPriceChartingEnglishCardUniverseCount()) || pcCards.length;
+      priceChartingBulkMeta.totalCardCount = universeCount;
       const pcCachedBefore = getPriceChartingCardDetailsCacheMeta().cacheEntryCount;
       // Single-set refreshes always re-fetch; full runs can skip valid cached cards.
       const skipValidCached = !onlySetCode && pcCachedBefore > 0;
@@ -1276,6 +1293,8 @@ function runPriceChartingDetailsPrewarmBackground(triggeredBy = "", options = {}
         fail: 0,
         skipped: 0
       };
+      priceChartingBulkMeta.updatedSuccessfullyCount = pcCachedBefore;
+      priceChartingBulkMeta.cacheEntryCount = pcCachedBefore;
       const pcResult = await refreshPriceChartingCardDetailsBatch(pcCards, {
         concurrency: 1,
         max: pcCards.length,
@@ -1316,6 +1335,7 @@ function runPriceChartingDetailsPrewarmBackground(triggeredBy = "", options = {}
           }
           const pcMeta = getPriceChartingCardDetailsCacheMeta();
           priceChartingBulkMeta.cacheEntryCount = pcMeta.cacheEntryCount;
+          priceChartingBulkMeta.updatedSuccessfullyCount = pcMeta.cacheEntryCount;
           priceChartingBulkMeta.cacheSavedAt = pcMeta.cacheSavedAt;
         }
       });
@@ -1328,7 +1348,9 @@ function runPriceChartingDetailsPrewarmBackground(triggeredBy = "", options = {}
       priceChartingBulkMeta.finishedAt = finishedAt;
       if (!stopped) priceChartingBulkMeta.lastSuccessfulAt = finishedAt;
       priceChartingBulkMeta.cacheEntryCount = pcMeta.cacheEntryCount;
+      priceChartingBulkMeta.updatedSuccessfullyCount = pcMeta.cacheEntryCount;
       priceChartingBulkMeta.cacheSavedAt = pcMeta.cacheSavedAt;
+      priceChartingBulkMeta.totalCardCount = universeCount;
       priceChartingBulkMeta.progress = {
         total: pcCards.length,
         done: stopped ? Number(priceChartingBulkMeta.progress?.done) || 0 : pcCards.length,
@@ -1719,9 +1741,17 @@ async function clearPriceChartingFailLinks() {
 
 function getPriceChartingAdminMeta() {
   const disk = getPriceChartingCardDetailsCacheMeta();
+  const cacheEntryCount = Number(priceChartingBulkMeta.cacheEntryCount) || disk.cacheEntryCount || 0;
+  const totalCardCount =
+    Number(priceChartingBulkMeta.totalCardCount) > 0
+      ? Number(priceChartingBulkMeta.totalCardCount)
+      : Number(priceChartingBulkMeta.progress?.total) || 0;
   return {
     ...priceChartingBulkMeta,
-    cacheEntryCount: Number(priceChartingBulkMeta.cacheEntryCount) || disk.cacheEntryCount || 0,
+    cacheEntryCount,
+    updatedSuccessfullyCount:
+      Number(priceChartingBulkMeta.updatedSuccessfullyCount) || cacheEntryCount,
+    totalCardCount,
     cacheSavedAt: priceChartingBulkMeta.cacheSavedAt || disk.cacheSavedAt || null,
     failLinkCount: priceChartingFailLinks.size,
     inFlight: isPriceChartingDetailsPrewarmInFlight(),
@@ -1953,6 +1983,7 @@ async function loadPersistedTcgLinkPriceCache() {
     }
     tcgBulkPriceCheckMeta.cacheEntryCount = restored;
     tcgBulkPriceCheckMeta.cacheSavedAt = String(parsed?.savedAt || parsed?.meta?.cacheSavedAt || "").trim() || null;
+    syncTcgBulkPriceCheckCacheCount();
     if (restored > 0) {
       console.log(`[pricing-cache] restored ${restored} persisted TCG link prices`);
     }
@@ -9705,6 +9736,17 @@ async function route(req, res) {
   if (pathname === "/api/admin/pricecharting-details" && req.method === "GET") {
     const admin = requireAdmin(req, res);
     if (!admin) return;
+    try {
+      if (!Number(priceChartingBulkMeta.totalCardCount)) {
+        priceChartingBulkMeta.totalCardCount = await getPriceChartingEnglishCardUniverseCount();
+      }
+    } catch {
+      // universe count is best-effort for the admin dashboard
+    }
+    const disk = getPriceChartingCardDetailsCacheMeta();
+    priceChartingBulkMeta.cacheEntryCount = disk.cacheEntryCount;
+    priceChartingBulkMeta.updatedSuccessfullyCount = disk.cacheEntryCount;
+    if (disk.cacheSavedAt) priceChartingBulkMeta.cacheSavedAt = disk.cacheSavedAt;
     json(res, 200, {
       ok: true,
       meta: getPriceChartingAdminMeta(),

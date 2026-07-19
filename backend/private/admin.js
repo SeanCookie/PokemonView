@@ -11,6 +11,8 @@
   const tcgProgressBar = document.getElementById("tcgProgressBar");
   const tcgProgressText = document.getElementById("tcgProgressText");
   const pcDetailsCacheCount = document.getElementById("pcDetailsCacheCount");
+  const pcUpdatedCount = document.getElementById("pcUpdatedCount");
+  const pcTotalSections = document.getElementById("pcTotalSections");
   const pcDetailsProgressText = document.getElementById("pcDetailsProgressText");
   const pcCacheCard = document.getElementById("pcCacheCard");
   const pcLastSuccess = document.getElementById("pcLastSuccess");
@@ -232,8 +234,24 @@
     const pcBusy = Boolean(pc.inFlight);
     if (pcLastSuccess) pcLastSuccess.textContent = formatDateTime(pc.lastSuccessfulAt || pc.finishedAt);
     if (pcCacheSaved) pcCacheSaved.textContent = formatDateTime(pc.cacheSavedAt);
+    const totalSections =
+      Number(pc.totalCardCount) > 0
+        ? Number(pc.totalCardCount)
+        : Number(progress.total) > 0
+          ? Number(progress.total)
+          : 0;
     const cached = Number(pc.cacheEntryCount) || 0;
-    if (pcDetailsCacheCount) pcDetailsCacheCount.textContent = cached.toLocaleString();
+    const updated = Number(pc.updatedSuccessfullyCount ?? pc.cacheEntryCount) || 0;
+    if (pcDetailsCacheCount) {
+      pcDetailsCacheCount.textContent =
+        totalSections > 0
+          ? `${cached.toLocaleString()} / ${totalSections.toLocaleString()}`
+          : cached.toLocaleString();
+    }
+    if (pcUpdatedCount) pcUpdatedCount.textContent = updated.toLocaleString();
+    if (pcTotalSections) {
+      pcTotalSections.textContent = totalSections > 0 ? totalSections.toLocaleString() : "—";
+    }
 
     const liveStat = pcCacheCard.querySelector(".admin-stat--live");
     if (liveStat) liveStat.classList.toggle("is-polling", pcBusy);
@@ -252,7 +270,7 @@
       }`;
     }
 
-    const total = Number(progress.total) || 0;
+    const total = Number(progress.total) || totalSections || 0;
     const done = Number(progress.done) || 0;
     const pct = total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0;
     if (pcProgressBar) pcProgressBar.style.width = `${pct}%`;
@@ -283,6 +301,12 @@
       }
       const counts = total ? ` · ${done.toLocaleString()}/${total.toLocaleString()} (${pct}%)` : "";
       setStatus(pcStatusMsg, `${statusLine}${counts}`, "");
+    } else if (totalSections > 0 && updated > 0 && updated < totalSections * 0.5) {
+      setStatus(
+        pcStatusMsg,
+        `Only ${updated.toLocaleString()} of ${totalSections.toLocaleString()} sections are cached. Run “Update PriceCharting cache” again and keep the server running until the count catches up.`,
+        "error"
+      );
     }
 
     if (btnPcDetailsUpdate) {

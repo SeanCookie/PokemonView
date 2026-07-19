@@ -925,11 +925,20 @@ async function fetchPriceChartingCardDetailsForCard({
     });
   }
   const gradedGuides = [];
+  const soldGuides = [];
   if (pageData?.gradedGuide?.grades?.length) {
     gradedGuides.push({
       variant: "normal",
       title: pageData.gradedGuide.title,
       grades: pageData.gradedGuide.grades,
+      productUrl: product.productUrl
+    });
+  }
+  if (pageData?.soldListings?.length) {
+    soldGuides.push({
+      variant: "normal",
+      title: pageData.gradedGuide?.title || String(cardName || "").trim() || "Normal",
+      listings: pageData.soldListings,
       productUrl: product.productUrl
     });
   }
@@ -946,6 +955,17 @@ async function fetchPriceChartingCardDetailsForCard({
           productUrl: reverseHoloProduct.productUrl
         });
       }
+      if (reversePageData?.soldListings?.length) {
+        soldGuides.push({
+          variant: "reverse_holo",
+          title:
+            reversePageData.gradedGuide?.title ||
+            `${String(cardName || "").trim()} Reverse Holofoil`.trim() ||
+            "Reverse Holofoil",
+          listings: reversePageData.soldListings,
+          productUrl: reverseHoloProduct.productUrl
+        });
+      }
     } catch {
       // reverse holo is optional
     }
@@ -955,6 +975,7 @@ async function fetchPriceChartingCardDetailsForCard({
     ok: true,
     productUrl: product.productUrl,
     soldListings: pageData?.soldListings || [],
+    soldGuides,
     gradedGuides
   };
 }
@@ -1007,11 +1028,20 @@ async function fetchPriceChartingCardDetailsFromProductUrl(
   }
 
   const gradedGuides = [];
+  const soldGuides = [];
   if (pageData?.gradedGuide?.grades?.length) {
     gradedGuides.push({
       variant: "normal",
       title: pageData.gradedGuide.title,
       grades: pageData.gradedGuide.grades,
+      productUrl: product.productUrl
+    });
+  }
+  if (pageData?.soldListings?.length) {
+    soldGuides.push({
+      variant: "normal",
+      title: pageData.gradedGuide?.title || String(cardName || "").trim() || "Normal",
+      listings: pageData.soldListings,
       productUrl: product.productUrl
     });
   }
@@ -1032,6 +1062,17 @@ async function fetchPriceChartingCardDetailsFromProductUrl(
             productUrl: reverseHoloProduct.productUrl
           });
         }
+        if (reversePageData?.soldListings?.length) {
+          soldGuides.push({
+            variant: "reverse_holo",
+            title:
+              reversePageData.gradedGuide?.title ||
+              `${name} Reverse Holofoil`.trim() ||
+              "Reverse Holofoil",
+            listings: reversePageData.soldListings,
+            productUrl: reverseHoloProduct.productUrl
+          });
+        }
       }
     } catch {
       // reverse holo is optional
@@ -1042,6 +1083,7 @@ async function fetchPriceChartingCardDetailsFromProductUrl(
     ok: true,
     productUrl: product.productUrl,
     soldListings: pageData?.soldListings || [],
+    soldGuides,
     gradedGuides
   };
 }

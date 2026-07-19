@@ -115,7 +115,7 @@
 
       <article class="admin-card" id="pcCacheCard">
         <h2>PriceCharting details cache</h2>
-        <p class="admin-hint">Sold listings and graded guides. Separate from TCG listing prices. Saves every <strong>1000</strong> cards during refresh. Use <strong>Update all</strong> for every set, or refresh one set below.</p>
+        <p class="admin-hint">Sold listings and graded guides. Separate from TCG listing prices. Saves every <strong>1000</strong> cards during refresh (gzip to R2). Use <strong>Update all</strong> for every set, or refresh one set below.</p>
         <div class="admin-stat">
           <span class="label">Last successful refresh</span>
           <span class="value mono" id="pcLastSuccess">—</span>
@@ -127,6 +127,14 @@
         <div class="admin-stat admin-stat--live">
           <span class="label">Cards in cache <span class="admin-live-dot" aria-hidden="true"></span></span>
           <span class="value" id="pcDetailsCacheCount">—</span>
+        </div>
+        <div class="admin-stat">
+          <span class="label">Updated successfully</span>
+          <span class="value" id="pcUpdatedCount">—</span>
+        </div>
+        <div class="admin-stat">
+          <span class="label">Total PriceCharting Sections</span>
+          <span class="value" id="pcTotalSections">—</span>
         </div>
         <div class="admin-stat">
           <span class="label">Status</span>

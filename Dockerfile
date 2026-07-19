@@ -1,6 +1,6 @@
 # Cloudflare Containers image (linux/amd64).
 # Card art is served from R2 — never COPY backend/data/card-images into this image.
-# cache-bust: 2026-07-18-hif-shiny-vault-tcg-v15
+# cache-bust: 2026-07-19-pc-details-gzip-sold-variants-v16
 FROM node:20-bookworm-slim
 
 WORKDIR /app

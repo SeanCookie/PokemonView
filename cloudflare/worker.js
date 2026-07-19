@@ -247,8 +247,13 @@ async function handleDurableAppDataRequest(request, env) {
       });
     }
     const headers = new Headers();
-    headers.set("content-type", "application/json; charset=utf-8");
+    headers.set(
+      "content-type",
+      object.httpMetadata?.contentType || "application/json; charset=utf-8"
+    );
     headers.set("cache-control", "no-store");
+    const encoding = String(object.httpMetadata?.contentEncoding || "").trim();
+    if (encoding) headers.set("content-encoding", encoding);
     return new Response(object.body, { status: 200, headers });
   }
 
@@ -260,13 +265,28 @@ async function handleDurableAppDataRequest(request, env) {
         headers: { "content-type": "application/json; charset=utf-8" }
       });
     }
-    await bucket.put(r2Key, body, {
-      httpMetadata: { contentType: "application/json; charset=utf-8" }
-    });
-    return new Response(JSON.stringify({ ok: true, bytes: body.byteLength, file }), {
-      status: 200,
-      headers: { "content-type": "application/json; charset=utf-8" }
-    });
+    const contentEncoding = String(request.headers.get("content-encoding") || "")
+      .trim()
+      .toLowerCase();
+    const httpMetadata = {
+      contentType: "application/json; charset=utf-8"
+    };
+    if (contentEncoding.includes("gzip")) {
+      httpMetadata.contentEncoding = "gzip";
+    }
+    await bucket.put(r2Key, body, { httpMetadata });
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        bytes: body.byteLength,
+        file,
+        gzip: Boolean(httpMetadata.contentEncoding)
+      }),
+      {
+        status: 200,
+        headers: { "content-type": "application/json; charset=utf-8" }
+      }
+    );
   }
 
   return new Response(JSON.stringify({ ok: false, error: "Method not allowed" }), {
@@ -362,7 +382,7 @@ export default {
     if (navAsset) return navAsset;
 
     // Fresh DO so the container boots with current secrets + latest image after CI rebuild.
-    const container = env.POKEMONVIEW.getByName("main-v15");
+    const container = env.POKEMONVIEW.getByName("main-v16");
     const response = await enrichAuthMePreferences(
       request,
       await container.fetch(request),

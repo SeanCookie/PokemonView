@@ -1632,6 +1632,27 @@
       gap: 12px;
     }
 
+    .pc-sold-guide-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 12px;
+    }
+
+    .pc-sold-guide-card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      background: var(--meta-chip-bg);
+      min-width: 0;
+    }
+
+    .pc-sold-guide-heading {
+      margin: 0 0 8px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
     .pc-graded-guide-card {
       border: 1px solid var(--border);
       border-radius: 10px;
@@ -6434,11 +6455,12 @@
         state.priceChartingDetailsByKey[cacheKey] =
           payload && payload.ok
             ? payload
-            : { ok: false, soldListings: [], gradedGuides: [], productUrl: "" };
+            : { ok: false, soldListings: [], soldGuides: [], gradedGuides: [], productUrl: "" };
       } catch {
         state.priceChartingDetailsByKey[cacheKey] = {
           ok: false,
           soldListings: [],
+          soldGuides: [],
           gradedGuides: [],
           productUrl: ""
         };
@@ -6473,34 +6495,78 @@
       return listings;
     }
 
+    function getPriceChartingSoldGuides(payload) {
+      if (payload && Array.isArray(payload.soldGuides) && payload.soldGuides.length) {
+        return payload.soldGuides.filter(
+          (guide) => Array.isArray(guide?.listings) && guide.listings.length
+        );
+      }
+      const listings = payload && Array.isArray(payload.soldListings) ? payload.soldListings : [];
+      if (!listings.length) return [];
+      return [
+        {
+          variant: "normal",
+          title: "",
+          productUrl: String(payload?.productUrl || "").trim(),
+          listings
+        }
+      ];
+    }
+
+    function soldGuideDisplayTitle(guide) {
+      const title = String(guide?.title || "").trim();
+      if (title) return title;
+      const variant = String(guide?.variant || "").trim().toLowerCase();
+      if (variant === "reverse_holo" || variant === "reverse-holo") return "Reverse Holofoil";
+      return "Normal";
+    }
+
     function buildPriceChartingSoldListingsMarkup(card, payload, loading) {
-      const allListings = payload && Array.isArray(payload.soldListings) ? payload.soldListings : [];
+      const guides = getPriceChartingSoldGuides(payload);
       const filterKey = String(state.priceChartingSoldSourceFilter || "all").toLowerCase();
       const activeFilter =
         PC_SOLD_SOURCE_FILTERS.find((opt) => opt.key === filterKey) || PC_SOLD_SOURCE_FILTERS[0];
-      const listings = filterPriceChartingSoldListings(allListings, activeFilter.key);
-      const filterButtons = allListings.length
+      const anyListings = guides.some((guide) => (guide.listings || []).length);
+
+      const filterButtons = anyListings
         ? PC_SOLD_SOURCE_FILTERS.map(
             (opt) =>
               `<button type="button" class="pc-sold-filter${opt.key === activeFilter.key ? " active" : ""}" data-pc-sold-source="${escapeHtml(opt.key)}">${escapeHtml(opt.label)}</button>`
           ).join("")
         : "";
-      const rows = listings
-        .map((row) => {
-          const title = String(row.title || "").trim() || "Listing";
-          const url = String(row.url || "").trim();
-          const titleCell = url
-            ? `<a class="pc-sold-title-link" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(title)}</a>`
-            : escapeHtml(title);
-          const priceText =
-            row.priceText || (Number.isFinite(row.price) ? formatUsd(row.price) : "");
-          const source = String(row.source || "").trim();
-          return `<tr>
+
+      const guideCards = guides
+        .map((guide) => {
+          const allListings = Array.isArray(guide.listings) ? guide.listings : [];
+          const listings = filterPriceChartingSoldListings(allListings, activeFilter.key);
+          const rows = listings
+            .map((row) => {
+              const title = String(row.title || "").trim() || "Listing";
+              const url = String(row.url || "").trim();
+              const titleCell = url
+                ? `<a class="pc-sold-title-link" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(title)}</a>`
+                : escapeHtml(title);
+              const priceText =
+                row.priceText || (Number.isFinite(row.price) ? formatUsd(row.price) : "");
+              const source = String(row.source || "").trim();
+              return `<tr>
             <td>${escapeHtml(String(row.date || ""))}</td>
             <td>${titleCell}</td>
             <td class="pc-sold-price">${escapeHtml(priceText)}</td>
             <td class="pc-sold-source">${source ? escapeHtml(source) : ""}</td>
           </tr>`;
+            })
+            .join("");
+          const heading = soldGuideDisplayTitle(guide);
+          return `<div class="pc-sold-guide-card">
+            <h5 class="pc-sold-guide-heading">Ungraded Sold Listings : ${escapeHtml(heading)}</h5>
+            <span class="pc-sold-count">${escapeHtml(String(listings.length))} of ${escapeHtml(String(allListings.length))}</span>
+            ${
+              rows
+                ? `<div class="pc-sold-table-wrap"><table class="pc-sold-table"><thead><tr><th>Date</th><th>Title</th><th>Price</th><th>Source</th></tr></thead><tbody>${rows}</tbody></table></div>`
+                : `<p class="mph-empty">No ${escapeHtml(activeFilter.label.toLowerCase())} sold listings for this print.</p>`
+            }
+          </div>`;
         })
         .join("");
 
@@ -6508,14 +6574,10 @@
         <h4 class="pc-section-title">Ungraded Sold Listings</h4>
         <p class="pc-section-sub">Recent eBay and TCGPlayer completed sales from PriceCharting.</p>
         ${
-          loading && !allListings.length
+          loading && !anyListings
             ? `<p class="mph-empty">Loading sold listings…</p>`
-            : allListings.length
-              ? `${filterButtons ? `<div class="pc-sold-toolbar"><div class="pc-sold-filters">${filterButtons}</div><span class="pc-sold-count">${escapeHtml(String(listings.length))} of ${escapeHtml(String(allListings.length))}</span></div>` : ""}${
-                  rows
-                    ? `<div class="pc-sold-table-wrap"><table class="pc-sold-table"><thead><tr><th>Date</th><th>Title</th><th>Price</th><th>Source</th></tr></thead><tbody>${rows}</tbody></table></div>`
-                    : `<p class="mph-empty">No ${escapeHtml(activeFilter.label.toLowerCase())} sold listings for this card.</p>`
-                }`
+            : anyListings
+              ? `${filterButtons ? `<div class="pc-sold-toolbar"><div class="pc-sold-filters">${filterButtons}</div></div>` : ""}<div class="pc-sold-guide-grid">${guideCards}</div>`
               : `<p class="mph-empty">No sold listings available from PriceCharting.</p>`
         }
       </section>`;
