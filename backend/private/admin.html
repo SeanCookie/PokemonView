@@ -62,7 +62,7 @@
     <section class="admin-grid admin-grid--pricing">
       <article class="admin-card" id="tcgCacheCard">
         <h2>TCG Price Check cache</h2>
-        <p class="admin-hint">TCGplayer listing prices. Cache saves every <strong>1000</strong> cards during bulk updates. Use <strong>Update all</strong> for every set, or refresh one set below. Failed links appear in the section under the buttons.</p>
+        <p class="admin-hint">TCGplayer listing prices. Cache and failed links save to R2 every <strong>1000</strong> cards. Starting this while PriceCharting is running will <strong>stop and save</strong> PriceCharting first. Keep this admin tab open while it runs.</p>
         <div class="admin-stat">
           <span class="label">Last successful full check</span>
           <span class="value mono" id="tcgLastSuccess">—</span>
@@ -115,7 +115,7 @@
 
       <article class="admin-card" id="pcCacheCard">
         <h2>PriceCharting details cache</h2>
-        <p class="admin-hint">Sold listings and graded guides. Separate from TCG listing prices. Saves every <strong>1000</strong> cards during refresh (gzip to R2). Use <strong>Update all</strong> for every set, or refresh one set below.</p>
+        <p class="admin-hint">Sold listings and graded guides. Separate from TCG listing prices. Saves every <strong>1000</strong> cards (gzip + fail-links to R2). Starting this while TCG is running will <strong>stop and save</strong> TCG first. Use <strong>Update all</strong> for every set, or refresh one set below.</p>
         <div class="admin-stat">
           <span class="label">Last successful refresh</span>
           <span class="value mono" id="pcLastSuccess">—</span>

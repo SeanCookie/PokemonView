@@ -98,6 +98,9 @@ async function pushPricingCacheToR2(fileName, bodyText, env = {}) {
   const file = assertAllowedFile(fileName);
   const body = String(bodyText || "");
   if (body.length < 2) return { ok: false, skipped: true };
+  const controller = new AbortController();
+  const timeoutMs = 90_000;
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const url = `${cfg.baseUrl}?file=${encodeURIComponent(file)}`;
     const raw = Buffer.from(body, "utf8");
@@ -111,7 +114,8 @@ async function pushPricingCacheToR2(fileName, bodyText, env = {}) {
     const res = await fetch(url, {
       method: "PUT",
       headers,
-      body: payload
+      body: payload,
+      signal: controller.signal
     });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
@@ -127,6 +131,8 @@ async function pushPricingCacheToR2(fileName, bodyText, env = {}) {
   } catch (err) {
     console.warn(`[pricing-r2] push ${fileName} error: ${err.message || err}`);
     return { ok: false };
+  } finally {
+    clearTimeout(timer);
   }
 }
 

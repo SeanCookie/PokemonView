@@ -326,6 +326,7 @@ async function refreshPriceChartingCardDetailsBatch(
     persistEvery = DEFAULT_BULK_PERSIST_EVERY,
     onProgress,
     onFail,
+    onPersistInterval,
     shouldCancel = () => false
   } = {}
 ) {
@@ -387,7 +388,11 @@ async function refreshPriceChartingCardDetailsBatch(
         }
         processed += 1;
         if (persistEvery > 0 && processed % persistEvery === 0) {
-          await enqueuePersistPriceChartingCardDetailsCacheNow();
+          // Fire-and-forget so R2 uploads don't pause/OOM the scrape workers.
+          void enqueuePersistPriceChartingCardDetailsCacheNow();
+          if (typeof onPersistInterval === "function") {
+            void Promise.resolve(onPersistInterval()).catch(() => {});
+          }
         }
         if (processed % 3 === 0 || processed === list.length) reportProgress();
       }

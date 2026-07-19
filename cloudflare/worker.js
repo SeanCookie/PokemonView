@@ -57,7 +57,7 @@ function containerEnvFromBindings(bindings) {
  */
 export class PokemonViewContainer extends Container {
   defaultPort = 8080;
-  sleepAfter = "30m";
+  sleepAfter = "12h";
   // Absolute paths — survives env replacement / non-/app cwd.
   entrypoint = ["/usr/local/bin/node", "/app/app.js"];
   enableInternet = true;
@@ -382,7 +382,7 @@ export default {
     if (navAsset) return navAsset;
 
     // Fresh DO so the container boots with current secrets + latest image after CI rebuild.
-    const container = env.POKEMONVIEW.getByName("main-v16");
+    const container = env.POKEMONVIEW.getByName("main-v17");
     const response = await enrichAuthMePreferences(
       request,
       await container.fetch(request),

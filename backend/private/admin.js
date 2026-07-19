@@ -1431,13 +1431,22 @@
     try {
       const started = await api("/api/admin/tcg-price-check/run", { method: "POST", body: "{}" });
       const total = Number(started?.meta?.totalLinkCount || started?.meta?.progress?.total || 0);
-      setStatus(
-        tcgStatusMsg,
-        total > 0
-          ? `Bulk price check started (${total.toLocaleString()} links). Collecting sets first can take 1–2 minutes.`
-          : "Bulk price check started. Link collection runs first (about 1–2 minutes for all English sets), then pricing.",
-        "ok"
-      );
+      if (started?.superseded === "pricecharting") {
+        setStatus(
+          tcgStatusMsg,
+          "Stopping PriceCharting and saving its cache, then starting TCG…",
+          "ok"
+        );
+        startPcLivePolling();
+      } else {
+        setStatus(
+          tcgStatusMsg,
+          total > 0
+            ? `Bulk price check started (${total.toLocaleString()} links). Collecting sets first can take 1–2 minutes.`
+            : "Bulk price check started. Link collection runs first (about 1–2 minutes for all English sets), then pricing.",
+          "ok"
+        );
+      }
       startTcgLivePolling();
       await loadDashboard();
     } catch (err) {
@@ -1472,11 +1481,20 @@
     const setName = String(selected?.getAttribute("data-set-name") || selected?.textContent || "").trim();
     setStatus(tcgStatusMsg, "");
     try {
-      await api("/api/admin/tcg-price-check/run-set", {
+      const started = await api("/api/admin/tcg-price-check/run-set", {
         method: "POST",
         body: JSON.stringify({ setCode, setName })
       });
-      setStatus(tcgStatusMsg, `Refreshing TCG prices for ${setCode}…`, "ok");
+      if (started?.superseded === "pricecharting") {
+        setStatus(
+          tcgStatusMsg,
+          `Stopping PriceCharting and saving, then refreshing TCG for ${setCode}…`,
+          "ok"
+        );
+        startPcLivePolling();
+      } else {
+        setStatus(tcgStatusMsg, `Refreshing TCG prices for ${setCode}…`, "ok");
+      }
       startTcgLivePolling();
     } catch (err) {
       setStatus(tcgStatusMsg, err.message, "error");
@@ -1493,11 +1511,20 @@
     const setName = String(selected?.getAttribute("data-set-name") || selected?.textContent || "").trim();
     setStatus(pcStatusMsg, "");
     try {
-      await api("/api/admin/pricecharting-details/run-set", {
+      const started = await api("/api/admin/pricecharting-details/run-set", {
         method: "POST",
         body: JSON.stringify({ setCode, setName })
       });
-      setStatus(pcStatusMsg, `Refreshing PriceCharting details for ${setCode}…`, "ok");
+      if (started?.superseded === "tcg") {
+        setStatus(
+          pcStatusMsg,
+          `Stopping TCG and saving, then refreshing PriceCharting for ${setCode}…`,
+          "ok"
+        );
+        startTcgLivePolling();
+      } else {
+        setStatus(pcStatusMsg, `Refreshing PriceCharting details for ${setCode}…`, "ok");
+      }
       startPcLivePolling();
     } catch (err) {
       setStatus(pcStatusMsg, err.message, "error");
@@ -1507,8 +1534,13 @@
   btnPcDetailsUpdate?.addEventListener("click", async () => {
     setStatus(pcStatusMsg, "");
     try {
-      await api("/api/admin/pricecharting-details/run", { method: "POST", body: "{}" });
-      setStatus(pcStatusMsg, "PriceCharting details refresh started.", "ok");
+      const started = await api("/api/admin/pricecharting-details/run", { method: "POST", body: "{}" });
+      if (started?.superseded === "tcg") {
+        setStatus(pcStatusMsg, "Stopping TCG and saving its cache, then starting PriceCharting…", "ok");
+        startTcgLivePolling();
+      } else {
+        setStatus(pcStatusMsg, "PriceCharting details refresh started.", "ok");
+      }
       startPcLivePolling();
     } catch (err) {
       setStatus(pcStatusMsg, err.message, "error");

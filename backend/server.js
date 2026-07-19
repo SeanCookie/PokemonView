@@ -701,6 +701,66 @@ function requestStopPriceChartingDetailsCheck() {
   return { ok: true };
 }
 
+/** Stop the running TCG job (if any), wait for it to finish, then force-save cache + fail links. */
+async function stopAndSaveTcgPriceCheck(forJobLabel = "") {
+  if (!isTcgBulkPriceCheckInFlight()) return { stopped: false };
+  const job = tcgBulkPriceCheckJob;
+  requestStopTcgPriceCheck();
+  const label = String(forJobLabel || "").trim();
+  tcgBulkPriceCheckMeta.detail = label
+    ? `Stopping TCG check to start ${label}… saving cache`
+    : "Stopping TCG check and saving cache…";
+  console.log(`[pricing-cache] Stopping TCG price check${label ? ` for ${label}` : ""}…`);
+  if (job && typeof job.then === "function") {
+    try {
+      await job;
+    } catch {
+      // cancelled/error path still lands in finally + persists
+    }
+  }
+  const deadline = Date.now() + 180_000;
+  while (isTcgBulkPriceCheckInFlight() && Date.now() < deadline) {
+    await sleep(250);
+  }
+  try {
+    await persistTcgLinkPriceCacheNow();
+    await flushPersistTcgLinkPriceFailLinks();
+  } catch (err) {
+    console.warn(`[pricing-cache] TCG save after stop failed: ${err?.message || err}`);
+  }
+  return { stopped: true };
+}
+
+/** Stop the running PriceCharting job (if any), wait for it to finish, then force-save. */
+async function stopAndSavePriceChartingDetails(forJobLabel = "") {
+  if (!isPriceChartingDetailsPrewarmInFlight()) return { stopped: false };
+  const job = priceChartingDetailsPrewarmJob;
+  requestStopPriceChartingDetailsCheck();
+  const label = String(forJobLabel || "").trim();
+  priceChartingBulkMeta.detail = label
+    ? `Stopping PriceCharting to start ${label}… saving cache`
+    : "Stopping PriceCharting and saving cache…";
+  console.log(`[pricing-cache] Stopping PriceCharting details${label ? ` for ${label}` : ""}…`);
+  if (job && typeof job.then === "function") {
+    try {
+      await job;
+    } catch {
+      // cancelled/error path still lands in finally + persists
+    }
+  }
+  const deadline = Date.now() + 180_000;
+  while (isPriceChartingDetailsPrewarmInFlight() && Date.now() < deadline) {
+    await sleep(250);
+  }
+  try {
+    await enqueuePersistPriceChartingCardDetailsCacheNow();
+    await flushPersistPriceChartingFailLinks();
+  } catch (err) {
+    console.warn(`[pricing-cache] PriceCharting save after stop failed: ${err?.message || err}`);
+  }
+  return { stopped: true };
+}
+
 function stampTcgLinkPriceResult(value) {
   if (!value || typeof value !== "object") return value;
   return {
@@ -1068,7 +1128,9 @@ async function refreshTcgLinkPricesForUrls(
         }
         processed += 1;
         if (persistEvery > 0 && processed % persistEvery === 0) {
-          await enqueuePersistTcgLinkPriceCacheNow();
+          // Do not await R2 — blocking the pricing workers here stalls/OOM mid-run.
+          void enqueuePersistTcgLinkPriceCacheNow();
+          void flushPersistTcgLinkPriceFailLinks().catch(() => {});
         }
         if (processed % 4 === 0 || processed === list.length) reportProgress();
       }
@@ -1238,7 +1300,13 @@ function normalizeStaleTcgBulkPriceCheckMeta() {
   console.warn("[pricing-cache] Reset stale bulk price check status after restart (was running).");
 }
 
-function runPriceChartingDetailsPrewarmBackground(triggeredBy = "", options = {}) {
+async function runPriceChartingDetailsPrewarmBackground(triggeredBy = "", options = {}) {
+  if (priceChartingDetailsPrewarmJob) {
+    return { skipped: true, reason: "in_flight" };
+  }
+  if (isTcgBulkPriceCheckInFlight()) {
+    await stopAndSaveTcgPriceCheck("PriceCharting");
+  }
   if (priceChartingDetailsPrewarmJob) {
     return { skipped: true, reason: "in_flight" };
   }
@@ -1304,6 +1372,7 @@ function runPriceChartingDetailsPrewarmBackground(triggeredBy = "", options = {}
         onFail: (card, error) => {
           recordPriceChartingFailLink(card, error);
         },
+        onPersistInterval: () => flushPersistPriceChartingFailLinks(),
         onProgress: (progress) => {
           priceChartingBulkMeta.progress = {
             total: progress.total,
@@ -1503,19 +1572,21 @@ let tcgLinkPriceFailLinksPersistTimer = null;
 
 async function persistTcgLinkPriceFailLinks() {
   const links = getTcgLinkPriceFailLinksList().slice(0, TCG_LINK_PRICE_FAIL_LINKS_MAX);
-  await fsp.writeFile(
-    TCG_LINK_PRICE_FAIL_LINKS_FILE,
-    JSON.stringify(
-      {
-        updatedAt: new Date().toISOString(),
-        count: links.length,
-        links
-      },
-      null,
-      2
-    ),
-    "utf8"
-  );
+  const body = `${JSON.stringify({
+    updatedAt: new Date().toISOString(),
+    count: links.length,
+    links
+  })}\n`;
+  await fsp.writeFile(TCG_LINK_PRICE_FAIL_LINKS_FILE, body, "utf8");
+  const r2 = await pushPricingCacheToR2("tcg-link-price-fail-links.json", body, {
+    ...env,
+    ...process.env
+  });
+  if (r2?.ok) {
+    console.log(`[pricing-cache] TCG fail-links saved (${links.length}, R2 ok)`);
+  } else if (!r2?.skipped) {
+    console.warn("[pricing-cache] TCG fail-links saved to disk but R2 push failed");
+  }
 }
 
 function schedulePersistTcgLinkPriceFailLinks() {
@@ -1523,7 +1594,7 @@ function schedulePersistTcgLinkPriceFailLinks() {
   tcgLinkPriceFailLinksPersistTimer = setTimeout(() => {
     tcgLinkPriceFailLinksPersistTimer = null;
     void persistTcgLinkPriceFailLinks().catch(() => {});
-  }, 750);
+  }, 250);
 }
 
 async function flushPersistTcgLinkPriceFailLinks() {
@@ -1535,8 +1606,25 @@ async function flushPersistTcgLinkPriceFailLinks() {
 }
 
 async function loadPersistedTcgLinkPriceFailLinks() {
+  let raw = null;
   try {
-    const raw = await fsp.readFile(TCG_LINK_PRICE_FAIL_LINKS_FILE, "utf8");
+    raw = await fsp.readFile(TCG_LINK_PRICE_FAIL_LINKS_FILE, "utf8");
+  } catch {
+    // try R2 below
+  }
+  if (!raw || raw.length < 2) {
+    raw = await pullPricingCacheFromR2("tcg-link-price-fail-links.json", { ...env, ...process.env });
+    if (raw) {
+      try {
+        await fsp.mkdir(DATA_DIR, { recursive: true });
+        await fsp.writeFile(TCG_LINK_PRICE_FAIL_LINKS_FILE, raw.endsWith("\n") ? raw : `${raw}\n`, "utf8");
+      } catch {
+        // best effort local mirror
+      }
+    }
+  }
+  if (!raw) return;
+  try {
     const parsed = JSON.parse(raw);
     const links = Array.isArray(parsed?.links) ? parsed.links : [];
     tcgLinkPriceFailLinks.clear();
@@ -1554,8 +1642,8 @@ async function loadPersistedTcgLinkPriceFailLinks() {
     if (links.length) {
       console.log(`[pricing-cache] restored ${tcgLinkPriceFailLinks.size} failed TCG link(s) for manual review`);
     }
-  } catch {
-    // no fail-links file yet
+  } catch (err) {
+    console.warn(`[pricing-cache] TCG fail-links parse failed: ${err?.message || err}`);
   }
 }
 
@@ -1657,11 +1745,21 @@ function getPriceChartingFailLinksList() {
 
 async function persistPriceChartingFailLinks() {
   const links = getPriceChartingFailLinksList().slice(0, PRICECHARTING_DETAILS_FAIL_LINKS_MAX);
-  await fsp.writeFile(
-    PRICECHARTING_DETAILS_FAIL_LINKS_FILE,
-    JSON.stringify({ updatedAt: new Date().toISOString(), count: links.length, links }, null, 2),
-    "utf8"
-  );
+  const body = `${JSON.stringify({
+    updatedAt: new Date().toISOString(),
+    count: links.length,
+    links
+  })}\n`;
+  await fsp.writeFile(PRICECHARTING_DETAILS_FAIL_LINKS_FILE, body, "utf8");
+  const r2 = await pushPricingCacheToR2("pricecharting-card-details-fail-links.json", body, {
+    ...env,
+    ...process.env
+  });
+  if (r2?.ok) {
+    console.log(`[pricing-cache] PriceCharting fail-links saved (${links.length}, R2 ok)`);
+  } else if (!r2?.skipped) {
+    console.warn("[pricing-cache] PriceCharting fail-links saved to disk but R2 push failed");
+  }
 }
 
 function schedulePersistPriceChartingFailLinks() {
@@ -1669,7 +1767,7 @@ function schedulePersistPriceChartingFailLinks() {
   priceChartingFailLinksPersistTimer = setTimeout(() => {
     priceChartingFailLinksPersistTimer = null;
     void persistPriceChartingFailLinks().catch(() => {});
-  }, 750);
+  }, 250);
 }
 
 async function flushPersistPriceChartingFailLinks() {
@@ -1681,8 +1779,32 @@ async function flushPersistPriceChartingFailLinks() {
 }
 
 async function loadPersistedPriceChartingFailLinks() {
+  let raw = null;
   try {
-    const raw = await fsp.readFile(PRICECHARTING_DETAILS_FAIL_LINKS_FILE, "utf8");
+    raw = await fsp.readFile(PRICECHARTING_DETAILS_FAIL_LINKS_FILE, "utf8");
+  } catch {
+    // try R2 below
+  }
+  if (!raw || raw.length < 2) {
+    raw = await pullPricingCacheFromR2("pricecharting-card-details-fail-links.json", {
+      ...env,
+      ...process.env
+    });
+    if (raw) {
+      try {
+        await fsp.mkdir(DATA_DIR, { recursive: true });
+        await fsp.writeFile(
+          PRICECHARTING_DETAILS_FAIL_LINKS_FILE,
+          raw.endsWith("\n") ? raw : `${raw}\n`,
+          "utf8"
+        );
+      } catch {
+        // best effort local mirror
+      }
+    }
+  }
+  if (!raw) return;
+  try {
     const parsed = JSON.parse(raw);
     const links = Array.isArray(parsed?.links) ? parsed.links : [];
     priceChartingFailLinks.clear();
@@ -1702,8 +1824,8 @@ async function loadPersistedPriceChartingFailLinks() {
     if (links.length) {
       console.log(`[pricing-cache] restored ${priceChartingFailLinks.size} failed PriceCharting card(s)`);
     }
-  } catch {
-    // no fail-links file yet
+  } catch (err) {
+    console.warn(`[pricing-cache] PriceCharting fail-links parse failed: ${err?.message || err}`);
   }
 }
 
@@ -2039,6 +2161,16 @@ async function runAdminBulkTcgPriceCheck(triggeredBy = "") {
       meta: tcgBulkPriceCheckMeta
     };
   }
+  if (isPriceChartingDetailsPrewarmInFlight()) {
+    await stopAndSavePriceChartingDetails("TCG");
+  }
+  if (tcgBulkPriceCheckJob || tcgLinkPricePrewarmInFlight) {
+    return {
+      skipped: true,
+      reason: tcgBulkPriceCheckJob ? "admin_in_flight" : "prewarm_in_flight",
+      meta: tcgBulkPriceCheckMeta
+    };
+  }
   clearTcgPriceCheckCancelFlag();
   tcgLinkPricePrewarmInFlight = true;
   tcgBulkPriceCheckJob = (async () => {
@@ -2118,7 +2250,7 @@ async function runAdminBulkTcgPriceCheck(triggeredBy = "") {
       );
       // Re-fetch stale/missing prices. Fresh entries (within admin max-age) are skipped so runs finish.
       const { ok, fail, skipped, cancelled } = await refreshTcgLinkPricesForUrls(urls, {
-        concurrency: 6,
+        concurrency: 4,
         max: urls.length,
         skipValidCached: true,
         maxAgeMs: TCG_LINK_PRICE_ADMIN_REFRESH_MAX_AGE_MS,
@@ -2209,6 +2341,16 @@ async function runAdminBulkTcgPriceCheck(triggeredBy = "") {
 }
 
 async function runAdminTcgPriceCheckForSet(setCode = "", setName = "", triggeredBy = "") {
+  if (tcgBulkPriceCheckJob || tcgLinkPricePrewarmInFlight) {
+    return {
+      skipped: true,
+      reason: tcgBulkPriceCheckJob ? "admin_in_flight" : "prewarm_in_flight",
+      meta: tcgBulkPriceCheckMeta
+    };
+  }
+  if (isPriceChartingDetailsPrewarmInFlight()) {
+    await stopAndSavePriceChartingDetails("TCG");
+  }
   if (tcgBulkPriceCheckJob || tcgLinkPricePrewarmInFlight) {
     return {
       skipped: true,
@@ -9668,12 +9810,20 @@ async function route(req, res) {
       return;
     }
     const label = admin.sessionUser.username || admin.sessionUser.name || admin.sessionUser.email;
-    runAdminBulkTcgPriceCheck(label).catch(() => {});
+    const stoppingOther = isPriceChartingDetailsPrewarmInFlight();
+    if (stoppingOther) {
+      tcgBulkPriceCheckMeta.detail = "Stopping PriceCharting and saving, then starting TCG…";
+      priceChartingBulkMeta.detail = "Stopping PriceCharting to start TCG… saving cache";
+    }
+    void runAdminBulkTcgPriceCheck(label).catch(() => {});
     json(res, 202, {
       ok: true,
-      message: "Bulk TCG price check started",
+      message: stoppingOther
+        ? "Stopping PriceCharting and saving, then starting TCG…"
+        : "Bulk TCG price check started",
       meta: tcgBulkPriceCheckMeta,
-      inFlight: true
+      inFlight: true,
+      superseded: stoppingOther ? "pricecharting" : null
     });
     return;
   }
@@ -9699,12 +9849,20 @@ async function route(req, res) {
         return;
       }
       const label = admin.sessionUser.username || admin.sessionUser.name || admin.sessionUser.email;
-      runAdminTcgPriceCheckForSet(setCode, setName, label).catch(() => {});
+      const stoppingOther = isPriceChartingDetailsPrewarmInFlight();
+      if (stoppingOther) {
+        tcgBulkPriceCheckMeta.detail = "Stopping PriceCharting and saving, then starting TCG…";
+        priceChartingBulkMeta.detail = "Stopping PriceCharting to start TCG… saving cache";
+      }
+      void runAdminTcgPriceCheckForSet(setCode, setName, label).catch(() => {});
       json(res, 202, {
         ok: true,
-        message: `TCG price check started for ${setCode}`,
+        message: stoppingOther
+          ? `Stopping PriceCharting and saving, then starting TCG for ${setCode}…`
+          : `TCG price check started for ${setCode}`,
         meta: tcgBulkPriceCheckMeta,
-        inFlight: true
+        inFlight: true,
+        superseded: stoppingOther ? "pricecharting" : null
       });
     } catch (err) {
       json(res, 400, { ok: false, error: err.message || "Failed to start set price check" });
@@ -9737,9 +9895,8 @@ async function route(req, res) {
     const admin = requireAdmin(req, res);
     if (!admin) return;
     try {
-      if (!Number(priceChartingBulkMeta.totalCardCount)) {
-        priceChartingBulkMeta.totalCardCount = await getPriceChartingEnglishCardUniverseCount();
-      }
+      const count = await getPriceChartingEnglishCardUniverseCount();
+      if (count > 0) priceChartingBulkMeta.totalCardCount = count;
     } catch {
       // universe count is best-effort for the admin dashboard
     }
@@ -9768,12 +9925,20 @@ async function route(req, res) {
       return;
     }
     const label = admin.sessionUser.username || admin.sessionUser.name || admin.sessionUser.email;
-    runPriceChartingDetailsPrewarmBackground(label);
+    const stoppingOther = isTcgBulkPriceCheckInFlight();
+    if (stoppingOther) {
+      priceChartingBulkMeta.detail = "Stopping TCG and saving, then starting PriceCharting…";
+      tcgBulkPriceCheckMeta.detail = "Stopping TCG check to start PriceCharting… saving cache";
+    }
+    void runPriceChartingDetailsPrewarmBackground(label).catch(() => {});
     json(res, 202, {
       ok: true,
-      message: "PriceCharting details refresh started",
+      message: stoppingOther
+        ? "Stopping TCG and saving, then starting PriceCharting…"
+        : "PriceCharting details refresh started",
       meta: getPriceChartingAdminMeta(),
-      inFlight: true
+      inFlight: true,
+      superseded: stoppingOther ? "tcg" : null
     });
     return;
   }
@@ -9799,12 +9964,20 @@ async function route(req, res) {
         return;
       }
       const label = admin.sessionUser.username || admin.sessionUser.name || admin.sessionUser.email;
-      runPriceChartingDetailsPrewarmBackground(label, { setCode, setName });
+      const stoppingOther = isTcgBulkPriceCheckInFlight();
+      if (stoppingOther) {
+        priceChartingBulkMeta.detail = "Stopping TCG and saving, then starting PriceCharting…";
+        tcgBulkPriceCheckMeta.detail = "Stopping TCG check to start PriceCharting… saving cache";
+      }
+      void runPriceChartingDetailsPrewarmBackground(label, { setCode, setName }).catch(() => {});
       json(res, 202, {
         ok: true,
-        message: `PriceCharting details refresh started for ${setCode}`,
+        message: stoppingOther
+          ? `Stopping TCG and saving, then starting PriceCharting for ${setCode}…`
+          : `PriceCharting details refresh started for ${setCode}`,
         meta: getPriceChartingAdminMeta(),
-        inFlight: true
+        inFlight: true,
+        superseded: stoppingOther ? "tcg" : null
       });
     } catch (err) {
       json(res, 400, { ok: false, error: err.message || "Failed to start set PriceCharting refresh" });
