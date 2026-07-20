@@ -199,6 +199,46 @@
   font-size: 12px;
 }
 
+.admin-console-resolve {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 160px) auto;
+  align-items: end;
+}
+
+.admin-console-resolve-label {
+  display: grid;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.admin-console-resolve input,
+.admin-console-resolve select {
+  width: 100%;
+  min-height: 34px;
+  border-radius: 8px;
+  border: 1px solid #35507a;
+  background: #0c1420;
+  color: #e9f1ff;
+  padding: 0 10px;
+}
+
+.admin-console-resolve .admin-btn {
+  height: 34px;
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .admin-console-resolve {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-console-resolve .admin-btn {
+    width: 100%;
+  }
+}
+
 .admin-fail-links-list {
   display: grid;
   gap: 10px;

@@ -1,5 +1,6 @@
 const fsp = require("fs/promises");
 const path = require("path");
+const { writeJsonAtomic } = require("./write-json-atomic");
 const {
   readCachedChartEntry,
   writeCachedChartEntry
@@ -164,6 +165,50 @@ async function loadSetSlugsByCode() {
   return setSlugsByCode;
 }
 
+function encodePriceChartingPathSegment(segment = "") {
+  return encodeURIComponent(String(segment || "").trim()).replace(/%2F/gi, "/");
+}
+
+function buildPriceChartingConsoleUrl(consoleSlug = "") {
+  const slug = String(consoleSlug || "").trim();
+  if (!slug) return "";
+  return `https://www.pricecharting.com/console/${encodePriceChartingPathSegment(slug)}`;
+}
+
+function buildPriceChartingProductUrl(consoleSlug = "", gameSlug = "") {
+  const consolePart = String(consoleSlug || "").trim();
+  const gamePart = String(gameSlug || "").trim();
+  if (!consolePart || !gamePart) return "";
+  return `https://www.pricecharting.com/game/${encodePriceChartingPathSegment(consolePart)}/${encodePriceChartingPathSegment(gamePart)}`;
+}
+
+function parsePriceChartingConsoleSlug(raw = "") {
+  const text = String(raw || "").trim();
+  if (!text) return "";
+  const match = text.match(/pricecharting\.com\/console\/([^?#]+)/i);
+  const rawSlug = match ? match[1] : text;
+  const cleaned = String(rawSlug || "")
+    .trim()
+    .replace(/^\/+|\/+$/g, "");
+  if (!cleaned) return "";
+  try {
+    return decodeURIComponent(cleaned);
+  } catch {
+    return cleaned;
+  }
+}
+
+async function rememberSetConsoleSlug(setCode = "", consoleSlug = "") {
+  const code = String(setCode || "").trim().toUpperCase();
+  const slug = String(consoleSlug || "").trim();
+  if (!code || !slug) return false;
+  await loadSetSlugsByCode();
+  if (setSlugsByCode[code] === slug) return true;
+  setSlugsByCode[code] = slug;
+  await writeJsonAtomic(SET_SLUGS_FILE, setSlugsByCode);
+  return true;
+}
+
 function normalizePcCardNumberKey(raw) {
   const token = String(raw || "")
     .trim()
@@ -256,7 +301,7 @@ function parseConsoleIndexFromHtml(consoleSlug, html) {
       gameSlug,
       title,
       consoleSlug,
-      productUrl: `https://www.pricecharting.com/game/${consoleSlug}/${gameSlug}`
+      productUrl: buildPriceChartingProductUrl(consoleSlug, gameSlug)
     };
     if (cardNumber) {
       const reverseHolo = isReverseHoloProduct(title, gameSlug);
@@ -309,7 +354,7 @@ async function fetchConsoleIndexFromWeb(consoleSlug) {
   if (!slug) return null;
   let html = "";
   try {
-    html = await fetchPriceChartingHtml(`https://www.pricecharting.com/console/${slug}`);
+    html = await fetchPriceChartingHtml(buildPriceChartingConsoleUrl(slug));
   } catch {
     return null;
   }
@@ -360,7 +405,7 @@ async function probePriceChartingProductByGameSlug(consoleSlug, gameSlug) {
   const slug = String(consoleSlug || "").trim();
   const game = String(gameSlug || "").trim();
   if (!slug || !game) return null;
-  const url = `https://www.pricecharting.com/game/${slug}/${game}`;
+  const url = buildPriceChartingProductUrl(slug, game);
   try {
     const html = await fetchPriceChartingHtml(url);
     if (!html || /Page Not Found|404 Not Found/i.test(html.slice(0, 1200))) return null;
@@ -455,10 +500,20 @@ async function fetchPriceChartingUngradedPriceFromProductUrl(productUrl = "") {
   if (!match) {
     return { ok: false, ungradedPrice: null, productUrl: url, error: "Not a PriceCharting product URL" };
   }
+  const decodePath = (value) => {
+    const raw = decodeHtmlEntities(value).trim();
+    try {
+      return decodeURIComponent(raw);
+    } catch {
+      return raw;
+    }
+  };
+  const consoleSlug = decodePath(match[1]);
+  const gameSlug = decodePath(match[2]);
   const product = {
-    consoleSlug: decodeHtmlEntities(match[1]).trim(),
-    gameSlug: decodeHtmlEntities(match[2]).trim(),
-    productUrl: url.split("?")[0]
+    consoleSlug,
+    gameSlug,
+    productUrl: buildPriceChartingProductUrl(consoleSlug, gameSlug) || url.split("?")[0]
   };
   const pageData = await fetchProductPageData(product);
   const ungradedPrice = extractUngradedPriceFromPageData(pageData);
@@ -670,7 +725,7 @@ async function fetchProductPageData(product) {
 
   const url =
     String(product?.productUrl || "").trim() ||
-    `https://www.pricecharting.com/game/${product.consoleSlug}/${product.gameSlug}`;
+    buildPriceChartingProductUrl(product.consoleSlug, product.gameSlug);
   const html = await fetchPriceChartingHtml(url);
   const chartData = parseChartDataFromGameHtml(html);
   const payload = {
@@ -996,12 +1051,20 @@ async function fetchPriceChartingCardDetailsFromProductUrl(
     };
   }
 
-  const consoleSlug = decodeHtmlEntities(match[1]).trim();
-  const gameSlug = decodeHtmlEntities(match[2]).trim();
+  const decodePath = (value) => {
+    const raw = decodeHtmlEntities(value).trim();
+    try {
+      return decodeURIComponent(raw);
+    } catch {
+      return raw;
+    }
+  };
+  const consoleSlug = decodePath(match[1]);
+  const gameSlug = decodePath(match[2]);
   const product = {
     consoleSlug,
     gameSlug,
-    productUrl: url.split("?")[0]
+    productUrl: buildPriceChartingProductUrl(consoleSlug, gameSlug) || url.split("?")[0]
   };
 
   let pageData;
@@ -1097,6 +1160,12 @@ module.exports = {
   resolveConsoleSlug,
   resolveConsoleSlugCandidates,
   loadSetSlugsByCode,
+  rememberSetConsoleSlug,
+  parsePriceChartingConsoleSlug,
+  getConsoleIndex,
+  pickProductFromIndex,
+  buildPriceChartingConsoleUrl,
+  buildPriceChartingProductUrl,
   comparePriceChartingSeries,
   chartDataToSeries,
   parseSoldListingsFromGameHtml,

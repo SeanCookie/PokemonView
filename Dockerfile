@@ -1,6 +1,6 @@
 # Cloudflare Containers image (linux/amd64).
 # Card art is served from R2 — never COPY backend/data/card-images into this image.
-# cache-bust: 2026-07-19-tcg-dedupe-print-keys-v18
+# cache-bust: 2026-07-20-pc-console-resolve-v20
 FROM node:20-bookworm-slim
 
 WORKDIR /app

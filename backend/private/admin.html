@@ -160,7 +160,18 @@
             <span class="admin-fail-links-count" id="pcFailLinksCount">0</span>
             <button type="button" class="admin-btn" id="btnClearPcFailLinks">Clear all</button>
           </div>
-          <p class="admin-hint">These cards could not load PriceCharting sold/graded details. Paste a PriceCharting product page URL to save them to cache, or dismiss.</p>
+          <p class="admin-hint">These cards could not load PriceCharting sold/graded details. Paste one PriceCharting <strong>console/set</strong> page to resolve many at once, or a single product URL per card.</p>
+          <div class="admin-console-resolve">
+            <label class="admin-console-resolve-label" for="pcConsoleResolveUrl">Console/set page
+              <input type="url" id="pcConsoleResolveUrl" placeholder="https://www.pricecharting.com/console/pokemon-scarlet-&-violet-151" />
+            </label>
+            <label class="admin-console-resolve-label" for="pcConsoleResolveSet">Apply to set
+              <select id="pcConsoleResolveSet">
+                <option value="">Auto</option>
+              </select>
+            </label>
+            <button type="button" class="admin-btn primary" id="btnPcConsoleResolve">Resolve from console</button>
+          </div>
           <div class="admin-fail-links-list" id="pcFailLinksList"></div>
         </section>
         <p class="admin-status" id="pcStatusMsg"></p>

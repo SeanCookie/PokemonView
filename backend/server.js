@@ -52,7 +52,11 @@ const {
   fetchPriceChartingUngradedPriceForCard,
   fetchPriceChartingUngradedPriceFromProductUrl,
   fetchPriceChartingCardDetailsFromProductUrl,
-  comparePriceChartingSeries
+  comparePriceChartingSeries,
+  parsePriceChartingConsoleSlug,
+  getConsoleIndex,
+  pickProductFromIndex,
+  rememberSetConsoleSlug
 } = require("./lib/pricecharting-market-history");
 const {
   loadPersistedPriceChartingCardDetailsCache,
@@ -10260,6 +10264,162 @@ async function route(req, res) {
       });
     } catch (err) {
       json(res, 400, { ok: false, error: err.message || "Failed to save PriceCharting details" });
+    }
+    return;
+  }
+
+  if (pathname === "/api/admin/pricecharting-details/fail-links/resolve-console" && req.method === "POST") {
+    const admin = requireAdmin(req, res);
+    if (!admin) return;
+    try {
+      const parsed = (await readBody(req)) || {};
+      const consoleSlug = parsePriceChartingConsoleSlug(
+        parsed.consoleUrl || parsed.consoleSlug || parsed.url || parsed.link || ""
+      );
+      if (!consoleSlug) {
+        json(res, 400, {
+          ok: false,
+          error: "Paste a PriceCharting console/set page URL (…/console/…)"
+        });
+        return;
+      }
+
+      const requestedSetCode = String(parsed.setCode || "").trim().toUpperCase();
+      let fails = getPriceChartingFailLinksList();
+      if (requestedSetCode) {
+        fails = fails.filter((row) => String(row.setCode || "").trim().toUpperCase() === requestedSetCode);
+      } else {
+        const setCodes = [
+          ...new Set(fails.map((row) => String(row.setCode || "").trim().toUpperCase()).filter(Boolean))
+        ];
+        if (setCodes.length === 1) {
+          fails = fails.filter((row) => String(row.setCode || "").trim().toUpperCase() === setCodes[0]);
+        } else if (setCodes.length > 1) {
+          json(res, 400, {
+            ok: false,
+            error: `Failed cards span multiple sets (${setCodes.join(", ")}). Choose one set code.`
+          });
+          return;
+        }
+      }
+
+      if (!fails.length) {
+        json(res, 400, { ok: false, error: "No failed cards to resolve for that set" });
+        return;
+      }
+
+      const setCode = String(fails[0].setCode || requestedSetCode || "")
+        .trim()
+        .toUpperCase();
+      const index = await getConsoleIndex(consoleSlug, { forceRefresh: true });
+      if (!index?.byCardNo || !Object.keys(index.byCardNo).length) {
+        json(res, 400, {
+          ok: false,
+          error: `Could not load products from PriceCharting console “${consoleSlug}”`
+        });
+        return;
+      }
+
+      if (setCode) {
+        try {
+          await rememberSetConsoleSlug(setCode, consoleSlug);
+        } catch (err) {
+          console.warn(
+            `[pricing-cache] could not remember PriceCharting slug for ${setCode}: ${err?.message || err}`
+          );
+        }
+      }
+
+      let matched = 0;
+      let resolved = 0;
+      let failed = 0;
+      const unresolved = [];
+      for (const fail of fails) {
+        const cardNo = String(fail.cardNo || "").trim();
+        const cardName = String(fail.cardName || "").trim();
+        const failSetCode = String(fail.setCode || setCode || "")
+          .trim()
+          .toUpperCase();
+        if (!failSetCode || !cardNo) {
+          failed += 1;
+          unresolved.push({ setCode: failSetCode, cardNo, cardName, error: "Missing card identity" });
+          continue;
+        }
+        const product = pickProductFromIndex(index, cardNo, cardName);
+        if (!product?.productUrl) {
+          failed += 1;
+          unresolved.push({
+            setCode: failSetCode,
+            cardNo,
+            cardName,
+            error: "No matching product on that console page"
+          });
+          continue;
+        }
+        matched += 1;
+        try {
+          const details = await fetchPriceChartingCardDetailsFromProductUrl(product.productUrl, {
+            cardName,
+            cardNo
+          });
+          if (!details?.ok) {
+            failed += 1;
+            unresolved.push({
+              setCode: failSetCode,
+              cardNo,
+              cardName,
+              error: details?.error || "Could not load product details",
+              productUrl: product.productUrl
+            });
+            continue;
+          }
+          const written = writeCachedCardDetails(failSetCode, cardNo, details);
+          if (!written) {
+            failed += 1;
+            unresolved.push({
+              setCode: failSetCode,
+              cardNo,
+              cardName,
+              error: "Could not write details to cache",
+              productUrl: details.productUrl || product.productUrl
+            });
+            continue;
+          }
+          removePriceChartingFailLink(failSetCode, cardNo);
+          resolved += 1;
+        } catch (err) {
+          failed += 1;
+          unresolved.push({
+            setCode: failSetCode,
+            cardNo,
+            cardName,
+            error: err?.message || "Resolve failed",
+            productUrl: product.productUrl
+          });
+        }
+      }
+
+      if (resolved > 0) {
+        await persistPriceChartingCardDetailsCacheNow();
+        await flushPersistPriceChartingFailLinks();
+      }
+
+      const meta = getPriceChartingCardDetailsCacheMeta();
+      json(res, 200, {
+        ok: true,
+        consoleSlug,
+        setCode,
+        attempted: fails.length,
+        matched,
+        resolved,
+        failed,
+        unresolved: unresolved.slice(0, 40),
+        failLinkCount: priceChartingFailLinks.size,
+        links: getPriceChartingFailLinksList(),
+        ...meta
+      });
+    } catch (err) {
+      json(res, 400, { ok: false, error: err.message || "Failed to resolve from console page" });
     }
     return;
   }

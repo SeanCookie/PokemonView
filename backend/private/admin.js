@@ -26,6 +26,9 @@
   const pcFailLinksCount = document.getElementById("pcFailLinksCount");
   const pcFailLinksList = document.getElementById("pcFailLinksList");
   const btnClearPcFailLinks = document.getElementById("btnClearPcFailLinks");
+  const pcConsoleResolveUrl = document.getElementById("pcConsoleResolveUrl");
+  const pcConsoleResolveSet = document.getElementById("pcConsoleResolveSet");
+  const btnPcConsoleResolve = document.getElementById("btnPcConsoleResolve");
   const tcgSetRefreshSelect = document.getElementById("tcgSetRefreshSelect");
   const btnTcgSetRefresh = document.getElementById("btnTcgSetRefresh");
   const pcSetRefreshSelect = document.getElementById("pcSetRefreshSelect");
@@ -1056,12 +1059,32 @@
     }
   }
 
+  function syncPcConsoleResolveSetOptions(links) {
+    if (!pcConsoleResolveSet) return;
+    const rows = Array.isArray(links) ? links : [];
+    const current = String(pcConsoleResolveSet.value || "").trim().toUpperCase();
+    const codes = [
+      ...new Set(rows.map((row) => String(row.setCode || "").trim().toUpperCase()).filter(Boolean))
+    ].sort((a, b) => a.localeCompare(b));
+    pcConsoleResolveSet.innerHTML =
+      `<option value="">${codes.length === 1 ? codes[0] : "Auto"}</option>` +
+      codes.map((code) => `<option value="${escapeHtml(code)}">${escapeHtml(code)}</option>`).join("");
+    if (current && codes.includes(current)) {
+      pcConsoleResolveSet.value = current;
+    } else if (codes.length === 1) {
+      pcConsoleResolveSet.value = codes[0];
+    } else {
+      pcConsoleResolveSet.value = "";
+    }
+  }
+
   function renderPcFailLinks(links) {
     if (!pcFailLinksSection || !pcFailLinksList) return;
     const rows = Array.isArray(links) ? links : [];
     const count = rows.length;
     if (pcFailLinksCount) pcFailLinksCount.textContent = String(count);
     pcFailLinksSection.hidden = count === 0;
+    syncPcConsoleResolveSetOptions(rows);
     pcFailLinksList.innerHTML = rows
       .map((row, index) => {
         const setCode = String(row.setCode || "").trim().toUpperCase();
@@ -1179,6 +1202,46 @@
       setStatus(pcStatusMsg, err.message, "error");
     } finally {
       btnClearPcFailLinks.disabled = false;
+    }
+  });
+
+  btnPcConsoleResolve?.addEventListener("click", async () => {
+    const consoleUrl = String(pcConsoleResolveUrl?.value || "").trim();
+    const setCode = String(pcConsoleResolveSet?.value || "").trim().toUpperCase();
+    if (!consoleUrl) {
+      setStatus(pcStatusMsg, "Paste a PriceCharting console/set page URL first.", "error");
+      return;
+    }
+    btnPcConsoleResolve.disabled = true;
+    setStatus(
+      pcStatusMsg,
+      setCode
+        ? `Resolving ${setCode} fails from console page…`
+        : "Resolving fails from console page…",
+      ""
+    );
+    try {
+      const result = await api("/api/admin/pricecharting-details/fail-links/resolve-console", {
+        method: "POST",
+        body: JSON.stringify({ consoleUrl, setCode: setCode || undefined })
+      });
+      renderPcFailLinks(result.links || []);
+      const resolved = Number(result.resolved || 0);
+      const matched = Number(result.matched || 0);
+      const failed = Number(result.failed || 0);
+      const remaining = Number(result.failLinkCount || 0);
+      setStatus(
+        pcStatusMsg,
+        `Resolved ${resolved}/${matched} matched card${matched === 1 ? "" : "s"} from console` +
+          (failed ? ` · ${failed} still failed` : "") +
+          ` · ${remaining} fail${remaining === 1 ? "" : "s"} left.`,
+        resolved > 0 ? "ok" : "error"
+      );
+      if (resolved > 0) await refreshPcCacheLive();
+    } catch (err) {
+      setStatus(pcStatusMsg, err.message, "error");
+    } finally {
+      btnPcConsoleResolve.disabled = false;
     }
   });
 
