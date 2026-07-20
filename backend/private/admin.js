@@ -35,7 +35,6 @@
   const btnTcgPriceStop = document.getElementById("btnTcgPriceStop");
   const tcgFailLinksSection = document.getElementById("tcgFailLinksSection");
   const btnPruneNonPokemonFailLinks = document.getElementById("btnPruneNonPokemonFailLinks");
-  const btnClearTcgFailLinks = document.getElementById("btnClearTcgFailLinks");
   const tcgFailLinksCount = document.getElementById("tcgFailLinksCount");
   const tcgFailLinksList = document.getElementById("tcgFailLinksList");
   const statUsers = document.getElementById("statUsers");
@@ -1253,25 +1252,6 @@
     }
   });
 
-  btnClearTcgFailLinks?.addEventListener("click", async () => {
-    if (!window.confirm("Clear all failed TCG links?")) return;
-    const msgEl = document.getElementById("tcgStatusMsg");
-    btnClearTcgFailLinks.disabled = true;
-    setStatus(msgEl, "Clearing failed TCG links…", "");
-    try {
-      await api("/api/admin/tcg-price-check/fail-links/clear", {
-        method: "POST",
-        body: "{}"
-      });
-      renderTcgFailLinks([]);
-      setStatus(msgEl, "Cleared all failed TCG links.", "ok");
-    } catch (err) {
-      setStatus(msgEl, err.message, "error");
-    } finally {
-      btnClearTcgFailLinks.disabled = false;
-    }
-  });
-
   async function refreshTcgCacheLive() {
     const payload = await api("/api/admin/tcg-price-check");
     renderTcgCache({
@@ -1303,8 +1283,7 @@
           if (!inFlight) {
             stopTcgLivePolling();
             loadDashboard()
-              .then(async () => {
-                await loadTcgSetOptions();
+              .then(() => {
                 const status = String(tcgStatusBadge?.textContent || "").trim().toLowerCase();
                 if (status === "stopped") {
                   setStatus(
@@ -1337,8 +1316,7 @@
           if (!inFlight) {
             stopPcLivePolling();
             loadDashboard()
-              .then(async () => {
-                await loadTcgSetOptions();
+              .then(() => {
                 const status = String(pcStatusBadge?.textContent || "").trim().toLowerCase();
                 if (status === "stopped") {
                   setStatus(pcStatusMsg, "PriceCharting refresh stopped. Cache saved so far.", "ok");

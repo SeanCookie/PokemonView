@@ -1415,6 +1415,7 @@ async function runPriceChartingDetailsPrewarmBackground(triggeredBy = "", option
         }
       });
       await enqueuePersistPriceChartingCardDetailsCacheNow();
+      await flushPersistPriceChartingFailLinks();
       const pcMeta = getPriceChartingCardDetailsCacheMeta();
       const finishedAt = new Date().toISOString();
       const stopped = Boolean(pcResult.cancelled) || isPriceChartingCancelled();
@@ -1433,21 +1434,8 @@ async function runPriceChartingDetailsPrewarmBackground(triggeredBy = "", option
         skipped: Number(pcResult.skipped) || 0
       };
       if (onlySetCode) {
+        // Stamp whenever a one-set run finishes and saves (including Stop after partial work).
         recordAdminSetRefresh("pricecharting", onlySetCode, finishedAt);
-        try {
-          await persistAdminSetRefreshTimestampsNow();
-        } catch (err) {
-          console.warn(
-            `[pricing-cache] PriceCharting set-refresh timestamp persist failed: ${err?.message || err}`
-          );
-        }
-      }
-      try {
-        await flushPersistPriceChartingFailLinks();
-      } catch (err) {
-        console.warn(
-          `[pricing-cache] PriceCharting fail-links flush after set refresh failed: ${err?.message || err}`
-        );
       }
       console.log(
         `[pricing] PriceCharting card details ${stopped ? "stopped" : "done"}${scopeLabel}: cards=${pcCards.length}, ok=${pcResult.ok}, fail=${pcResult.fail}, skipped=${pcResult.skipped || 0}`
@@ -1993,7 +1981,6 @@ function recordAdminSetRefresh(kind = "", setCode = "", at = "") {
     adminSetRefreshTimestamps[bucket] = Object.create(null);
   }
   adminSetRefreshTimestamps[bucket][code] = iso;
-  console.log(`[pricing-cache] recorded ${bucket} set refresh for ${code} at ${iso}`);
   schedulePersistAdminSetRefreshTimestamps();
   return iso;
 }
@@ -2597,6 +2584,7 @@ async function runAdminTcgPriceCheckForSet(setCode = "", setName = "", triggered
         }
       });
       await persistTcgLinkPriceCacheNow();
+      await flushPersistTcgLinkPriceFailLinks();
       const finishedAt = new Date().toISOString();
       const stopped = Boolean(cancelled) || isTcgPriceCheckCancelled();
       tcgBulkPriceCheckMeta.status = stopped ? "stopped" : "idle";
@@ -2612,22 +2600,12 @@ async function runAdminTcgPriceCheckForSet(setCode = "", setName = "", triggered
         setsDone: 1,
         setsTotal: 1
       };
-      // Stamp before fail-link flush so a flush failure cannot skip the dropdown timestamp.
+      // Stamp whenever a one-set run finishes and saves (including Stop after partial work).
       recordAdminSetRefresh("tcg", code, finishedAt);
-      try {
-        await persistAdminSetRefreshTimestampsNow();
-      } catch (err) {
-        console.warn(`[pricing-cache] TCG set-refresh timestamp persist failed: ${err?.message || err}`);
-      }
-      try {
-        await flushPersistTcgLinkPriceFailLinks();
-      } catch (err) {
-        console.warn(`[pricing-cache] TCG fail-links flush after set refresh failed: ${err?.message || err}`);
-      }
       console.log(
         `[admin] set TCG price check ${stopped ? "stopped" : "done"} for ${code}: urls=${urls.length}, ok=${ok}, fail=${fail}, skipped=${skipped || 0}`
       );
-      return { setCode: code, urls: urls.length, ok, fail, stopped, lastRefreshAt: finishedAt };
+      return { setCode: code, urls: urls.length, ok, fail, stopped };
     } catch (err) {
       tcgBulkPriceCheckMeta.status = "error";
       tcgBulkPriceCheckMeta.finishedAt = new Date().toISOString();
@@ -10303,18 +10281,6 @@ async function route(req, res) {
     if (!admin) return;
     const links = getTcgLinkPriceFailLinksList();
     json(res, 200, { ok: true, count: links.length, links });
-    return;
-  }
-
-  if (pathname === "/api/admin/tcg-price-check/fail-links/clear" && req.method === "POST") {
-    const admin = requireAdmin(req, res);
-    if (!admin) return;
-    try {
-      await clearTcgLinkPriceFailLinks();
-      json(res, 200, { ok: true, failLinkCount: 0, links: [] });
-    } catch (err) {
-      json(res, 500, { ok: false, error: err.message || "Failed to clear TCG fail links" });
-    }
     return;
   }
 
