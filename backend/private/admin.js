@@ -29,6 +29,15 @@
   const pcConsoleResolveUrl = document.getElementById("pcConsoleResolveUrl");
   const pcConsoleResolveSet = document.getElementById("pcConsoleResolveSet");
   const btnPcConsoleResolve = document.getElementById("btnPcConsoleResolve");
+  const pcCorrectCardSearch = document.getElementById("pcCorrectCardSearch");
+  const pcCorrectSelectedCard = document.getElementById("pcCorrectSelectedCard");
+  const pcCorrectCardResults = document.getElementById("pcCorrectCardResults");
+  const pcCorrectCardResultsMeta = document.getElementById("pcCorrectCardResultsMeta");
+  const pcCorrectCardGrid = document.getElementById("pcCorrectCardGrid");
+  const pcCorrectCurrentLink = document.getElementById("pcCorrectCurrentLink");
+  const pcCorrectProductUrl = document.getElementById("pcCorrectProductUrl");
+  const btnPcCorrectSave = document.getElementById("btnPcCorrectSave");
+  const pcCorrectStatusMsg = document.getElementById("pcCorrectStatusMsg");
   const tcgSetRefreshSelect = document.getElementById("tcgSetRefreshSelect");
   const btnTcgSetRefresh = document.getElementById("btnTcgSetRefresh");
   const pcSetRefreshSelect = document.getElementById("pcSetRefreshSelect");
@@ -88,6 +97,8 @@
   const nicknameCardIndex = { english: null, japanese: null };
   let nicknameSelected = null;
   let nicknameSearchTimer = null;
+  let pcCorrectSelected = null;
+  let pcCorrectSearchTimer = null;
   const NICKNAME_CARD_SEARCH_DEBOUNCE_MS = 320;
   const NICKNAME_CARD_SEARCH_LIMIT = 120;
 
@@ -757,10 +768,165 @@
     }, NICKNAME_CARD_SEARCH_DEBOUNCE_MS);
   }
 
+  function updatePcCorrectSaveState() {
+    const ready = Boolean(
+      pcCorrectSelected?.setCode &&
+        pcCorrectSelected?.cardNo &&
+        String(pcCorrectProductUrl?.value || "").trim()
+    );
+    if (btnPcCorrectSave) btnPcCorrectSave.disabled = !ready;
+  }
+
+  function renderPcCorrectCurrentLink(entry) {
+    if (!pcCorrectCurrentLink) return;
+    if (!pcCorrectSelected) {
+      pcCorrectCurrentLink.textContent = "Select a card to see its cached link.";
+      return;
+    }
+    const label = `${pcCorrectSelected.name} (${pcCorrectSelected.setCode} #${pcCorrectSelected.cardNo})`;
+    if (!entry?.cached) {
+      pcCorrectCurrentLink.textContent = `${label} is not in the PriceCharting cache yet.`;
+      return;
+    }
+    const url = String(entry.productUrl || "").trim();
+    const sold = Number(entry.soldListings || 0);
+    const grades = Number(entry.gradedGuides || 0);
+    if (!url) {
+      pcCorrectCurrentLink.textContent = `${label} is cached, but has no product URL.`;
+      return;
+    }
+    pcCorrectCurrentLink.innerHTML = `Current link for <strong>${escapeHtml(label)}</strong>: <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a> · ${sold} sold · ${grades} grade guide${grades === 1 ? "" : "s"}`;
+  }
+
+  async function loadPcCorrectCacheEntry() {
+    if (!pcCorrectSelected?.setCode || !pcCorrectSelected?.cardNo) {
+      renderPcCorrectCurrentLink(null);
+      return;
+    }
+    try {
+      const entry = await api(
+        `/api/admin/pricecharting-details/entry?setCode=${encodeURIComponent(pcCorrectSelected.setCode)}&cardNo=${encodeURIComponent(pcCorrectSelected.cardNo)}`
+      );
+      renderPcCorrectCurrentLink(entry);
+      if (entry?.productUrl && pcCorrectProductUrl && !String(pcCorrectProductUrl.value || "").trim()) {
+        // leave blank so user pastes the correction; don't prefill the wrong URL
+      }
+    } catch (err) {
+      if (pcCorrectCurrentLink) {
+        pcCorrectCurrentLink.textContent = err.message || "Could not load cached link.";
+      }
+    }
+  }
+
+  function clearPcCorrectCardSelection() {
+    pcCorrectSelected = null;
+    if (pcCorrectCardSearch) pcCorrectCardSearch.value = "";
+    if (pcCorrectProductUrl) pcCorrectProductUrl.value = "";
+    if (pcCorrectSelectedCard) {
+      pcCorrectSelectedCard.hidden = true;
+      pcCorrectSelectedCard.innerHTML = "";
+    }
+    if (pcCorrectCardResults) pcCorrectCardResults.hidden = true;
+    if (pcCorrectCardGrid) pcCorrectCardGrid.innerHTML = "";
+    if (pcCorrectCardResultsMeta) pcCorrectCardResultsMeta.textContent = "";
+    renderPcCorrectCurrentLink(null);
+    setStatus(pcCorrectStatusMsg, "");
+    updatePcCorrectSaveState();
+  }
+
+  function selectPcCorrectCard(card) {
+    pcCorrectSelected = {
+      setCode: card.setCode,
+      setName: card.setName,
+      cardNo: card.cardNo,
+      name: card.name,
+      label: card.label,
+      imageUrl: card.imageUrl || ""
+    };
+    if (pcCorrectCardSearch) pcCorrectCardSearch.value = "";
+    if (pcCorrectCardResults) pcCorrectCardResults.hidden = true;
+    if (pcCorrectCardGrid) pcCorrectCardGrid.innerHTML = "";
+    const thumb = pcCorrectSelected.imageUrl
+      ? `<img src="${escapeHtml(pcCorrectSelected.imageUrl)}" alt="${escapeHtml(pcCorrectSelected.name)}" loading="lazy" />`
+      : `<div class="nickname-card-thumb placeholder">No image</div>`;
+    if (pcCorrectSelectedCard) {
+      pcCorrectSelectedCard.hidden = false;
+      pcCorrectSelectedCard.innerHTML = `
+        ${thumb}
+        <div class="nickname-selected-card-info">
+          <strong>${escapeHtml(pcCorrectSelected.name)}</strong>
+          <div class="nickname-selected-card-meta">${escapeHtml(pcCorrectSelected.setName)} (${escapeHtml(pcCorrectSelected.setCode)}) · ${escapeHtml(pcCorrectSelected.label)}</div>
+        </div>
+        <button type="button" class="admin-btn" id="pcCorrectClearCardBtn">Change card</button>
+      `;
+      document.getElementById("pcCorrectClearCardBtn")?.addEventListener("click", () => {
+        clearPcCorrectCardSelection();
+        pcCorrectCardSearch?.focus();
+      });
+    }
+    setStatus(pcCorrectStatusMsg, "");
+    updatePcCorrectSaveState();
+    loadPcCorrectCacheEntry();
+  }
+
+  function renderPcCorrectCardSearchResults() {
+    if (!pcCorrectCardGrid || !pcCorrectCardResults) return;
+    const query = String(pcCorrectCardSearch?.value || "").trim();
+    if (!query) {
+      pcCorrectCardResults.hidden = true;
+      pcCorrectCardGrid.innerHTML = "";
+      if (pcCorrectCardResultsMeta) pcCorrectCardResultsMeta.textContent = "";
+      return;
+    }
+    if (pcCorrectSelected) {
+      pcCorrectCardResults.hidden = true;
+      return;
+    }
+    const matches = searchNicknameCards(query, "english");
+    const display = matches.slice(0, 24);
+    pcCorrectCardResults.hidden = false;
+    if (pcCorrectCardResultsMeta) {
+      pcCorrectCardResultsMeta.textContent = matches.length
+        ? `Showing ${display.length} of ${matches.length} match${matches.length === 1 ? "" : "es"}`
+        : "No cards match that search.";
+    }
+    pcCorrectCardGrid.innerHTML = display
+      .map((card, index) => {
+        const thumb = card.imageUrl
+          ? `<img class="nickname-card-thumb" src="${escapeHtml(card.imageUrl)}" alt="${escapeHtml(card.name)}" loading="lazy" />`
+          : `<div class="nickname-card-thumb placeholder">No image</div>`;
+        return `<button type="button" class="nickname-card-tile" data-pc-correct-index="${index}">
+          ${thumb}
+          <div class="nickname-card-tile-name">${escapeHtml(card.name)}</div>
+          <div class="nickname-card-tile-meta">${escapeHtml(card.setName)} (${escapeHtml(card.setCode)}) · ${escapeHtml(card.label)}</div>
+        </button>`;
+      })
+      .join("");
+    pcCorrectCardGrid.querySelectorAll("[data-pc-correct-index]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const index = Number(btn.getAttribute("data-pc-correct-index"));
+        const card = display[index];
+        if (card) selectPcCorrectCard(card);
+      });
+    });
+  }
+
+  function schedulePcCorrectCardSearch() {
+    if (pcCorrectSearchTimer) clearTimeout(pcCorrectSearchTimer);
+    pcCorrectSearchTimer = setTimeout(() => {
+      pcCorrectSearchTimer = null;
+      renderPcCorrectCardSearchResults();
+    }, NICKNAME_CARD_SEARCH_DEBOUNCE_MS);
+  }
+
   async function initNicknameCardPicker() {
     if (nicknameCardSearch) {
       nicknameCardSearch.disabled = true;
       nicknameCardSearch.placeholder = "Loading cards…";
+    }
+    if (pcCorrectCardSearch) {
+      pcCorrectCardSearch.disabled = true;
+      pcCorrectCardSearch.placeholder = "Loading cards…";
     }
     try {
       await Promise.all([loadNicknameCardIndex("english"), loadNicknameCardIndex("japanese")]);
@@ -768,10 +934,18 @@
         nicknameCardSearch.disabled = false;
         nicknameCardSearch.placeholder = "Search cards…";
       }
+      if (pcCorrectCardSearch) {
+        pcCorrectCardSearch.disabled = false;
+        pcCorrectCardSearch.placeholder = "Search cards…";
+      }
     } catch (err) {
       if (nicknameCardSearch) {
         nicknameCardSearch.disabled = true;
         nicknameCardSearch.placeholder = "Could not load cards";
+      }
+      if (pcCorrectCardSearch) {
+        pcCorrectCardSearch.disabled = true;
+        pcCorrectCardSearch.placeholder = "Could not load cards";
       }
       setStatus(nicknameFormMsg, err.message || "Could not load card catalog.", "error");
     }
@@ -1242,6 +1416,61 @@
       setStatus(pcStatusMsg, err.message, "error");
     } finally {
       btnPcConsoleResolve.disabled = false;
+    }
+  });
+
+  pcCorrectCardSearch?.addEventListener("input", () => {
+    if (pcCorrectSelected) return;
+    schedulePcCorrectCardSearch();
+  });
+
+  pcCorrectCardSearch?.addEventListener("focus", () => {
+    if (!pcCorrectSelected && String(pcCorrectCardSearch.value || "").trim()) {
+      schedulePcCorrectCardSearch();
+    }
+  });
+
+  pcCorrectProductUrl?.addEventListener("input", () => {
+    updatePcCorrectSaveState();
+  });
+
+  btnPcCorrectSave?.addEventListener("click", async () => {
+    if (!pcCorrectSelected?.setCode || !pcCorrectSelected?.cardNo) {
+      setStatus(pcCorrectStatusMsg, "Search and click a card first.", "error");
+      return;
+    }
+    const productUrl = String(pcCorrectProductUrl?.value || "").trim();
+    if (!productUrl) {
+      setStatus(pcCorrectStatusMsg, "Paste the correct PriceCharting product page URL.", "error");
+      return;
+    }
+    btnPcCorrectSave.disabled = true;
+    setStatus(pcCorrectStatusMsg, "Saving corrected link to cache…", "");
+    try {
+      const saved = await api("/api/admin/pricecharting-details/override", {
+        method: "POST",
+        body: JSON.stringify({
+          setCode: pcCorrectSelected.setCode,
+          cardNo: pcCorrectSelected.cardNo,
+          cardName: pcCorrectSelected.name,
+          productUrl
+        })
+      });
+      const sold = Number(saved.soldListings || 0);
+      const guides = Number(saved.gradedGuides || 0);
+      setStatus(
+        pcCorrectStatusMsg,
+        `Updated cache (${sold} sold listing${sold === 1 ? "" : "s"}, ${guides} grade guide${guides === 1 ? "" : "s"}).`,
+        "ok"
+      );
+      if (pcCorrectProductUrl) pcCorrectProductUrl.value = "";
+      await loadPcCorrectCacheEntry();
+      await refreshPcFailLinks();
+      await refreshPcCacheLive();
+      updatePcCorrectSaveState();
+    } catch (err) {
+      setStatus(pcCorrectStatusMsg, err.message, "error");
+      updatePcCorrectSaveState();
     }
   });
 

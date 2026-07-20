@@ -66,6 +66,7 @@ const {
   getPriceChartingEnglishCardUniverseCount,
   refreshPriceChartingCardDetailsBatch,
   enqueuePersistPriceChartingCardDetailsCacheNow,
+  readCachedCardDetails,
   writeCachedCardDetails,
   persistPriceChartingCardDetailsCacheNow
 } = require("./lib/pricecharting-card-details-cache");
@@ -10188,6 +10189,95 @@ async function route(req, res) {
       meta: getPriceChartingAdminMeta(),
       stopRequested: true
     });
+    return;
+  }
+
+  if (pathname === "/api/admin/pricecharting-details/entry" && req.method === "GET") {
+    const admin = requireAdmin(req, res);
+    if (!admin) return;
+    const setCode = String(parsedUrl.searchParams.get("setCode") || "")
+      .trim()
+      .toUpperCase();
+    const cardNo = String(
+      parsedUrl.searchParams.get("cardNo") || parsedUrl.searchParams.get("number") || ""
+    ).trim();
+    if (!setCode || !cardNo) {
+      json(res, 400, { ok: false, error: "setCode and cardNo are required" });
+      return;
+    }
+    const cached = readCachedCardDetails(setCode, cardNo);
+    json(res, 200, {
+      ok: true,
+      setCode,
+      cardNo,
+      cached: Boolean(cached),
+      productUrl: String(cached?.productUrl || ""),
+      soldListings: Array.isArray(cached?.soldListings) ? cached.soldListings.length : 0,
+      gradedGuides: Array.isArray(cached?.gradedGuides) ? cached.gradedGuides.length : 0,
+      soldGuides: Array.isArray(cached?.soldGuides)
+        ? cached.soldGuides.map((guide) => ({
+            variant: guide.variant,
+            title: guide.title,
+            productUrl: guide.productUrl,
+            listings: Array.isArray(guide.listings) ? guide.listings.length : 0
+          }))
+        : []
+    });
+    return;
+  }
+
+  if (pathname === "/api/admin/pricecharting-details/override" && req.method === "POST") {
+    const admin = requireAdmin(req, res);
+    if (!admin) return;
+    try {
+      const parsed = (await readBody(req)) || {};
+      const setCode = String(parsed.setCode || "").trim().toUpperCase();
+      const cardNo = String(parsed.cardNo || "").trim();
+      const productUrl = String(
+        parsed.productUrl || parsed.priceUrl || parsed.priceLink || parsed.link || ""
+      ).trim();
+      const cardName = String(parsed.cardName || "").trim();
+      if (!setCode || !cardNo) {
+        json(res, 400, { ok: false, error: "setCode and cardNo are required" });
+        return;
+      }
+      if (!isPriceChartingProductUrl(productUrl)) {
+        json(res, 400, { ok: false, error: "Paste a PriceCharting product page URL" });
+        return;
+      }
+      const details = await fetchPriceChartingCardDetailsFromProductUrl(productUrl, {
+        cardName,
+        cardNo
+      });
+      if (!details?.ok) {
+        json(res, 400, {
+          ok: false,
+          error: details?.error || "Could not load PriceCharting details from that URL"
+        });
+        return;
+      }
+      const written = writeCachedCardDetails(setCode, cardNo, details);
+      if (!written) {
+        json(res, 400, { ok: false, error: "Could not write PriceCharting details to cache" });
+        return;
+      }
+      removePriceChartingFailLink(setCode, cardNo);
+      await persistPriceChartingCardDetailsCacheNow();
+      await flushPersistPriceChartingFailLinks();
+      const meta = getPriceChartingCardDetailsCacheMeta();
+      json(res, 200, {
+        ok: true,
+        setCode,
+        cardNo,
+        productUrl: details.productUrl,
+        soldListings: Array.isArray(details.soldListings) ? details.soldListings.length : 0,
+        gradedGuides: Array.isArray(details.gradedGuides) ? details.gradedGuides.length : 0,
+        failLinkCount: priceChartingFailLinks.size,
+        ...meta
+      });
+    } catch (err) {
+      json(res, 400, { ok: false, error: err.message || "Failed to overwrite PriceCharting details" });
+    }
     return;
   }
 

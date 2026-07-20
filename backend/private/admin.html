@@ -154,6 +154,35 @@
           <button type="button" class="admin-btn primary" id="btnPcDetailsUpdate">Update PriceCharting cache</button>
           <button type="button" class="admin-btn danger" id="btnPcDetailsStop" hidden>Stop PriceCharting</button>
         </div>
+        <section class="admin-pc-correct" id="pcCorrectSection">
+          <div class="admin-fail-links-head">
+            <h3>Correct a cached link</h3>
+          </div>
+          <p class="admin-hint">Search a card, review the current PriceCharting URL, then paste the correct product page to overwrite cache.</p>
+          <label class="admin-console-resolve-label" for="pcCorrectCardSearch">Card
+            <input
+              type="search"
+              id="pcCorrectCardSearch"
+              class="nickname-card-search"
+              placeholder="Search cards…"
+              autocomplete="off"
+              disabled
+            />
+          </label>
+          <div id="pcCorrectSelectedCard" class="nickname-selected-card" hidden></div>
+          <div id="pcCorrectCardResults" class="nickname-card-results" hidden>
+            <p class="nickname-card-results-meta" id="pcCorrectCardResultsMeta"></p>
+            <div class="nickname-card-grid" id="pcCorrectCardGrid"></div>
+          </div>
+          <p class="admin-pc-correct-current" id="pcCorrectCurrentLink">Select a card to see its cached link.</p>
+          <label class="admin-console-resolve-label" for="pcCorrectProductUrl">Correct PriceCharting product page
+            <input type="url" id="pcCorrectProductUrl" placeholder="https://www.pricecharting.com/game/..." />
+          </label>
+          <div class="admin-actions">
+            <button type="button" class="admin-btn primary" id="btnPcCorrectSave" disabled>Save link to cache</button>
+          </div>
+          <p class="admin-status" id="pcCorrectStatusMsg"></p>
+        </section>
         <section class="admin-fail-links" id="pcFailLinksSection" hidden>
           <div class="admin-fail-links-head">
             <h3>Failed cards</h3>
