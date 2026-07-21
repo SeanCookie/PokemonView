@@ -2205,6 +2205,8 @@
       setLinkPricesHydrationKeyByCode: {},
       tcgLinkCacheGenerationKey: "",
       tcgLinkCachePricedCount: 0,
+      /** Server-reported TCG link price logic; prefer over the hardcoded client constant when Worker/container drift. */
+      tcgLinkServerLogicVersion: 0,
       tcgLinkCacheWatchTimer: null,
       selectedSetCode: null,
       selectedSetName: "",
@@ -2604,6 +2606,10 @@
         const response = await fetch("/api/tcgplayer/link-cache-meta");
         if (!response.ok) return;
         const meta = await response.json();
+        const serverLogic = Number(meta.logicVersion);
+        if (Number.isFinite(serverLogic) && serverLogic > 0) {
+          state.tcgLinkServerLogicVersion = serverLogic;
+        }
         const nextKey = String(
           meta.cacheGenerationKey ||
             `${meta.logicVersion || ""}:${meta.cacheSavedAt || ""}:${meta.pricedInCacheCount ?? ""}`
@@ -3636,9 +3642,22 @@
             </section>`;
     }
 
+    function getActiveTcgLinkPriceLogicVersion() {
+      const fromServer = Number(state.tcgLinkServerLogicVersion);
+      if (Number.isFinite(fromServer) && fromServer > 0) return fromServer;
+      return TCG_LINK_PRICE_LOGIC_VERSION;
+    }
+
+    function isTcgLinkPriceLogicCurrent(version) {
+      const nodeLogic = Number(version);
+      if (!Number.isFinite(nodeLogic) || nodeLogic <= 0) return false;
+      const active = getActiveTcgLinkPriceLogicVersion();
+      return nodeLogic === active || nodeLogic === active - 1;
+    }
+
     function isTcgLinkPriceNodeStale(node) {
       if (!node || typeof node !== "object") return true;
-      if (Number(node.pricingLogicVersion) !== TCG_LINK_PRICE_LOGIC_VERSION) return true;
+      if (!isTcgLinkPriceLogicCurrent(node.pricingLogicVersion)) return true;
       if (!String(node.listingCondition || "").trim()) return true;
       const hasPrice =
         String(node.nearMintWithShipping || "").trim() ||
@@ -4746,6 +4765,10 @@
           if (cleanName) params.set("setName", cleanName);
           const response = await fetch(`/api/sets/link-prices?${params.toString()}`);
           const payload = response.ok ? await response.json() : null;
+          const payloadLogic = Number(payload?.logicVersion);
+          if (Number.isFinite(payloadLogic) && payloadLogic > 0) {
+            state.tcgLinkServerLogicVersion = payloadLogic;
+          }
           const serverKey = String(payload?.cacheGenerationKey || "").trim();
           if (serverKey && serverKey !== state.tcgLinkCacheGenerationKey) {
             state.tcgLinkCacheGenerationKey = serverKey;
@@ -4757,7 +4780,10 @@
           for (const [url, node] of Object.entries(byUrl)) {
             const normalized = normalizeTcgLinkPriceNode({
               ...node,
-              pricingLogicVersion: node.pricingLogicVersion ?? payload?.logicVersion ?? TCG_LINK_PRICE_LOGIC_VERSION,
+              pricingLogicVersion:
+                node.pricingLogicVersion ??
+                payloadLogic ??
+                getActiveTcgLinkPriceLogicVersion(),
               fetchedAtMs,
               cacheGenerationKey: serverKey || hydrationKey
             });
@@ -4824,8 +4850,10 @@
         let payload = await fetchPrice(true);
         const cacheLogic = Number(payload?.logicVersion);
         const cacheIsStaleLogic =
-          Number.isFinite(cacheLogic) && cacheLogic > 0 && cacheLogic !== TCG_LINK_PRICE_LOGIC_VERSION;
-        // Live-fetch when cache miss/pending, or when server cache is behind current price logic.
+          Number.isFinite(cacheLogic) &&
+          cacheLogic > 0 &&
+          cacheLogic !== getActiveTcgLinkPriceLogicVersion();
+        // Live-fetch when cache miss/pending, or when this entry lags the active server logic.
         if (!payload?.ok || cacheIsStaleLogic) {
           payload = await fetchPrice(false);
         }
@@ -4839,7 +4867,7 @@
                 listingCondition: payload.listingCondition,
                 nearMintWithShipping: payload.nearMintWithShipping,
                 sellerName: payload.sellerName,
-                pricingLogicVersion: payload.logicVersion ?? TCG_LINK_PRICE_LOGIC_VERSION,
+                pricingLogicVersion: payload.logicVersion ?? getActiveTcgLinkPriceLogicVersion(),
                 fetchedAtMs: Date.now()
               })
             : null;

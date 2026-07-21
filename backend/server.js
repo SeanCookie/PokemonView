@@ -645,10 +645,14 @@ function enqueuePersistTcgLinkPriceCacheNow() {
 }
 
 function tcgLinkPriceCacheValueValid(value) {
-  return Boolean(
-    value &&
-      value.ok &&
-      Number(value.logicVersion) === TCG_LINK_PRICE_LOGIC_VERSION
+  if (!value || !value.ok) return false;
+  const version = Number(value.logicVersion);
+  if (!Number.isFinite(version)) return false;
+  // Accept current and previous logic so a container recycle after a version bump does not
+  // empty the Sets UI until the next full admin refresh.
+  return (
+    version === TCG_LINK_PRICE_LOGIC_VERSION ||
+    version === TCG_LINK_PRICE_LOGIC_VERSION - 1
   );
 }
 
@@ -2306,6 +2310,10 @@ async function loadPersistedTcgLinkPriceCache() {
       if (!key) continue;
       const value = row?.value && typeof row.value === "object" ? row.value : null;
       if (!tcgLinkPriceCacheValueValid(value)) continue;
+      // Promote prior-logic rows so the next persist writes the current version.
+      if (Number(value.logicVersion) !== TCG_LINK_PRICE_LOGIC_VERSION) {
+        value.logicVersion = TCG_LINK_PRICE_LOGIC_VERSION;
+      }
       // Legacy rows: treat disk save time as fetchedAt so soft refresh doesn't re-scrape everything.
       if (!getTcgLinkPriceCacheFetchedAt(value)) {
         const fallbackFetchedAt =
@@ -2654,12 +2662,8 @@ async function runAdminTcgPriceCheckForSet(setCode = "", setName = "", triggered
         code,
         resolvedName
       );
-      // Bust existing link-price entries so this run cannot no-op on stale PC fallbacks.
-      for (const url of urls) {
-        const productId = extractTcgplayerProductIdFromUrl(url);
-        const cacheKey = getTcgLinkPriceCacheKey(url, productId);
-        if (cacheKey) tcgLinkPriceCache.delete(cacheKey);
-      }
+      // Do not pre-delete cache entries: forceRefresh already bypasses reads, and wiping
+      // first leaves the Sets UI on seed prices if live fetches fail mid-run.
       tcgBulkPriceCheckMeta.phase = "pricing";
       tcgBulkPriceCheckMeta.progress = {
         total: urls.length,
@@ -4585,7 +4589,11 @@ async function fetchTcgProductListingRowsDetailed(productId, printingFilter) {
   };
 
   const loadForPrinting = async (printingTerm) => {
-    let rows = await loadPages(printingTerm, ["Near Mint"]);
+    // Prefer standard listings first so custom photo-bait copies do not win the cheap sort.
+    let rows = await loadPages(printingTerm, ["Near Mint"], ["standard"]);
+    if (!hasEligibleBuyListing(rows)) {
+      rows = await loadPages(printingTerm, ["Near Mint"]);
+    }
     if (
       !hasEligibleStandardListing(rows) &&
       rows.some((row) => String(row?.listingType || "").toLowerCase() === "custom")
@@ -4596,7 +4604,10 @@ async function fetchTcgProductListingRowsDetailed(productId, printingFilter) {
     if (hasEligibleBuyListing(rows)) return rows;
 
     for (const condition of TCG_LISTING_CONDITION_PRIORITY.slice(1)) {
-      rows = await loadPages(printingTerm, [condition]);
+      rows = await loadPages(printingTerm, [condition], ["standard"]);
+      if (!hasEligibleBuyListing(rows)) {
+        rows = await loadPages(printingTerm, [condition]);
+      }
       if (
         !hasEligibleStandardListing(rows) &&
         rows.some((row) => String(row?.listingType || "").toLowerCase() === "custom")
@@ -5498,9 +5509,9 @@ async function fetchTcgPriceFromProductLink(rawUrl = "", options = {}) {
       expiresAt: Date.now() + TCG_LINK_PRICE_CACHE_TTL_MS
     });
     schedulePersistTcgLinkPriceCache();
-  } else if (!stamped?.ok) {
-    tcgLinkPriceCache.delete(cacheKey);
   }
+  // Keep the last good cache entry when a live refresh fails so the Sets UI does not
+  // fall back to unchanged manifest seed prices.
   return stamped || result;
 }
 
