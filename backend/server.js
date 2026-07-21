@@ -270,7 +270,7 @@ const TCG_LINK_PRICE_ADMIN_REFRESH_MAX_AGE_MS = 1000 * 60 * 60;
 /** Persist TCG link cache to disk every N processed cards during bulk refresh (reduces IO stalls). */
 const TCG_LINK_PRICE_PERSIST_EVERY = 1000;
 /** Bump when link-price selection rules change (invalidates persisted cache). */
-const TCG_LINK_PRICE_LOGIC_VERSION = 15;
+const TCG_LINK_PRICE_LOGIC_VERSION = 16;
 const TCG_PRICE_GUIDE_INDEX_TTL_MS = 1000 * 60 * 60 * 6;
 /** App set code → TCGplayer price guide slug when auto-matching is unreliable. */
 const TCG_GUIDE_SLUG_BY_SET_CODE = {
@@ -1096,7 +1096,8 @@ async function refreshTcgLinkPricesForUrls(
     skipValidCached = false,
     maxAgeMs = TCG_LINK_PRICE_REFRESH_MAX_AGE_MS,
     persistEvery = TCG_LINK_PRICE_PERSIST_EVERY,
-    priceChartingContextByUrl = null
+    priceChartingContextByUrl = null,
+    allowPriceChartingFallback = true
   } = {}
 ) {
   const deduped = dedupeTcgUrlsByCacheKey(urls, priceChartingContextByUrl);
@@ -1154,6 +1155,7 @@ async function refreshTcgLinkPricesForUrls(
           } else {
             const result = await fetchTcgPriceFromProductLink(url, {
               forceRefresh: true,
+              allowPriceChartingFallback,
               priceChartingContext: pcContextByUrl.get(url) || null
             });
             if (result && result.ok) {
@@ -2627,6 +2629,24 @@ async function runAdminTcgPriceCheckForSet(setCode = "", setName = "", triggered
     };
     try {
       console.log(`[admin] set TCG price check started for ${code} (${resolvedName})...`);
+      // Prefer the catalog set name so dropdown stamp labels never poison guide lookup.
+      try {
+        const targets = await listEnglishSetPricingTargets();
+        const match = targets.find((row) => row.setCode === code);
+        if (match?.setName) resolvedName = match.setName;
+      } catch {
+        // keep provided name
+      }
+      // Drop in-memory set pricing cache so we rebuild URLs for this run.
+      try {
+        for (const key of [...setPricingCache.keys()]) {
+          if (String(key).toUpperCase().startsWith(`${code}::`) || String(key).toUpperCase() === code) {
+            setPricingCache.delete(key);
+          }
+        }
+      } catch {
+        // best effort
+      }
       const manifest = await getSetCardPricingManifest(code, resolvedName);
       const urls = collectTcgplayerUrlsFromPricingManifest(manifest);
       const priceChartingContextByUrl = buildTcgUrlPriceChartingContextFromManifest(
@@ -2634,6 +2654,12 @@ async function runAdminTcgPriceCheckForSet(setCode = "", setName = "", triggered
         code,
         resolvedName
       );
+      // Bust existing link-price entries so this run cannot no-op on stale PC fallbacks.
+      for (const url of urls) {
+        const productId = extractTcgplayerProductIdFromUrl(url);
+        const cacheKey = getTcgLinkPriceCacheKey(url, productId);
+        if (cacheKey) tcgLinkPriceCache.delete(cacheKey);
+      }
       tcgBulkPriceCheckMeta.phase = "pricing";
       tcgBulkPriceCheckMeta.progress = {
         total: urls.length,
@@ -2651,7 +2677,7 @@ async function runAdminTcgPriceCheckForSet(setCode = "", setName = "", triggered
         tcgBulkPriceCheckMeta.lastError = `No TCGplayer links found for set ${code}.`;
       }
       const { ok, fail, skipped, cancelled } = await refreshTcgLinkPricesForUrls(urls, {
-        concurrency: 6,
+        concurrency: 4,
         max: urls.length,
         skipValidCached: false,
         persistEvery: TCG_LINK_PRICE_PERSIST_EVERY,
@@ -4467,8 +4493,13 @@ function resolveListingsForPrintingFilter(rows, printingFilter) {
 }
 
 async function fetchTcgProductListingRows(productId, printingFilter) {
+  const detailed = await fetchTcgProductListingRowsDetailed(productId, printingFilter);
+  return Array.isArray(detailed?.rows) ? detailed.rows : [];
+}
+
+async function fetchTcgProductListingRowsDetailed(productId, printingFilter) {
   const pid = Number(productId);
-  if (!Number.isFinite(pid) || pid <= 0) return [];
+  if (!Number.isFinite(pid) || pid <= 0) return { rows: [], apiOk: false };
 
   // TCGplayer mp-search listings API rejects size > 50 with HTTP 400.
   const pageSize = 50;
@@ -4477,7 +4508,7 @@ async function fetchTcgProductListingRows(productId, printingFilter) {
   const requestRows = async (printingTerm, conditions, listingTypes = null, from = 0) => {
     const conditionList = Array.isArray(conditions) && conditions.length
       ? conditions
-      : TCG_LISTING_CONDITION_PRIORITY;
+      : ["Near Mint"];
     const term = {
       sellerStatus: "Live",
       condition: conditionList,
@@ -4507,16 +4538,20 @@ async function fetchTcgProductListingRows(productId, printingFilter) {
         })
       });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) return { ok: false, rows: [], total: 0 };
+      if (!response.ok) return { ok: false, rows: [], total: 0, status: response.status };
       const results = Array.isArray(payload?.results) ? payload.results : [];
       const rows = results[0] && Array.isArray(results[0].results) ? results[0].results : [];
       const total = Number(results[0]?.totalResults) || rows.length;
-      return { ok: true, rows, total };
+      return { ok: true, rows, total, status: response.status };
     };
 
     let result = await attempt();
     if (!result.ok) {
-      await new Promise((resolve) => setTimeout(resolve, 250));
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      result = await attempt();
+    }
+    if (!result.ok) {
+      await new Promise((resolve) => setTimeout(resolve, 900));
       result = await attempt();
     }
     return result;
@@ -4531,6 +4566,7 @@ async function fetchTcgProductListingRows(productId, printingFilter) {
         String(row?.listingType || "standard").trim().toLowerCase() !== "custom"
     );
 
+  let apiOk = false;
   const loadPages = async (printingTerm, conditions, listingTypes = null) => {
     const collected = [];
     let total = 0;
@@ -4538,6 +4574,7 @@ async function fetchTcgProductListingRows(productId, printingFilter) {
       const from = page * pageSize;
       const result = await requestRows(printingTerm, conditions, listingTypes, from);
       if (!result.ok) break;
+      apiOk = true;
       total = result.total || total;
       collected.push(...result.rows);
       if (hasEligibleBuyListing(result.rows)) break;
@@ -4548,18 +4585,22 @@ async function fetchTcgProductListingRows(productId, printingFilter) {
   };
 
   const loadForPrinting = async (printingTerm) => {
-    // Page through cheap bait (0% / Chinese photo-listings) until a trusted English copy appears.
     let rows = await loadPages(printingTerm, ["Near Mint"]);
-    if (!hasEligibleStandardListing(rows) && rows.some((row) => String(row?.listingType || "").toLowerCase() === "custom")) {
+    if (
+      !hasEligibleStandardListing(rows) &&
+      rows.some((row) => String(row?.listingType || "").toLowerCase() === "custom")
+    ) {
       const standardOnly = await loadPages(printingTerm, ["Near Mint"], ["standard"]);
       if (hasEligibleBuyListing(standardOnly)) rows = standardOnly;
     }
     if (hasEligibleBuyListing(rows)) return rows;
 
-    // Conditions one-at-a-time (batching several conditions is less reliable under load).
     for (const condition of TCG_LISTING_CONDITION_PRIORITY.slice(1)) {
       rows = await loadPages(printingTerm, [condition]);
-      if (!hasEligibleStandardListing(rows) && rows.some((row) => String(row?.listingType || "").toLowerCase() === "custom")) {
+      if (
+        !hasEligibleStandardListing(rows) &&
+        rows.some((row) => String(row?.listingType || "").toLowerCase() === "custom")
+      ) {
         const standardOnly = await loadPages(printingTerm, [condition], ["standard"]);
         if (hasEligibleBuyListing(standardOnly)) rows = standardOnly;
       }
@@ -4577,9 +4618,14 @@ async function fetchTcgProductListingRows(productId, printingFilter) {
     rows = await loadForPrinting("");
   }
   const resolved = resolveListingsForPrintingFilter(rows, printingFilter);
-  if (hasEligibleBuyListing(resolved)) return resolved;
-  return hasEligibleBuyListing(rows) ? rows : resolved;
+  const outRows = hasEligibleBuyListing(resolved)
+    ? resolved
+    : hasEligibleBuyListing(rows)
+      ? rows
+      : resolved;
+  return { rows: outRows, apiOk };
 }
+
 
 function pickTcgListingByAsLowAs(rows, asLowAsPrice) {
   const target = Number(asLowAsPrice);
@@ -5360,7 +5406,9 @@ async function fetchTcgPriceFromProductLink(rawUrl = "", options = {}) {
 
       const printingFilter = extractTcgPrintingFromUrl(rawUrl);
       const printingNorm = normalizeTcgListingPrinting(printingFilter);
-      const printingRows = await fetchTcgProductListingRows(productId, printingFilter);
+      const listingsDetailed = await fetchTcgProductListingRowsDetailed(productId, printingFilter);
+      const printingRows = Array.isArray(listingsDetailed?.rows) ? listingsDetailed.rows : [];
+      const listingsApiOk = listingsDetailed?.apiOk === true;
 
       // Prefer live listings (NM-first). Do not use storefront "As low as" — that figure is
       // often a Chinese photo-listing (or other bait) on the English product page.
@@ -5399,26 +5447,38 @@ async function fetchTcgPriceFromProductLink(rawUrl = "", options = {}) {
         });
       }
 
-      const pcFallback = await buildTcgPriceFromPriceChartingUngraded(
-        productId,
-        rawUrl,
-        opts.priceChartingContext
-      );
-      if (pcFallback) return pcFallback;
+      // Admin force-refresh must not silently re-write PriceCharting prices when the listings
+      // API is down/rate-limited — that finishes instantly and looks like "cache didn't update".
+      const allowPcFallback =
+        opts.allowPriceChartingFallback !== false &&
+        (listingsApiOk || forceRefresh !== true);
+
+      if (allowPcFallback) {
+        const pcFallback = await buildTcgPriceFromPriceChartingUngraded(
+          productId,
+          rawUrl,
+          opts.priceChartingContext
+        );
+        if (pcFallback) return pcFallback;
+      }
 
       return {
         ok: false,
         productId,
         price: null,
-        error: "No English listings from sellers rated 95%+ for supported conditions"
+        error: listingsApiOk
+          ? "No English listings from sellers rated 95%+ for supported conditions"
+          : "TCGplayer listings API unavailable; try again"
       };
     } catch (err) {
-      const pcFallback = await buildTcgPriceFromPriceChartingUngraded(
-        productId,
-        rawUrl,
-        opts.priceChartingContext
-      );
-      if (pcFallback) return pcFallback;
+      if (opts.allowPriceChartingFallback !== false && forceRefresh !== true) {
+        const pcFallback = await buildTcgPriceFromPriceChartingUngraded(
+          productId,
+          rawUrl,
+          opts.priceChartingContext
+        );
+        if (pcFallback) return pcFallback;
+      }
       return {
         ok: false,
         productId,
