@@ -254,9 +254,8 @@ const IMAGE_CONTENT_TYPES = {
 const DEFAULT_CURRENCY = process.env.DEFAULT_CURRENCY || "USD";
 const DEFAULT_REGION = process.env.DEFAULT_REGION || "US";
 const SESSION_COOKIE_NAME = "poke_session";
-/** Default sign-in (no Remember me): browser session cookie; server TTL for cleanup. */
-const SESSION_TTL_MS = 1000 * 60 * 60 * 24;
-const SESSION_REMEMBER_TTL_MS = 1000 * 60 * 60 * 24 * 30;
+/** Persistent browser cookie — stay signed in until explicit Sign out. */
+const SESSION_COOKIE_MAX_AGE_SEC = 60 * 60 * 24 * 365 * 5;
 const RESTOCK_AUTO_REFRESH_MS = 60 * 60 * 1000;
 const SET_PRICING_CACHE_TTL_MS = 1000 * 60 * 60;
 const SET_PRICING_ERROR_CACHE_TTL_MS = 1000 * 60 * 2;
@@ -328,6 +327,7 @@ let store = {
   pokeViewPriceAlerts: [],
   pokeViewPriceAlertEvents: [],
   activities: [],
+  authSessions: {},
   refreshedAt: null
 };
 const sessions = new Map();
@@ -533,9 +533,14 @@ async function ensureStore() {
       ? parsed.pokeViewPriceAlertEvents
       : [],
     activities: Array.isArray(parsed?.activities) ? parsed.activities : [],
+    authSessions:
+      parsed?.authSessions && typeof parsed.authSessions === "object" && !Array.isArray(parsed.authSessions)
+        ? parsed.authSessions
+        : {},
     refreshedAt: parsed?.refreshedAt || null
   };
   ensureAlertCollections(store);
+  hydrateAuthSessionsFromStore();
 
   let storeChanged = false;
   if (migrateStoreCollections(store)) storeChanged = true;
@@ -552,6 +557,7 @@ async function ensureStore() {
 }
 
 async function persistStore() {
+  store.authSessions = serializeAuthSessions();
   await fsp.writeFile(DATA_FILE, JSON.stringify(store, null, 2), "utf8");
   // Await durable backup so signup/sign-in cannot finish before R2 has the account.
   await pushStoreToR2(store, { ...env, ...process.env });
@@ -2819,8 +2825,44 @@ function parseRememberMe(value) {
   return text === "true" || text === "1" || text === "on" || text === "yes";
 }
 
-function sessionTtlMs(rememberMe) {
-  return rememberMe ? SESSION_REMEMBER_TTL_MS : SESSION_TTL_MS;
+function serializeAuthSessions() {
+  const out = {};
+  for (const [token, row] of sessions.entries()) {
+    if (!row?.userId) continue;
+    out[token] = {
+      userId: row.userId,
+      rememberMe: Boolean(row.rememberMe),
+      createdAt: Number(row.createdAt) || Date.now()
+    };
+  }
+  return out;
+}
+
+function hydrateAuthSessionsFromStore() {
+  sessions.clear();
+  const rows =
+    store?.authSessions && typeof store.authSessions === "object" && !Array.isArray(store.authSessions)
+      ? store.authSessions
+      : {};
+  for (const [token, row] of Object.entries(rows)) {
+    if (!token || !row?.userId) continue;
+    sessions.set(token, {
+      userId: row.userId,
+      rememberMe: Boolean(row.rememberMe),
+      createdAt: Number(row.createdAt) || Date.now()
+    });
+  }
+}
+
+let authSessionsPersistTimer = null;
+function schedulePersistAuthSessions() {
+  if (authSessionsPersistTimer) return;
+  authSessionsPersistTimer = setTimeout(() => {
+    authSessionsPersistTimer = null;
+    void persistStore().catch((err) => {
+      console.warn(`[auth] session persist failed: ${err?.message || err}`);
+    });
+  }, 250);
 }
 
 function createSession(userId, rememberMe = false) {
@@ -2828,8 +2870,9 @@ function createSession(userId, rememberMe = false) {
   sessions.set(token, {
     userId,
     rememberMe: Boolean(rememberMe),
-    expiresAt: Date.now() + sessionTtlMs(rememberMe)
+    createdAt: Date.now()
   });
+  schedulePersistAuthSessions();
   return token;
 }
 
@@ -2841,11 +2884,15 @@ function issueAuthSession(userId, rememberMe = false) {
 function getSessionFromToken(token) {
   const row = sessions.get(token);
   if (!row) return null;
-  if (Date.now() > row.expiresAt) {
-    sessions.delete(token);
-    return null;
-  }
   return row;
+}
+
+function destroySessionToken(token = "") {
+  const key = String(token || "").trim();
+  if (!key) return false;
+  const existed = sessions.delete(key);
+  if (existed) schedulePersistAuthSessions();
+  return existed;
 }
 
 function getCurrentUser(req) {
@@ -2972,13 +3019,10 @@ function shouldUseSecureCookies() {
 }
 
 function buildSessionCookie(token, rememberMe = false) {
+  void rememberMe;
   const secure = shouldUseSecureCookies() ? "; Secure" : "";
   const base = `${SESSION_COOKIE_NAME}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax${secure}`;
-  if (!rememberMe) {
-    return base;
-  }
-  const maxAge = Math.floor(SESSION_REMEMBER_TTL_MS / 1000);
-  return `${base}; Max-Age=${maxAge}`;
+  return `${base}; Max-Age=${SESSION_COOKIE_MAX_AGE_SEC}`;
 }
 
 function buildClearedSessionCookie() {
@@ -8413,7 +8457,7 @@ async function route(req, res) {
   if (pathname === "/api/auth/signout" && req.method === "POST") {
     const cookies = parseCookies(req);
     const token = cookies[SESSION_COOKIE_NAME];
-    if (token) sessions.delete(token);
+    if (token) destroySessionToken(token);
     json(res, 200, { ok: true }, { "Set-Cookie": buildClearedSessionCookie() });
     return;
   }

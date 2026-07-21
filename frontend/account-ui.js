@@ -280,7 +280,7 @@
         <p class="acct-login-hint" id="acctLoginHint">You can also sign in with your email.</p>
         <label class="acct-remember" id="acctRememberWrap">
           <input type="checkbox" id="acctRemember" />
-          Remember me
+          Remember my username
         </label>
         <button type="submit" class="acct-submit" id="acctSubmit">Sign In</button>
       </form>
