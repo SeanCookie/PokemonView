@@ -2246,7 +2246,7 @@
     let setDetailRenderPending = false;
     let lastPrimedSetCode = "";
     const TCG_LINK_LOCAL_CACHE_TTL_MS = 60 * 60 * 1000;
-    const TCG_LINK_PRICE_LOGIC_VERSION = 11;
+    const TCG_LINK_PRICE_LOGIC_VERSION = 12;
     let setPriceRerenderTimer = null;
     let setLinkPriceWarmupQueuedCode = "";
     let setPricesLoadToken = 0;
@@ -2376,6 +2376,9 @@
       const code = String(setCode || "").trim().toUpperCase();
       if (!code) return;
       try {
+        if (state.language === "english") {
+          await syncTcgLinkCacheGeneration();
+        }
         await Promise.all([
           ensureSetCardDetailsLoaded(code),
           ensureSetPricingManifestLoaded(code, setName).catch(() => {
@@ -2408,7 +2411,8 @@
       const cached = state.cardPricingBySetCode[code];
       const hasVariants = Object.prototype.hasOwnProperty.call(state.cardVariantsBySetCode, code);
       if (cached && Object.keys(cached).length > 0 && hasVariants) {
-        if (state.setLinkPricesHydratedBySetCode[code]) return;
+        // Always attempt hydrate — it no-ops when the cache generation is unchanged,
+        // but must re-pull after an admin set refresh (previously skipped forever).
         void hydrateSetLinkPricesFromCache(code, setName);
         return;
       }
@@ -2588,8 +2592,11 @@
       if (state.tcgLinkCacheWatchTimer) return;
       state.tcgLinkCacheWatchTimer = setInterval(() => {
         if (state.language !== "english" || document.visibilityState !== "visible") return;
-        void syncTcgLinkCacheGeneration();
-      }, 45000);
+        void syncTcgLinkCacheGeneration().then(() => {
+          if (!state.selectedSetCode) return;
+          scheduleSetLinkPriceWarmup(state.selectedSetCode, state.selectedSetName);
+        });
+      }, 8000);
     }
 
     async function syncTcgLinkCacheGeneration() {
@@ -4719,7 +4726,16 @@
       }
       if (setLinkHydratePromisesByCode[code]) {
         await setLinkHydratePromisesByCode[code];
-        return;
+        // Re-check after the in-flight hydrate; force / new generation must fetch again.
+        const latestKey = String(state.tcgLinkCacheGenerationKey || "").trim();
+        if (
+          !force &&
+          state.setLinkPricesHydratedBySetCode[code] &&
+          state.setLinkPricesHydrationKeyByCode[code] === latestKey &&
+          latestKey
+        ) {
+          return;
+        }
       }
 
       setLinkHydratePromisesByCode[code] = (async () => {

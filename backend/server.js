@@ -270,7 +270,7 @@ const TCG_LINK_PRICE_ADMIN_REFRESH_MAX_AGE_MS = 1000 * 60 * 60;
 /** Persist TCG link cache to disk every N processed cards during bulk refresh (reduces IO stalls). */
 const TCG_LINK_PRICE_PERSIST_EVERY = 1000;
 /** Bump when link-price selection rules change (invalidates persisted cache). */
-const TCG_LINK_PRICE_LOGIC_VERSION = 11;
+const TCG_LINK_PRICE_LOGIC_VERSION = 12;
 const TCG_PRICE_GUIDE_INDEX_TTL_MS = 1000 * 60 * 60 * 6;
 /** App set code → TCGplayer price guide slug when auto-matching is unreliable. */
 const TCG_GUIDE_SLUG_BY_SET_CODE = {
@@ -4488,15 +4488,17 @@ async function fetchTcgProductListingRows(productId, printingFilter) {
       body: JSON.stringify({
         filters: { term },
         sort: { field: "price", order: "asc" },
-        // Keep window small per request; NM is fetched alone so it is not crowded out by cheaper LP/MP.
-        size: 40,
+        // Keep enough headroom so English + ≥95% seller filters still find a live NM copy.
+        size: 80,
         from: 0
       })
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) return [];
     const results = Array.isArray(payload?.results) ? payload.results : [];
-    return results[0] && Array.isArray(results[0].results) ? results[0].results : [];
+    const rows = results[0] && Array.isArray(results[0].results) ? results[0].results : [];
+    // Client-side guard: API language filter still lets through mislabeled foreign cards.
+    return rows.filter((row) => isEnglishTcgListing(row));
   };
 
   const loadForPrinting = async (printingTerm) => {
@@ -4521,7 +4523,7 @@ async function fetchTcgProductListingRows(productId, printingFilter) {
 function pickTcgListingByAsLowAs(rows, asLowAsPrice) {
   const target = Number(asLowAsPrice);
   if (!Number.isFinite(target) || target <= 0) return null;
-  const list = Array.isArray(rows) ? rows.filter((row) => isEnglishTcgListing(row)) : [];
+  const list = Array.isArray(rows) ? rows.filter((row) => isEligibleTcgBuyListing(row)) : [];
   const tolerance = 0.02;
 
   for (const condition of TCG_LISTING_CONDITION_PRIORITY) {
@@ -4563,7 +4565,7 @@ function pickTcgListingNearAsLowAsPrice(rows, asLowAsPrice) {
   const exact = pickTcgListingByAsLowAs(rows, target);
   if (exact) return exact;
 
-  const list = Array.isArray(rows) ? rows.filter((row) => isEnglishTcgListing(row)) : [];
+  const list = Array.isArray(rows) ? rows.filter((row) => isEligibleTcgBuyListing(row)) : [];
   const listingFloor = Math.max(0.05, target - 1.25);
 
   for (const condition of TCG_LISTING_CONDITION_PRIORITY) {
@@ -4812,6 +4814,8 @@ const TCG_LISTING_CONDITION_PRIORITY = [
 ];
 
 const TCG_ENGLISH_LANGUAGE_ID = 1;
+/** Skip sellers below this feedback % when picking the lowest live copy. */
+const TCG_MIN_SELLER_RATING_PERCENT = 95;
 const TCG_NON_ENGLISH_LANGUAGE_CODES = new Set([
   "CN",
   "CHI",
@@ -4826,7 +4830,37 @@ const TCG_NON_ENGLISH_LANGUAGE_CODES = new Set([
   "JAPANESE",
   "KR",
   "KO",
-  "KOREAN"
+  "KOREAN",
+  "FR",
+  "FRA",
+  "FRENCH",
+  "DE",
+  "GER",
+  "GERMAN",
+  "IT",
+  "ITA",
+  "ITALIAN",
+  "ES",
+  "SPA",
+  "SPANISH",
+  "PT",
+  "POR",
+  "PORTUGUESE",
+  "RU",
+  "RUS",
+  "RUSSIAN",
+  "NL",
+  "DUT",
+  "DUTCH",
+  "PL",
+  "POL",
+  "POLISH",
+  "TH",
+  "THA",
+  "THAI",
+  "ID",
+  "IND",
+  "INDONESIAN"
 ]);
 
 const TCG_NON_ENGLISH_TEXT_MARKERS = [
@@ -4844,12 +4878,27 @@ const TCG_NON_ENGLISH_TEXT_MARKERS = [
   /\[\s*cn\s*\]/i,
   /\[\s*zh\s*\]/i,
   /\bs-chinese\b/i,
+  /\bcn\s*card\b/i,
+  /\bjp\s*card\b/i,
+  /\bkr\s*card\b/i,
+  /\bfrench\b/i,
+  /\bgerman\b/i,
+  /\bitalian\b/i,
+  /\bspanish\b/i,
+  /\bportuguese\b/i,
+  /\brussian\b/i,
+  /\bdutch\b/i,
+  /\bthai\b/i,
+  /\bindonesian\b/i,
+  /\bnon[\s-]?english\b/i,
+  /\bforeign\s+language\b/i,
   /\bpokemon\s+japan\b/i,
   /\b日本語\b/,
   /\b韓国\b/,
   /\b中文\b/,
   /\b简体\b/,
-  /\b繁体\b/
+  /\b繁体\b/,
+  /\b繁體\b/
 ];
 
 function textLooksNonEnglishTcg(value) {
@@ -4874,12 +4923,13 @@ function isEnglishTcgSetName(setName) {
 function isEnglishTcgListing(row) {
   if (!row || typeof row !== "object") return false;
   const language = normalizeTcgListingLanguage(row.languageAbbreviation || row.language);
+  const languageId = Number(row.languageId);
+  const hasLanguageId = Number.isFinite(languageId) && languageId > 0;
   if (language) {
     if (TCG_NON_ENGLISH_LANGUAGE_CODES.has(language)) return false;
     if (language !== "EN" && language !== "ENGLISH") return false;
   }
-  const languageId = Number(row.languageId);
-  if (Number.isFinite(languageId) && languageId > 0 && languageId !== TCG_ENGLISH_LANGUAGE_ID) {
+  if (hasLanguageId && languageId !== TCG_ENGLISH_LANGUAGE_ID) {
     return false;
   }
   const blob = [
@@ -4893,6 +4943,33 @@ function isEnglishTcgListing(row) {
     .join(" ");
   if (textLooksNonEnglishTcg(blob)) return false;
   return true;
+}
+
+function getTcgListingSellerRatingPercent(row) {
+  const rating = Number(row?.sellerRating);
+  if (!Number.isFinite(rating) || rating < 0) return null;
+  // API returns percent (e.g. 99.3). Guard against 0–1 fractional forms.
+  if (rating > 0 && rating <= 1) return Number((rating * 100).toFixed(2));
+  return Number(rating.toFixed(2));
+}
+
+function isTrustedTcgSellerListing(row) {
+  const rating = getTcgListingSellerRatingPercent(row);
+  if (rating == null) return false;
+  return rating >= TCG_MIN_SELLER_RATING_PERCENT;
+}
+
+/** English + explicit language signal + seller feedback ≥95% — for lowest live copy picks. */
+function isEligibleTcgBuyListing(row) {
+  if (!isEnglishTcgListing(row)) return false;
+  const language = normalizeTcgListingLanguage(row.languageAbbreviation || row.language);
+  const languageId = Number(row.languageId);
+  const hasLanguageId = Number.isFinite(languageId) && languageId > 0;
+  // Require an explicit English language signal so mislabeled foreign copies are skipped.
+  if (!language && !hasLanguageId) return false;
+  if (language && language !== "EN" && language !== "ENGLISH") return false;
+  if (hasLanguageId && languageId !== TCG_ENGLISH_LANGUAGE_ID) return false;
+  return isTrustedTcgSellerListing(row);
 }
 
 function isPokemonTcgProductLine(value) {
@@ -4953,7 +5030,7 @@ function getBestEnglishListingPrice(row, { nearMintOnly = false } = {}) {
   }
   let best = null;
   for (const listing of listings) {
-    if (!isEnglishTcgListing(listing)) continue;
+    if (!isEligibleTcgBuyListing(listing)) continue;
     const condition = String(listing?.condition || "").trim().toLowerCase();
     if (nearMintOnly && !condition.includes("near mint")) continue;
     const listingPrice = Number(listing?.sellerPrice ?? listing?.price);
@@ -5005,14 +5082,15 @@ function buildTcgListingPick(row, conditionLabel = "") {
     listingCondition,
     nearMintWithShipping: formatTcgListingWithShippingDisplay(listingPrice, shippingPrice),
     sellerName: String(row?.sellerName || "").trim(),
+    sellerRating: getTcgListingSellerRatingPercent(row),
     listingId: Number(row?.listingId || 0) || null
   };
 }
 
-/** Cheapest English listing: NM first, then LP → MP → HP → Damaged.
+/** Cheapest eligible English listing (seller ≥95%): NM first, then LP → MP → HP → Damaged.
  *  Matches TCGplayer product pages: lowest item price for the condition, with that listing's shipping. */
 function pickCheapestTcgListingByCondition(rows, opts = {}) {
-  const list = Array.isArray(rows) ? rows.filter((row) => isEnglishTcgListing(row)) : [];
+  const list = Array.isArray(rows) ? rows.filter((row) => isEligibleTcgBuyListing(row)) : [];
   const skipPennyWhenHigherTierExists = opts.skipPennyWhenHigherTierExists === true;
   const pennyCeiling = 0.01;
   const higherTierFloor = Number(opts.higherTierListingFloor) > 0 ? Number(opts.higherTierListingFloor) : 0.05;
@@ -5223,20 +5301,26 @@ async function fetchTcgPriceFromProductLink(rawUrl = "", options = {}) {
         });
         if (withShip.length) pickRows = withShip;
       }
+      const hadLiveListings = Array.isArray(pickRows) && pickRows.length > 0;
       let picked = pickTcgListingForProductDisplay(pickRows, {
         asLowAsPrice,
         skipPennyWhenHigherTierExists: printingNorm === "Reverse Holofoil",
         higherTierListingFloor: printingNorm === "Reverse Holofoil" ? 0.1 : 0.05
       });
 
-      if ((!picked || tcgListingPickLooksLikeBait(picked, asLowAsPrice)) && storefrontPlain) {
+      // Storefront HTML has no reliable seller rating / language fields. Only use it when
+      // the listings API returned nothing — never to override a rating/language-filtered miss.
+      if (
+        (!picked || tcgListingPickLooksLikeBait(picked, asLowAsPrice)) &&
+        storefrontPlain &&
+        !hadLiveListings
+      ) {
         const featured = selectTcgStorefrontFeaturedListing(storefrontPlain);
         const fromFeatured = buildTcgPickFromFeaturedListing(
           featured,
           printingNorm === "Normal" ? "Holofoil" : printingNorm || "Holofoil"
         );
         if (fromFeatured) {
-          // Prefer an explicit NM storefront match over a bait/cheap listing pick.
           if (!picked || tcgListingPickLooksLikeBait(picked, asLowAsPrice)) {
             picked = fromFeatured;
           } else if (
@@ -5259,6 +5343,7 @@ async function fetchTcgPriceFromProductLink(rawUrl = "", options = {}) {
           listingCondition: picked.listingCondition,
           nearMintWithShipping: picked.nearMintWithShipping,
           sellerName: picked.sellerName,
+          sellerRating: picked.sellerRating ?? null,
           listingId: picked.listingId,
           source: "tcgplayer-link",
           marketPrice: marketPriceFromDetails,
@@ -5266,7 +5351,10 @@ async function fetchTcgPriceFromProductLink(rawUrl = "", options = {}) {
         });
       }
 
-      const storefrontPrimary = await fetchTcgStorefrontFirstListing(rawUrl, productId, storefrontPlain);
+      const storefrontPrimary =
+        !hadLiveListings
+          ? await fetchTcgStorefrontFirstListing(rawUrl, productId, storefrontPlain)
+          : null;
       if (storefrontPrimary && Number.isFinite(storefrontPrimary.totalPrice) && storefrontPrimary.totalPrice > 0) {
         return stampTcgLinkPriceResult({
           ok: true,
@@ -5296,7 +5384,7 @@ async function fetchTcgPriceFromProductLink(rawUrl = "", options = {}) {
         ok: false,
         productId,
         price: null,
-        error: "No English listings found for supported conditions"
+        error: "No English listings from sellers rated 95%+ for supported conditions"
       };
     } catch (err) {
       const pcFallback = await buildTcgPriceFromPriceChartingUngraded(
