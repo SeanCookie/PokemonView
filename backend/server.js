@@ -270,7 +270,7 @@ const TCG_LINK_PRICE_ADMIN_REFRESH_MAX_AGE_MS = 1000 * 60 * 60;
 /** Persist TCG link cache to disk every N processed cards during bulk refresh (reduces IO stalls). */
 const TCG_LINK_PRICE_PERSIST_EVERY = 1000;
 /** Bump when link-price selection rules change (invalidates persisted cache). */
-const TCG_LINK_PRICE_LOGIC_VERSION = 14;
+const TCG_LINK_PRICE_LOGIC_VERSION = 15;
 const TCG_PRICE_GUIDE_INDEX_TTL_MS = 1000 * 60 * 60 * 6;
 /** App set code → TCGplayer price guide slug when auto-matching is unreliable. */
 const TCG_GUIDE_SLUG_BY_SET_CODE = {
@@ -4453,21 +4453,28 @@ function filterListingsByPrinting(rows, printingFilter) {
 
 /** Product URLs often use Printing=Normal while live listings are Holofoil (ex, SIR, etc.). */
 function resolveListingsForPrintingFilter(rows, printingFilter) {
-  const filtered = filterListingsByPrinting(rows, printingFilter);
+  const list = Array.isArray(rows) ? rows : [];
+  const filtered = filterListingsByPrinting(list, printingFilter);
   if (filtered.length) return filtered;
   const want = normalizeTcgListingPrinting(printingFilter);
   if (want === "Normal") {
-    const holoRows = filterListingsByPrinting(rows, "Holofoil");
+    const holoRows = filterListingsByPrinting(list, "Holofoil");
     if (holoRows.length) return holoRows;
   }
-  return filtered;
+  // If the URL printing filter matches nothing, keep the unfiltered rows so a valid
+  // English/95%+ copy can still be priced instead of failing the whole card.
+  return list;
 }
 
 async function fetchTcgProductListingRows(productId, printingFilter) {
   const pid = Number(productId);
   if (!Number.isFinite(pid) || pid <= 0) return [];
 
-  const requestRows = async (printingTerm, conditions, listingTypes = null) => {
+  // TCGplayer mp-search listings API rejects size > 50 with HTTP 400.
+  const pageSize = 50;
+  const maxPages = 4;
+
+  const requestRows = async (printingTerm, conditions, listingTypes = null, from = 0) => {
     const conditionList = Array.isArray(conditions) && conditions.length
       ? conditions
       : TCG_LISTING_CONDITION_PRIORITY;
@@ -4477,30 +4484,42 @@ async function fetchTcgProductListingRows(productId, printingFilter) {
       language: ["English"]
     };
     if (printingTerm) term.printing = [printingTerm];
-    // Only pin listingType when we specifically need to recover standard copies that were
-    // crowded out of the default price window by custom photo-listings.
     if (Array.isArray(listingTypes) && listingTypes.length) {
       term.listingType = listingTypes;
     }
-    const response = await fetch(`https://mp-search-api.tcgplayer.com/v1/product/${pid}/listings`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json, text/plain, */*",
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36"
-      },
-      body: JSON.stringify({
-        filters: { term },
-        sort: { field: "price", order: "asc" },
-        size: 80,
-        from: 0
-      })
-    });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) return [];
-    const results = Array.isArray(payload?.results) ? payload.results : [];
-    return results[0] && Array.isArray(results[0].results) ? results[0].results : [];
+
+    const attempt = async () => {
+      const response = await fetch(`https://mp-search-api.tcgplayer.com/v1/product/${pid}/listings`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json, text/plain, */*",
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
+          Origin: "https://www.tcgplayer.com",
+          Referer: "https://www.tcgplayer.com/"
+        },
+        body: JSON.stringify({
+          filters: { term },
+          sort: { field: "price", order: "asc" },
+          size: pageSize,
+          from: Math.max(0, Number(from) || 0)
+        })
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) return { ok: false, rows: [], total: 0 };
+      const results = Array.isArray(payload?.results) ? payload.results : [];
+      const rows = results[0] && Array.isArray(results[0].results) ? results[0].results : [];
+      const total = Number(results[0]?.totalResults) || rows.length;
+      return { ok: true, rows, total };
+    };
+
+    let result = await attempt();
+    if (!result.ok) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      result = await attempt();
+    }
+    return result;
   };
 
   const hasEligibleBuyListing = (rows) =>
@@ -4512,26 +4531,39 @@ async function fetchTcgProductListingRows(productId, printingFilter) {
         String(row?.listingType || "standard").trim().toLowerCase() !== "custom"
     );
 
+  const loadPages = async (printingTerm, conditions, listingTypes = null) => {
+    const collected = [];
+    let total = 0;
+    for (let page = 0; page < maxPages; page += 1) {
+      const from = page * pageSize;
+      const result = await requestRows(printingTerm, conditions, listingTypes, from);
+      if (!result.ok) break;
+      total = result.total || total;
+      collected.push(...result.rows);
+      if (hasEligibleBuyListing(result.rows)) break;
+      if (!result.rows.length) break;
+      if (collected.length >= total) break;
+    }
+    return collected;
+  };
+
   const loadForPrinting = async (printingTerm) => {
-    // One NM request first (no listingType). Prefer standard at pick-time.
-    // Avoid the old 4-request waterfall that rate-limited set refreshes and wiped the cache.
-    let rows = await requestRows(printingTerm, ["Near Mint"]);
+    // Page through cheap bait (0% / Chinese photo-listings) until a trusted English copy appears.
+    let rows = await loadPages(printingTerm, ["Near Mint"]);
     if (!hasEligibleStandardListing(rows) && rows.some((row) => String(row?.listingType || "").toLowerCase() === "custom")) {
-      const standardOnly = await requestRows(printingTerm, ["Near Mint"], ["standard"]);
+      const standardOnly = await loadPages(printingTerm, ["Near Mint"], ["standard"]);
       if (hasEligibleBuyListing(standardOnly)) rows = standardOnly;
     }
     if (hasEligibleBuyListing(rows)) return rows;
-    rows = await requestRows(printingTerm, TCG_LISTING_CONDITION_PRIORITY.slice(1));
-    if (
-      !hasEligibleStandardListing(rows) &&
-      rows.some((row) => String(row?.listingType || "").toLowerCase() === "custom")
-    ) {
-      const standardOnly = await requestRows(
-        printingTerm,
-        TCG_LISTING_CONDITION_PRIORITY.slice(1),
-        ["standard"]
-      );
-      if (hasEligibleBuyListing(standardOnly)) rows = standardOnly;
+
+    // Conditions one-at-a-time (batching several conditions is less reliable under load).
+    for (const condition of TCG_LISTING_CONDITION_PRIORITY.slice(1)) {
+      rows = await loadPages(printingTerm, [condition]);
+      if (!hasEligibleStandardListing(rows) && rows.some((row) => String(row?.listingType || "").toLowerCase() === "custom")) {
+        const standardOnly = await loadPages(printingTerm, [condition], ["standard"]);
+        if (hasEligibleBuyListing(standardOnly)) rows = standardOnly;
+      }
+      if (hasEligibleBuyListing(rows)) return rows;
     }
     return rows;
   };
@@ -4544,7 +4576,9 @@ async function fetchTcgProductListingRows(productId, printingFilter) {
   if (!hasEligibleBuyListing(rows) && printingFilter) {
     rows = await loadForPrinting("");
   }
-  return resolveListingsForPrintingFilter(rows, printingFilter);
+  const resolved = resolveListingsForPrintingFilter(rows, printingFilter);
+  if (hasEligibleBuyListing(resolved)) return resolved;
+  return hasEligibleBuyListing(rows) ? rows : resolved;
 }
 
 function pickTcgListingByAsLowAs(rows, asLowAsPrice) {
@@ -4943,27 +4977,10 @@ const TCG_NON_ENGLISH_TEXT_MARKERS = [
 ];
 
 function collectTcgListingTextBlob(row) {
-  const parts = [];
-  const push = (value) => {
-    if (value == null) return;
-    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
-      const text = String(value).trim();
-      if (text) parts.push(text);
-      return;
-    }
-    if (Array.isArray(value)) {
-      for (const item of value) push(item);
-      return;
-    }
-    if (typeof value === "object") {
-      for (const item of Object.values(value)) push(item);
-    }
-  };
-  push(row?.customData);
-  push(row?.productName);
-  push(row?.printing);
-  // Do not include listingType ("custom"/"standard") — not language signal.
-  return parts.join(" ");
+  // Only seller-facing text. Do not scan image UUIDs / linkIds in customData.
+  return [row?.customData?.title, row?.customData?.description, row?.productName]
+    .filter(Boolean)
+    .join(" ");
 }
 
 function textLooksNonEnglishTcg(value) {
