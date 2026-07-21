@@ -270,7 +270,7 @@ const TCG_LINK_PRICE_ADMIN_REFRESH_MAX_AGE_MS = 1000 * 60 * 60;
 /** Persist TCG link cache to disk every N processed cards during bulk refresh (reduces IO stalls). */
 const TCG_LINK_PRICE_PERSIST_EVERY = 1000;
 /** Bump when link-price selection rules change (invalidates persisted cache). */
-const TCG_LINK_PRICE_LOGIC_VERSION = 13;
+const TCG_LINK_PRICE_LOGIC_VERSION = 14;
 const TCG_PRICE_GUIDE_INDEX_TTL_MS = 1000 * 60 * 60 * 6;
 /** App set code → TCGplayer price guide slug when auto-matching is unreliable. */
 const TCG_GUIDE_SLUG_BY_SET_CODE = {
@@ -4467,7 +4467,7 @@ async function fetchTcgProductListingRows(productId, printingFilter) {
   const pid = Number(productId);
   if (!Number.isFinite(pid) || pid <= 0) return [];
 
-  const requestRows = async (printingTerm, conditions, listingTypes = ["standard"]) => {
+  const requestRows = async (printingTerm, conditions, listingTypes = null) => {
     const conditionList = Array.isArray(conditions) && conditions.length
       ? conditions
       : TCG_LISTING_CONDITION_PRIORITY;
@@ -4477,8 +4477,8 @@ async function fetchTcgProductListingRows(productId, printingFilter) {
       language: ["English"]
     };
     if (printingTerm) term.printing = [printingTerm];
-    // Prefer standard catalog listings. "custom" (Listings with Photos) is how sellers
-    // park Chinese/Japanese copies on English product pages and crowd out the price window.
+    // Only pin listingType when we specifically need to recover standard copies that were
+    // crowded out of the default price window by custom photo-listings.
     if (Array.isArray(listingTypes) && listingTypes.length) {
       term.listingType = listingTypes;
     }
@@ -4493,7 +4493,6 @@ async function fetchTcgProductListingRows(productId, printingFilter) {
       body: JSON.stringify({
         filters: { term },
         sort: { field: "price", order: "asc" },
-        // Keep enough headroom so English + ≥95% seller filters still find a live NM copy.
         size: 80,
         from: 0
       })
@@ -4501,31 +4500,48 @@ async function fetchTcgProductListingRows(productId, printingFilter) {
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) return [];
     const results = Array.isArray(payload?.results) ? payload.results : [];
-    const rows = results[0] && Array.isArray(results[0].results) ? results[0].results : [];
-    // Client-side guard: API language filter still lets through mislabeled foreign cards.
-    return rows.filter((row) => isEligibleTcgBuyListing(row));
+    return results[0] && Array.isArray(results[0].results) ? results[0].results : [];
   };
 
+  const hasEligibleBuyListing = (rows) =>
+    (Array.isArray(rows) ? rows : []).some((row) => isEligibleTcgBuyListing(row));
+  const hasEligibleStandardListing = (rows) =>
+    (Array.isArray(rows) ? rows : []).some(
+      (row) =>
+        isEligibleTcgBuyListing(row) &&
+        String(row?.listingType || "standard").trim().toLowerCase() !== "custom"
+    );
+
   const loadForPrinting = async (printingTerm) => {
-    // 1) Near Mint standard listings only.
-    let rows = await requestRows(printingTerm, ["Near Mint"], ["standard"]);
-    if (rows.length) return rows;
-    // 2) Other conditions, still standard-only.
-    rows = await requestRows(printingTerm, TCG_LISTING_CONDITION_PRIORITY.slice(1), ["standard"]);
-    if (rows.length) return rows;
-    // 3) Last resort: photo/custom listings that still pass English + rating checks
-    //    (customData.title often says "CHINESE!!" — those are dropped).
-    rows = await requestRows(printingTerm, ["Near Mint"], ["custom"]);
-    if (rows.length) return rows;
-    return requestRows(printingTerm, TCG_LISTING_CONDITION_PRIORITY.slice(1), ["custom"]);
+    // One NM request first (no listingType). Prefer standard at pick-time.
+    // Avoid the old 4-request waterfall that rate-limited set refreshes and wiped the cache.
+    let rows = await requestRows(printingTerm, ["Near Mint"]);
+    if (!hasEligibleStandardListing(rows) && rows.some((row) => String(row?.listingType || "").toLowerCase() === "custom")) {
+      const standardOnly = await requestRows(printingTerm, ["Near Mint"], ["standard"]);
+      if (hasEligibleBuyListing(standardOnly)) rows = standardOnly;
+    }
+    if (hasEligibleBuyListing(rows)) return rows;
+    rows = await requestRows(printingTerm, TCG_LISTING_CONDITION_PRIORITY.slice(1));
+    if (
+      !hasEligibleStandardListing(rows) &&
+      rows.some((row) => String(row?.listingType || "").toLowerCase() === "custom")
+    ) {
+      const standardOnly = await requestRows(
+        printingTerm,
+        TCG_LISTING_CONDITION_PRIORITY.slice(1),
+        ["standard"]
+      );
+      if (hasEligibleBuyListing(standardOnly)) rows = standardOnly;
+    }
+    return rows;
   };
 
   let rows = await loadForPrinting(printingFilter || "");
   const want = normalizeTcgListingPrinting(printingFilter);
-  if (!rows.length && want === "Normal") {
+  if (!hasEligibleBuyListing(rows) && want === "Normal") {
     rows = await loadForPrinting("Holofoil");
   }
-  if (!rows.length && printingFilter) {
+  if (!hasEligibleBuyListing(rows) && printingFilter) {
     rows = await loadForPrinting("");
   }
   return resolveListingsForPrintingFilter(rows, printingFilter);
@@ -4534,7 +4550,11 @@ async function fetchTcgProductListingRows(productId, printingFilter) {
 function pickTcgListingByAsLowAs(rows, asLowAsPrice) {
   const target = Number(asLowAsPrice);
   if (!Number.isFinite(target) || target <= 0) return null;
-  const list = Array.isArray(rows) ? rows.filter((row) => isEligibleTcgBuyListing(row)) : [];
+  const eligible = Array.isArray(rows) ? rows.filter((row) => isEligibleTcgBuyListing(row)) : [];
+  const standard = eligible.filter(
+    (row) => String(row?.listingType || "standard").trim().toLowerCase() !== "custom"
+  );
+  const list = standard.length ? standard : eligible;
   const tolerance = 0.02;
 
   for (const condition of TCG_LISTING_CONDITION_PRIORITY) {
@@ -4576,7 +4596,11 @@ function pickTcgListingNearAsLowAsPrice(rows, asLowAsPrice) {
   const exact = pickTcgListingByAsLowAs(rows, target);
   if (exact) return exact;
 
-  const list = Array.isArray(rows) ? rows.filter((row) => isEligibleTcgBuyListing(row)) : [];
+  const eligible = Array.isArray(rows) ? rows.filter((row) => isEligibleTcgBuyListing(row)) : [];
+  const standard = eligible.filter(
+    (row) => String(row?.listingType || "standard").trim().toLowerCase() !== "custom"
+  );
+  const list = standard.length ? standard : eligible;
   const listingFloor = Math.max(0.05, target - 1.25);
 
   for (const condition of TCG_LISTING_CONDITION_PRIORITY) {
@@ -5120,10 +5144,14 @@ function buildTcgListingPick(row, conditionLabel = "") {
   };
 }
 
-/** Cheapest eligible English listing (seller ≥95%): NM first, then LP → MP → HP → Damaged.
- *  Matches TCGplayer product pages: lowest item price for the condition, with that listing's shipping. */
+/** Cheapest eligible English listing (seller ≥95%): prefer standard over photo/custom,
+ *  then NM → LP → MP → HP → Damaged. */
 function pickCheapestTcgListingByCondition(rows, opts = {}) {
-  const list = Array.isArray(rows) ? rows.filter((row) => isEligibleTcgBuyListing(row)) : [];
+  const eligible = Array.isArray(rows) ? rows.filter((row) => isEligibleTcgBuyListing(row)) : [];
+  const standard = eligible.filter(
+    (row) => String(row?.listingType || "standard").trim().toLowerCase() !== "custom"
+  );
+  const list = standard.length ? standard : eligible;
   const skipPennyWhenHigherTierExists = opts.skipPennyWhenHigherTierExists === true;
   const pennyCeiling = 0.01;
   const higherTierFloor = Number(opts.higherTierListingFloor) > 0 ? Number(opts.higherTierListingFloor) : 0.05;
