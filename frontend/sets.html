@@ -2601,41 +2601,53 @@
       }, 8000);
     }
 
+    let tcgLinkCacheSyncPromise = null;
+
     async function syncTcgLinkCacheGeneration() {
-      try {
-        const response = await fetch("/api/tcgplayer/link-cache-meta");
-        if (!response.ok) return;
-        const meta = await response.json();
-        const serverLogic = Number(meta.logicVersion);
-        if (Number.isFinite(serverLogic) && serverLogic > 0) {
-          state.tcgLinkServerLogicVersion = serverLogic;
-        }
-        const nextKey = String(
-          meta.cacheGenerationKey ||
-            `${meta.logicVersion || ""}:${meta.cacheSavedAt || ""}:${meta.pricedInCacheCount ?? ""}`
-        ).trim();
-        const nextPriced = Number(meta.pricedInCacheCount ?? meta.cacheEntryCount) || 0;
-        const prevKey = String(state.tcgLinkCacheGenerationKey || "").trim();
-        const prevPriced = Number(state.tcgLinkCachePricedCount) || 0;
-        const shouldRefresh = tcgLinkCacheNeedsClientRefresh(prevKey, nextKey, prevPriced, nextPriced);
-
-        if (shouldRefresh) {
-          state.cardPricingByTcgUrl = {};
-          invalidateSetLinkPriceHydration();
-          if (state.selectedSetCode && state.language === "english") {
-            await hydrateSetLinkPricesFromCache(state.selectedSetCode, state.selectedSetName, {
-              force: true
-            });
+      if (tcgLinkCacheSyncPromise) return tcgLinkCacheSyncPromise;
+      tcgLinkCacheSyncPromise = (async () => {
+        try {
+          const response = await fetch("/api/tcgplayer/link-cache-meta");
+          if (!response.ok) return;
+          const meta = await response.json();
+          const serverLogic = Number(meta.logicVersion);
+          if (Number.isFinite(serverLogic) && serverLogic > 0) {
+            state.tcgLinkServerLogicVersion = serverLogic;
           }
-        } else if (nextKey && !prevKey && state.selectedSetCode && state.language === "english") {
-          scheduleSetLinkPriceWarmup(state.selectedSetCode, state.selectedSetName);
-        }
+          const nextKey = String(
+            meta.cacheGenerationKey ||
+              `${meta.logicVersion || ""}:${meta.cacheSavedAt || ""}:${meta.pricedInCacheCount ?? ""}`
+          ).trim();
+          const nextPriced = Number(meta.pricedInCacheCount ?? meta.cacheEntryCount) || 0;
+          const prevKey = String(state.tcgLinkCacheGenerationKey || "").trim();
+          const prevPriced = Number(state.tcgLinkCachePricedCount) || 0;
+          const shouldRefresh = tcgLinkCacheNeedsClientRefresh(prevKey, nextKey, prevPriced, nextPriced);
 
-        if (nextKey) state.tcgLinkCacheGenerationKey = nextKey;
-        state.tcgLinkCachePricedCount = nextPriced;
-        purgeStaleTcgLinkPricesFromClient();
-      } catch {
-        // best effort
+          // Apply generation before hydrate so force-hydrate never re-enters sync and loops.
+          if (nextKey) state.tcgLinkCacheGenerationKey = nextKey;
+          state.tcgLinkCachePricedCount = nextPriced;
+
+          if (shouldRefresh) {
+            state.cardPricingByTcgUrl = {};
+            invalidateSetLinkPriceHydration();
+            if (state.selectedSetCode && state.language === "english") {
+              await hydrateSetLinkPricesFromCache(state.selectedSetCode, state.selectedSetName, {
+                force: true
+              });
+            }
+          } else if (nextKey && !prevKey && state.selectedSetCode && state.language === "english") {
+            scheduleSetLinkPriceWarmup(state.selectedSetCode, state.selectedSetName);
+          }
+
+          purgeStaleTcgLinkPricesFromClient();
+        } catch {
+          // best effort
+        }
+      })();
+      try {
+        await tcgLinkCacheSyncPromise;
+      } finally {
+        tcgLinkCacheSyncPromise = null;
       }
     }
 
@@ -4730,7 +4742,8 @@
     async function hydrateSetLinkPricesFromCache(setCode, setName = "", options = {}) {
       const code = String(setCode || "").trim().toUpperCase();
       if (!code || state.language !== "english") return;
-      if (!state.tcgLinkCacheGenerationKey || options.force) {
+      // Never call sync when force=true — sync is the caller and would re-enter forever.
+      if (!state.tcgLinkCacheGenerationKey && !options.force) {
         await syncTcgLinkCacheGeneration();
       }
       const hydrationKey = String(state.tcgLinkCacheGenerationKey || "").trim();
