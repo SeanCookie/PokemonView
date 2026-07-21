@@ -2586,6 +2586,7 @@
     function tcgLinkCacheNeedsClientRefresh(prevKey, nextKey, prevPriced, nextPriced) {
       if (!nextKey) return false;
       if (prevKey && prevKey !== nextKey) return true;
+      // Same generation key but cache grew (partial admin run / background drain).
       if (Number(nextPriced) > Number(prevPriced)) return true;
       return false;
     }
@@ -3000,8 +3001,70 @@
     function storeTcgLinkPriceForUrl(url, normalized) {
       if (!normalized) return;
       const keys = new Set([String(url || "").trim(), normalizeTcgLinkLookupUrl(url)].filter(Boolean));
+      const productId = extractTcgProductIdFromUrl(url);
+      const printing = extractTcgPrintingFromUrl(url);
+      if (productId) {
+        keys.add(`https://www.tcgplayer.com/product/${productId}`);
+        if (printing) {
+          const bare = `https://www.tcgplayer.com/product/${productId}?Language=English&Printing=${encodeURIComponent(printing)}`;
+          keys.add(bare);
+          keys.add(normalizeTcgLinkLookupUrl(bare));
+          keys.add(normalizeTcgLinkLookupUrl(`https://www.tcgplayer.com/product/${productId}?Language=English&Printing=${printing}`));
+        }
+      }
       for (const key of keys) {
-        state.cardPricingByTcgUrl[key] = normalized;
+        if (key) state.cardPricingByTcgUrl[key] = normalized;
+      }
+    }
+
+    /** Write live link-cache prices onto local manifest/variant seeds so card-price-value updates even if URL keys drift. */
+    function applyHydratedLinkPricesToSetPricing(setCode, byUrl) {
+      const code = String(setCode || "").trim().toUpperCase();
+      if (!code || !byUrl || typeof byUrl !== "object") return;
+      const byProductPrinting = new Map();
+      for (const [url, node] of Object.entries(byUrl)) {
+        if (!node || isTcgLinkPriceNodeStale(node)) continue;
+        const productId = extractTcgProductIdFromUrl(url);
+        if (!productId) continue;
+        const printing = extractTcgPrintingFromUrl(url).toLowerCase() || "normal";
+        byProductPrinting.set(`${productId}::${printing}`, node);
+        if (!byProductPrinting.has(String(productId))) {
+          byProductPrinting.set(String(productId), node);
+        }
+      }
+      if (!byProductPrinting.size) return;
+
+      const patchInfo = (info) => {
+        if (!info || typeof info !== "object") return false;
+        const productId =
+          Number(info.productId) || extractTcgProductIdFromUrl(info.tcgplayerUrl || "") || null;
+        if (!productId) return false;
+        const printing = extractTcgPrintingFromUrl(info.tcgplayerUrl || "").toLowerCase() || "normal";
+        const node =
+          byProductPrinting.get(`${productId}::${printing}`) || byProductPrinting.get(String(productId));
+        if (!node || isTcgLinkPriceNodeStale(node)) return false;
+        const text = getTcgLinkPriceDisplayText(node);
+        if (!text) return false;
+        info.nearMintWithShipping = text;
+        if (Number.isFinite(Number(node.nearMintPrice))) info.nearMintPrice = Number(node.nearMintPrice);
+        if (Number.isFinite(Number(node.shippingPrice))) info.shippingPrice = Number(node.shippingPrice);
+        if (node.listingCondition) info.listingCondition = String(node.listingCondition);
+        if (Number.isFinite(Number(node.totalPrice)) && Number(node.totalPrice) > 0) {
+          info.tcgplayerPrice = Number(node.totalPrice);
+        }
+        return true;
+      };
+
+      const byCardNo = state.cardPricingBySetCode[code];
+      if (byCardNo && typeof byCardNo === "object") {
+        for (const info of Object.values(byCardNo)) patchInfo(info);
+      }
+      const variantsByCardNo = state.cardVariantsBySetCode[code];
+      if (variantsByCardNo && typeof variantsByCardNo === "object") {
+        for (const list of Object.values(variantsByCardNo)) {
+          if (!Array.isArray(list)) continue;
+          for (const row of list) patchInfo(row);
+        }
       }
     }
 
@@ -3043,11 +3106,13 @@
     }
 
     function resolveTcgRowListingPriceText(row, pricingInfo = null) {
-      const seed = String(row?.nearMintWithShipping || "").trim();
       const lookupUrl = normalizeTcgLinkLookupUrl(row?.priceLookupUrl || row?.tcgplayerUrl || "");
-      const resolved = lookupUrl ? getTcgLinkPriceForUrl(lookupUrl) : null;
+      const resolved =
+        (lookupUrl ? getTcgLinkPriceForUrl(lookupUrl) : null) ||
+        (pricingInfo ? getTcgLinkPriceForUrl(pricingInfo.tcgplayerUrl || "") : null);
       const fromCache = getTcgLinkPriceDisplayText(resolved);
       if (fromCache) return fromCache;
+      const seed = String(row?.nearMintWithShipping || "").trim();
       if (seed) return seed;
       const manifestShip = String(pricingInfo?.nearMintWithShipping || "").trim();
       if (manifestShip) return manifestShip;
@@ -4790,6 +4855,7 @@
           const byUrl =
             payload && payload.byUrl && typeof payload.byUrl === "object" ? payload.byUrl : {};
           const fetchedAtMs = Date.now();
+          const storedByUrl = {};
           for (const [url, node] of Object.entries(byUrl)) {
             const normalized = normalizeTcgLinkPriceNode({
               ...node,
@@ -4800,8 +4866,12 @@
               fetchedAtMs,
               cacheGenerationKey: serverKey || hydrationKey
             });
-            if (normalized) storeTcgLinkPriceForUrl(url, normalized);
+            if (normalized) {
+              storeTcgLinkPriceForUrl(url, normalized);
+              storedByUrl[url] = normalized;
+            }
           }
+          applyHydratedLinkPricesToSetPricing(code, storedByUrl);
           state.setLinkPricesHydratedBySetCode[code] = true;
           state.setLinkPricesHydrationKeyByCode[code] = serverKey || hydrationKey;
         } catch {
@@ -4809,7 +4879,8 @@
         } finally {
           delete state.setLinkPricesHydratingBySetCode[code];
           purgeStaleTcgLinkPricesFromClient();
-          if (state.selectedSetCode === code) {
+          const viewingSet = String(state.selectedSetCode || "").toUpperCase() === code;
+          if (viewingSet) {
             scheduleSetPriceRerender();
             if (state.selectedCardNumber) updateCardDetailTcgPanelPrices();
           } else if (String(state.query || "").trim() && !state.selectedSetCode) {
