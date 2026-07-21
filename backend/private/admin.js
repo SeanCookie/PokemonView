@@ -46,7 +46,7 @@
   const btnTcgPriceUpdate = document.getElementById("btnTcgPriceUpdate");
   const btnTcgPriceStop = document.getElementById("btnTcgPriceStop");
   const tcgFailLinksSection = document.getElementById("tcgFailLinksSection");
-  const btnPruneNonPokemonFailLinks = document.getElementById("btnPruneNonPokemonFailLinks");
+  const btnClearTcgFailLinks = document.getElementById("btnClearTcgFailLinks");
   const tcgFailLinksCount = document.getElementById("tcgFailLinksCount");
   const tcgFailLinksList = document.getElementById("tcgFailLinksList");
   const statUsers = document.getElementById("statUsers");
@@ -1522,25 +1522,21 @@
     }
   }
 
-  btnPruneNonPokemonFailLinks?.addEventListener("click", async () => {
+  btnClearTcgFailLinks?.addEventListener("click", async () => {
     const msgEl = document.getElementById("tcgStatusMsg");
-    btnPruneNonPokemonFailLinks.disabled = true;
-    setStatus(msgEl, "Removing non-Pokémon fail links…", "");
+    btnClearTcgFailLinks.disabled = true;
+    setStatus(msgEl, "Clearing failed TCG links…", "");
     try {
-      const result = await api("/api/admin/tcg-price-check/fail-links/prune-non-pokemon", {
+      await api("/api/admin/tcg-price-check/fail-links/clear", {
         method: "POST",
         body: "{}"
       });
-      renderTcgFailLinks(result.links || []);
-      setStatus(
-        msgEl,
-        `Removed ${result.removed || 0} non-Pokémon link(s); ${result.kept || 0} Pokémon fail(s) remain.`,
-        "ok"
-      );
+      renderTcgFailLinks([]);
+      setStatus(msgEl, "Cleared all failed TCG links.", "ok");
     } catch (err) {
       setStatus(msgEl, err.message, "error");
     } finally {
-      btnPruneNonPokemonFailLinks.disabled = false;
+      btnClearTcgFailLinks.disabled = false;
     }
   });
 

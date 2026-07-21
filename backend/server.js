@@ -10808,6 +10808,18 @@ async function route(req, res) {
     return;
   }
 
+  if (pathname === "/api/admin/tcg-price-check/fail-links/clear" && req.method === "POST") {
+    const admin = requireAdmin(req, res);
+    if (!admin) return;
+    try {
+      await clearTcgLinkPriceFailLinks();
+      json(res, 200, { ok: true, failLinkCount: 0, links: [] });
+    } catch (err) {
+      json(res, 500, { ok: false, error: err.message || "Failed to clear TCG fail links" });
+    }
+    return;
+  }
+
   if (pathname === "/api/admin/tcg-price-check/fail-links/prune-non-pokemon" && req.method === "POST") {
     const admin = requireAdmin(req, res);
     if (!admin) return;
