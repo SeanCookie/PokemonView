@@ -140,6 +140,27 @@ let pokesymbolsManifestMemMtime = 0;
 let setImageManifestMem = null;
 let setImageManifestMemMtime = 0;
 
+function sanitizePokesymbolsManifest(parsed) {
+  if (!parsed || typeof parsed !== "object") return parsed;
+  const out = { ...parsed };
+  for (const bucket of ["bySlug", "byCode"]) {
+    const src = parsed[bucket];
+    if (!src || typeof src !== "object") continue;
+    const next = {};
+    for (const [key, row] of Object.entries(src)) {
+      if (!row || typeof row !== "object") continue;
+      const code = String(row.code || key || "").trim().toUpperCase();
+      if (code === "SVE" || key === "scarlet-and-violet-energies") continue;
+      next[key] = {
+        ...row,
+        name: decodeHtmlEntities(row.name || "")
+      };
+    }
+    out[bucket] = next;
+  }
+  return out;
+}
+
 async function getPokesymbolsManifestCached() {
   let mtimeMs = 0;
   try {
@@ -150,7 +171,7 @@ async function getPokesymbolsManifestCached() {
     throw new Error("Pokesymbols manifest missing");
   }
   const raw = await fsp.readFile(POKESYMBOLS_MANIFEST_FILE, "utf8");
-  pokesymbolsManifestMem = JSON.parse(raw);
+  pokesymbolsManifestMem = sanitizePokesymbolsManifest(JSON.parse(raw));
   pokesymbolsManifestMemMtime = mtimeMs;
   return pokesymbolsManifestMem;
 }
@@ -1177,10 +1198,17 @@ async function refreshTcgLinkPricesForUrls(
 async function listEnglishSetPricingTargets() {
   const manifest = await getSetCardManifest("english");
   const byCode = manifest.byCode && typeof manifest.byCode === "object" ? manifest.byCode : {};
-  return Object.entries(byCode).map(([setCode, row]) => ({
-    setCode: String(setCode || "").trim().toUpperCase(),
-    setName: String(row?.sourceTitle || row?.name || row?.setName || "").trim()
-  }));
+  return Object.entries(byCode)
+    .map(([setCode, row]) => {
+      const code = String(setCode || "").trim().toUpperCase();
+      return {
+        setCode: code,
+        setName: decodeHtmlEntities(
+          String(row?.sourceTitle || row?.name || row?.setName || "").trim()
+        )
+      };
+    })
+    .filter((row) => row.setCode && !isHiddenSetCode(row.setCode));
 }
 
 function getTcgLinkCacheMeta() {
@@ -6374,9 +6402,18 @@ async function getSetCardPricingManifest(setCode = "", setName = "") {
   return resultPromise;
 }
 
+/** Sets kept out of catalog/pricing UIs (energy-only promo sheets, etc.). */
+const HIDDEN_SET_CODES = new Set(["SVE"]);
+
+function isHiddenSetCode(setCode = "") {
+  return HIDDEN_SET_CODES.has(String(setCode || "").trim().toUpperCase());
+}
+
 function decodeSetCardListNames(byCode = {}) {
   const out = {};
   for (const [code, entry] of Object.entries(byCode)) {
+    const codeKey = String(code || "").trim().toUpperCase();
+    if (isHiddenSetCode(codeKey)) continue;
     if (!entry || typeof entry !== "object") {
       out[code] = entry;
       continue;
@@ -6386,7 +6423,13 @@ function decodeSetCardListNames(byCode = {}) {
     for (const [cardNo, name] of Object.entries(cards)) {
       decodedCards[cardNo] = decodeHtmlEntities(name);
     }
-    out[code] = { ...entry, cards: decodedCards };
+    out[code] = {
+      ...entry,
+      sourceTitle: decodeHtmlEntities(entry.sourceTitle || ""),
+      name: entry.name != null ? decodeHtmlEntities(entry.name) : entry.name,
+      setName: entry.setName != null ? decodeHtmlEntities(entry.setName) : entry.setName,
+      cards: decodedCards
+    };
   }
   return out;
 }

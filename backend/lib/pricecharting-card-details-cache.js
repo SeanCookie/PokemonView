@@ -280,6 +280,7 @@ async function collectEnglishCardsForPriceChartingPrewarm(options = {}) {
   for (const [setCode, entry] of Object.entries(byCode)) {
     const code = String(setCode || "").trim().toUpperCase();
     if (!code) continue;
+    if (code === "SVE") continue;
     if (onlySetCode && code !== onlySetCode) continue;
     const cardMap = entry?.cards && typeof entry.cards === "object" ? entry.cards : {};
     const setName = String(entry?.sourceTitle || "").trim();
