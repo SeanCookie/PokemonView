@@ -2384,9 +2384,12 @@
         }
         await Promise.all([
           ensureSetCardDetailsLoaded(code),
-          ensureSetPricingManifestLoaded(code, setName).catch(() => {
-            /* best effort — tiles can still warm later */
-          })
+          // Wait for manifest + link-price hydrate so tiles/stats do not flash seed prices.
+          state.language === "english"
+            ? ensureSetPricingLoaded(code, setName).catch(() => {
+                /* best effort — tiles can still warm later */
+              })
+            : Promise.resolve()
         ]);
       } catch {
         /* ignore */
@@ -2526,6 +2529,9 @@
           if (key && !cardByNo.has(key)) cardByNo.set(key, card);
         }
       }
+      const code = String(selectedSet.code || "").trim().toUpperCase();
+      const linkHydrated =
+        state.language !== "english" || Boolean(state.setLinkPricesHydratedBySetCode[code]);
       content.querySelectorAll(".card-tile-shell[data-card-number]").forEach((shell) => {
         const cardNo = shell.getAttribute("data-card-number");
         let card = cardByNo.get(String(cardNo || ""));
@@ -2537,7 +2543,8 @@
         }
         const priceEl = shell.querySelector(".card-price-inline");
         if (!priceEl || !card) return;
-        priceEl.textContent = formatCardPriceInline(card) || "—";
+        const inline = formatCardPriceInline(card);
+        priceEl.textContent = inline || (linkHydrated ? "—" : "…");
       });
       const mostExpensive = getMostExpensiveCardInSet(allCards);
       const statBlocks = content.querySelectorAll(".set-stat");
@@ -2545,7 +2552,11 @@
         const label = block.querySelector(".set-stat-label");
         if (label && label.textContent === "Most Expensive Card") {
           const valueEl = block.querySelector(".set-stat-value");
-          if (valueEl) valueEl.textContent = formatUsd(mostExpensive.price) || "N/A";
+          if (valueEl) {
+            valueEl.textContent = linkHydrated
+              ? formatUsd(mostExpensive.price) || "N/A"
+              : "…";
+          }
           break;
         }
       }
@@ -2554,7 +2565,11 @@
         const label = block.querySelector(".set-stat-label");
         if (label && label.textContent === "Full Set Market Value") {
           const valueEl = block.querySelector(".set-stat-value");
-          if (valueEl) valueEl.textContent = formatUsd(fullSetValue.total) || "N/A";
+          if (valueEl) {
+            valueEl.textContent = linkHydrated
+              ? formatUsd(fullSetValue.total) || "N/A"
+              : "…";
+          }
           break;
         }
       }
@@ -4816,7 +4831,10 @@
       setPricingLoadPromisesByCode[code] = (async () => {
         await ensureSetPricingManifestLoaded(code, setName);
         await hydrateSetLinkPricesFromCache(code, setName);
-        if (state.selectedSetCode === code && state.selectedCardNumber) {
+        if (
+          String(state.selectedSetCode || "").toUpperCase() === code &&
+          state.selectedCardNumber
+        ) {
           updateCardDetailTcgPanelPrices();
         }
       })();
@@ -6899,7 +6917,18 @@
       return Number.isFinite(fallback) && fallback > 0 ? fallback : null;
     }
 
-    function getEffectiveTcgplayerPrice(pricingInfo, card = null) {
+    function shouldUseManifestPriceSeed(setCode = "") {
+      // English Sets prices should match card-price-value (link cache). Avoid flashing
+      // stale guide/seed totals before hydrate finishes.
+      if (state.language !== "english") return true;
+      const code = String(setCode || state.selectedSetCode || "")
+        .trim()
+        .toUpperCase();
+      if (!code) return true;
+      return Boolean(state.setLinkPricesHydratedBySetCode[code]);
+    }
+
+    function getEffectiveTcgplayerPrice(pricingInfo, card = null, options = {}) {
       const info =
         pricingInfo && typeof pricingInfo === "object"
           ? pricingInfo
@@ -6907,6 +6936,7 @@
             ? getCardPricingInfo(card)
             : null;
       if (!info) return null;
+      const allowSeed = options.seedFallback !== false;
       const resolvedCard = card || null;
       const node = resolvedCard ? getTcgLinkPriceNodeForCard(resolvedCard, info) : null;
       if (node) {
@@ -6921,22 +6951,28 @@
           if (Number.isFinite(resolved) && resolved > 0) return resolved;
         }
       }
+      if (!allowSeed) return null;
       return getManifestCardPriceValue(info);
     }
 
     function formatCardPriceInline(card) {
       const pricingInfo = getCardPricingInfo(card);
-      const total = getEffectiveTcgplayerPrice(pricingInfo, card);
+      const total = getEffectiveTcgplayerPrice(pricingInfo, card, {
+        seedFallback: shouldUseManifestPriceSeed(card?.setCode)
+      });
       if (Number.isFinite(total) && total > 0) return formatUsd(total);
       return "";
     }
 
     function getMostExpensiveCardInSet(cards) {
       const list = Array.isArray(cards) ? cards : [];
+      const allowSeed = shouldUseManifestPriceSeed();
       let bestCard = null;
       let bestPrice = -1;
       for (const card of list) {
-        const price = getEffectiveTcgplayerPrice(getCardPricingInfo(card), card);
+        const price = getEffectiveTcgplayerPrice(getCardPricingInfo(card), card, {
+          seedFallback: allowSeed
+        });
         if (!Number.isFinite(price) || price <= 0) continue;
         if (price > bestPrice) {
           bestPrice = price;
@@ -6951,10 +6987,13 @@
 
     function getFullSetMarketValue(cards) {
       const list = Array.isArray(cards) ? cards : [];
+      const allowSeed = shouldUseManifestPriceSeed();
       let total = 0;
       let count = 0;
       for (const card of list) {
-        const price = getEffectiveTcgplayerPrice(getCardPricingInfo(card), card);
+        const price = getEffectiveTcgplayerPrice(getCardPricingInfo(card), card, {
+          seedFallback: allowSeed
+        });
         if (!Number.isFinite(price) || price <= 0) continue;
         total += price;
         count += 1;
@@ -6979,6 +7018,13 @@
     }
 
     function renderSetCardTileMarkup(card) {
+      const code = String(card?.setCode || state.selectedSetCode || "")
+        .trim()
+        .toUpperCase();
+      const linkHydrated =
+        state.language !== "english" || Boolean(state.setLinkPricesHydratedBySetCode[code]);
+      const inlinePrice = formatCardPriceInline(card);
+      const priceLabel = inlinePrice || (linkHydrated ? "—" : "…");
       return `
               <div class="card-tile-shell" data-card-number="${escapeHtml(card.cardNo)}">
                 ${
@@ -6995,7 +7041,7 @@
                 <div>${renderCardName(card)}</div>
                 <div class="card-meta card-meta-row">
                   <span>${escapeHtml(card.label)}</span>
-                  <span class="card-price-inline">${escapeHtml(formatCardPriceInline(card) || "—")}</span>
+                  <span class="card-price-inline">${escapeHtml(priceLabel)}</span>
                 </div>
                 </button>
               </div>`;
@@ -7021,9 +7067,14 @@
       } else if (state.setSort === "name-desc") {
         list.sort((a, b) => b.name.localeCompare(a.name));
       } else if (state.setSort === "price") {
+        const allowSeed = shouldUseManifestPriceSeed();
         list.sort((a, b) => {
-          const pa = getEffectiveTcgplayerPrice(getCardPricingInfo(a), a);
-          const pb = getEffectiveTcgplayerPrice(getCardPricingInfo(b), b);
+          const pa = getEffectiveTcgplayerPrice(getCardPricingInfo(a), a, {
+            seedFallback: allowSeed
+          });
+          const pb = getEffectiveTcgplayerPrice(getCardPricingInfo(b), b, {
+            seedFallback: allowSeed
+          });
           const aMissing = !Number.isFinite(pa) || pa <= 0;
           const bMissing = !Number.isFinite(pb) || pb <= 0;
           if (aMissing && bMissing) return cardSortNumberKey(a) - cardSortNumberKey(b);
@@ -7034,9 +7085,14 @@
           return cardSortNumberKey(a) - cardSortNumberKey(b);
         });
       } else if (state.setSort === "price-desc") {
+        const allowSeed = shouldUseManifestPriceSeed();
         list.sort((a, b) => {
-          const pa = getEffectiveTcgplayerPrice(getCardPricingInfo(a), a);
-          const pb = getEffectiveTcgplayerPrice(getCardPricingInfo(b), b);
+          const pa = getEffectiveTcgplayerPrice(getCardPricingInfo(a), a, {
+            seedFallback: allowSeed
+          });
+          const pb = getEffectiveTcgplayerPrice(getCardPricingInfo(b), b, {
+            seedFallback: allowSeed
+          });
           const aMissing = !Number.isFinite(pa) || pa <= 0;
           const bMissing = !Number.isFinite(pb) || pb <= 0;
           if (aMissing && bMissing) return cardSortNumberKey(a) - cardSortNumberKey(b);
@@ -7988,12 +8044,16 @@
       const cardsSummaryLabel = `${allCards.length} total`;
       const releaseLabel = formatReleaseDate(selectedSet.releaseDate);
       const mostExpensive = getMostExpensiveCardInSet(allCards);
-      const mostExpensivePriceLabel = formatUsd(mostExpensive.price) || "N/A";
+      const mostExpensivePriceLabel = linkHydrated || state.language !== "english"
+        ? formatUsd(mostExpensive.price) || "N/A"
+        : "…";
       const mostExpensiveCardLink = mostExpensive.card
         ? `<button type="button" id="mostExpensiveCardLink" class="set-stat-sub-link">${escapeHtml(String(getCardDisplayName(mostExpensive.card) || mostExpensive.card.label || "Open card"))}</button>`
         : "";
       const fullSetValue = getFullSetMarketValue(allCards);
-      const fullSetValueLabel = formatUsd(fullSetValue.total) || "N/A";
+      const fullSetValueLabel = linkHydrated || state.language !== "english"
+        ? formatUsd(fullSetValue.total) || "N/A"
+        : "…";
       const numberSortActive = state.setSort === "number" || state.setSort === "number-desc";
       const numberSortArrow = state.setSort === "number-desc" ? "▼" : "▲";
       const nameSortActive = state.setSort === "name" || state.setSort === "name-desc";
