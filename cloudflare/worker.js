@@ -389,6 +389,20 @@ export default {
       await container.fetch(request),
       env
     );
-    return maybeRewriteHtmlNav(request, response);
+    const rewritten = maybeRewriteHtmlNav(request, response);
+    const path = new URL(request.url).pathname;
+    if (
+      path === "/api/tcgplayer/link-cache-meta" ||
+      path === "/api/sets/link-prices"
+    ) {
+      const headers = new Headers(rewritten.headers);
+      headers.set("Cache-Control", "no-store");
+      return new Response(rewritten.body, {
+        status: rewritten.status,
+        statusText: rewritten.statusText,
+        headers
+      });
+    }
+    return rewritten;
   }
 };

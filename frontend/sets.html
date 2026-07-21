@@ -2248,7 +2248,7 @@
     let setDetailRenderPending = false;
     let lastPrimedSetCode = "";
     const TCG_LINK_LOCAL_CACHE_TTL_MS = 60 * 60 * 1000;
-    const TCG_LINK_PRICE_LOGIC_VERSION = 16;
+    const TCG_LINK_PRICE_LOGIC_VERSION = 17;
     let setPriceRerenderTimer = null;
     let setLinkPriceWarmupQueuedCode = "";
     let setPricesLoadToken = 0;
@@ -2272,6 +2272,7 @@
     const setPricingLoadPromisesByCode = Object.create(null);
     const setPricingManifestPromisesByCode = Object.create(null);
     const setLinkHydratePromisesByCode = Object.create(null);
+    const setLinkHydrateTokenByCode = Object.create(null);
 
     /** Load pricing manifest + server link-price cache for the set the user is viewing (not idle-deferred). */
     function primeActiveSetPrices(setCode, setName = "") {
@@ -2423,12 +2424,13 @@
 
     function updateCardDetailTcgPanelPrices() {
       if (!state.selectedSetCode || !state.selectedCardNumber) return;
-      const selectedSet = getSetByCode(state.selectedSetCode);
-      if (!selectedSet) return;
-      const setConfig = detailedSetConfigs[selectedSet.code] || null;
-      const cards = getSetCards(selectedSet, setConfig);
-      const card = findCardInSet(cards, state.selectedCardNumber);
+      const card = getActiveCardDetailCard();
       if (!card) return;
+      const host = document.getElementById("cardPagePricingTcg");
+      if (host) {
+        host.innerHTML = buildCardDetailPricingTcgHtml(card);
+        return;
+      }
       const pricingInfo = getCardPricingInfo(card);
       const variants = resolveTcgPrintVariantsForDisplay(card, pricingInfo);
       const rowEls = document.querySelectorAll(".card-price-panel-tcg .card-price-print-row");
@@ -2608,7 +2610,7 @@
       if (tcgLinkCacheSyncPromise) return tcgLinkCacheSyncPromise;
       tcgLinkCacheSyncPromise = (async () => {
         try {
-          const response = await fetch("/api/tcgplayer/link-cache-meta");
+          const response = await fetch("/api/tcgplayer/link-cache-meta", { cache: "no-store" });
           if (!response.ok) return;
           const meta = await response.json();
           const serverLogic = Number(meta.logicVersion);
@@ -2845,7 +2847,8 @@
         nearMintWithShipping,
         sellerName: raw.sellerName ? String(raw.sellerName) : "",
         pricingLogicVersion: Number(raw.pricingLogicVersion) || 0,
-        fetchedAtMs: Number(raw.fetchedAtMs || 0) || Date.now()
+        fetchedAtMs: Number(raw.fetchedAtMs || 0) || Date.now(),
+        cacheGenerationKey: String(raw.cacheGenerationKey || "").trim()
       };
     }
 
@@ -3323,11 +3326,27 @@
       }
 
       const label = getSingleTcgVariantDisplayLabel(card, pricingInfo);
-      const priceLookupUrl = rawBase || indexed[0]?.priceLookupUrl || indexed[0]?.tcgplayerUrl || "";
+      const source = indexed[0] || null;
+      const priceLookupUrl = normalizeTcgLinkLookupUrl(
+        rawBase || source?.priceLookupUrl || source?.tcgplayerUrl || ""
+      );
       const url =
         baseCanonical || canonicalTcgplayerProductUrl(pricingInfo, card, priceLookupUrl);
       if (!url) return [];
-      return [{ printing: "Normal", label, tcgplayerUrl: url, priceLookupUrl }];
+      return [
+        {
+          printing: source?.printing || "Normal",
+          label,
+          tcgplayerUrl: url,
+          priceLookupUrl: priceLookupUrl || url,
+          nearMintWithShipping: String(
+            source?.nearMintWithShipping || pricingInfo?.nearMintWithShipping || ""
+          ).trim(),
+          listingCondition: String(
+            source?.listingCondition || pricingInfo?.listingCondition || ""
+          ).trim()
+        }
+      ];
     }
 
     function normalizeTcgPrintingFinish(printing) {
@@ -3735,6 +3754,10 @@
     function isTcgLinkPriceNodeStale(node) {
       if (!node || typeof node !== "object") return true;
       if (!isTcgLinkPriceLogicCurrent(node.pricingLogicVersion)) return true;
+      const currentGen = String(state.tcgLinkCacheGenerationKey || "").trim();
+      const nodeGen = String(node.cacheGenerationKey || "").trim();
+      // Once we know the server generation, entries without it (or with an older one) are stale.
+      if (currentGen && nodeGen !== currentGen) return true;
       if (!String(node.listingCondition || "").trim()) return true;
       const hasPrice =
         String(node.nearMintWithShipping || "").trim() ||
@@ -4836,13 +4859,18 @@
       }
 
       setLinkHydratePromisesByCode[code] = (async () => {
+        const hydrateToken = (setLinkHydrateTokenByCode[code] =
+          (Number(setLinkHydrateTokenByCode[code]) || 0) + 1);
         state.setLinkPricesHydratingBySetCode[code] = true;
         try {
           const params = new URLSearchParams({ setCode: code });
           const cleanName = String(setName || "").trim();
           if (cleanName) params.set("setName", cleanName);
-          const response = await fetch(`/api/sets/link-prices?${params.toString()}`);
+          const response = await fetch(`/api/sets/link-prices?${params.toString()}`, {
+            cache: "no-store"
+          });
           const payload = response.ok ? await response.json() : null;
+          if (hydrateToken !== setLinkHydrateTokenByCode[code]) return;
           const payloadLogic = Number(payload?.logicVersion);
           if (Number.isFinite(payloadLogic) && payloadLogic > 0) {
             state.tcgLinkServerLogicVersion = payloadLogic;
@@ -4864,20 +4892,23 @@
                 payloadLogic ??
                 getActiveTcgLinkPriceLogicVersion(),
               fetchedAtMs,
-              cacheGenerationKey: serverKey || hydrationKey
+              cacheGenerationKey: serverKey || hydrationKey || state.tcgLinkCacheGenerationKey
             });
             if (normalized) {
               storeTcgLinkPriceForUrl(url, normalized);
               storedByUrl[url] = normalized;
             }
           }
+          if (hydrateToken !== setLinkHydrateTokenByCode[code]) return;
           applyHydratedLinkPricesToSetPricing(code, storedByUrl);
           state.setLinkPricesHydratedBySetCode[code] = true;
           state.setLinkPricesHydrationKeyByCode[code] = serverKey || hydrationKey;
         } catch {
           // best effort only
         } finally {
-          delete state.setLinkPricesHydratingBySetCode[code];
+          if (hydrateToken === setLinkHydrateTokenByCode[code]) {
+            delete state.setLinkPricesHydratingBySetCode[code];
+          }
           purgeStaleTcgLinkPricesFromClient();
           const viewingSet = String(state.selectedSetCode || "").toUpperCase() === code;
           if (viewingSet) {

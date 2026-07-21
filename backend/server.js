@@ -270,7 +270,9 @@ const TCG_LINK_PRICE_ADMIN_REFRESH_MAX_AGE_MS = 1000 * 60 * 60;
 /** Persist TCG link cache to disk every N processed cards during bulk refresh (reduces IO stalls). */
 const TCG_LINK_PRICE_PERSIST_EVERY = 1000;
 /** Bump when link-price selection rules change (invalidates persisted cache). */
-const TCG_LINK_PRICE_LOGIC_VERSION = 16;
+const TCG_LINK_PRICE_LOGIC_VERSION = 17;
+/** Ignore eligible copies priced under this fraction of TCGplayer market (Mint Collect-style). */
+const TCG_LISTING_MARKET_FLOOR_RATIO = 0.88;
 const TCG_PRICE_GUIDE_INDEX_TTL_MS = 1000 * 60 * 60 * 6;
 /** App set code → TCGplayer price guide slug when auto-matching is unreliable. */
 const TCG_GUIDE_SLUG_BY_SET_CODE = {
@@ -1226,12 +1228,21 @@ async function listEnglishSetPricingTargets() {
 function getTcgLinkCacheMeta() {
   const live = syncTcgBulkPriceCheckCacheCount();
   const cacheSavedAt = tcgBulkPriceCheckMeta.cacheSavedAt || null;
+  const lastSuccessfulAt = tcgBulkPriceCheckMeta.lastSuccessfulAt || null;
   const pricedInCacheCount = Number(live.pricedInCacheCount) || 0;
+  const stamps = adminSetRefreshTimestamps.tcg || {};
+  let setStampRevision = 0;
+  for (const iso of Object.values(stamps)) {
+    const t = Date.parse(String(iso || ""));
+    if (Number.isFinite(t) && t > setStampRevision) setStampRevision = t;
+  }
   return {
     logicVersion: TCG_LINK_PRICE_LOGIC_VERSION,
     cacheSavedAt,
+    lastSuccessfulAt,
+    setStampRevision,
     pricedInCacheCount,
-    cacheGenerationKey: `${TCG_LINK_PRICE_LOGIC_VERSION}::${cacheSavedAt || "unknown"}::${pricedInCacheCount}`,
+    cacheGenerationKey: `${TCG_LINK_PRICE_LOGIC_VERSION}::${cacheSavedAt || "unknown"}::${pricedInCacheCount}::${lastSuccessfulAt || ""}::${setStampRevision}`,
     ...live
   };
 }
@@ -5218,8 +5229,42 @@ function buildTcgListingPick(row, conditionLabel = "") {
   };
 }
 
+/** Tiny paid shipping on mid/high cards is a common bait pattern ($0.05 ship, etc.). */
+function isSuspiciousTcgMicroShipping(listingPrice, shippingPrice) {
+  if (!Number.isFinite(listingPrice) || listingPrice < 3) return false;
+  if (!Number.isFinite(shippingPrice) || shippingPrice <= 0) return false;
+  return shippingPrice < 0.99;
+}
+
+function isBelowTcgMarketFloor(listingPrice, marketPrice, ratio = TCG_LISTING_MARKET_FLOOR_RATIO) {
+  const market = Number(marketPrice);
+  const floorRatio = Number(ratio);
+  if (!Number.isFinite(market) || market < 1) return false;
+  if (!Number.isFinite(listingPrice) || listingPrice <= 0) return true;
+  if (!Number.isFinite(floorRatio) || floorRatio <= 0 || floorRatio >= 1) return false;
+  return listingPrice < market * floorRatio;
+}
+
+/** Drop extreme under-market outliers when no market price is available. */
+function filterTcgListingClusterOutliers(candidates) {
+  const list = Array.isArray(candidates) ? candidates : [];
+  if (list.length < 3) return list;
+  const prices = list
+    .map((row) => Number(row.listingPrice))
+    .filter((n) => Number.isFinite(n) && n > 0)
+    .sort((a, b) => a - b);
+  if (prices.length < 3) return list;
+  const mid = Math.floor(prices.length / 2);
+  const median =
+    prices.length % 2 === 0 ? (prices[mid - 1] + prices[mid]) / 2 : prices[mid];
+  if (!(median > 0)) return list;
+  const floor = median * 0.55;
+  const kept = list.filter((row) => Number(row.listingPrice) >= floor);
+  return kept.length ? kept : list;
+}
+
 /** Cheapest eligible English listing (seller ≥95%): prefer standard over photo/custom,
- *  then NM → LP → MP → HP → Damaged. */
+ *  skip micro-shipping / under-market bait, then NM → LP → MP → HP → Damaged. */
 function pickCheapestTcgListingByCondition(rows, opts = {}) {
   const eligible = Array.isArray(rows) ? rows.filter((row) => isEligibleTcgBuyListing(row)) : [];
   const standard = eligible.filter(
@@ -5229,6 +5274,34 @@ function pickCheapestTcgListingByCondition(rows, opts = {}) {
   const skipPennyWhenHigherTierExists = opts.skipPennyWhenHigherTierExists === true;
   const pennyCeiling = 0.01;
   const higherTierFloor = Number(opts.higherTierListingFloor) > 0 ? Number(opts.higherTierListingFloor) : 0.05;
+  const marketPrice = Number(opts.marketPrice);
+
+  const scored = [];
+  for (const row of list) {
+    const condition = normalizeTcgListingCondition(row?.condition);
+    if (!condition) continue;
+    const listingPrice = Number(row?.sellerPrice ?? row?.price);
+    const shippingPrice = Number(
+      row?.rankedShippingPrice ?? row?.shippingPrice ?? row?.sellerShippingPrice ?? 0
+    );
+    if (!Number.isFinite(listingPrice) || listingPrice <= 0) continue;
+    if (!Number.isFinite(shippingPrice) || shippingPrice < 0) continue;
+    if (isSuspiciousTcgMicroShipping(listingPrice, shippingPrice)) continue;
+    scored.push({
+      row,
+      condition,
+      listingPrice,
+      shippingPrice,
+      total: Number((listingPrice + shippingPrice).toFixed(2))
+    });
+  }
+
+  const withMarketFloor = Number.isFinite(marketPrice) && marketPrice >= 1
+    ? scored.filter((row) => !isBelowTcgMarketFloor(row.listingPrice, marketPrice))
+    : [];
+  const pool = withMarketFloor.length
+    ? withMarketFloor
+    : filterTcgListingClusterOutliers(scored);
 
   for (const condition of TCG_LISTING_CONDITION_PRIORITY) {
     let bestRow = null;
@@ -5238,19 +5311,13 @@ function pickCheapestTcgListingByCondition(rows, opts = {}) {
     let higherTierListingPrice = Number.POSITIVE_INFINITY;
     let higherTierTotal = Number.POSITIVE_INFINITY;
 
-    for (const row of list) {
-      if (normalizeTcgListingCondition(row?.condition) !== condition) continue;
-      const listingPrice = Number(row?.sellerPrice ?? row?.price);
-      const shippingPrice = Number(
-        row?.rankedShippingPrice ?? row?.shippingPrice ?? row?.sellerShippingPrice ?? 0
-      );
-      if (!Number.isFinite(listingPrice) || listingPrice <= 0) continue;
-      if (!Number.isFinite(shippingPrice) || shippingPrice < 0) continue;
+    for (const item of pool) {
+      if (item.condition !== condition) continue;
+      const { row, listingPrice, total } = item;
 
-      const total = Number((listingPrice + shippingPrice).toFixed(2));
       const isBetter =
-        listingPrice < bestListingPrice ||
-        (listingPrice === bestListingPrice && total < bestTotal);
+        total < bestTotal ||
+        (total === bestTotal && listingPrice < bestListingPrice);
       if (isBetter) {
         bestListingPrice = listingPrice;
         bestTotal = total;
@@ -5259,8 +5326,8 @@ function pickCheapestTcgListingByCondition(rows, opts = {}) {
 
       if (listingPrice >= higherTierFloor) {
         const tierBetter =
-          listingPrice < higherTierListingPrice ||
-          (listingPrice === higherTierListingPrice && total < higherTierTotal);
+          total < higherTierTotal ||
+          (total === higherTierTotal && listingPrice < higherTierListingPrice);
         if (tierBetter) {
           higherTierListingPrice = listingPrice;
           higherTierTotal = total;
@@ -5436,7 +5503,8 @@ async function fetchTcgPriceFromProductLink(rawUrl = "", options = {}) {
       }
       const picked = pickTcgListingForProductDisplay(pickRows, {
         skipPennyWhenHigherTierExists: printingNorm === "Reverse Holofoil",
-        higherTierListingFloor: printingNorm === "Reverse Holofoil" ? 0.1 : 0.05
+        higherTierListingFloor: printingNorm === "Reverse Holofoil" ? 0.1 : 0.05,
+        marketPrice: marketPriceFromDetails
       });
 
       if (picked) {
@@ -9989,15 +10057,17 @@ async function route(req, res) {
         return;
       }
       const payload = await buildSetLinkPricesPayload(setCode, setName);
-      json(res, 200, payload);
+      json(res, 200, payload, { "Cache-Control": "no-store" });
     } catch (err) {
-      json(res, 500, { ok: false, error: err.message || "Failed to load set link prices", byUrl: {} });
+      json(res, 500, { ok: false, error: err.message || "Failed to load set link prices", byUrl: {} }, {
+        "Cache-Control": "no-store"
+      });
     }
     return;
   }
 
   if (pathname === "/api/tcgplayer/link-cache-meta" && req.method === "GET") {
-    json(res, 200, { ok: true, ...getTcgLinkCacheMeta() });
+    json(res, 200, { ok: true, ...getTcgLinkCacheMeta() }, { "Cache-Control": "no-store" });
     return;
   }
 
