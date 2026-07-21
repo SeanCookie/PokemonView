@@ -327,6 +327,7 @@ async function refreshPriceChartingCardDetailsBatch(
     onProgress,
     onFail,
     onPersistInterval,
+    onSetComplete,
     shouldCancel = () => false
   } = {}
 ) {
@@ -339,6 +340,31 @@ async function refreshPriceChartingCardDetailsBatch(
   let skipped = 0;
   let processed = 0;
   let currentCard = null;
+  const remainingBySet = new Map();
+  const completedSets = new Set();
+  for (const card of list) {
+    const code = String(card?.setCode || "").trim().toUpperCase();
+    if (!code) continue;
+    remainingBySet.set(code, (remainingBySet.get(code) || 0) + 1);
+  }
+  const markSetDone = (setCode = "") => {
+    const code = String(setCode || "").trim().toUpperCase();
+    if (!code || !remainingBySet.has(code) || completedSets.has(code)) return;
+    const next = (remainingBySet.get(code) || 0) - 1;
+    if (next > 0) {
+      remainingBySet.set(code, next);
+      return;
+    }
+    remainingBySet.set(code, 0);
+    completedSets.add(code);
+    if (typeof onSetComplete === "function") {
+      try {
+        onSetComplete(code);
+      } catch {
+        // best effort
+      }
+    }
+  };
 
   const reportProgress = () => {
     if (typeof onProgress !== "function") return;
@@ -353,6 +379,7 @@ async function refreshPriceChartingCardDetailsBatch(
       currentSetName: String(card.setName || "").trim(),
       currentCardNo: String(card.cardNo || "").trim(),
       currentCardName: String(card.cardName || "").trim(),
+      completedSets: [...completedSets],
       ...getPriceChartingCardDetailsCacheMeta()
     });
   };
@@ -386,6 +413,7 @@ async function refreshPriceChartingCardDetailsBatch(
             onFail(card, err?.message || "PriceCharting details fetch failed");
           }
         }
+        markSetDone(card?.setCode);
         processed += 1;
         if (persistEvery > 0 && processed % persistEvery === 0) {
           // Fire-and-forget so R2 uploads don't pause/OOM the scrape workers.
@@ -414,7 +442,8 @@ async function refreshPriceChartingCardDetailsBatch(
     fail,
     skipped,
     total: list.length,
-    cancelled: shouldCancel()
+    cancelled: shouldCancel(),
+    completedSets: [...completedSets]
   };
 }
 

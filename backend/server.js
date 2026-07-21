@@ -1065,6 +1065,7 @@ async function refreshTcgLinkPricesForUrls(
     concurrency = 6,
     max = 250_000,
     onProgress,
+    onSetComplete,
     skipValidCached = false,
     maxAgeMs = TCG_LINK_PRICE_REFRESH_MAX_AGE_MS,
     persistEvery = TCG_LINK_PRICE_PERSIST_EVERY,
@@ -1085,6 +1086,11 @@ async function refreshTcgLinkPricesForUrls(
   let processed = 0;
   let currentUrl = "";
   let currentCtx = null;
+  const setTracker = createSetCompletionTracker(
+    list,
+    (url) => pcContextByUrl.get(url)?.setCode,
+    onSetComplete
+  );
   const reportProgress = () => {
     const live = syncTcgBulkPriceCheckCacheCount();
     if (typeof onProgress !== "function") return;
@@ -1100,6 +1106,7 @@ async function refreshTcgLinkPricesForUrls(
       currentSetName: String(ctx.setName || "").trim(),
       currentCardNo: String(ctx.cardNo || "").trim(),
       currentCardName: String(ctx.cardName || "").trim(),
+      completedSets: setTracker.completedCodes(),
       ...live
     });
   };
@@ -1137,6 +1144,7 @@ async function refreshTcgLinkPricesForUrls(
           fail += 1;
           recordTcgLinkPriceFailLink(url, err?.message || "Price fetch failed");
         }
+        setTracker.markDone(currentCtx?.setCode);
         processed += 1;
         if (persistEvery > 0 && processed % persistEvery === 0) {
           // Do not await R2 — blocking the pricing workers here stalls/OOM mid-run.
@@ -1148,7 +1156,14 @@ async function refreshTcgLinkPricesForUrls(
     });
     await Promise.all(workers);
     reportProgress();
-    return { ok, fail, skipped, total: list.length, cancelled: isTcgPriceCheckCancelled() };
+    return {
+      ok,
+      fail,
+      skipped,
+      total: list.length,
+      cancelled: isTcgPriceCheckCancelled(),
+      completedSets: setTracker.completedCodes()
+    };
   } finally {
     tcgLinkPriceBulkPersistSuspended = false;
     try {
@@ -1384,6 +1399,9 @@ async function runPriceChartingDetailsPrewarmBackground(triggeredBy = "", option
           recordPriceChartingFailLink(card, error);
         },
         onPersistInterval: () => flushPersistPriceChartingFailLinks(),
+        onSetComplete: (setCode) => {
+          recordAdminSetRefresh("pricecharting", setCode);
+        },
         onProgress: (progress) => {
           priceChartingBulkMeta.progress = {
             total: progress.total,
@@ -1438,9 +1456,16 @@ async function runPriceChartingDetailsPrewarmBackground(triggeredBy = "", option
         fail: pcResult.fail,
         skipped: Number(pcResult.skipped) || 0
       };
+      // One-set Stop after partial work: still stamp that set. Full runs stamp each set as it completes.
       if (onlySetCode) {
-        // Stamp whenever a one-set run finishes and saves (including Stop after partial work).
         recordAdminSetRefresh("pricecharting", onlySetCode, finishedAt);
+      }
+      try {
+        await persistAdminSetRefreshTimestampsNow();
+      } catch (err) {
+        console.warn(
+          `[pricing-cache] PriceCharting set-refresh timestamp persist failed: ${err?.message || err}`
+        );
       }
       console.log(
         `[pricing] PriceCharting card details ${stopped ? "stopped" : "done"}${scopeLabel}: cards=${pcCards.length}, ok=${pcResult.ok}, fail=${pcResult.fail}, skipped=${pcResult.skipped || 0}`
@@ -1990,6 +2015,41 @@ function recordAdminSetRefresh(kind = "", setCode = "", at = "") {
   return iso;
 }
 
+/** Counts items per set and fires once when the last item for a set finishes (ok/fail/skip). */
+function createSetCompletionTracker(items, getSetCode, onSetComplete) {
+  const remaining = new Map();
+  for (const item of Array.isArray(items) ? items : []) {
+    const code = String(typeof getSetCode === "function" ? getSetCode(item) : "").trim().toUpperCase();
+    if (!code) continue;
+    remaining.set(code, (remaining.get(code) || 0) + 1);
+  }
+  const completed = new Set();
+  return {
+    markDone(setCode = "") {
+      const code = String(setCode || "").trim().toUpperCase();
+      if (!code || !remaining.has(code) || completed.has(code)) return false;
+      const next = (remaining.get(code) || 0) - 1;
+      if (next > 0) {
+        remaining.set(code, next);
+        return false;
+      }
+      remaining.set(code, 0);
+      completed.add(code);
+      if (typeof onSetComplete === "function") {
+        try {
+          onSetComplete(code);
+        } catch {
+          // best effort
+        }
+      }
+      return true;
+    },
+    completedCodes() {
+      return [...completed];
+    }
+  };
+}
+
 function getPriceChartingAdminMeta() {
   const disk = getPriceChartingCardDetailsCacheMeta();
   const cacheEntryCount = Number(priceChartingBulkMeta.cacheEntryCount) || disk.cacheEntryCount || 0;
@@ -2388,6 +2448,9 @@ async function runAdminBulkTcgPriceCheck(triggeredBy = "") {
         maxAgeMs: TCG_LINK_PRICE_ADMIN_REFRESH_MAX_AGE_MS,
         persistEvery: TCG_LINK_PRICE_PERSIST_EVERY,
         priceChartingContextByUrl: pricingCtx,
+        onSetComplete: (setCode) => {
+          recordAdminSetRefresh("tcg", setCode);
+        },
         onProgress: (progress) => {
           tcgBulkPriceCheckMeta.progress = {
             total: progress.total,
@@ -2444,6 +2507,11 @@ async function runAdminBulkTcgPriceCheck(triggeredBy = "") {
         fail,
         skipped: Number(skipped) || 0
       };
+      try {
+        await persistAdminSetRefreshTimestampsNow();
+      } catch (err) {
+        console.warn(`[pricing-cache] TCG set-refresh timestamp persist failed: ${err?.message || err}`);
+      }
       tcgLinkPricePrewarmStatus = {
         lastRunAt: finishedAt,
         lastElapsedSec: Math.round((Date.now() - Date.parse(startedAt)) / 1000),
@@ -2607,6 +2675,11 @@ async function runAdminTcgPriceCheckForSet(setCode = "", setName = "", triggered
       };
       // Stamp whenever a one-set run finishes and saves (including Stop after partial work).
       recordAdminSetRefresh("tcg", code, finishedAt);
+      try {
+        await persistAdminSetRefreshTimestampsNow();
+      } catch (err) {
+        console.warn(`[pricing-cache] TCG set-refresh timestamp persist failed: ${err?.message || err}`);
+      }
       console.log(
         `[admin] set TCG price check ${stopped ? "stopped" : "done"} for ${code}: urls=${urls.length}, ok=${ok}, fail=${fail}, skipped=${skipped || 0}`
       );

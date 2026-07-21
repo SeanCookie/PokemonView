@@ -1,6 +1,6 @@
 # Cloudflare Containers image (linux/amd64).
 # Card art is served from R2 — never COPY backend/data/card-images into this image.
-# cache-bust: 2026-07-20-pc-correct-link-v21
+# cache-bust: 2026-07-20-set-stamps-on-update-all-v22
 FROM node:20-bookworm-slim
 
 WORKDIR /app

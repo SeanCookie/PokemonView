@@ -1567,13 +1567,22 @@
     return { inFlight: pcBusy, pcBusy, meta: payload.meta || {} };
   }
 
+  let tcgSetOptionsRefreshAt = 0;
+  let pcSetOptionsRefreshAt = 0;
+
   function startTcgLivePolling() {
     if (tcgPollTimer) return;
     tcgPollTimer = setInterval(() => {
       refreshTcgCacheLive()
-        .then(({ inFlight, meta }) => {
+        .then(async ({ inFlight, meta }) => {
+          const now = Date.now();
+          if (inFlight && now - tcgSetOptionsRefreshAt > 8000) {
+            tcgSetOptionsRefreshAt = now;
+            await loadTcgSetOptions().catch(() => {});
+          }
           if (!inFlight) {
             stopTcgLivePolling();
+            await loadTcgSetOptions().catch(() => {});
             loadDashboard()
               .then(() => {
                 const status = String(tcgStatusBadge?.textContent || "").trim().toLowerCase();
@@ -1604,9 +1613,15 @@
     if (pcPollTimer) return;
     pcPollTimer = setInterval(() => {
       refreshPcCacheLive()
-        .then(({ inFlight, meta }) => {
+        .then(async ({ inFlight, meta }) => {
+          const now = Date.now();
+          if (inFlight && now - pcSetOptionsRefreshAt > 8000) {
+            pcSetOptionsRefreshAt = now;
+            await loadTcgSetOptions().catch(() => {});
+          }
           if (!inFlight) {
             stopPcLivePolling();
+            await loadTcgSetOptions().catch(() => {});
             loadDashboard()
               .then(() => {
                 const status = String(pcStatusBadge?.textContent || "").trim().toLowerCase();
