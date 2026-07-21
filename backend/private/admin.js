@@ -471,7 +471,7 @@
 
     if (btnRestockRefresh) {
       btnRestockRefresh.disabled = busy;
-      btnRestockRefresh.textContent = busy ? "Refresh running…" : "Refresh restock tracker";
+      btnRestockRefresh.textContent = busy ? "Refresh running…" : "Refresh cache";
     }
     if (btnRestockStop) {
       btnRestockStop.hidden = !busy;

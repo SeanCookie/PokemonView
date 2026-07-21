@@ -7887,7 +7887,16 @@ function clearHourlyPricingCaches() {
 }
 
 function startRestockHourlyRefreshLoop() {
-  if (restockRefreshTimer || restockRefreshKickoffTimer) return;
+  // Restock cache is manual-only (Admin → Restock Tracker cache → Refresh).
+  // Keep loading meta so the admin card shows last refresh / item counts.
+  if (restockRefreshTimer) {
+    clearInterval(restockRefreshTimer);
+    restockRefreshTimer = null;
+  }
+  if (restockRefreshKickoffTimer) {
+    clearTimeout(restockRefreshKickoffTimer);
+    restockRefreshKickoffTimer = null;
+  }
 
   readRestockTrackerMeta()
     .then((meta) => {
@@ -7896,19 +7905,7 @@ function startRestockHourlyRefreshLoop() {
     })
     .catch(() => {});
 
-  const initialDelayMs = getMsUntilNextTopOfHour();
-  const nextRunAt = new Date(Date.now() + initialDelayMs).toISOString();
-  console.log(
-    `[restock-hourly] next run at ${nextRunAt} (aligned to HH:00, in ${Math.round(initialDelayMs / 1000)}s)`
-  );
-
-  restockRefreshKickoffTimer = setTimeout(() => {
-    restockRefreshKickoffTimer = null;
-    refreshRestockTrackerHourlyTick().catch(() => {});
-    restockRefreshTimer = setInterval(() => {
-      refreshRestockTrackerHourlyTick().catch(() => {});
-    }, RESTOCK_AUTO_REFRESH_MS);
-  }, initialDelayMs);
+  console.log("[restock] auto hourly refresh disabled; use Admin refresh button");
 }
 
 async function fetchProviderPrices(item) {
@@ -11511,9 +11508,7 @@ async function bootstrapServer({ hosted = false } = {}) {
 function onServerListening() {
   // eslint-disable-next-line no-console
   console.log(`PokemonView running at http://localhost:${PORT}`);
-  console.log(
-    `[restock-hourly] enabled (interval=${Math.round(RESTOCK_AUTO_REFRESH_MS / 60000)}m)`
-  );
+  console.log("[restock] auto hourly refresh disabled; use Admin → Restock Tracker cache");
   console.log(
     "[startup] TCG link prices serve from disk cache; Admin → Update all re-fetches every link; hourly job refreshes entries older than 24h"
   );

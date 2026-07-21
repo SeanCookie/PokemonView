@@ -209,7 +209,7 @@
 
     <section class="admin-card" id="restockCacheCard">
       <h2>Restock Tracker cache</h2>
-      <p class="admin-hint">Re-check tracked product pages for stock status and prices, then save the result to <code>restock-tracker.json</code>. Also runs automatically each hour.</p>
+      <p class="admin-hint">Re-check tracked product pages for stock status and prices, then save the result to <code>restock-tracker.json</code>. Refresh is manual only — use the button below when you want an update.</p>
       <div class="admin-stat">
         <span class="label">Last cache refresh</span>
         <span class="value mono" id="restockLastRefresh">—</span>
@@ -239,7 +239,7 @@
         <div class="restock-retailer-list" id="restockRetailerList"></div>
       </div>
       <div class="admin-actions">
-        <button type="button" class="admin-btn primary" id="btnRestockRefresh">Refresh restock tracker</button>
+        <button type="button" class="admin-btn primary" id="btnRestockRefresh">Refresh cache</button>
         <button type="button" class="admin-btn danger" id="btnRestockStop" hidden>Stop restock refresh</button>
       </div>
       <p class="admin-status" id="restockRefreshMsg"></p>
