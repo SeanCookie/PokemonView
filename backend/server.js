@@ -1242,7 +1242,9 @@ function getTcgLinkCacheMeta() {
     lastSuccessfulAt,
     setStampRevision,
     pricedInCacheCount,
-    cacheGenerationKey: `${TCG_LINK_PRICE_LOGIC_VERSION}::${cacheSavedAt || "unknown"}::${pricedInCacheCount}::${lastSuccessfulAt || ""}::${setStampRevision}`,
+    // Keep this stable while background drain fills the cache. Including pricedInCacheCount
+    // or lastSuccessfulAt forced Sets clients to wipe + re-hydrate every few seconds.
+    cacheGenerationKey: `${TCG_LINK_PRICE_LOGIC_VERSION}::${cacheSavedAt || "unknown"}::${setStampRevision}`,
     ...live
   };
 }
@@ -1263,31 +1265,16 @@ async function buildSetLinkPricesPayload(setCode = "", setName = "") {
     }
   }
   const urls = manifest ? collectTcgplayerUrlsFromPricingManifest(manifest) : [];
-  const priceChartingContextByUrl = manifest
-    ? buildTcgUrlPriceChartingContextFromManifest(manifest, setCode, setName)
-    : new Map();
   const byUrl = {};
   const pendingUrls = [];
+  // Serve disk-cache hits only — no serial PriceCharting fallbacks on this hot path.
+  // Missing URLs are queued for background refresh; Sets UI hydrates instantly from cache.
   for (const url of urls) {
     const productId = extractTcgplayerProductIdFromUrl(url);
     if (!productId) continue;
     const cached = readTcgLinkPriceFromCache(productId, url);
     if (cached) {
       const node = toTcgLinkPriceClientNode(cached);
-      if (node) byUrl[url] = node;
-      continue;
-    }
-    const pcContext = priceChartingContextByUrl.get(url) || null;
-    const pcFallback = await buildTcgPriceFromPriceChartingUngraded(productId, url, pcContext);
-    if (pcFallback && tcgLinkPriceCacheValueValid(pcFallback)) {
-      const cacheKey = getTcgLinkPriceCacheKey(url, productId) || String(productId);
-      tcgLinkPriceCache.set(cacheKey, {
-        value: pcFallback,
-        expiresAt: Date.now() + TCG_LINK_PRICE_CACHE_TTL_MS
-      });
-      schedulePersistTcgLinkPriceCache();
-      removeTcgLinkPriceFailLink(url);
-      const node = toTcgLinkPriceClientNode(pcFallback);
       if (node) byUrl[url] = node;
       continue;
     }

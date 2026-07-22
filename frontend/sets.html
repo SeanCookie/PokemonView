@@ -2547,30 +2547,20 @@
         priceEl.textContent = inline || (linkHydrated ? "—" : "…");
       });
       const mostExpensive = getMostExpensiveCardInSet(allCards);
+      const mostExpensiveText =
+        formatUsd(mostExpensive.price) || (linkHydrated ? "N/A" : "…");
+      const fullSetValue = getFullSetMarketValue(allCards);
+      const fullSetText = formatUsd(fullSetValue.total) || (linkHydrated ? "N/A" : "…");
       const statBlocks = content.querySelectorAll(".set-stat");
       for (const block of statBlocks) {
         const label = block.querySelector(".set-stat-label");
-        if (label && label.textContent === "Most Expensive Card") {
+        const labelText = String(label?.textContent || "").trim();
+        if (labelText === "Most Expensive Card") {
           const valueEl = block.querySelector(".set-stat-value");
-          if (valueEl) {
-            valueEl.textContent = linkHydrated
-              ? formatUsd(mostExpensive.price) || "N/A"
-              : "…";
-          }
-          break;
-        }
-      }
-      const fullSetValue = getFullSetMarketValue(allCards);
-      for (const block of statBlocks) {
-        const label = block.querySelector(".set-stat-label");
-        if (label && label.textContent === "Full Set Market Value") {
+          if (valueEl) valueEl.textContent = mostExpensiveText;
+        } else if (labelText === "Full Set Market Value") {
           const valueEl = block.querySelector(".set-stat-value");
-          if (valueEl) {
-            valueEl.textContent = linkHydrated
-              ? formatUsd(fullSetValue.total) || "N/A"
-              : "…";
-          }
-          break;
+          if (valueEl) valueEl.textContent = fullSetText;
         }
       }
     }
@@ -2600,11 +2590,11 @@
       state.setLinkPricesHydratingBySetCode = {};
     }
 
-    function tcgLinkCacheNeedsClientRefresh(prevKey, nextKey, prevPriced, nextPriced) {
+    function tcgLinkCacheNeedsClientRefresh(prevKey, nextKey, _prevPriced, _nextPriced) {
       if (!nextKey) return false;
+      // Only wipe when the generation identity changes (admin refresh / logic bump).
+      // Cache growth alone must not clear prices — that left stats stuck on "…" forever.
       if (prevKey && prevKey !== nextKey) return true;
-      // Same generation key but cache grew (partial admin run / background drain).
-      if (Number(nextPriced) > Number(prevPriced)) return true;
       return false;
     }
 
@@ -2655,6 +2645,16 @@
             }
           } else if (nextKey && !prevKey && state.selectedSetCode && state.language === "english") {
             scheduleSetLinkPriceWarmup(state.selectedSetCode, state.selectedSetName);
+          } else if (
+            Number(nextPriced) > Number(prevPriced) &&
+            state.selectedSetCode &&
+            state.language === "english"
+          ) {
+            // Soft merge new cache rows; do not wipe or block the UI.
+            void hydrateSetLinkPricesFromCache(state.selectedSetCode, state.selectedSetName, {
+              force: true,
+              quiet: true
+            });
           }
 
           purgeStaleTcgLinkPricesFromClient();
@@ -4925,13 +4925,26 @@
           // best effort only
         } finally {
           if (hydrateToken === setLinkHydrateTokenByCode[code]) {
+            // Always clear the "…" gate so stats can show cache hits or seed fallbacks.
+            if (!state.setLinkPricesHydratedBySetCode[code]) {
+              state.setLinkPricesHydratedBySetCode[code] = true;
+              state.setLinkPricesHydrationKeyByCode[code] = String(
+                state.tcgLinkCacheGenerationKey || hydrationKey || ""
+              );
+            }
             delete state.setLinkPricesHydratingBySetCode[code];
           }
           purgeStaleTcgLinkPricesFromClient();
           const viewingSet = String(state.selectedSetCode || "").toUpperCase() === code;
           if (viewingSet) {
-            scheduleSetPriceRerender();
-            if (state.selectedCardNumber) updateCardDetailTcgPanelPrices();
+            if (state.selectedCardNumber) {
+              updateCardDetailTcgPanelPrices();
+            } else if (options.quiet) {
+              updateSetDetailInlinePrices();
+            } else {
+              // Re-render once so Most Expensive / Full Set Market Value + card link refresh.
+              renderSelectedSetDetail();
+            }
           } else if (String(state.query || "").trim() && !state.selectedSetCode) {
             scheduleSetPriceRerender();
           }
@@ -8044,16 +8057,16 @@
       const cardsSummaryLabel = `${allCards.length} total`;
       const releaseLabel = formatReleaseDate(selectedSet.releaseDate);
       const mostExpensive = getMostExpensiveCardInSet(allCards);
-      const mostExpensivePriceLabel = linkHydrated || state.language !== "english"
-        ? formatUsd(mostExpensive.price) || "N/A"
-        : "…";
+      const mostExpensivePriceLabel =
+        formatUsd(mostExpensive.price) ||
+        (linkHydrated || state.language !== "english" ? "N/A" : "…");
       const mostExpensiveCardLink = mostExpensive.card
         ? `<button type="button" id="mostExpensiveCardLink" class="set-stat-sub-link">${escapeHtml(String(getCardDisplayName(mostExpensive.card) || mostExpensive.card.label || "Open card"))}</button>`
         : "";
       const fullSetValue = getFullSetMarketValue(allCards);
-      const fullSetValueLabel = linkHydrated || state.language !== "english"
-        ? formatUsd(fullSetValue.total) || "N/A"
-        : "…";
+      const fullSetValueLabel =
+        formatUsd(fullSetValue.total) ||
+        (linkHydrated || state.language !== "english" ? "N/A" : "…");
       const numberSortActive = state.setSort === "number" || state.setSort === "number-desc";
       const numberSortArrow = state.setSort === "number-desc" ? "▼" : "▲";
       const nameSortActive = state.setSort === "name" || state.setSort === "name-desc";
