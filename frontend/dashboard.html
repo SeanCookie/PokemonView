@@ -675,6 +675,74 @@
       margin-bottom: 12px;
     }
 
+    .binder-pick-browse-nav {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .binder-pick-browse-nav[hidden] {
+      display: none !important;
+    }
+
+    .binder-pick-browse-nav .ghost {
+      height: 32px;
+      padding: 0 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #0f1726;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    .binder-pick-browse-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    .binder-set-list {
+      display: grid;
+      gap: 6px;
+    }
+
+    .binder-set-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      width: 100%;
+      text-align: left;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #0f1726;
+      color: inherit;
+      font: inherit;
+      padding: 10px 12px;
+      cursor: pointer;
+    }
+
+    .binder-set-row:hover {
+      border-color: #4f6e9c;
+      background: rgba(79, 110, 156, 0.16);
+    }
+
+    .binder-set-row-name {
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .binder-set-row-meta {
+      font-size: 11px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
     .binder-pick-panel .add-card-row {
       margin-bottom: 10px;
     }
@@ -1027,10 +1095,15 @@
   <div id="binderPickModal" class="modal-backdrop" aria-hidden="true">
     <section class="add-card-panel binder-pick-panel" role="dialog" aria-labelledby="binderPickTitle" aria-modal="true">
       <h2 id="binderPickTitle">Add card to pocket</h2>
-      <p class="subtle">Choose a card from your collection or search the Sets catalog.</p>
+      <p class="subtle">Choose a card from your collection, search the catalog, or browse a full set in number order.</p>
       <div class="binder-pick-tabs" role="tablist" aria-label="Binder card source">
         <button type="button" class="showcase-tab active" data-binder-pick-source="collection">My collection</button>
         <button type="button" class="showcase-tab" data-binder-pick-source="search">Search catalog</button>
+        <button type="button" class="showcase-tab" data-binder-pick-source="sets">Browse sets</button>
+      </div>
+      <div id="binderPickBrowseNav" class="binder-pick-browse-nav" hidden>
+        <button type="button" class="ghost" id="binderPickBackSets">← Sets</button>
+        <span id="binderPickBrowseSetLabel" class="binder-pick-browse-label"></span>
       </div>
       <div class="add-card-row">
         <input id="binderPickSearch" type="search" autocomplete="off" placeholder="Search cards…" />
@@ -1076,6 +1149,7 @@
         pageIndex: 0,
         pickSlot: null,
         pickSource: "collection",
+        pickBrowseSetCode: "",
         saveTimer: null,
         loaded: false
       }
@@ -1942,8 +2016,113 @@
       });
     }
 
+    function binderCardNumberSortKey(cardNo) {
+      const raw = String(cardNo || "").trim();
+      const match = raw.match(/^(\d+)/);
+      const n = match ? Number(match[1]) : Number.POSITIVE_INFINITY;
+      return { n: Number.isFinite(n) ? n : Number.POSITIVE_INFINITY, raw: raw.toLowerCase() };
+    }
+
+    function compareBinderCardsByNumber(a, b) {
+      const ka = binderCardNumberSortKey(a.cardNo);
+      const kb = binderCardNumberSortKey(b.cardNo);
+      if (ka.n !== kb.n) return ka.n - kb.n;
+      if (ka.raw !== kb.raw) return ka.raw.localeCompare(kb.raw);
+      return String(a.card || "").localeCompare(String(b.card || ""));
+    }
+
+    function listBinderBrowseSets() {
+      const catalog = getEnglishSetsCatalog();
+      const counts = new Map();
+      for (const row of state.cardIndex) {
+        const code = String(row.setCode || "").toUpperCase();
+        if (!code) continue;
+        counts.set(code, (counts.get(code) || 0) + 1);
+      }
+      const out = [];
+      for (const [era, list] of orderedEnglishEraEntries(catalog)) {
+        for (const row of list || []) {
+          const code = String(row.code || "").toUpperCase();
+          const count = counts.get(code) || 0;
+          if (!code || count <= 0) continue;
+          out.push({
+            code,
+            name: decodeHtml(row.name || code).trim() || code,
+            era,
+            count
+          });
+        }
+      }
+      return out;
+    }
+
+    function updateBinderPickSearchUi() {
+      const search = byId("binderPickSearch");
+      const nav = byId("binderPickBrowseNav");
+      const label = byId("binderPickBrowseSetLabel");
+      const browsingSets = state.binder.pickSource === "sets";
+      const inSet = browsingSets && Boolean(state.binder.pickBrowseSetCode);
+      if (nav) {
+        if (inSet) nav.removeAttribute("hidden");
+        else nav.setAttribute("hidden", "");
+      }
+      if (label && inSet) {
+        const setRow = listBinderBrowseSets().find(
+          (row) => row.code === String(state.binder.pickBrowseSetCode || "").toUpperCase()
+        );
+        const fromCard = state.cardIndex.find(
+          (row) => row.setCode === String(state.binder.pickBrowseSetCode || "").toUpperCase()
+        );
+        label.textContent =
+          setRow?.name || fromCard?.setDisplayName || state.binder.pickBrowseSetCode || "Set";
+      }
+      if (!search) return;
+      if (state.binder.pickSource === "sets" && !inSet) {
+        search.placeholder = "Filter sets…";
+      } else if (state.binder.pickSource === "sets" && inSet) {
+        search.placeholder = "Filter cards in this set…";
+      } else if (state.binder.pickSource === "search") {
+        search.placeholder = "Search cards by name, number, or set…";
+      } else {
+        search.placeholder = "Search your collection…";
+      }
+    }
+
+    function bindBinderCatalogTiles(grid) {
+      grid.querySelectorAll("[data-binder-catalog-id]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const row = state.cardIndexById[btn.getAttribute("data-binder-catalog-id") || ""];
+          if (!row) return;
+          placeBinderSlot({
+            name: row.card,
+            setCode: row.setCode,
+            setName: row.setDisplayName,
+            cardNumber: row.cardNo,
+            imageUrl: row.imageUrl || "",
+            collectionItemId: "",
+            source: "catalog"
+          });
+        });
+      });
+    }
+
+    function renderBinderCatalogCardTiles(grid, rows) {
+      grid.classList.add("add-card-grid");
+      grid.classList.remove("binder-set-list");
+      grid.innerHTML = rows
+        .map((row) => {
+          const thumb = row.imageUrl
+            ? `<img class="add-card-thumb" src="${escapeAttr(row.imageUrl)}" alt="" loading="lazy" />`
+            : `<div class="add-card-thumb add-card-thumb--ph" aria-hidden="true">No image</div>`;
+          return `<button type="button" class="add-card-tile" data-binder-catalog-id="${escapeAttr(row.id)}">${thumb}<div class="add-card-tile-name">${escapeHtml(row.card)}</div><div class="add-card-tile-meta">#${escapeHtml(row.cardNo)} · ${escapeHtml(row.setCode)}</div></button>`;
+        })
+        .join("");
+      bindBinderCatalogTiles(grid);
+    }
+
     function openBinderPickModal(slotIndex) {
       state.binder.pickSlot = { pageIndex: state.binder.pageIndex, slotIndex };
+      state.binder.pickBrowseSetCode = "";
       const modal = byId("binderPickModal");
       if (!modal) return;
       modal.classList.add("open");
@@ -1954,11 +2133,13 @@
         search.focus();
       }
       syncBinderPickTabs();
+      updateBinderPickSearchUi();
       void renderBinderPickGrid();
     }
 
     function closeBinderPickModal() {
       state.binder.pickSlot = null;
+      state.binder.pickBrowseSetCode = "";
       const modal = byId("binderPickModal");
       if (!modal) return;
       modal.classList.remove("open");
@@ -1977,6 +2158,67 @@
       const searchInput = byId("binderPickSearch");
       if (!grid || !searchInput) return;
       const query = toQueryText(searchInput.value);
+      updateBinderPickSearchUi();
+
+      if (state.binder.pickSource === "sets") {
+        try {
+          await Promise.all([loadCardsFromSetsIndex(), loadSetProgressData()]);
+        } catch {
+          grid.innerHTML = `<div class="add-card-grid-empty">Could not load the Sets catalog.</div>`;
+          return;
+        }
+
+        const browseCode = String(state.binder.pickBrowseSetCode || "").toUpperCase();
+        if (browseCode) {
+          const cards = state.cardIndex
+            .filter((row) => row.setCode === browseCode)
+            .filter((row) => {
+              if (!query) return true;
+              return toQueryText(`${row.card} ${row.cardNo}`).includes(query);
+            })
+            .sort(compareBinderCardsByNumber);
+          if (!cards.length) {
+            grid.classList.add("add-card-grid");
+            grid.classList.remove("binder-set-list");
+            grid.innerHTML = `<div class="add-card-grid-empty">${
+              query ? "No cards in this set match that filter." : "No cards found for this set."
+            }</div>`;
+            return;
+          }
+          renderBinderCatalogCardTiles(grid, cards);
+          return;
+        }
+
+        const sets = listBinderBrowseSets().filter((row) => {
+          if (!query) return true;
+          return toQueryText(`${row.name} ${row.code} ${row.era}`).includes(query);
+        });
+        grid.classList.remove("add-card-grid");
+        grid.classList.add("binder-set-list");
+        if (!sets.length) {
+          grid.innerHTML = `<div class="add-card-grid-empty">${
+            query ? "No sets match that filter." : "No sets available yet."
+          }</div>`;
+          return;
+        }
+        grid.innerHTML = sets
+          .map(
+            (row) => `<button type="button" class="binder-set-row" data-binder-set-code="${escapeAttr(row.code)}">
+              <span class="binder-set-row-name">${escapeHtml(row.name)}</span>
+              <span class="binder-set-row-meta">${escapeHtml(row.code)} · ${row.count} cards</span>
+            </button>`
+          )
+          .join("");
+        grid.querySelectorAll("[data-binder-set-code]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            state.binder.pickBrowseSetCode = btn.getAttribute("data-binder-set-code") || "";
+            const search = byId("binderPickSearch");
+            if (search) search.value = "";
+            void renderBinderPickGrid();
+          });
+        });
+        return;
+      }
 
       if (state.binder.pickSource === "search") {
         try {
@@ -1994,6 +2236,8 @@
           })
           .slice(0, 300);
         if (!filtered.length) {
+          grid.classList.add("add-card-grid");
+          grid.classList.remove("binder-set-list");
           grid.innerHTML = `<div class="add-card-grid-empty">${
             query
               ? "No catalog matches."
@@ -2001,32 +2245,12 @@
           }</div>`;
           return;
         }
-        grid.innerHTML = filtered
-          .map((row) => {
-            const thumb = row.imageUrl
-              ? `<img class="add-card-thumb" src="${escapeAttr(row.imageUrl)}" alt="" loading="lazy" />`
-              : `<div class="add-card-thumb add-card-thumb--ph" aria-hidden="true">No image</div>`;
-            return `<button type="button" class="add-card-tile" data-binder-catalog-id="${escapeAttr(row.id)}">${thumb}<div class="add-card-tile-name">${escapeHtml(row.card)}</div><div class="add-card-tile-meta">${escapeHtml(row.setDisplayName)} · ${escapeHtml(row.setCode)} #${escapeHtml(row.cardNo)}</div></button>`;
-          })
-          .join("");
-        grid.querySelectorAll("[data-binder-catalog-id]").forEach((btn) => {
-          btn.addEventListener("click", () => {
-            const row = state.cardIndexById[btn.getAttribute("data-binder-catalog-id") || ""];
-            if (!row) return;
-            placeBinderSlot({
-              name: row.card,
-              setCode: row.setCode,
-              setName: row.setDisplayName,
-              cardNumber: row.cardNo,
-              imageUrl: row.imageUrl || "",
-              collectionItemId: "",
-              source: "catalog"
-            });
-          });
-        });
+        renderBinderCatalogCardTiles(grid, filtered);
         return;
       }
 
+      grid.classList.add("add-card-grid");
+      grid.classList.remove("binder-set-list");
       const singles = state.items.filter((item) => item.type !== "sealed");
       const filtered = singles
         .filter((item) => {
@@ -2040,7 +2264,7 @@
         grid.innerHTML = `<div class="add-card-grid-empty">${
           singles.length
             ? "No collection cards match that search."
-            : "Your collection has no cards yet. Add some first, or use Search catalog."
+            : "Your collection has no cards yet. Add some first, or use Search catalog / Browse sets."
         }</div>`;
         return;
       }
@@ -2267,9 +2491,19 @@
     document.querySelectorAll("[data-binder-pick-source]").forEach((btn) => {
       btn.addEventListener("click", () => {
         state.binder.pickSource = btn.getAttribute("data-binder-pick-source") || "collection";
+        state.binder.pickBrowseSetCode = "";
+        const search = byId("binderPickSearch");
+        if (search) search.value = "";
         syncBinderPickTabs();
+        updateBinderPickSearchUi();
         void renderBinderPickGrid();
       });
+    });
+    byId("binderPickBackSets")?.addEventListener("click", () => {
+      state.binder.pickBrowseSetCode = "";
+      const search = byId("binderPickSearch");
+      if (search) search.value = "";
+      void renderBinderPickGrid();
     });
     byId("binderPickSearch")?.addEventListener("input", () => {
       void renderBinderPickGrid();
