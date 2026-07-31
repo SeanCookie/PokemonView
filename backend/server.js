@@ -8210,6 +8210,7 @@ function sendStatic(req, res, pathname) {
     if (
       ext === ".html" ||
       path.basename(filePath) === "showcase.js" ||
+      path.basename(filePath) === "showcase.css" ||
       path.basename(filePath) === "account-ui.js"
     ) {
       headers["Cache-Control"] = "no-store";
