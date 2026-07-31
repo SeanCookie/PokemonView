@@ -213,6 +213,19 @@ body {
   font-family: inherit;
 }
 
+/* Author display rules beat the UA [hidden] stylesheet — force hide. */
+.showcase-grid[hidden],
+.showcase-binder[hidden],
+.showcase-empty[hidden],
+.showcase-error[hidden],
+.showcase-hero[hidden],
+.showcase-stats[hidden],
+.showcase-toolbar[hidden],
+.showcase-landing[hidden],
+.showcase-owner-banner[hidden] {
+  display: none !important;
+}
+
 .showcase-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));

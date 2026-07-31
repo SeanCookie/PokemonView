@@ -421,21 +421,35 @@
   function renderGrid() {
     if (state.filter === "binder") {
       setVisible(els.grid, false);
+      if (els.grid) els.grid.innerHTML = "";
       return;
     }
     const list = filteredItems();
     if (!list.length) {
       setVisible(els.grid, false);
-      if (state.filter !== "binder") {
-        setVisible(els.empty, true);
-        els.empty.innerHTML = state.items.length
-          ? `<h2>No matches</h2><p>Try another filter or search term.</p>`
-          : `<h2>No cards to show yet</h2><p>This collector has not added items to their showcase.</p>`;
+      if (els.grid) els.grid.innerHTML = "";
+      setVisible(els.empty, true);
+      const filteredOut =
+        state.filter === "sealed"
+          ? state.items.some((item) => item.type === "sealed")
+          : state.filter === "single"
+            ? state.items.some((item) => item.type === "single")
+            : state.items.length;
+      if (!state.items.length) {
+        els.empty.innerHTML = `<h2>No cards to show yet</h2><p>This collector has not added items to their showcase.</p>`;
+      } else if (state.filter === "sealed" && !filteredOut) {
+        els.empty.innerHTML = `<h2>No sealed products</h2><p>This collector has not added sealed items yet.</p>`;
+      } else if (state.filter === "single" && !filteredOut) {
+        els.empty.innerHTML = `<h2>No singles</h2><p>This collector has not added singles yet.</p>`;
+      } else {
+        els.empty.innerHTML = `<h2>No matches</h2><p>Try another filter or search term.</p>`;
       }
       return;
     }
 
     setVisible(els.empty, false);
+    setVisible(els.binder, false);
+    if (els.binder) els.binder.innerHTML = "";
     setVisible(els.grid, true);
     const showValues = showValuesEnabled();
     els.grid.innerHTML = list
@@ -488,12 +502,13 @@
       setVisible(els.empty, true);
       els.empty.innerHTML = state.binderPages.length
         ? `<h2>No matches</h2><p>Try another search term.</p>`
-        : `<h2>No finished binder pages yet</h2><p>Complete a full 9-pocket binder page in your Collection to show it here.</p>`;
+        : `<h2>No binder pages yet</h2><p>This collector has not built a binder in their Collection yet.</p>`;
       return;
     }
 
     setVisible(els.empty, false);
     setVisible(els.grid, false);
+    if (els.grid) els.grid.innerHTML = "";
     setVisible(els.binder, true);
     els.binder.innerHTML = pages
       .map((page) => {

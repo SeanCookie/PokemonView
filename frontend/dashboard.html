@@ -180,30 +180,56 @@
       border-color: #4f6e9c;
     }
 
+    /* Match Sets page owned-remove control */
     .collection-card-remove {
       position: absolute;
       top: 6px;
       right: 6px;
       z-index: 3;
-      width: 26px;
-      height: 26px;
-      border-radius: 6px;
-      border: 1px solid rgba(255, 95, 115, 0.45);
-      background: rgba(10, 15, 24, 0.88);
-      color: #ff9aa5;
-      font-size: 16px;
-      line-height: 1;
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      margin: 0;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 107, 107, 0.75);
+      background: rgba(48, 16, 18, 0.95);
+      color: #ff8a8a;
+      font-size: 0;
+      line-height: 0;
       cursor: pointer;
       font-family: inherit;
       display: grid;
       place-items: center;
-      padding: 0;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
     }
 
     .collection-card-remove:hover {
-      background: rgba(255, 80, 95, 0.35);
-      border-color: rgba(255, 140, 150, 0.7);
-      color: #fff;
+      border-color: rgba(255, 120, 120, 0.95);
+      color: #ffb0b0;
+      background: rgba(72, 18, 22, 0.98);
+    }
+
+    .collection-card-remove .card-btn-icon {
+      position: relative;
+      display: block;
+      width: 12px;
+      height: 12px;
+    }
+
+    .collection-card-remove .card-btn-icon::before,
+    .collection-card-remove .card-btn-icon::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      background: currentColor;
+      border-radius: 1px;
+    }
+
+    .collection-card-remove .card-btn-icon--minus::before {
+      width: 12px;
+      height: 2px;
+      transform: translate(-50%, -50%);
     }
 
     a.collection-card-link {
@@ -2107,6 +2133,13 @@
       return out;
     }
 
+    function resetBinderPickScroll() {
+      const wrap = byId("binderPickModal")?.querySelector(".add-card-results-wrap");
+      if (wrap) wrap.scrollTop = 0;
+      const grid = byId("binderPickGrid");
+      if (grid) grid.scrollTop = 0;
+    }
+
     function updateBinderPickSearchUi() {
       const search = byId("binderPickSearch");
       const nav = byId("binderPickBrowseNav");
@@ -2185,12 +2218,13 @@
       }
       syncBinderPickTabs();
       updateBinderPickSearchUi();
-      void renderBinderPickGrid();
+      void renderBinderPickGrid().then(() => resetBinderPickScroll());
     }
 
     function closeBinderPickModal() {
       state.binder.pickSlot = null;
       state.binder.pickBrowseSetCode = "";
+      resetBinderPickScroll();
       const modal = byId("binderPickModal");
       if (!modal) return;
       modal.classList.remove("open");
@@ -2265,7 +2299,7 @@
             state.binder.pickBrowseSetCode = btn.getAttribute("data-binder-set-code") || "";
             const search = byId("binderPickSearch");
             if (search) search.value = "";
-            void renderBinderPickGrid();
+            void renderBinderPickGrid().then(() => resetBinderPickScroll());
           });
         });
         return;
@@ -2430,7 +2464,7 @@
               <h3 class="showcase-card-name">${escapeHtml(item.name || "Unnamed Item")}${escapeHtml(qty)}</h3>
               <p class="showcase-card-meta">${escapeHtml(meta || typeLabel)}</p>
             </div>`;
-          const removeBtn = `<button type="button" class="collection-card-remove" data-id="${escapeAttr(String(item.id || ""))}" data-name="${escapeAttr(String(item.name || "Item"))}" aria-label="Remove from collection">×</button>`;
+          const removeBtn = `<button type="button" class="collection-card-remove" data-id="${escapeAttr(String(item.id || ""))}" data-name="${escapeAttr(String(item.name || "Item"))}" aria-label="Remove from collection" title="Remove from collection"><span class="card-btn-icon card-btn-icon--minus" aria-hidden="true"></span></button>`;
           const linkedMain = setsHref
             ? `<a class="collection-card-link" href="${escapeAttr(setsHref)}" title="View in Sets">${main}</a>`
             : main;
@@ -2547,14 +2581,14 @@
         if (search) search.value = "";
         syncBinderPickTabs();
         updateBinderPickSearchUi();
-        void renderBinderPickGrid();
+        void renderBinderPickGrid().then(() => resetBinderPickScroll());
       });
     });
     byId("binderPickBackSets")?.addEventListener("click", () => {
       state.binder.pickBrowseSetCode = "";
       const search = byId("binderPickSearch");
       if (search) search.value = "";
-      void renderBinderPickGrid();
+      void renderBinderPickGrid().then(() => resetBinderPickScroll());
     });
     byId("binderPickSearch")?.addEventListener("input", () => {
       void renderBinderPickGrid();

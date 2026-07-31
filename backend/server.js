@@ -3013,14 +3013,15 @@ function ensureUserBinder(user) {
   return user.binder;
 }
 
-/** Completed binder pages (all 9 pockets filled) for public Showcase. */
+/** Binder pages from the user's Collection for public Showcase (includes incomplete pages). */
 function publicShowcaseBinderPages(user) {
   const binder = ensureUserBinder(user);
   return binder.pages
-    .map((page, index) => ({
-      pageNumber: index + 1,
-      slots: (Array.isArray(page.slots) ? page.slots : []).map((slot) =>
-        slot
+    .map((page, index) => {
+      const rawSlots = Array.isArray(page.slots) ? page.slots : [];
+      const slots = Array.from({ length: BINDER_SLOTS_PER_PAGE }, (_, slotIndex) => {
+        const slot = rawSlots[slotIndex] || null;
+        return slot
           ? {
               name: slot.name,
               setCode: slot.setCode || "",
@@ -3029,13 +3030,11 @@ function publicShowcaseBinderPages(user) {
               imageUrl: slot.imageUrl || "",
               inverted: slot.inverted === true
             }
-          : null
-      )
-    }))
-    .filter(
-      (page) =>
-        page.slots.length === BINDER_SLOTS_PER_PAGE && page.slots.every((slot) => slot && slot.name)
-    );
+          : null;
+      });
+      return { pageNumber: index + 1, slots };
+    })
+    .filter((page) => page.slots.some((slot) => slot && slot.name));
 }
 
 function publicUserPayload(user) {
