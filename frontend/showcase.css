@@ -291,6 +291,111 @@ a.showcase-card:hover {
   color: var(--up);
 }
 
+.showcase-binder {
+  display: grid;
+  gap: 18px;
+}
+
+.showcase-binder-page {
+  width: min(560px, 100%);
+  margin: 0 auto;
+  padding: 18px;
+  border-radius: 16px;
+  border: 1px solid #3a4f6f;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent),
+    radial-gradient(circle at 20% 0%, rgba(80, 140, 255, 0.12), transparent 45%),
+    #152033;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03), 0 18px 40px rgba(0, 0, 0, 0.28);
+}
+
+.showcase-binder-page-label {
+  margin: 0 0 12px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.showcase-binder-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.showcase-binder-pocket {
+  position: relative;
+  aspect-ratio: 2.5 / 3.5;
+  border-radius: 10px;
+  border: 1px solid rgba(90, 120, 170, 0.8);
+  background: #0b1220;
+  overflow: hidden;
+}
+
+.showcase-binder-pocket-art {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  transform-origin: center center;
+}
+
+.showcase-binder-pocket.is-inverted .showcase-binder-pocket-art {
+  transform: rotate(180deg);
+}
+
+.showcase-binder-pocket img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.showcase-binder-pocket .placeholder {
+  color: #5f7394;
+  font-size: 11px;
+  text-align: center;
+  padding: 8px;
+}
+
+.showcase-binder-pocket-meta {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 6px 6px 7px;
+  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.82));
+  font-size: 10px;
+  line-height: 1.25;
+}
+
+.showcase-binder-pocket-meta .name {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.showcase-binder-pocket-meta .set {
+  display: block;
+  color: #b7c7de;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 640px) {
+  .showcase-binder-page {
+    padding: 12px;
+  }
+
+  .showcase-binder-grid {
+    gap: 8px;
+  }
+}
+
 .showcase-empty,
 .showcase-error,
 .showcase-landing {

@@ -7,6 +7,7 @@
     ownerBanner: document.getElementById("showcaseOwnerBanner"),
     toolbar: document.getElementById("showcaseToolbar"),
     grid: document.getElementById("showcaseGrid"),
+    binder: document.getElementById("showcaseBinder"),
     empty: document.getElementById("showcaseEmpty"),
     error: document.getElementById("showcaseError"),
     search: document.getElementById("showcaseSearch"),
@@ -18,6 +19,7 @@
     profile: null,
     stats: null,
     items: [],
+    binderPages: [],
     filter: "all",
     query: "",
     isOwner: false,
@@ -67,6 +69,7 @@
   }
 
   function filteredItems() {
+    if (state.filter === "binder") return [];
     const q = state.query.trim().toLowerCase();
     return state.items.filter((item) => {
       if (state.filter !== "all" && item.type !== state.filter) return false;
@@ -76,6 +79,21 @@
         .toLowerCase();
       return hay.includes(q);
     });
+  }
+
+  function filteredBinderPages() {
+    const pages = Array.isArray(state.binderPages) ? state.binderPages : [];
+    const q = state.query.trim().toLowerCase();
+    if (!q) return pages;
+    return pages.filter((page) =>
+      (Array.isArray(page.slots) ? page.slots : []).some((slot) => {
+        if (!slot) return false;
+        return [slot.name, slot.setName, slot.setCode, slot.cardNumber]
+          .join(" ")
+          .toLowerCase()
+          .includes(q);
+      })
+    );
   }
 
   function renderHero() {
@@ -363,6 +381,10 @@
     cards.push({ label: "Total quantity", value: Number(stats.totalQuantity || 0).toLocaleString() });
     cards.push({ label: "Singles", value: Number(stats.singles || 0).toLocaleString() });
     cards.push({ label: "Sealed", value: Number(stats.sealed || 0).toLocaleString() });
+    const binderCount = Number(stats.binderPages ?? state.binderPages.length) || 0;
+    if (binderCount > 0) {
+      cards.push({ label: "Binder pages", value: binderCount.toLocaleString() });
+    }
     if (showValuesEnabled()) {
       const total = Number(stats.marketValue);
       const priced = Number(stats.pricedLineItems) || 0;
@@ -397,13 +419,19 @@
   }
 
   function renderGrid() {
+    if (state.filter === "binder") {
+      setVisible(els.grid, false);
+      return;
+    }
     const list = filteredItems();
     if (!list.length) {
       setVisible(els.grid, false);
-      setVisible(els.empty, true);
-      els.empty.innerHTML = state.items.length
-        ? `<h2>No matches</h2><p>Try another filter or search term.</p>`
-        : `<h2>No cards to show yet</h2><p>This collector has not added items to their showcase.</p>`;
+      if (state.filter !== "binder") {
+        setVisible(els.empty, true);
+        els.empty.innerHTML = state.items.length
+          ? `<h2>No matches</h2><p>Try another filter or search term.</p>`
+          : `<h2>No cards to show yet</h2><p>This collector has not added items to their showcase.</p>`;
+      }
       return;
     }
 
@@ -445,6 +473,75 @@
       .join("");
   }
 
+  function renderBinderPages() {
+    if (!els.binder) return;
+    if (state.filter !== "binder") {
+      setVisible(els.binder, false);
+      els.binder.innerHTML = "";
+      return;
+    }
+
+    const pages = filteredBinderPages();
+    if (!pages.length) {
+      setVisible(els.binder, false);
+      setVisible(els.grid, false);
+      setVisible(els.empty, true);
+      els.empty.innerHTML = state.binderPages.length
+        ? `<h2>No matches</h2><p>Try another search term.</p>`
+        : `<h2>No finished binder pages yet</h2><p>Complete a full 9-pocket binder page in your Collection to show it here.</p>`;
+      return;
+    }
+
+    setVisible(els.empty, false);
+    setVisible(els.grid, false);
+    setVisible(els.binder, true);
+    els.binder.innerHTML = pages
+      .map((page) => {
+        const pageNo = Number(page.pageNumber) || 1;
+        const slots = Array.isArray(page.slots) ? page.slots : [];
+        const pockets = slots
+          .map((slot) => {
+            if (!slot) {
+              return `<div class="showcase-binder-pocket"><span class="placeholder">Empty</span></div>`;
+            }
+            const invertedClass = slot.inverted ? " is-inverted" : "";
+            const meta = [slot.setName || slot.setCode, slot.cardNumber ? `#${slot.cardNumber}` : ""]
+              .filter(Boolean)
+              .join(" ");
+            const img = String(slot.imageUrl || "").trim();
+            return `<div class="showcase-binder-pocket${invertedClass}">
+              <div class="showcase-binder-pocket-art">
+                ${
+                  img
+                    ? `<img src="${escapeHtml(img)}" alt="${escapeHtml(slot.name || "Card")}" loading="lazy" />`
+                    : `<span class="placeholder">No image</span>`
+                }
+              </div>
+              <span class="showcase-binder-pocket-meta">
+                <span class="name">${escapeHtml(slot.name || "Card")}</span>
+                <span class="set">${escapeHtml(meta)}</span>
+              </span>
+            </div>`;
+          })
+          .join("");
+        return `<article class="showcase-binder-page">
+          <p class="showcase-binder-page-label">Binder page ${escapeHtml(String(pageNo))}</p>
+          <div class="showcase-binder-grid">${pockets}</div>
+        </article>`;
+      })
+      .join("");
+  }
+
+  function renderCollectionView() {
+    if (state.filter === "binder") {
+      renderBinderPages();
+      return;
+    }
+    setVisible(els.binder, false);
+    if (els.binder) els.binder.innerHTML = "";
+    renderGrid();
+  }
+
   function renderAll() {
     setVisible(els.landing, false);
     setVisible(els.error, false);
@@ -458,7 +555,7 @@
     }
     renderHero();
     renderStats();
-    renderGrid();
+    renderCollectionView();
   }
 
   function showError(message) {
@@ -467,6 +564,7 @@
     setVisible(els.stats, false);
     setVisible(els.toolbar, false);
     setVisible(els.grid, false);
+    setVisible(els.binder, false);
     setVisible(els.empty, false);
     setVisible(els.error, true);
     els.error.innerHTML = `<h2>Showcase unavailable</h2><p>${escapeHtml(message)}</p>`;
@@ -478,6 +576,7 @@
     setVisible(els.stats, false);
     setVisible(els.toolbar, false);
     setVisible(els.grid, false);
+    setVisible(els.binder, false);
     setVisible(els.empty, false);
     setVisible(els.error, false);
   }
@@ -513,7 +612,9 @@
       state.setCatalogLookup = null;
       const rawItems = Array.isArray(payload.items) ? payload.items : [];
       state.items = await enhancePublicShowcaseItems(rawItems);
+      state.binderPages = Array.isArray(payload.binderPages) ? payload.binderPages : [];
       state.stats = recomputeShowcaseStats(state.items, payload.stats || {});
+      state.stats.binderPages = state.binderPages.length;
       renderAll();
     } catch {
       showError("Network error while loading showcase.");
@@ -569,13 +670,13 @@
       for (const node of els.tabs) node.classList.remove("active");
       tab.classList.add("active");
       state.filter = tab.getAttribute("data-showcase-filter") || "all";
-      renderGrid();
+      renderCollectionView();
     });
   }
 
   els.search?.addEventListener("input", () => {
     state.query = els.search.value;
-    renderGrid();
+    renderCollectionView();
   });
 
   const username = parseUsernameFromLocation();

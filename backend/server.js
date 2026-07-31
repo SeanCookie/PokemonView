@@ -2966,6 +2966,78 @@ function ensureUserPreferences(user) {
   return user.preferences;
 }
 
+const BINDER_SLOTS_PER_PAGE = 9;
+const BINDER_MAX_PAGES = 100;
+
+function normalizeBinderSlot(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const name = String(raw.name || "").trim().slice(0, 160);
+  if (!name) return null;
+  const source = String(raw.source || "").trim().toLowerCase() === "catalog" ? "catalog" : "collection";
+  return {
+    name,
+    setCode: String(raw.setCode || "")
+      .trim()
+      .toUpperCase()
+      .slice(0, 32),
+    setName: String(raw.setName || "").trim().slice(0, 160),
+    cardNumber: String(raw.cardNumber || "").trim().slice(0, 32),
+    imageUrl: String(raw.imageUrl || "").trim().slice(0, 500),
+    collectionItemId: String(raw.collectionItemId || "").trim().slice(0, 64),
+    source,
+    inverted: raw.inverted === true
+  };
+}
+
+function normalizeBinderPages(rawPages) {
+  const pagesIn = Array.isArray(rawPages) ? rawPages.slice(0, BINDER_MAX_PAGES) : [];
+  const pages = pagesIn.map((page) => {
+    const slotsIn = Array.isArray(page?.slots) ? page.slots : [];
+    const slots = Array.from({ length: BINDER_SLOTS_PER_PAGE }, (_, i) =>
+      normalizeBinderSlot(slotsIn[i])
+    );
+    return { slots };
+  });
+  if (!pages.length) {
+    pages.push({ slots: Array.from({ length: BINDER_SLOTS_PER_PAGE }, () => null) });
+  }
+  return pages;
+}
+
+function ensureUserBinder(user) {
+  if (!user || typeof user !== "object") {
+    return { pages: normalizeBinderPages([]) };
+  }
+  const pages = normalizeBinderPages(user.binder?.pages);
+  user.binder = { pages };
+  return user.binder;
+}
+
+/** Completed binder pages (all 9 pockets filled) for public Showcase. */
+function publicShowcaseBinderPages(user) {
+  const binder = ensureUserBinder(user);
+  return binder.pages
+    .map((page, index) => ({
+      pageNumber: index + 1,
+      slots: (Array.isArray(page.slots) ? page.slots : []).map((slot) =>
+        slot
+          ? {
+              name: slot.name,
+              setCode: slot.setCode || "",
+              setName: slot.setName || "",
+              cardNumber: slot.cardNumber || "",
+              imageUrl: slot.imageUrl || "",
+              inverted: slot.inverted === true
+            }
+          : null
+      )
+    }))
+    .filter(
+      (page) =>
+        page.slots.length === BINDER_SLOTS_PER_PAGE && page.slots.every((slot) => slot && slot.name)
+    );
+}
+
 function publicUserPayload(user) {
   const prefs = ensureUserPreferences(user);
   const out = withAdminFlag(
@@ -8138,7 +8210,6 @@ function sendStatic(req, res, pathname) {
     };
     if (
       ext === ".html" ||
-      path.basename(filePath) === "collectr-import-client.js" ||
       path.basename(filePath) === "showcase.js" ||
       path.basename(filePath) === "account-ui.js"
     ) {
@@ -9249,12 +9320,16 @@ async function route(req, res) {
         if (valueB !== valueA) return valueB - valueA;
         return String(a.name || "").localeCompare(String(b.name || ""));
       });
+      const binderPages = publicShowcaseBinderPages(record);
+      const stats = summarizeShowcaseCollection(enriched, showcase);
+      stats.binderPages = binderPages.length;
       json(res, 200, {
         ok: true,
         isOwner,
         profile: publicShowcaseProfilePayload(record),
-        stats: summarizeShowcaseCollection(enriched, showcase),
-        items
+        stats,
+        items,
+        binderPages
       });
     } catch (err) {
       json(res, 500, { ok: false, error: err.message || "Failed to load showcase", items: [] });
@@ -9526,6 +9601,43 @@ async function route(req, res) {
       json(res, 200, { ok: true, ...result });
     } catch (err) {
       json(res, 400, { ok: false, error: err.message || "Collectr delete failed" });
+    }
+    return;
+  }
+
+  if (pathname === "/api/binder" && req.method === "GET") {
+    try {
+      const sessionUser = requireSignedInUser(req, res);
+      if (!sessionUser) return;
+      const user = store.users.find((u) => u.id === sessionUser.id);
+      if (!user) {
+        json(res, 401, { ok: false, error: "Not signed in" });
+        return;
+      }
+      const binder = ensureUserBinder(user);
+      json(res, 200, { ok: true, binder: { pages: binder.pages } });
+    } catch (err) {
+      json(res, 500, { ok: false, error: err.message || "Could not load binder" });
+    }
+    return;
+  }
+
+  if (pathname === "/api/binder" && (req.method === "PUT" || req.method === "POST")) {
+    try {
+      const sessionUser = requireSignedInUser(req, res);
+      if (!sessionUser) return;
+      const user = store.users.find((u) => u.id === sessionUser.id);
+      if (!user) {
+        json(res, 401, { ok: false, error: "Not signed in" });
+        return;
+      }
+      const body = await readBody(req);
+      const pages = normalizeBinderPages(body?.pages ?? body?.binder?.pages);
+      user.binder = { pages };
+      await persistStore();
+      json(res, 200, { ok: true, binder: { pages: user.binder.pages } });
+    } catch (err) {
+      json(res, 400, { ok: false, error: err.message || "Could not save binder" });
     }
     return;
   }

@@ -214,86 +214,6 @@
 
     .muted { color: var(--muted); font-size: 12px; }
 
-    .collectr-import-panel-head {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 6px;
-    }
-
-    .collectr-import-panel-head h2 {
-      margin: 0;
-      font-size: 18px;
-    }
-
-    .collectr-import-dismiss {
-      flex-shrink: 0;
-      width: 32px;
-      height: 32px;
-      border: 1px solid var(--line, #2d405e);
-      border-radius: 8px;
-      background: transparent;
-      color: var(--muted, #93a8c7);
-      font-size: 18px;
-      line-height: 1;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .collectr-import-dismiss:hover {
-      color: var(--text, #e9f1ff);
-      border-color: #4f6e9c;
-      background: rgba(79, 110, 156, 0.15);
-    }
-
-    .collectr-import-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      align-items: flex-start;
-    }
-
-    .collectr-import-row .search {
-      flex: 1;
-      min-width: 240px;
-      max-width: none;
-    }
-
-    .collectr-import-actions {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      gap: 8px;
-      flex-shrink: 0;
-    }
-
-    .collectr-import-btn-row {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      justify-content: flex-end;
-    }
-
-    .collectr-import-options {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 16px;
-      margin-top: 10px;
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    .collectr-import-options label {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      cursor: pointer;
-      color: var(--muted);
-    }
-
     .set-progress-panel {
       display: grid;
       gap: 0;
@@ -492,9 +412,6 @@
     @media (max-width: 640px) {
       .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .collection-toolbar .showcase-search { max-width: none; width: 100%; }
-      .collectr-import-actions { width: 100%; align-items: stretch; }
-      .collectr-import-btn-row { justify-content: stretch; }
-      .collectr-import-btn-row .btn-primary { flex: 1; }
       .nav-right .search {
         width: 100%;
         max-width: none;
@@ -531,103 +448,242 @@
       cursor: not-allowed;
     }
 
-    .collectr-progress {
-      display: none;
-      margin-top: 12px;
-      gap: 6px;
+    .btn-ghost {
+      height: 34px;
+      padding: 0 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #0f1726;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
     }
 
-    .collectr-progress.active {
+    .btn-ghost:hover {
+      border-color: #4f6e9c;
+      background: rgba(79, 110, 156, 0.18);
+    }
+
+    .btn-ghost:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .binder-panel {
       display: grid;
+      gap: 12px;
     }
 
-    .collectr-progress-head {
+    #binderPanel[hidden],
+    .binder-panel[hidden] {
+      display: none !important;
+    }
+
+    .binder-toolbar {
       display: flex;
+      flex-wrap: wrap;
+      align-items: center;
       justify-content: space-between;
-      align-items: baseline;
       gap: 10px;
+    }
+
+    .binder-page-nav,
+    .binder-page-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .binder-page-label {
+      min-width: 88px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    .binder-hint {
+      margin: 0;
       font-size: 12px;
       color: var(--muted);
     }
 
-    .collectr-progress-pct {
-      font-variant-numeric: tabular-nums;
-      color: var(--text);
-      font-weight: 600;
-    }
-
-    .collectr-progress-track {
-      height: 10px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid var(--border);
-      overflow: hidden;
-    }
-
-    .collectr-progress-fill {
-      height: 100%;
-      width: 0%;
-      border-radius: 999px;
-      background: linear-gradient(90deg, rgba(80, 140, 255, 0.85), rgba(103, 178, 255, 0.95));
-      transition: width 0.25s ease;
-    }
-
-    .collectr-preview-summary {
-      margin-top: 10px;
-      padding: 10px 12px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: rgba(0, 0, 0, 0.18);
-      display: none;
-      gap: 4px;
-      font-size: 13px;
-    }
-
-    .collectr-preview-summary.visible {
-      display: grid;
-    }
-
-    .collectr-preview-summary strong {
-      color: var(--text);
-      font-weight: 600;
-    }
-
-    .collectr-delete-wrap {
-      margin-top: 0;
-      width: 100%;
-      display: flex;
-      justify-content: flex-end;
-    }
-
-    .collectr-delete-btn {
-      height: 34px;
-      border: 1px solid rgba(255, 120, 130, 0.45);
-      border-radius: 8px;
-      background: rgba(255, 80, 95, 0.12);
-      color: #ff9aa5;
+    .binder-status {
+      margin: 0;
+      min-height: 16px;
       font-size: 12px;
-      font-weight: 600;
-      padding: 0 12px;
+      color: var(--muted);
+    }
+
+    .binder-page {
+      width: min(560px, 100%);
+      margin: 0 auto;
+      padding: 18px;
+      border-radius: 16px;
+      border: 1px solid #3a4f6f;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent),
+        radial-gradient(circle at 20% 0%, rgba(80, 140, 255, 0.12), transparent 45%),
+        #152033;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03), 0 18px 40px rgba(0, 0, 0, 0.28);
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .binder-pocket {
+      position: relative;
+      aspect-ratio: 2.5 / 3.5;
+      border-radius: 10px;
+      border: 1px dashed rgba(147, 168, 199, 0.45);
+      background: rgba(8, 14, 24, 0.72);
+      padding: 0;
+      overflow: hidden;
       cursor: pointer;
-      font-family: inherit;
+      color: inherit;
+      font: inherit;
+      display: grid;
+      place-items: center;
     }
 
-    .collectr-delete-btn:hover {
-      border-color: rgba(255, 140, 150, 0.7);
-      background: rgba(255, 80, 95, 0.2);
-      color: #ffc4ca;
+    .binder-pocket:hover {
+      border-color: rgba(103, 178, 255, 0.75);
+      background: rgba(20, 36, 58, 0.9);
     }
 
-    .collectr-delete-btn.collectr-undo-btn {
-      border-color: rgba(51, 209, 143, 0.45);
-      background: rgba(51, 209, 143, 0.12);
-      color: var(--up);
+    .binder-pocket.is-filled {
+      border-style: solid;
+      border-color: rgba(90, 120, 170, 0.8);
+      background: #0b1220;
+      cursor: default;
     }
 
-    .collectr-delete-btn.collectr-undo-btn:hover {
-      border-color: rgba(51, 209, 143, 0.7);
-      background: rgba(51, 209, 143, 0.2);
-      color: #9ef0c8;
+    .binder-pocket-art {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      place-items: center;
+      transition: transform 0.28s ease;
+      transform-origin: center center;
+    }
+
+    .binder-pocket.is-inverted .binder-pocket-art {
+      transform: rotate(180deg);
+    }
+
+    .binder-pocket img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .binder-pocket-btn {
+      position: absolute;
+      z-index: 2;
+      width: 26px;
+      height: 26px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      background: rgba(8, 14, 24, 0.82);
+      color: var(--text);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      cursor: pointer;
+      font: inherit;
+      line-height: 1;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+    }
+
+    .binder-pocket-btn:hover {
+      border-color: rgba(103, 178, 255, 0.85);
+      background: rgba(20, 36, 58, 0.95);
+    }
+
+    .binder-pocket-btn--flip {
+      top: 6px;
+      left: 6px;
+      font-size: 14px;
+    }
+
+    .binder-pocket-btn--remove {
+      top: 6px;
+      right: 6px;
+      font-size: 16px;
+      color: #ffb0b8;
+    }
+
+    .binder-pocket-btn--remove:hover {
+      border-color: rgba(255, 140, 150, 0.8);
+      background: rgba(255, 80, 95, 0.22);
+      color: #ffd0d5;
+    }
+
+    .binder-pocket-empty {
+      display: grid;
+      gap: 4px;
+      place-items: center;
+      color: var(--muted);
+      font-size: 11px;
+      padding: 8px;
+      text-align: center;
+    }
+
+    .binder-pocket-empty strong {
+      font-size: 18px;
+      font-weight: 600;
+      color: #7ea8d8;
+    }
+
+    .binder-pocket-meta {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      padding: 6px 6px 7px;
+      background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.82));
+      font-size: 10px;
+      line-height: 1.25;
+      text-align: left;
+    }
+
+    .binder-pocket-meta .name {
+      display: block;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-weight: 600;
+    }
+
+    .binder-pocket-meta .set {
+      display: block;
+      color: #b7c7de;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .binder-pick-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .binder-pick-panel .add-card-row {
+      margin-bottom: 10px;
+    }
+
+    @media (max-width: 640px) {
+      .binder-page {
+        padding: 12px;
+        gap: 8px;
+      }
     }
 
     .modal-backdrop {
@@ -899,59 +955,11 @@
   <main class="page">
     <section class="panel">
       <h1 class="title">Personal Collection</h1>
-      <p class="sub">Track your inventory and market value. Recent activity is in <a href="/settings.html#activity" style="color:#67b2ff;">Settings</a>.</p>
+      <p class="sub">Track your inventory and market value.</p>
     </section>
 
     <section id="kpiPanel" class="panel">
       <div class="kpis" id="kpis"></div>
-    </section>
-
-    <section class="panel" id="collectrImportPanel" hidden>
-      <div class="collectr-import-panel-head">
-        <h2>Import from Collectr</h2>
-        <button
-          type="button"
-          class="collectr-import-dismiss"
-          id="collectrImportDismiss"
-          aria-label="Dismiss Collectr import"
-          title="Dismiss"
-        >×</button>
-      </div>
-      <p class="sub" style="margin:0 0 10px;">Paste a Collectr <strong>username</strong>, <strong>@username</strong>, or showcase link to import <strong>ungraded Pokémon cards</strong> only (sealed, graded, and other TCGs are skipped).</p>
-      <div class="collectr-import-row">
-        <input
-          id="collectrImportUrl"
-          class="search"
-          type="text"
-          spellcheck="false"
-          autocomplete="off"
-          placeholder="username, @username, or Collectr link"
-        />
-        <div class="collectr-import-actions">
-          <div class="collectr-import-btn-row">
-            <button type="button" class="btn-primary" id="collectrPreviewBtn">Preview</button>
-            <button type="button" class="btn-primary" id="collectrImportBtn">Import</button>
-          </div>
-          <div id="collectrDeleteWrap" class="collectr-delete-wrap" hidden>
-            <button type="button" class="collectr-delete-btn" id="collectrDeleteImportBtn">Delete All</button>
-          </div>
-        </div>
-      </div>
-      <label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12px;color:var(--muted);">
-        <input type="checkbox" id="collectrReplaceExisting" />
-        Replace my current collection before import
-      </label>
-      <div id="collectrProgress" class="collectr-progress" aria-hidden="true">
-        <div class="collectr-progress-head">
-          <span id="collectrProgressLabel">Working…</span>
-          <span id="collectrProgressPct" class="collectr-progress-pct">0%</span>
-        </div>
-        <div class="collectr-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-          <div id="collectrProgressFill" class="collectr-progress-fill"></div>
-        </div>
-      </div>
-      <div id="collectrPreviewSummary" class="collectr-preview-summary"></div>
-      <p id="collectrImportStatus" class="sub" style="margin:10px 0 0;min-height:18px;"></p>
     </section>
 
     <section class="panel collection-panel" id="collectionPanel">
@@ -961,8 +969,9 @@
           <button type="button" class="showcase-tab" data-collection-filter="single">Singles</button>
           <button type="button" class="showcase-tab" data-collection-filter="sealed">Sealed</button>
           <button type="button" class="showcase-tab" data-collection-filter="sets">Sets</button>
+          <button type="button" class="showcase-tab" data-collection-filter="binder">Binder</button>
         </div>
-        <div class="collection-toolbar-actions">
+        <div class="collection-toolbar-actions" id="collectionToolbarActions">
           <input id="nameFilter" class="showcase-search" type="search" placeholder="Search cards or sets…" />
           <button id="openAddCardBtn" type="button" class="btn-primary">Add card…</button>
         </div>
@@ -972,6 +981,22 @@
         <div id="setProgressEras"></div>
       </div>
       <div id="itemsList" class="showcase-grid"></div>
+      <div id="binderPanel" class="binder-panel" hidden>
+        <div class="binder-toolbar">
+          <div class="binder-page-nav">
+            <button type="button" class="btn-ghost" id="binderPrevPage">Prev</button>
+            <span id="binderPageLabel" class="binder-page-label">Page 1</span>
+            <button type="button" class="btn-ghost" id="binderNextPage">Next</button>
+          </div>
+          <div class="binder-page-actions">
+            <button type="button" class="btn-primary" id="binderAddPage">Add page</button>
+            <button type="button" class="btn-ghost" id="binderRemovePage">Remove page</button>
+          </div>
+        </div>
+        <p class="binder-hint">Tap an empty pocket to add a card from your collection or the Sets catalog. Use ↺ to flip a card, or × to remove it.</p>
+        <div id="binderPage" class="binder-page" aria-label="Binder page"></div>
+        <p id="binderStatus" class="binder-status" aria-live="polite"></p>
+      </div>
     </section>
   </main>
 
@@ -999,12 +1024,33 @@
     </section>
   </div>
 
+  <div id="binderPickModal" class="modal-backdrop" aria-hidden="true">
+    <section class="add-card-panel binder-pick-panel" role="dialog" aria-labelledby="binderPickTitle" aria-modal="true">
+      <h2 id="binderPickTitle">Add card to pocket</h2>
+      <p class="subtle">Choose a card from your collection or search the Sets catalog.</p>
+      <div class="binder-pick-tabs" role="tablist" aria-label="Binder card source">
+        <button type="button" class="showcase-tab active" data-binder-pick-source="collection">My collection</button>
+        <button type="button" class="showcase-tab" data-binder-pick-source="search">Search catalog</button>
+      </div>
+      <div class="add-card-row">
+        <input id="binderPickSearch" type="search" autocomplete="off" placeholder="Search cards…" />
+      </div>
+      <div class="add-card-row add-card-results-wrap">
+        <div id="binderPickGrid" class="add-card-grid" role="listbox" aria-label="Cards to place in binder"></div>
+      </div>
+      <div class="add-card-actions">
+        <button type="button" class="ghost" id="binderPickCancelBtn">Cancel</button>
+      </div>
+    </section>
+  </div>
+
   <script src="/english-sets-catalog.js"></script>
-  <script src="/collectr-import-client.js?v=7"></script>
-  <script src="/collectr-import-ui.js?v=6"></script>
   <script src="/site-nav.js?v=10" defer></script>
   <script src="/account-ui.js?v=8"></script>
   <script>
+    const BINDER_SLOTS = 9;
+    const BINDER_MAX_PAGES = 100;
+
     const state = {
       items: [],
       dashboard: null,
@@ -1024,11 +1070,49 @@
         manifestByCode: {},
         pokesymbolsBySlug: {},
         pokesymbolsByCode: {}
+      },
+      binder: {
+        pages: [emptyBinderPage()],
+        pageIndex: 0,
+        pickSlot: null,
+        pickSource: "collection",
+        saveTimer: null,
+        loaded: false
       }
     };
 
+    function emptyBinderPage() {
+      return { slots: Array.from({ length: BINDER_SLOTS }, () => null) };
+    }
+
+    function normalizeBinderSlotClient(raw) {
+      if (!raw || typeof raw !== "object") return null;
+      const name = String(raw.name || "").trim();
+      if (!name) return null;
+      return {
+        name,
+        setCode: String(raw.setCode || "").trim().toUpperCase(),
+        setName: String(raw.setName || "").trim(),
+        cardNumber: String(raw.cardNumber || "").trim(),
+        imageUrl: String(raw.imageUrl || "").trim(),
+        collectionItemId: String(raw.collectionItemId || "").trim(),
+        source: String(raw.source || "").toLowerCase() === "catalog" ? "catalog" : "collection",
+        inverted: raw.inverted === true
+      };
+    }
+
+    function normalizeBinderPagesClient(rawPages) {
+      const pagesIn = Array.isArray(rawPages) ? rawPages.slice(0, BINDER_MAX_PAGES) : [];
+      const pages = pagesIn.map((page) => {
+        const slotsIn = Array.isArray(page?.slots) ? page.slots : [];
+        return {
+          slots: Array.from({ length: BINDER_SLOTS }, (_, i) => normalizeBinderSlotClient(slotsIn[i]))
+        };
+      });
+      return pages.length ? pages : [emptyBinderPage()];
+    }
+
     const byId = (id) => document.getElementById(id);
-    let collectrImportUi = null;
 
     function decodeHtml(value) {
       return String(value || "")
@@ -1317,16 +1401,67 @@
       return `${days}d ago`;
     }
 
+    async function loadBinder() {
+      try {
+        const res = await fetch("/api/binder", { credentials: "same-origin", cache: "no-store" });
+        const payload = res.ok ? await res.json() : null;
+        if (payload?.ok && payload.binder) {
+          state.binder.pages = normalizeBinderPagesClient(payload.binder.pages);
+        } else {
+          state.binder.pages = [emptyBinderPage()];
+        }
+      } catch {
+        state.binder.pages = [emptyBinderPage()];
+      }
+      if (state.binder.pageIndex >= state.binder.pages.length) {
+        state.binder.pageIndex = Math.max(0, state.binder.pages.length - 1);
+      }
+      state.binder.loaded = true;
+    }
+
+    async function saveBinder(options = {}) {
+      const quiet = options.quiet === true;
+      const status = byId("binderStatus");
+      if (!quiet && status) status.textContent = "Saving…";
+      try {
+        const res = await fetch("/api/binder", {
+          method: "PUT",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pages: state.binder.pages })
+        });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok || !payload.ok) {
+          if (status) status.textContent = payload.error || "Could not save binder.";
+          return false;
+        }
+        state.binder.pages = normalizeBinderPagesClient(payload.binder?.pages);
+        if (status) status.textContent = quiet ? "" : "Saved.";
+        return true;
+      } catch {
+        if (status) status.textContent = "Network error while saving binder.";
+        return false;
+      }
+    }
+
+    function scheduleBinderSave() {
+      if (state.binder.saveTimer) clearTimeout(state.binder.saveTimer);
+      state.binder.saveTimer = setTimeout(() => {
+        state.binder.saveTimer = null;
+        void saveBinder({ quiet: true });
+      }, 350);
+    }
+
     async function loadData() {
       const [dashRes, itemsRes] = await Promise.all([
         fetch("/api/dashboard"),
-        fetch("/api/items")
+        fetch("/api/items"),
+        loadBinder()
       ]);
       const dashboard = dashRes.ok ? await dashRes.json() : { kpis: {}, activities: [] };
       const itemsPayload = itemsRes.ok ? await itemsRes.json() : { items: [] };
       state.dashboard = dashboard;
       state.items = Array.isArray(itemsPayload.items) ? itemsPayload.items : [];
-      collectrImportUi?.syncFromDashboard(dashboard, state.items);
       await loadCardImagesForDashboard();
       void loadSetProgressData();
     }
@@ -1664,20 +1799,29 @@
     function renderCollectionView() {
       const list = byId("itemsList");
       const panel = byId("setProgressPanel");
+      const binderPanel = byId("binderPanel");
       const collectionPanel = byId("collectionPanel");
-      const toolbarActions = document.querySelector(".collection-toolbar-actions");
+      const toolbarActions = byId("collectionToolbarActions");
       const addCardBtn = byId("openAddCardBtn");
       const isSets = state.type === "sets";
+      const isBinder = state.type === "binder";
 
-      if (collectionPanel) collectionPanel.classList.toggle("collection-panel--sets", isSets);
-      if (toolbarActions) toolbarActions.hidden = false;
-      if (addCardBtn) addCardBtn.hidden = isSets;
+      if (collectionPanel) {
+        collectionPanel.classList.toggle("collection-panel--sets", isSets);
+        collectionPanel.classList.toggle("collection-panel--binder", isBinder);
+      }
+      if (toolbarActions) toolbarActions.hidden = isBinder;
+      if (addCardBtn) addCardBtn.hidden = isSets || isBinder;
       if (panel) {
         if (isSets) panel.removeAttribute("hidden");
         else panel.setAttribute("hidden", "");
       }
+      if (binderPanel) {
+        if (isBinder) binderPanel.removeAttribute("hidden");
+        else binderPanel.setAttribute("hidden", "");
+      }
       if (list) {
-        if (isSets) {
+        if (isSets || isBinder) {
           list.setAttribute("hidden", "");
           list.innerHTML = "";
           list.classList.remove("showcase-grid");
@@ -1686,11 +1830,263 @@
         }
       }
 
-      if (isSets) {
+      if (isBinder) {
+        renderBinder();
+      } else if (isSets) {
         renderSetProgress();
       } else {
         renderItems();
       }
+    }
+
+    function binderSlotImageUrl(slot) {
+      if (!slot) return "";
+      const saved = String(slot.imageUrl || "").trim();
+      if (saved) return saved;
+      if (slot.collectionItemId) {
+        const item = state.items.find((row) => String(row.id || "") === slot.collectionItemId);
+        if (item) return lookupCardImageForItem(item);
+      }
+      return lookupCardImageForItem({
+        type: "single",
+        name: slot.name,
+        setCode: slot.setCode,
+        setName: slot.setName,
+        cardNumber: slot.cardNumber,
+        imageUrl: ""
+      });
+    }
+
+    function renderBinder() {
+      const pageEl = byId("binderPage");
+      const labelEl = byId("binderPageLabel");
+      const prevBtn = byId("binderPrevPage");
+      const nextBtn = byId("binderNextPage");
+      const removeBtn = byId("binderRemovePage");
+      if (!pageEl) return;
+      const pages = state.binder.pages;
+      if (!pages.length) state.binder.pages = [emptyBinderPage()];
+      if (state.binder.pageIndex < 0) state.binder.pageIndex = 0;
+      if (state.binder.pageIndex >= state.binder.pages.length) {
+        state.binder.pageIndex = state.binder.pages.length - 1;
+      }
+      const page = state.binder.pages[state.binder.pageIndex];
+      const pageNo = state.binder.pageIndex + 1;
+      if (labelEl) labelEl.textContent = `Page ${pageNo} / ${state.binder.pages.length}`;
+      if (prevBtn) prevBtn.disabled = state.binder.pageIndex <= 0;
+      if (nextBtn) nextBtn.disabled = state.binder.pageIndex >= state.binder.pages.length - 1;
+      if (removeBtn) removeBtn.disabled = state.binder.pages.length <= 1;
+
+      pageEl.innerHTML = page.slots
+        .map((slot, slotIndex) => {
+          if (!slot) {
+            return `<button type="button" class="binder-pocket" data-binder-add="${slotIndex}" aria-label="Empty pocket ${slotIndex + 1}">
+              <span class="binder-pocket-empty"><strong>+</strong>Add card</span>
+            </button>`;
+          }
+          const img = binderSlotImageUrl(slot);
+          const meta = [slot.setName || slot.setCode, slot.cardNumber ? `#${slot.cardNumber}` : ""]
+            .filter(Boolean)
+            .join(" ");
+          const invertedClass = slot.inverted ? " is-inverted" : "";
+          return `<div class="binder-pocket is-filled${invertedClass}" data-binder-slot="${slotIndex}" aria-label="Pocket ${slotIndex + 1}: ${escapeAttr(slot.name)}">
+            <button type="button" class="binder-pocket-btn binder-pocket-btn--flip" data-binder-flip="${slotIndex}" title="Flip card" aria-label="Flip card">↺</button>
+            <button type="button" class="binder-pocket-btn binder-pocket-btn--remove" data-binder-remove="${slotIndex}" title="Remove card" aria-label="Remove card">×</button>
+            <div class="binder-pocket-art">
+              ${
+                img
+                  ? `<img src="${escapeAttr(img)}" alt="${escapeAttr(slot.name)}" loading="lazy" />`
+                  : `<span class="binder-pocket-empty">No image</span>`
+              }
+            </div>
+            <span class="binder-pocket-meta">
+              <span class="name">${escapeHtml(slot.name)}</span>
+              <span class="set">${escapeHtml(meta)}</span>
+            </span>
+          </div>`;
+        })
+        .join("");
+
+      pageEl.querySelectorAll("[data-binder-add]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const slotIndex = Number(btn.getAttribute("data-binder-add"));
+          if (!Number.isFinite(slotIndex)) return;
+          openBinderPickModal(slotIndex);
+        });
+      });
+      pageEl.querySelectorAll("[data-binder-remove]").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const slotIndex = Number(btn.getAttribute("data-binder-remove"));
+          if (!Number.isFinite(slotIndex)) return;
+          const current = state.binder.pages[state.binder.pageIndex]?.slots?.[slotIndex];
+          if (!current) return;
+          state.binder.pages[state.binder.pageIndex].slots[slotIndex] = null;
+          renderBinder();
+          scheduleBinderSave();
+        });
+      });
+      pageEl.querySelectorAll("[data-binder-flip]").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const slotIndex = Number(btn.getAttribute("data-binder-flip"));
+          if (!Number.isFinite(slotIndex)) return;
+          const current = state.binder.pages[state.binder.pageIndex]?.slots?.[slotIndex];
+          if (!current) return;
+          current.inverted = !current.inverted;
+          renderBinder();
+          scheduleBinderSave();
+        });
+      });
+    }
+
+    function openBinderPickModal(slotIndex) {
+      state.binder.pickSlot = { pageIndex: state.binder.pageIndex, slotIndex };
+      const modal = byId("binderPickModal");
+      if (!modal) return;
+      modal.classList.add("open");
+      modal.setAttribute("aria-hidden", "false");
+      const search = byId("binderPickSearch");
+      if (search) {
+        search.value = "";
+        search.focus();
+      }
+      syncBinderPickTabs();
+      void renderBinderPickGrid();
+    }
+
+    function closeBinderPickModal() {
+      state.binder.pickSlot = null;
+      const modal = byId("binderPickModal");
+      if (!modal) return;
+      modal.classList.remove("open");
+      modal.setAttribute("aria-hidden", "true");
+    }
+
+    function syncBinderPickTabs() {
+      document.querySelectorAll("[data-binder-pick-source]").forEach((btn) => {
+        const source = btn.getAttribute("data-binder-pick-source") || "collection";
+        btn.classList.toggle("active", source === state.binder.pickSource);
+      });
+    }
+
+    async function renderBinderPickGrid() {
+      const grid = byId("binderPickGrid");
+      const searchInput = byId("binderPickSearch");
+      if (!grid || !searchInput) return;
+      const query = toQueryText(searchInput.value);
+
+      if (state.binder.pickSource === "search") {
+        try {
+          await loadCardsFromSetsIndex();
+        } catch {
+          grid.innerHTML = `<div class="add-card-grid-empty">Could not load the Sets catalog.</div>`;
+          return;
+        }
+        const filtered = state.cardIndex
+          .filter((row) => {
+            if (!query) return false;
+            return toQueryText(`${row.card} ${row.cardNo} ${row.setCode} ${row.setDisplayName}`).includes(
+              query
+            );
+          })
+          .slice(0, 300);
+        if (!filtered.length) {
+          grid.innerHTML = `<div class="add-card-grid-empty">${
+            query
+              ? "No catalog matches."
+              : "Type to search the Sets catalog by name, number, or set code."
+          }</div>`;
+          return;
+        }
+        grid.innerHTML = filtered
+          .map((row) => {
+            const thumb = row.imageUrl
+              ? `<img class="add-card-thumb" src="${escapeAttr(row.imageUrl)}" alt="" loading="lazy" />`
+              : `<div class="add-card-thumb add-card-thumb--ph" aria-hidden="true">No image</div>`;
+            return `<button type="button" class="add-card-tile" data-binder-catalog-id="${escapeAttr(row.id)}">${thumb}<div class="add-card-tile-name">${escapeHtml(row.card)}</div><div class="add-card-tile-meta">${escapeHtml(row.setDisplayName)} · ${escapeHtml(row.setCode)} #${escapeHtml(row.cardNo)}</div></button>`;
+          })
+          .join("");
+        grid.querySelectorAll("[data-binder-catalog-id]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const row = state.cardIndexById[btn.getAttribute("data-binder-catalog-id") || ""];
+            if (!row) return;
+            placeBinderSlot({
+              name: row.card,
+              setCode: row.setCode,
+              setName: row.setDisplayName,
+              cardNumber: row.cardNo,
+              imageUrl: row.imageUrl || "",
+              collectionItemId: "",
+              source: "catalog"
+            });
+          });
+        });
+        return;
+      }
+
+      const singles = state.items.filter((item) => item.type !== "sealed");
+      const filtered = singles
+        .filter((item) => {
+          if (!query) return true;
+          return toQueryText(
+            `${item.name || ""} ${item.setName || ""} ${item.setCode || ""} ${item.cardNumber || ""}`
+          ).includes(query);
+        })
+        .slice(0, 300);
+      if (!filtered.length) {
+        grid.innerHTML = `<div class="add-card-grid-empty">${
+          singles.length
+            ? "No collection cards match that search."
+            : "Your collection has no cards yet. Add some first, or use Search catalog."
+        }</div>`;
+        return;
+      }
+      grid.innerHTML = filtered
+        .map((item) => {
+          const img = lookupCardImageForItem(item);
+          const thumb = img
+            ? `<img class="add-card-thumb" src="${escapeAttr(img)}" alt="" loading="lazy" />`
+            : `<div class="add-card-thumb add-card-thumb--ph" aria-hidden="true">No image</div>`;
+          const meta = [item.setName || item.setCode, item.cardNumber ? `#${item.cardNumber}` : ""]
+            .filter(Boolean)
+            .join(" · ");
+          return `<button type="button" class="add-card-tile" data-binder-item-id="${escapeAttr(String(item.id || ""))}">${thumb}<div class="add-card-tile-name">${escapeHtml(item.name || "Card")}</div><div class="add-card-tile-meta">${escapeHtml(meta || "Collection")}</div></button>`;
+        })
+        .join("");
+      grid.querySelectorAll("[data-binder-item-id]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const item = state.items.find(
+            (row) => String(row.id || "") === String(btn.getAttribute("data-binder-item-id") || "")
+          );
+          if (!item) return;
+          placeBinderSlot({
+            name: item.name || "Card",
+            setCode: resolveItemSetCode(item) || item.setCode || "",
+            setName: item.setName || "",
+            cardNumber: item.cardNumber || "",
+            imageUrl: lookupCardImageForItem(item) || item.imageUrl || "",
+            collectionItemId: String(item.id || ""),
+            source: "collection"
+          });
+        });
+      });
+    }
+
+    function placeBinderSlot(slot) {
+      const pick = state.binder.pickSlot;
+      if (!pick) return;
+      const page = state.binder.pages[pick.pageIndex];
+      if (!page) return;
+      page.slots[pick.slotIndex] = normalizeBinderSlotClient(slot);
+      closeBinderPickModal();
+      if (state.binder.pageIndex !== pick.pageIndex) {
+        state.binder.pageIndex = pick.pageIndex;
+      }
+      renderBinder();
+      scheduleBinderSave();
     }
 
     function collectionCardImageHtml(item) {
@@ -1790,6 +2186,11 @@
       syncCollectionFilterTabs();
       renderCollectionView();
       if (state.type === "sets") void loadSetProgressData();
+      if (state.type === "binder" && !state.binder.loaded) {
+        void loadBinder().then(() => {
+          if (state.type === "binder") renderBinder();
+        });
+      }
     }
 
     byId("topSearch").addEventListener("input", (e) => {
@@ -1832,8 +2233,59 @@
       });
     }
 
+    byId("binderPrevPage")?.addEventListener("click", () => {
+      if (state.binder.pageIndex <= 0) return;
+      state.binder.pageIndex -= 1;
+      renderBinder();
+    });
+    byId("binderNextPage")?.addEventListener("click", () => {
+      if (state.binder.pageIndex >= state.binder.pages.length - 1) return;
+      state.binder.pageIndex += 1;
+      renderBinder();
+    });
+    byId("binderAddPage")?.addEventListener("click", () => {
+      if (state.binder.pages.length >= BINDER_MAX_PAGES) {
+        window.alert(`Binder is limited to ${BINDER_MAX_PAGES} pages.`);
+        return;
+      }
+      state.binder.pages.push(emptyBinderPage());
+      state.binder.pageIndex = state.binder.pages.length - 1;
+      renderBinder();
+      scheduleBinderSave();
+    });
+    byId("binderRemovePage")?.addEventListener("click", () => {
+      if (state.binder.pages.length <= 1) return;
+      if (!window.confirm("Remove this binder page?")) return;
+      state.binder.pages.splice(state.binder.pageIndex, 1);
+      if (state.binder.pageIndex >= state.binder.pages.length) {
+        state.binder.pageIndex = state.binder.pages.length - 1;
+      }
+      renderBinder();
+      scheduleBinderSave();
+    });
+
+    document.querySelectorAll("[data-binder-pick-source]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        state.binder.pickSource = btn.getAttribute("data-binder-pick-source") || "collection";
+        syncBinderPickTabs();
+        void renderBinderPickGrid();
+      });
+    });
+    byId("binderPickSearch")?.addEventListener("input", () => {
+      void renderBinderPickGrid();
+    });
+    byId("binderPickCancelBtn")?.addEventListener("click", closeBinderPickModal);
+    const binderPickModal = byId("binderPickModal");
+    if (binderPickModal) {
+      binderPickModal.addEventListener("click", (e) => {
+        if (e.target === binderPickModal) closeBinderPickModal();
+      });
+    }
+
     document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && addCardModal && addCardModal.classList.contains("open")) closeAddCardModal();
+      if (e.key !== "Escape") return;
+      if (addCardModal && addCardModal.classList.contains("open")) closeAddCardModal();
+      if (binderPickModal && binderPickModal.classList.contains("open")) closeBinderPickModal();
     });
 
     async function removeCollectionItem(rawId, displayName) {
@@ -1912,30 +2364,6 @@
       }
     });
 
-    collectrImportUi = window.CollectrImportUI?.mount({
-      alwaysVisible: false,
-      enableDismiss: true,
-      getItemCount: () => (Array.isArray(state.items) ? state.items.length : 0),
-      getCanUndo: () => Boolean(state.dashboard?.canUndoCollection),
-      getUndoCount: () => Number(state.dashboard?.collectionUndoCount) || 0,
-      setCollectionMeta: (patch = {}) => {
-        if (!state.dashboard) state.dashboard = {};
-        if (Object.prototype.hasOwnProperty.call(patch, "canUndo")) {
-          state.dashboard.canUndoCollection = Boolean(patch.canUndo);
-        }
-        if (Object.prototype.hasOwnProperty.call(patch, "undoCount")) {
-          state.dashboard.collectionUndoCount = Number(patch.undoCount) || 0;
-        }
-        if (Object.prototype.hasOwnProperty.call(patch, "lastCollectrImport")) {
-          state.dashboard.lastCollectrImport = patch.lastCollectrImport;
-        }
-      },
-      onCollectionChanged: async () => {
-        await loadData();
-        renderAll();
-      }
-    });
-
     let dashboardReady = false;
 
     function setCollectionLocked(locked) {
@@ -1950,7 +2378,6 @@
       if (dashboardReady) return;
       dashboardReady = true;
       setCollectionLocked(false);
-      collectrImportUi?.resetField();
       loadData()
         .then(renderAll)
         .catch(() => {
