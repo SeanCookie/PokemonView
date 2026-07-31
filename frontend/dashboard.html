@@ -584,8 +584,8 @@
     .binder-pocket-btn {
       position: absolute;
       z-index: 2;
-      width: 26px;
-      height: 26px;
+      width: 28px;
+      height: 28px;
       border-radius: 999px;
       border: 1px solid rgba(255, 255, 255, 0.28);
       background: rgba(8, 14, 24, 0.82);
@@ -594,10 +594,11 @@
       align-items: center;
       justify-content: center;
       padding: 0;
+      margin: 0;
       cursor: pointer;
       font: inherit;
       line-height: 1;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
     }
 
     .binder-pocket-btn:hover {
@@ -614,14 +615,64 @@
     .binder-pocket-btn--remove {
       top: 6px;
       right: 6px;
-      font-size: 16px;
-      color: #ffb0b8;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 107, 107, 0.75);
+      background: rgba(48, 16, 18, 0.95);
+      color: #ff8a8a;
+      display: grid;
+      place-items: center;
+      line-height: 0;
+      font-size: 0;
+      padding: 0;
+    }
+
+    /* Drawn X — font glyphs sit off-center in this button size */
+    .binder-pocket-btn--remove .binder-pocket-x {
+      position: relative;
+      display: block;
+      width: 12px;
+      height: 12px;
+    }
+
+    .binder-pocket-btn--remove .binder-pocket-x::before,
+    .binder-pocket-btn--remove .binder-pocket-x::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 12px;
+      height: 2px;
+      border-radius: 1px;
+      background: currentColor;
+    }
+
+    .binder-pocket-btn--remove .binder-pocket-x::before {
+      transform: translate(-50%, -50%) rotate(45deg);
+    }
+
+    .binder-pocket-btn--remove .binder-pocket-x::after {
+      transform: translate(-50%, -50%) rotate(-45deg);
     }
 
     .binder-pocket-btn--remove:hover {
-      border-color: rgba(255, 140, 150, 0.8);
-      background: rgba(255, 80, 95, 0.22);
-      color: #ffd0d5;
+      border-color: rgba(255, 120, 120, 0.95);
+      background: rgba(72, 18, 22, 0.98);
+      color: #ffb0b0;
+    }
+
+    .binder-pocket.is-filled .binder-pocket-btn,
+    .binder-pocket.is-filled .binder-pocket-meta {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.15s ease;
+    }
+
+    .binder-pocket.is-filled:hover .binder-pocket-btn,
+    .binder-pocket.is-filled:focus-within .binder-pocket-btn,
+    .binder-pocket.is-filled:hover .binder-pocket-meta,
+    .binder-pocket.is-filled:focus-within .binder-pocket-meta {
+      opacity: 1;
+      pointer-events: auto;
     }
 
     .binder-pocket-empty {
@@ -1061,7 +1112,7 @@
             <button type="button" class="btn-ghost" id="binderRemovePage">Remove page</button>
           </div>
         </div>
-        <p class="binder-hint">Tap an empty pocket to add a card from your collection or the Sets catalog. Use ↺ to flip a card, or × to remove it.</p>
+        <p class="binder-hint">Tap an empty pocket to add a card. Hover a filled pocket to flip (↺) or remove (×) it.</p>
         <div id="binderPage" class="binder-page" aria-label="Binder page"></div>
         <p id="binderStatus" class="binder-status" aria-live="polite"></p>
       </div>
@@ -1965,7 +2016,7 @@
           const invertedClass = slot.inverted ? " is-inverted" : "";
           return `<div class="binder-pocket is-filled${invertedClass}" data-binder-slot="${slotIndex}" aria-label="Pocket ${slotIndex + 1}: ${escapeAttr(slot.name)}">
             <button type="button" class="binder-pocket-btn binder-pocket-btn--flip" data-binder-flip="${slotIndex}" title="Flip card" aria-label="Flip card">↺</button>
-            <button type="button" class="binder-pocket-btn binder-pocket-btn--remove" data-binder-remove="${slotIndex}" title="Remove card" aria-label="Remove card">×</button>
+            <button type="button" class="binder-pocket-btn binder-pocket-btn--remove" data-binder-remove="${slotIndex}" title="Remove card" aria-label="Remove card"><span class="binder-pocket-x" aria-hidden="true"></span></button>
             <div class="binder-pocket-art">
               ${
                 img

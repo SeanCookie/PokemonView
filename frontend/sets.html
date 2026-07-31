@@ -717,16 +717,12 @@
       padding: 0;
       margin: 0;
       border-radius: 8px;
-      font-size: 20px;
-      font-weight: 700;
-      line-height: 1;
+      font-size: 0;
+      line-height: 0;
       cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
+      display: grid;
+      place-items: center;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
-      /* Optical vertical centering for + / − glyphs */
-      padding-bottom: 1px;
     }
 
     .card-add-btn {
@@ -745,6 +741,37 @@
     .card-owned-remove:disabled {
       opacity: 0.55;
       cursor: wait;
+    }
+
+    /* Drawn + / − so the glyph is geometrically centered */
+    .card-btn-icon {
+      position: relative;
+      display: block;
+      width: 12px;
+      height: 12px;
+    }
+
+    .card-btn-icon::before,
+    .card-btn-icon::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      background: currentColor;
+      border-radius: 1px;
+    }
+
+    .card-btn-icon--plus::before,
+    .card-btn-icon--minus::before {
+      width: 12px;
+      height: 2px;
+      transform: translate(-50%, -50%);
+    }
+
+    .card-btn-icon--plus::after {
+      width: 2px;
+      height: 12px;
+      transform: translate(-50%, -50%);
     }
 
     .card-owned-chip {
@@ -7042,7 +7069,7 @@
               <div class="card-tile-shell" data-card-number="${escapeHtml(card.cardNo)}">
                 ${
                   isCollectionSignedIn()
-                    ? `<button type="button" class="card-add-btn" data-add-to-collection aria-label="Add to collection" title="Add to collection">+</button>`
+                    ? `<button type="button" class="card-add-btn" data-add-to-collection aria-label="Add to collection" title="Add to collection"><span class="card-btn-icon card-btn-icon--plus" aria-hidden="true"></span></button>`
                     : ""
                 }
                 <button type="button" class="card-tile">
@@ -7742,7 +7769,7 @@
       btn.setAttribute("data-add-to-collection", "");
       btn.setAttribute("aria-label", "Add to collection");
       btn.setAttribute("title", "Add to collection");
-      btn.textContent = "+";
+      btn.innerHTML = `<span class="card-btn-icon card-btn-icon--plus" aria-hidden="true"></span>`;
       shell.appendChild(btn);
     }
 
@@ -7755,7 +7782,7 @@
       btn.setAttribute("data-remove-from-collection", "");
       btn.setAttribute("aria-label", "Remove from collection");
       btn.setAttribute("title", "Remove from collection");
-      btn.textContent = "−";
+      btn.innerHTML = `<span class="card-btn-icon card-btn-icon--minus" aria-hidden="true"></span>`;
       shell.appendChild(btn);
     }
 
