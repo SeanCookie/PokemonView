@@ -399,6 +399,10 @@ const tcgLinkPriceCache = new Map();
 const tcgLinkPriceFailLinks = new Map();
 const tcgLinkPriceInFlight = new Map();
 let tcgLinkPriceCachePersistTimer = null;
+/** Single in-flight / completed restore of tcg-link-prices-cache.json (disk or R2). */
+let tcgLinkPriceCacheLoadPromise = null;
+/** Max time /api/sets/link-prices waits for R2/disk restore on cold start. */
+const TCG_LINK_PRICE_CACHE_WAIT_MS = 45_000;
 let tcgLinkPricePersistChain = Promise.resolve();
 /** When true, skip debounce persists (bulk job uses interval + final save). */
 let tcgLinkPriceBulkPersistSuspended = false;
@@ -2343,6 +2347,32 @@ async function loadPersistedTcgLinkPriceCache() {
     }
   } catch (err) {
     console.warn(`[pricing-cache] TCG link price cache parse failed: ${err?.message || err}`);
+  }
+}
+
+/** Start/reuse the single TCG link-price cache restore (disk, then R2). */
+function ensureTcgLinkPriceCacheLoaded() {
+  if (!tcgLinkPriceCacheLoadPromise) {
+    tcgLinkPriceCacheLoadPromise = loadPersistedTcgLinkPriceCache().catch((err) => {
+      console.warn(`[pricing-cache] TCG link price cache load failed: ${err?.message || err}`);
+    });
+  }
+  return tcgLinkPriceCacheLoadPromise;
+}
+
+/** Wait for cache restore, but do not hang forever if R2 is slow. */
+async function waitForTcgLinkPriceCacheLoaded(timeoutMs = TCG_LINK_PRICE_CACHE_WAIT_MS) {
+  const load = ensureTcgLinkPriceCacheLoaded();
+  let timer = null;
+  try {
+    await Promise.race([
+      load,
+      new Promise((resolve) => {
+        timer = setTimeout(resolve, Math.max(0, Number(timeoutMs) || 0));
+      })
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
 
@@ -10173,11 +10203,22 @@ async function route(req, res) {
       const setCode = parsedUrl.searchParams.get("setCode") || parsedUrl.searchParams.get("code") || "";
       const setName = parsedUrl.searchParams.get("setName") || parsedUrl.searchParams.get("name") || "";
       if (!setCode) {
-        json(res, 400, { ok: false, error: "setCode is required", byUrl: {} });
+        json(res, 400, { ok: false, error: "setCode is required", byUrl: {} }, {
+          "Cache-Control": "no-store"
+        });
         return;
       }
+      // Wait for disk/R2 restore on cold start so the first hydrate is not empty.
+      await waitForTcgLinkPriceCacheLoaded();
       const payload = await buildSetLinkPricesPayload(setCode, setName);
-      json(res, 200, payload, { "Cache-Control": "no-store" });
+      const warm =
+        Number(payload?.cachedCount) > 0 ||
+        (payload?.byUrl && typeof payload.byUrl === "object" && Object.keys(payload.byUrl).length > 0);
+      json(res, 200, payload, {
+        "Cache-Control": warm
+          ? "public, max-age=60, stale-while-revalidate=300"
+          : "no-store"
+      });
     } catch (err) {
       json(res, 500, { ok: false, error: err.message || "Failed to load set link prices", byUrl: {} }, {
         "Cache-Control": "no-store"
@@ -11562,7 +11603,8 @@ async function bootstrapServer({ hosted = false } = {}) {
   markTcgCatalogPriorityWindow(TCG_CATALOG_PRIORITY_MS);
   await ensureStore();
   if (hosted) {
-    // Defer all heavy catalog / cache IO so Passenger can start immediately.
+    // Prioritize Sets price cache restore immediately; defer other heavy IO.
+    ensureTcgLinkPriceCacheLoaded();
     setImmediate(() => {
       warmSetCardListsMemoryFromDisk({ skipDiskIndex: true }).catch((err) => {
         console.warn(`[startup] Deferred set lists warm failed: ${err.message}`);
@@ -11570,7 +11612,7 @@ async function bootstrapServer({ hosted = false } = {}) {
       warmSetCardDetailsFromDisk().catch((err) => {
         console.warn(`[startup] Deferred card details warm failed: ${err.message}`);
       });
-      loadPersistedTcgLinkPriceCache().catch(() => {});
+      ensureTcgLinkPriceCacheLoaded();
       loadPersistedPriceChartingCardDetailsCache().catch(() => {});
       loadPersistedPriceChartingMarketHistoryCache().catch(() => {});
       loadPersistedTcgLinkPriceFailLinks()
@@ -11602,7 +11644,7 @@ async function bootstrapServer({ hosted = false } = {}) {
   }
   await warmSetCardListsMemoryFromDisk();
   await warmSetCardDetailsFromDisk();
-  await loadPersistedTcgLinkPriceCache().catch(() => {});
+  await ensureTcgLinkPriceCacheLoaded();
   await loadPersistedPriceChartingCardDetailsCache().catch(() => {});
   await loadPersistedPriceChartingMarketHistoryCache().catch(() => {});
   await loadPersistedTcgLinkPriceFailLinks().catch(() => {});

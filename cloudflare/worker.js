@@ -383,7 +383,7 @@ export default {
     if (navAsset) return navAsset;
 
     // Fresh DO so the container boots with current secrets + latest image after CI rebuild.
-    const container = env.POKEMONVIEW.getByName("main-v36");
+    const container = env.POKEMONVIEW.getByName("main-v37");
     const response = await enrichAuthMePreferences(
       request,
       await container.fetch(request),
@@ -391,10 +391,7 @@ export default {
     );
     const rewritten = maybeRewriteHtmlNav(request, response);
     const path = new URL(request.url).pathname;
-    if (
-      path === "/api/tcgplayer/link-cache-meta" ||
-      path === "/api/sets/link-prices"
-    ) {
+    if (path === "/api/tcgplayer/link-cache-meta") {
       const headers = new Headers(rewritten.headers);
       headers.set("Cache-Control", "no-store");
       return new Response(rewritten.body, {
@@ -402,6 +399,19 @@ export default {
         statusText: rewritten.statusText,
         headers
       });
+    }
+    if (path === "/api/sets/link-prices") {
+      // Preserve warm public max-age from the container; only force no-store on cold/empty.
+      const existing = String(rewritten.headers.get("Cache-Control") || "");
+      if (!/max-age=/i.test(existing)) {
+        const headers = new Headers(rewritten.headers);
+        headers.set("Cache-Control", "no-store");
+        return new Response(rewritten.body, {
+          status: rewritten.status,
+          statusText: rewritten.statusText,
+          headers
+        });
+      }
     }
     return rewritten;
   }
