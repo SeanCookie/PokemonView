@@ -1168,6 +1168,12 @@
       "code": "BS",
       "symbol": "/pokesymbols/symbols/base.png",
       "logo": "/pokesymbols/logos/base.png"
+    },
+    "pitch-black": {
+      "name": "Pitch Black",
+      "code": "PBL",
+      "symbol": "/pokesymbols/symbols/pitch-black.png",
+      "logo": "/pokesymbols/logos/pitch-black.png"
     }
   },
   "byCode": {
@@ -1870,6 +1876,11 @@
       "slug": "base",
       "symbol": "/pokesymbols/symbols/base.png",
       "logo": "/pokesymbols/logos/base.png"
+    },
+    "PBL": {
+      "slug": "pitch-black",
+      "symbol": "/pokesymbols/symbols/pitch-black.png",
+      "logo": "/pokesymbols/logos/pitch-black.png"
     }
   },
   "failed": []

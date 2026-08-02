@@ -8,6 +8,7 @@
 
   global.ENGLISH_SETS_BY_ERA = {
     "Mega Evolution": [
+      set("Pitch Black", "PBL"),
       set("Chaos Rising", "CRI"),
       set("Perfect Order", "POR"),
       set("Ascended Heroes", "ASC"),
@@ -204,6 +205,7 @@
   ];
 
   global.BULBA_SYMBOL_FILE_BY_CODE = {
+    PBL: "SetSymbolPitch_Black.png",
     CRI: "SetSymbolChaos_Rising.png",
     POR: "SetSymbolPerfect_Order.png",
     ASC: "SetSymbolAscended_Heroes.png",

@@ -531,6 +531,31 @@
       color: var(--muted);
     }
 
+    .binder-size-field {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .binder-size-field select {
+      height: 32px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #0c1422;
+      color: var(--text);
+      font: inherit;
+      font-size: 12px;
+      padding: 0 8px;
+      cursor: pointer;
+    }
+
+    .binder-size-field select:focus {
+      outline: none;
+      border-color: #4f6e9c;
+    }
+
     .binder-hint {
       margin: 0;
       font-size: 12px;
@@ -556,7 +581,58 @@
         #152033;
       box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03), 0 18px 40px rgba(0, 0, 0, 0.28);
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .binder-page[data-size="12"],
+    .binder-page[data-size="16"] {
+      width: min(720px, 100%);
+    }
+
+    .binder-page-title-btn {
+      margin: 0;
+      padding: 4px 8px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      text-align: center;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    .binder-page-title-btn:hover {
+      color: var(--text);
+      border-color: rgba(103, 178, 255, 0.35);
+      background: rgba(16, 28, 46, 0.55);
+    }
+
+    .binder-page-title-input {
+      width: 100%;
+      height: 34px;
+      border: 1px solid #4f6e9c;
+      border-radius: 8px;
+      background: #0c1422;
+      color: var(--text);
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      text-align: center;
+      padding: 0 10px;
+    }
+
+    .binder-page-title-input:focus {
+      outline: none;
+      border-color: #67b2ff;
+      box-shadow: 0 0 0 2px rgba(103, 178, 255, 0.2);
+    }
+
+    .binder-page-grid {
+      display: grid;
+      grid-template-columns: repeat(var(--binder-cols, 3), minmax(0, 1fr));
       gap: 12px;
     }
 
@@ -584,7 +660,28 @@
       border-style: solid;
       border-color: rgba(90, 120, 170, 0.8);
       background: #0b1220;
-      cursor: default;
+      cursor: grab;
+      touch-action: none;
+    }
+
+    .binder-pocket.is-filled:active {
+      cursor: grabbing;
+    }
+
+    .binder-pocket.is-dragging {
+      opacity: 0.4;
+    }
+
+    .binder-pocket.is-drop-target {
+      border-color: rgba(103, 178, 255, 0.95) !important;
+      background: rgba(40, 90, 160, 0.35) !important;
+      box-shadow: inset 0 0 0 1px rgba(103, 178, 255, 0.45);
+    }
+
+    .binder-pocket.is-filled img {
+      pointer-events: none;
+      -webkit-user-drag: none;
+      user-select: none;
     }
 
     .binder-pocket-art {
@@ -827,6 +924,10 @@
     @media (max-width: 640px) {
       .binder-page {
         padding: 12px;
+        gap: 8px;
+      }
+
+      .binder-page-grid {
         gap: 8px;
       }
     }
@@ -1134,11 +1235,20 @@
             <button type="button" class="btn-ghost" id="binderNextPage">Next</button>
           </div>
           <div class="binder-page-actions">
+            <label class="binder-size-field" for="binderPageSize">
+              <span>Grid</span>
+              <select id="binderPageSize" aria-label="Cards per binder page">
+                <option value="4">2×2 (4)</option>
+                <option value="9">3×3 (9)</option>
+                <option value="12">4×3 (12)</option>
+                <option value="16">4×4 (16)</option>
+              </select>
+            </label>
             <button type="button" class="btn-primary" id="binderAddPage">Add page</button>
             <button type="button" class="btn-ghost" id="binderRemovePage">Remove page</button>
           </div>
         </div>
-        <p class="binder-hint">Tap an empty pocket to add a card. Hover a filled pocket to flip (↺) or remove (×) it.</p>
+        <p class="binder-hint">Tap the page title to rename it. Choose a grid size (default 3×3). Tap an empty pocket to add a card. Drag a card onto another pocket to move or swap it. Hover a filled pocket to flip (↺) or remove (×) it.</p>
         <div id="binderPage" class="binder-page" aria-label="Binder page"></div>
         <p id="binderStatus" class="binder-status" aria-live="polite"></p>
       </div>
@@ -1198,8 +1308,10 @@
   <script src="/site-nav.js?v=10" defer></script>
   <script src="/account-ui.js?v=8"></script>
   <script>
-    const BINDER_SLOTS = 9;
+    const BINDER_PAGE_SIZES = [4, 9, 12, 16];
+    const BINDER_DEFAULT_SIZE = 9;
     const BINDER_MAX_PAGES = 100;
+    const BINDER_GRID_COLS = { 4: 2, 9: 3, 12: 4, 16: 4 };
 
     const state = {
       items: [],
@@ -1227,13 +1339,66 @@
         pickSlot: null,
         pickSource: "collection",
         pickBrowseSetCode: "",
+        dragFromIndex: null,
         saveTimer: null,
+        saveInFlight: null,
+        saveEpoch: 0,
+        dirty: false,
         loaded: false
       }
     };
 
-    function emptyBinderPage() {
-      return { slots: Array.from({ length: BINDER_SLOTS }, () => null) };
+    function normalizeBinderPageSizeClient(raw, slotsLen = 0) {
+      const fromRaw = Number(raw);
+      if (BINDER_PAGE_SIZES.includes(fromRaw)) return fromRaw;
+      const fromSlots = Number(slotsLen);
+      if (BINDER_PAGE_SIZES.includes(fromSlots)) return fromSlots;
+      return BINDER_DEFAULT_SIZE;
+    }
+
+    /** Prefer explicit page.size; only fall back to slot count when size is missing. */
+    function binderPageSizeOf(page) {
+      const fromRaw = Number(page?.size);
+      if (BINDER_PAGE_SIZES.includes(fromRaw)) return fromRaw;
+      const slotsLen = Array.isArray(page?.slots) ? page.slots.length : 0;
+      return normalizeBinderPageSizeClient(page?.size, slotsLen);
+    }
+
+    function resizeBinderPageSlots(page, nextSize) {
+      const size = normalizeBinderPageSizeClient(nextSize);
+      const slotsIn = Array.isArray(page?.slots) ? page.slots : [];
+      page.size = size;
+      page.slots = Array.from({ length: size }, (_, i) => slotsIn[i] || null);
+      return size;
+    }
+
+    function binderGridCols(size) {
+      return BINDER_GRID_COLS[normalizeBinderPageSizeClient(size)] || 3;
+    }
+
+    function emptyBinderPage(size = BINDER_DEFAULT_SIZE) {
+      const pageSize = normalizeBinderPageSizeClient(size);
+      return {
+        title: "",
+        size: pageSize,
+        slots: Array.from({ length: pageSize }, () => null)
+      };
+    }
+
+    function normalizeBinderPageTitleClient(raw) {
+      return String(raw || "")
+        .trim()
+        .replace(/\s+/g, " ")
+        .slice(0, 80);
+    }
+
+    function defaultBinderPageTitle(pageIndex) {
+      return `Binder page ${Number(pageIndex) + 1}`;
+    }
+
+    function binderPageDisplayTitle(page, pageIndex) {
+      const custom = normalizeBinderPageTitleClient(page?.title);
+      return custom || defaultBinderPageTitle(pageIndex);
     }
 
     function normalizeBinderSlotClient(raw) {
@@ -1256,11 +1421,43 @@
       const pagesIn = Array.isArray(rawPages) ? rawPages.slice(0, BINDER_MAX_PAGES) : [];
       const pages = pagesIn.map((page) => {
         const slotsIn = Array.isArray(page?.slots) ? page.slots : [];
+        const size = normalizeBinderPageSizeClient(page?.size, slotsIn.length);
+        const title = normalizeBinderPageTitleClient(page?.title);
         return {
-          slots: Array.from({ length: BINDER_SLOTS }, (_, i) => normalizeBinderSlotClient(slotsIn[i]))
+          title,
+          size,
+          slots: Array.from({ length: size }, (_, i) => normalizeBinderSlotClient(slotsIn[i]))
         };
       });
       return pages.length ? pages : [emptyBinderPage()];
+    }
+
+    function setCurrentBinderPageSize(nextSize) {
+      const page = state.binder.pages[state.binder.pageIndex];
+      const sizeSelect = byId("binderPageSize");
+      if (!page) return;
+      const size = normalizeBinderPageSizeClient(nextSize);
+      const prevSize = binderPageSizeOf(page);
+      const slotsIn = Array.isArray(page.slots) ? page.slots : [];
+      const alreadyMatched = prevSize === size && slotsIn.length === size && Number(page.size) === size;
+      if (alreadyMatched) {
+        if (sizeSelect) sizeSelect.value = String(size);
+        return;
+      }
+      const overflow = slotsIn.slice(size).filter((slot) => slot && slot.name).length;
+      if (
+        overflow > 0 &&
+        !window.confirm(
+          `Resize this page to ${size} pockets? ${overflow} card${overflow === 1 ? "" : "s"} outside the new grid will be removed.`
+        )
+      ) {
+        if (sizeSelect) sizeSelect.value = String(prevSize);
+        return;
+      }
+      resizeBinderPageSlots(page, size);
+      if (sizeSelect) sizeSelect.value = String(size);
+      renderBinder();
+      scheduleBinderSave();
     }
 
     const byId = (id) => document.getElementById(id);
@@ -1552,14 +1749,30 @@
       return `${days}d ago`;
     }
 
+    async function flushBinderSave() {
+      if (state.binder.saveTimer) {
+        clearTimeout(state.binder.saveTimer);
+        state.binder.saveTimer = null;
+      }
+      if (state.binder.saveInFlight) {
+        await state.binder.saveInFlight;
+      }
+      if (!state.binder.dirty) return true;
+      return saveBinder({ quiet: true });
+    }
+
     async function loadBinder() {
+      // Persist pending renames/resizes before reloading, or a fetch can wipe them.
+      await flushBinderSave();
       try {
         const res = await fetch("/api/binder", { credentials: "same-origin", cache: "no-store" });
         const payload = res.ok ? await res.json() : null;
         if (payload?.ok && payload.binder) {
           state.binder.pages = normalizeBinderPagesClient(payload.binder.pages);
+          state.binder.dirty = false;
         } else {
           state.binder.pages = [emptyBinderPage()];
+          state.binder.dirty = false;
         }
       } catch {
         state.binder.pages = [emptyBinderPage()];
@@ -1574,28 +1787,39 @@
       const quiet = options.quiet === true;
       const status = byId("binderStatus");
       if (!quiet && status) status.textContent = "Saving…";
-      try {
-        const res = await fetch("/api/binder", {
-          method: "PUT",
-          credentials: "same-origin",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pages: state.binder.pages })
-        });
-        const payload = await res.json().catch(() => ({}));
-        if (!res.ok || !payload.ok) {
-          if (status) status.textContent = payload.error || "Could not save binder.";
+      const epoch = state.binder.saveEpoch;
+      const pagesToSave = JSON.parse(JSON.stringify(state.binder.pages));
+      const run = (async () => {
+        try {
+          const res = await fetch("/api/binder", {
+            method: "PUT",
+            credentials: "same-origin",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pages: pagesToSave })
+          });
+          const payload = await res.json().catch(() => ({}));
+          if (!res.ok || !payload.ok) {
+            if (status) status.textContent = payload.error || "Could not save binder.";
+            return false;
+          }
+          // Only clear dirty if nothing newer was edited during the request.
+          if (state.binder.saveEpoch === epoch) state.binder.dirty = false;
+          if (status) status.textContent = quiet ? "" : "Saved.";
+          return true;
+        } catch {
+          if (status) status.textContent = "Network error while saving binder.";
           return false;
+        } finally {
+          if (state.binder.saveInFlight === run) state.binder.saveInFlight = null;
         }
-        state.binder.pages = normalizeBinderPagesClient(payload.binder?.pages);
-        if (status) status.textContent = quiet ? "" : "Saved.";
-        return true;
-      } catch {
-        if (status) status.textContent = "Network error while saving binder.";
-        return false;
-      }
+      })();
+      state.binder.saveInFlight = run;
+      return run;
     }
 
     function scheduleBinderSave() {
+      state.binder.dirty = true;
+      state.binder.saveEpoch += 1;
       if (state.binder.saveTimer) clearTimeout(state.binder.saveTimer);
       state.binder.saveTimer = setTimeout(() => {
         state.binder.saveTimer = null;
@@ -2008,6 +2232,103 @@
       });
     }
 
+    function moveBinderSlot(fromIndex, toIndex) {
+      const page = state.binder.pages[state.binder.pageIndex];
+      if (!page || !Array.isArray(page.slots)) return false;
+      const from = Number(fromIndex);
+      const to = Number(toIndex);
+      if (!Number.isFinite(from) || !Number.isFinite(to) || from === to) return false;
+      if (from < 0 || to < 0 || from >= page.slots.length || to >= page.slots.length) return false;
+      const card = page.slots[from];
+      if (!card) return false;
+      // Empty target: move. Occupied target: swap.
+      const other = page.slots[to] || null;
+      page.slots[to] = card;
+      page.slots[from] = other;
+      renderBinder();
+      scheduleBinderSave();
+      return true;
+    }
+
+    function bindBinderDropTarget(el, toIndex) {
+      if (!el || !Number.isFinite(toIndex)) return;
+      el.addEventListener("dragover", (e) => {
+        const fromIndex = Number(state.binder.dragFromIndex);
+        if (!Number.isFinite(fromIndex) || fromIndex === toIndex) return;
+        e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+        el.classList.add("is-drop-target");
+      });
+      el.addEventListener("dragleave", (e) => {
+        if (e.relatedTarget && el.contains(e.relatedTarget)) return;
+        el.classList.remove("is-drop-target");
+      });
+      el.addEventListener("drop", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        el.classList.remove("is-drop-target");
+        el.dataset.binderDidDrop = "1";
+        const fromIndex = Number(
+          e.dataTransfer?.getData("text/plain") || state.binder.dragFromIndex
+        );
+        moveBinderSlot(fromIndex, toIndex);
+        state.binder.dragFromIndex = null;
+      });
+    }
+
+    function commitBinderPageTitle(pageIndex, rawTitle) {
+      const page = state.binder.pages[pageIndex];
+      if (!page) return;
+      let next = normalizeBinderPageTitleClient(rawTitle);
+      if (next === defaultBinderPageTitle(pageIndex)) next = "";
+      const prev = normalizeBinderPageTitleClient(page.title);
+      if (next === prev) {
+        renderBinder();
+        return;
+      }
+      page.title = next;
+      state.binder.dirty = true;
+      state.binder.saveEpoch += 1;
+      renderBinder();
+      // Save immediately so a later loadData()/loadBinder() cannot wipe the rename.
+      void flushBinderSave();
+    }
+
+    function beginBinderPageTitleEdit(pageIndex) {
+      const pageEl = byId("binderPage");
+      const page = state.binder.pages[pageIndex];
+      if (!pageEl || !page) return;
+      const titleBtn = pageEl.querySelector("[data-binder-title]");
+      if (!titleBtn) return;
+      const current = binderPageDisplayTitle(page, pageIndex);
+      const input = document.createElement("input");
+      input.type = "text";
+      input.className = "binder-page-title-input";
+      input.value = normalizeBinderPageTitleClient(page.title) || current;
+      input.maxLength = 80;
+      input.setAttribute("aria-label", "Binder page title");
+      titleBtn.replaceWith(input);
+      input.focus();
+      input.select();
+      let finished = false;
+      const finish = (save) => {
+        if (finished) return;
+        finished = true;
+        if (save) commitBinderPageTitle(pageIndex, input.value);
+        else renderBinder();
+      };
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          input.blur();
+        } else if (e.key === "Escape") {
+          e.preventDefault();
+          finish(false);
+        }
+      });
+      input.addEventListener("blur", () => finish(true));
+    }
+
     function renderBinder() {
       const pageEl = byId("binderPage");
       const labelEl = byId("binderPageLabel");
@@ -2023,12 +2344,25 @@
       }
       const page = state.binder.pages[state.binder.pageIndex];
       const pageNo = state.binder.pageIndex + 1;
-      if (labelEl) labelEl.textContent = `Page ${pageNo} / ${state.binder.pages.length}`;
+      const pageSize = binderPageSizeOf(page);
+      resizeBinderPageSlots(page, pageSize);
+      const cols = binderGridCols(pageSize);
+      const displayTitle = binderPageDisplayTitle(page, state.binder.pageIndex);
+      const sizeSelect = byId("binderPageSize");
+      if (labelEl) {
+        const custom = normalizeBinderPageTitleClient(page.title);
+        labelEl.textContent = custom
+          ? `${custom} (${pageNo}/${state.binder.pages.length})`
+          : `Page ${pageNo} / ${state.binder.pages.length}`;
+        labelEl.title = displayTitle;
+      }
       if (prevBtn) prevBtn.disabled = state.binder.pageIndex <= 0;
       if (nextBtn) nextBtn.disabled = state.binder.pageIndex >= state.binder.pages.length - 1;
       if (removeBtn) removeBtn.disabled = state.binder.pages.length <= 1;
+      if (sizeSelect) sizeSelect.value = String(pageSize);
+      pageEl.dataset.size = String(pageSize);
 
-      pageEl.innerHTML = page.slots
+      const pockets = page.slots
         .map((slot, slotIndex) => {
           if (!slot) {
             return `<button type="button" class="binder-pocket" data-binder-add="${slotIndex}" aria-label="Empty pocket ${slotIndex + 1}">
@@ -2040,13 +2374,13 @@
             .filter(Boolean)
             .join(" ");
           const invertedClass = slot.inverted ? " is-inverted" : "";
-          return `<div class="binder-pocket is-filled${invertedClass}" data-binder-slot="${slotIndex}" aria-label="Pocket ${slotIndex + 1}: ${escapeAttr(slot.name)}">
-            <button type="button" class="binder-pocket-btn binder-pocket-btn--flip" data-binder-flip="${slotIndex}" title="Flip card" aria-label="Flip card">↺</button>
-            <button type="button" class="binder-pocket-btn binder-pocket-btn--remove" data-binder-remove="${slotIndex}" title="Remove card" aria-label="Remove card"><span class="binder-pocket-x" aria-hidden="true"></span></button>
+          return `<div class="binder-pocket is-filled${invertedClass}" draggable="true" data-binder-slot="${slotIndex}" aria-label="Pocket ${slotIndex + 1}: ${escapeAttr(slot.name)}. Drag to another pocket to move or swap." title="Drag to move or swap">
+            <button type="button" class="binder-pocket-btn binder-pocket-btn--flip" data-binder-flip="${slotIndex}" title="Flip card" aria-label="Flip card" draggable="false">↺</button>
+            <button type="button" class="binder-pocket-btn binder-pocket-btn--remove" data-binder-remove="${slotIndex}" title="Remove card" aria-label="Remove card" draggable="false"><span class="binder-pocket-x" aria-hidden="true"></span></button>
             <div class="binder-pocket-art">
               ${
                 img
-                  ? `<img src="${escapeAttr(img)}" alt="${escapeAttr(slot.name)}" loading="lazy" />`
+                  ? `<img src="${escapeAttr(img)}" alt="${escapeAttr(slot.name)}" loading="lazy" draggable="false" />`
                   : `<span class="binder-pocket-empty">No image</span>`
               }
             </div>
@@ -2058,12 +2392,47 @@
         })
         .join("");
 
+      pageEl.innerHTML = `<button type="button" class="binder-page-title-btn" data-binder-title title="Click to rename page">${escapeHtml(displayTitle)}</button><div class="binder-page-grid" style="--binder-cols:${cols}">${pockets}</div>`;
+
+      pageEl.querySelector("[data-binder-title]")?.addEventListener("click", () => {
+        beginBinderPageTitleEdit(state.binder.pageIndex);
+      });
       pageEl.querySelectorAll("[data-binder-add]").forEach((btn) => {
+        const slotIndex = Number(btn.getAttribute("data-binder-add"));
         btn.addEventListener("click", () => {
-          const slotIndex = Number(btn.getAttribute("data-binder-add"));
+          if (btn.dataset.binderDidDrop === "1") {
+            delete btn.dataset.binderDidDrop;
+            return;
+          }
           if (!Number.isFinite(slotIndex)) return;
           openBinderPickModal(slotIndex);
         });
+        bindBinderDropTarget(btn, slotIndex);
+      });
+      pageEl.querySelectorAll("[data-binder-slot]").forEach((pocket) => {
+        const slotIndex = Number(pocket.getAttribute("data-binder-slot"));
+        pocket.addEventListener("dragstart", (e) => {
+          if (e.target.closest?.(".binder-pocket-btn")) {
+            e.preventDefault();
+            return;
+          }
+          if (!Number.isFinite(slotIndex)) {
+            e.preventDefault();
+            return;
+          }
+          state.binder.dragFromIndex = slotIndex;
+          e.dataTransfer?.setData("text/plain", String(slotIndex));
+          if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
+          pocket.classList.add("is-dragging");
+          pageEl.classList.add("binder-page--dragging");
+        });
+        pocket.addEventListener("dragend", () => {
+          state.binder.dragFromIndex = null;
+          pocket.classList.remove("is-dragging");
+          pageEl.classList.remove("binder-page--dragging");
+          pageEl.querySelectorAll(".is-drop-target").forEach((el) => el.classList.remove("is-drop-target"));
+        });
+        bindBinderDropTarget(pocket, slotIndex);
       });
       pageEl.querySelectorAll("[data-binder-remove]").forEach((btn) => {
         btn.addEventListener("click", (e) => {
@@ -2571,6 +2940,9 @@
       }
       renderBinder();
       scheduleBinderSave();
+    });
+    byId("binderPageSize")?.addEventListener("change", (e) => {
+      setCurrentBinderPageSize(Number(e.target?.value));
     });
 
     document.querySelectorAll("[data-binder-pick-source]").forEach((btn) => {

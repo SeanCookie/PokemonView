@@ -81,19 +81,42 @@
     });
   }
 
+  const BINDER_PAGE_SIZES = [4, 9, 12, 16];
+  const BINDER_GRID_COLS = { 4: 2, 9: 3, 12: 4, 16: 4 };
+
+  function binderPageTitle(page) {
+    const custom = String(page?.title || "").trim();
+    if (custom) return custom;
+    const pageNo = Number(page?.pageNumber) || 1;
+    return `Binder page ${pageNo}`;
+  }
+
+  function binderPageSize(page) {
+    const fromRaw = Number(page?.size);
+    if (BINDER_PAGE_SIZES.includes(fromRaw)) return fromRaw;
+    const fromSlots = Array.isArray(page?.slots) ? page.slots.length : 0;
+    if (BINDER_PAGE_SIZES.includes(fromSlots)) return fromSlots;
+    return 9;
+  }
+
+  function binderGridCols(size) {
+    return BINDER_GRID_COLS[binderPageSize({ size })] || 3;
+  }
+
   function filteredBinderPages() {
     const pages = Array.isArray(state.binderPages) ? state.binderPages : [];
     const q = state.query.trim().toLowerCase();
     if (!q) return pages;
-    return pages.filter((page) =>
-      (Array.isArray(page.slots) ? page.slots : []).some((slot) => {
+    return pages.filter((page) => {
+      if (binderPageTitle(page).toLowerCase().includes(q)) return true;
+      return (Array.isArray(page.slots) ? page.slots : []).some((slot) => {
         if (!slot) return false;
         return [slot.name, slot.setName, slot.setCode, slot.cardNumber]
           .join(" ")
           .toLowerCase()
           .includes(q);
-      })
-    );
+      });
+    });
   }
 
   function renderHero() {
@@ -512,17 +535,16 @@
     setVisible(els.binder, true);
     els.binder.innerHTML = pages
       .map((page) => {
-        const pageNo = Number(page.pageNumber) || 1;
-        const slots = Array.isArray(page.slots) ? page.slots : [];
+        const size = binderPageSize(page);
+        const cols = binderGridCols(size);
+        const rawSlots = Array.isArray(page.slots) ? page.slots : [];
+        const slots = Array.from({ length: size }, (_, i) => rawSlots[i] || null);
         const pockets = slots
           .map((slot) => {
             if (!slot) {
               return `<div class="showcase-binder-pocket"><span class="placeholder">Empty</span></div>`;
             }
             const invertedClass = slot.inverted ? " is-inverted" : "";
-            const meta = [slot.setName || slot.setCode, slot.cardNumber ? `#${slot.cardNumber}` : ""]
-              .filter(Boolean)
-              .join(" ");
             const img = String(slot.imageUrl || "").trim();
             return `<div class="showcase-binder-pocket${invertedClass}">
               <div class="showcase-binder-pocket-art">
@@ -532,16 +554,12 @@
                     : `<span class="placeholder">No image</span>`
                 }
               </div>
-              <span class="showcase-binder-pocket-meta">
-                <span class="name">${escapeHtml(slot.name || "Card")}</span>
-                <span class="set">${escapeHtml(meta)}</span>
-              </span>
             </div>`;
           })
           .join("");
-        return `<article class="showcase-binder-page">
-          <p class="showcase-binder-page-label">Binder page ${escapeHtml(String(pageNo))}</p>
-          <div class="showcase-binder-grid">${pockets}</div>
+        return `<article class="showcase-binder-page" data-size="${size}">
+          <p class="showcase-binder-page-label">${escapeHtml(binderPageTitle(page))}</p>
+          <div class="showcase-binder-grid" style="--binder-cols:${cols}">${pockets}</div>
         </article>`;
       })
       .join("");

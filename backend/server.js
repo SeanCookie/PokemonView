@@ -276,6 +276,7 @@ const TCG_LISTING_MARKET_FLOOR_RATIO = 0.88;
 const TCG_PRICE_GUIDE_INDEX_TTL_MS = 1000 * 60 * 60 * 6;
 /** App set code → TCGplayer price guide slug when auto-matching is unreliable. */
 const TCG_GUIDE_SLUG_BY_SET_CODE = {
+  PBL: "me05-pitch-black",
   CRI: "me04-chaos-rising",
   HIF: "hidden-fates",
   SHF: "shining-fates"
@@ -2966,7 +2967,8 @@ function ensureUserPreferences(user) {
   return user.preferences;
 }
 
-const BINDER_SLOTS_PER_PAGE = 9;
+const BINDER_PAGE_SIZES = [4, 9, 12, 16];
+const BINDER_DEFAULT_PAGE_SIZE = 9;
 const BINDER_MAX_PAGES = 100;
 
 function normalizeBinderSlot(raw) {
@@ -2989,17 +2991,35 @@ function normalizeBinderSlot(raw) {
   };
 }
 
+function normalizeBinderPageTitle(raw) {
+  return String(raw || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .slice(0, 80);
+}
+
+function normalizeBinderPageSize(raw, slotsLen = 0) {
+  const fromRaw = Number(raw);
+  if (BINDER_PAGE_SIZES.includes(fromRaw)) return fromRaw;
+  const fromSlots = Number(slotsLen);
+  if (BINDER_PAGE_SIZES.includes(fromSlots)) return fromSlots;
+  return BINDER_DEFAULT_PAGE_SIZE;
+}
+
 function normalizeBinderPages(rawPages) {
   const pagesIn = Array.isArray(rawPages) ? rawPages.slice(0, BINDER_MAX_PAGES) : [];
   const pages = pagesIn.map((page) => {
     const slotsIn = Array.isArray(page?.slots) ? page.slots : [];
-    const slots = Array.from({ length: BINDER_SLOTS_PER_PAGE }, (_, i) =>
-      normalizeBinderSlot(slotsIn[i])
-    );
-    return { slots };
+    const size = normalizeBinderPageSize(page?.size, slotsIn.length);
+    const slots = Array.from({ length: size }, (_, i) => normalizeBinderSlot(slotsIn[i]));
+    const title = normalizeBinderPageTitle(page?.title);
+    return title ? { title, size, slots } : { size, slots };
   });
   if (!pages.length) {
-    pages.push({ slots: Array.from({ length: BINDER_SLOTS_PER_PAGE }, () => null) });
+    pages.push({
+      size: BINDER_DEFAULT_PAGE_SIZE,
+      slots: Array.from({ length: BINDER_DEFAULT_PAGE_SIZE }, () => null)
+    });
   }
   return pages;
 }
@@ -3019,7 +3039,8 @@ function publicShowcaseBinderPages(user) {
   return binder.pages
     .map((page, index) => {
       const rawSlots = Array.isArray(page.slots) ? page.slots : [];
-      const slots = Array.from({ length: BINDER_SLOTS_PER_PAGE }, (_, slotIndex) => {
+      const size = normalizeBinderPageSize(page.size, rawSlots.length);
+      const slots = Array.from({ length: size }, (_, slotIndex) => {
         const slot = rawSlots[slotIndex] || null;
         return slot
           ? {
@@ -3032,7 +3053,10 @@ function publicShowcaseBinderPages(user) {
             }
           : null;
       });
-      return { pageNumber: index + 1, slots };
+      const title = normalizeBinderPageTitle(page.title);
+      const out = { pageNumber: index + 1, size, slots };
+      if (title) out.title = title;
+      return out;
     })
     .filter((page) => page.slots.some((slot) => slot && slot.name));
 }

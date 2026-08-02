@@ -322,6 +322,11 @@ a.showcase-card:hover {
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03), 0 18px 40px rgba(0, 0, 0, 0.28);
 }
 
+.showcase-binder-page[data-size="12"],
+.showcase-binder-page[data-size="16"] {
+  width: min(720px, 100%);
+}
+
 .showcase-binder-page-label {
   margin: 0 0 12px;
   text-align: center;
@@ -332,7 +337,7 @@ a.showcase-card:hover {
 
 .showcase-binder-grid {
   display: grid !important;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  grid-template-columns: repeat(var(--binder-cols, 3), minmax(0, 1fr)) !important;
   gap: 12px;
   width: 100%;
 }
