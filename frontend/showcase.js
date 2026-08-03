@@ -20,6 +20,7 @@
     stats: null,
     items: [],
     binderPages: [],
+    binderPageIndex: 0,
     filter: "all",
     query: "",
     isOwner: false,
@@ -510,6 +511,16 @@
       .join("");
   }
 
+  function clampBinderPageIndex(pageCount) {
+    const total = Math.max(0, Number(pageCount) || 0);
+    if (total <= 0) {
+      state.binderPageIndex = 0;
+      return;
+    }
+    if (state.binderPageIndex < 0) state.binderPageIndex = 0;
+    if (state.binderPageIndex >= total) state.binderPageIndex = total - 1;
+  }
+
   function renderBinderPages() {
     if (!els.binder) return;
     if (state.filter !== "binder") {
@@ -529,24 +540,26 @@
       return;
     }
 
-    setVisible(els.empty, false);
-    setVisible(els.grid, false);
-    if (els.grid) els.grid.innerHTML = "";
-    setVisible(els.binder, true);
-    els.binder.innerHTML = pages
-      .map((page) => {
-        const size = binderPageSize(page);
-        const cols = binderGridCols(size);
-        const rawSlots = Array.isArray(page.slots) ? page.slots : [];
-        const slots = Array.from({ length: size }, (_, i) => rawSlots[i] || null);
-        const pockets = slots
-          .map((slot) => {
-            if (!slot) {
-              return `<div class="showcase-binder-pocket"><span class="placeholder">Empty</span></div>`;
-            }
-            const invertedClass = slot.inverted ? " is-inverted" : "";
-            const img = String(slot.imageUrl || "").trim();
-            return `<div class="showcase-binder-pocket${invertedClass}">
+    clampBinderPageIndex(pages.length);
+    const pageIndex = state.binderPageIndex;
+    const page = pages[pageIndex];
+    const pageNo = pageIndex + 1;
+    const custom = String(page?.title || "").trim();
+    const navLabel = custom
+      ? `${custom} (${pageNo}/${pages.length})`
+      : `Page ${pageNo} / ${pages.length}`;
+    const size = binderPageSize(page);
+    const cols = binderGridCols(size);
+    const rawSlots = Array.isArray(page.slots) ? page.slots : [];
+    const slots = Array.from({ length: size }, (_, i) => rawSlots[i] || null);
+    const pockets = slots
+      .map((slot) => {
+        if (!slot) {
+          return `<div class="showcase-binder-pocket"><span class="placeholder">Empty</span></div>`;
+        }
+        const invertedClass = slot.inverted ? " is-inverted" : "";
+        const img = String(slot.imageUrl || "").trim();
+        return `<div class="showcase-binder-pocket${invertedClass}">
               <div class="showcase-binder-pocket-art">
                 ${
                   img
@@ -555,14 +568,41 @@
                 }
               </div>
             </div>`;
-          })
-          .join("");
-        return `<article class="showcase-binder-page" data-size="${size}">
-          <p class="showcase-binder-page-label">${escapeHtml(binderPageTitle(page))}</p>
-          <div class="showcase-binder-grid" style="--binder-cols:${cols}">${pockets}</div>
-        </article>`;
       })
       .join("");
+
+    setVisible(els.empty, false);
+    setVisible(els.grid, false);
+    if (els.grid) els.grid.innerHTML = "";
+    setVisible(els.binder, true);
+    els.binder.innerHTML = `
+      <div class="showcase-binder-toolbar">
+        <div class="showcase-binder-page-nav">
+          <button type="button" class="showcase-binder-nav-btn" id="showcaseBinderPrev" ${
+            pageIndex <= 0 ? "disabled" : ""
+          }>Prev</button>
+          <span class="showcase-binder-page-nav-label" id="showcaseBinderPageLabel">${escapeHtml(navLabel)}</span>
+          <button type="button" class="showcase-binder-nav-btn" id="showcaseBinderNext" ${
+            pageIndex >= pages.length - 1 ? "disabled" : ""
+          }>Next</button>
+        </div>
+      </div>
+      <article class="showcase-binder-page" data-size="${size}">
+        <p class="showcase-binder-page-label">${escapeHtml(binderPageTitle(page))}</p>
+        <div class="showcase-binder-grid" style="--binder-cols:${cols}">${pockets}</div>
+      </article>`;
+
+    els.binder.querySelector("#showcaseBinderPrev")?.addEventListener("click", () => {
+      if (state.binderPageIndex <= 0) return;
+      state.binderPageIndex -= 1;
+      renderBinderPages();
+    });
+    els.binder.querySelector("#showcaseBinderNext")?.addEventListener("click", () => {
+      const total = filteredBinderPages().length;
+      if (state.binderPageIndex >= total - 1) return;
+      state.binderPageIndex += 1;
+      renderBinderPages();
+    });
   }
 
   function renderCollectionView() {
@@ -646,6 +686,7 @@
       const rawItems = Array.isArray(payload.items) ? payload.items : [];
       state.items = await enhancePublicShowcaseItems(rawItems);
       state.binderPages = Array.isArray(payload.binderPages) ? payload.binderPages : [];
+      state.binderPageIndex = 0;
       state.stats = recomputeShowcaseStats(state.items, payload.stats || {});
       state.stats.binderPages = state.binderPages.length;
       renderAll();
@@ -702,13 +743,18 @@
     tab.addEventListener("click", () => {
       for (const node of els.tabs) node.classList.remove("active");
       tab.classList.add("active");
-      state.filter = tab.getAttribute("data-showcase-filter") || "all";
+      const nextFilter = tab.getAttribute("data-showcase-filter") || "all";
+      if (nextFilter === "binder" && state.filter !== "binder") {
+        state.binderPageIndex = 0;
+      }
+      state.filter = nextFilter;
       renderCollectionView();
     });
   }
 
   els.search?.addEventListener("input", () => {
     state.query = els.search.value;
+    if (state.filter === "binder") state.binderPageIndex = 0;
     renderCollectionView();
   });
 

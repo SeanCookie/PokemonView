@@ -306,7 +306,55 @@ a.showcase-card:hover {
 
 .showcase-binder {
   display: grid;
-  gap: 18px;
+  gap: 14px;
+}
+
+.showcase-binder-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.showcase-binder-page-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.showcase-binder-page-nav-label {
+  min-width: 120px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.showcase-binder-nav-btn {
+  height: 34px;
+  min-width: 64px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #132239;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.showcase-binder-nav-btn:hover:not(:disabled) {
+  border-color: #4f6e9c;
+  background: #172b47;
+}
+
+.showcase-binder-nav-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 .showcase-binder-page {
