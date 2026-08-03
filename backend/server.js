@@ -18,7 +18,8 @@ const {
 } = require("./lib/restock-catalog-refresh");
 const {
   buildLocalImageIndexFromDisk,
-  hydrateByCodeWithDiskImages
+  hydrateByCodeWithDiskImages,
+  cardNoLookupKeys
 } = require("./lib/local-card-images");
 const { fetchCardImageBytes } = require("./lib/card-image-remote");
 const { isLfsPointer, materializeLfsFile, materializeDirectoryIfNeeded } = require("./lib/github-lfs-materialize");
@@ -68,7 +69,8 @@ const {
   enqueuePersistPriceChartingCardDetailsCacheNow,
   readCachedCardDetails,
   writeCachedCardDetails,
-  persistPriceChartingCardDetailsCacheNow
+  persistPriceChartingCardDetailsCacheNow,
+  averageRecentUngradedSoldPrice
 } = require("./lib/pricecharting-card-details-cache");
 const { loadPersistedPriceChartingMarketHistoryCache } = require("./lib/pricecharting-market-history-cache");
 const { requestPasswordReset, completePasswordReset, isEmailConfigured } = require("./lib/password-reset");
@@ -3549,7 +3551,50 @@ async function getShowcaseSetLookup() {
   return showcaseSetLookupCache;
 }
 
-async function applySetsCatalogPricingToItem(item, lookup, manifestCache) {
+async function resolveSoldListingsAveragePriceForItem(item, { cacheOnly = true } = {}) {
+  if (!item || item.type !== "single") return null;
+  if (String(item.setLanguage || "").toLowerCase() === "japanese") return null;
+  if (item.conditionType === "graded") return null;
+  const setCode = String(item.setCode || "")
+    .trim()
+    .toUpperCase();
+  const cardNo = String(item.cardNumber || "").trim();
+  if (!setCode || !cardNo) return null;
+  // Try exact + "232/091"→"232" style keys against the PriceCharting details cache.
+  const lookupKeys = cardNoLookupKeys(cardNo);
+  for (const key of lookupKeys) {
+    const cached = readCachedCardDetails(setCode, key);
+    if (cached?.ok) {
+      const avg = averageRecentUngradedSoldPrice(cached, { limit: 10 });
+      if (avg) return avg;
+    }
+  }
+  const primaryNo = lookupKeys.find((key) => key && !String(key).includes("/")) || cardNo;
+  const details = await getOrFetchPriceChartingCardDetails(
+    {
+      setCode,
+      setName: String(item.setName || "").trim(),
+      cardNo: primaryNo,
+      cardName: String(item.name || "").trim()
+    },
+    { cacheOnly }
+  );
+  if (!details?.ok) return null;
+  return averageRecentUngradedSoldPrice(details, { limit: 10 });
+}
+
+function applySoldAverageToDraft(draft, soldAvg) {
+  if (!draft || !soldAvg || !(Number(soldAvg.price) > 0)) return draft;
+  draft.marketPrice = Number(soldAvg.price);
+  draft.sourceBreakdown = {
+    pricechartingSoldAvg: draft.marketPrice,
+    soldSampleSize: Number(soldAvg.sampleSize) || 0
+  };
+  draft.lastPricedAt = new Date().toISOString();
+  return draft;
+}
+
+async function applySetsCatalogPricingToItem(item, lookup, manifestCache, options = {}) {
   if (!item || item.type !== "single") return item;
   if (String(item.setLanguage || "").toLowerCase() === "japanese") return item;
   const hasManual =
@@ -3560,15 +3605,29 @@ async function applySetsCatalogPricingToItem(item, lookup, manifestCache) {
   if (hasManual) return item;
 
   const draft = { ...item };
-    const setCode = resolveSetCodeForItem(draft, lookup);
-    if (setCode) draft.setCode = setCode;
-    const canonNo = resolveCanonicalCardNumber(draft, lookup);
-    if (canonNo) draft.cardNumber = canonNo;
+  const setCode = resolveSetCodeForItem(draft, lookup);
+  if (setCode) draft.setCode = setCode;
+  const canonNo = resolveCanonicalCardNumber(draft, lookup);
+  if (canonNo) draft.cardNumber = canonNo;
   if (!String(draft.imageUrl || "").trim()) {
     const imageUrl = resolveShowcaseImageUrl(draft, lookup);
     if (imageUrl) draft.imageUrl = imageUrl;
   }
-  if (Number(draft.marketPrice) > 0) {
+
+  const cacheOnly = options.cacheOnly !== false;
+  const soldAvg = await resolveSoldListingsAveragePriceForItem(draft, { cacheOnly });
+  if (soldAvg) {
+    return applySoldAverageToDraft(draft, soldAvg);
+  }
+
+  if (Number(draft.marketPrice) > 0 && options.force !== true) {
+    return draft;
+  }
+  // Keep a prior sold-listing average when PriceCharting cache is cold.
+  if (
+    Number(draft.marketPrice) > 0 &&
+    Number(draft.sourceBreakdown?.pricechartingSoldAvg) > 0
+  ) {
     return draft;
   }
   return resolveTcgSetPriceForCollectrItem(draft, manifestCache);
@@ -3580,6 +3639,7 @@ async function syncCollectionPricesFromSets(userId, options = {}) {
   const lookup = await getShowcaseSetLookup();
   const manifestCache = new Map();
   const force = options.force === true;
+  const cacheOnly = options.cacheOnly !== false;
   let updated = 0;
   let priced = 0;
 
@@ -3592,11 +3652,22 @@ async function syncCollectionPricesFromSets(userId, options = {}) {
       Number.isFinite(Number(item.manualPrice)) &&
       Number(item.manualPrice) > 0;
     if (hasManual) continue;
-    if (!force && Number(item.marketPrice) > 0) continue;
 
     const beforePrice = Number(item.marketPrice) || 0;
     const beforeCode = String(item.setCode || "").trim().toUpperCase();
-    const next = await applySetsCatalogPricingToItem(item, lookup, manifestCache);
+    const beforeSource = item.sourceBreakdown && typeof item.sourceBreakdown === "object"
+      ? item.sourceBreakdown
+      : {};
+    const alreadySoldAvg = Number(beforeSource.pricechartingSoldAvg) > 0;
+    // Always refresh raw singles from sold-listing averages when cache has data.
+    // Skip unchanged TCG-priced rows when force is off and we already have a price
+    // but only if sold-avg cannot be applied (handled inside apply).
+    if (!force && Number(item.marketPrice) > 0 && item.conditionType === "graded") continue;
+
+    const next = await applySetsCatalogPricingToItem(item, lookup, manifestCache, {
+      force: force || !alreadySoldAvg,
+      cacheOnly
+    });
     let changed = false;
 
     const nextCode = String(next.setCode || "").trim().toUpperCase();
@@ -3608,8 +3679,13 @@ async function syncCollectionPricesFromSets(userId, options = {}) {
       item.imageUrl = next.imageUrl;
       changed = true;
     }
-    if (Number(next.marketPrice) > 0 && Number(next.marketPrice) !== beforePrice) {
-      item.marketPrice = Number(next.marketPrice);
+    const nextPrice = Number(next.marketPrice) || 0;
+    const nextSoldAvg = Number(next.sourceBreakdown?.pricechartingSoldAvg) > 0;
+    if (
+      nextPrice > 0 &&
+      (nextPrice !== beforePrice || (nextSoldAvg && !alreadySoldAvg))
+    ) {
+      item.marketPrice = nextPrice;
       item.sourceBreakdown = next.sourceBreakdown || item.sourceBreakdown || { tcgplayer: item.marketPrice };
       item.lastPricedAt = next.lastPricedAt || new Date().toISOString();
       if (next.tcgProductId) item.tcgProductId = String(next.tcgProductId);
@@ -3625,12 +3701,63 @@ async function syncCollectionPricesFromSets(userId, options = {}) {
   return { updated, priced };
 }
 
+const collectionSoldPriceWarmInFlight = new Set();
+
+function scheduleCollectionSoldPriceWarm(userId, { maxFetches = 8 } = {}) {
+  const id = String(userId || "").trim();
+  if (!id || collectionSoldPriceWarmInFlight.has(id)) return;
+  collectionSoldPriceWarmInFlight.add(id);
+  setTimeout(() => {
+    void (async () => {
+      try {
+        const lookup = await getShowcaseSetLookup();
+        const limit = Math.max(1, Math.min(25, Math.floor(Number(maxFetches) || 8)));
+        let fetched = 0;
+        for (const item of store.items) {
+          if (fetched >= limit) break;
+          if (String(item.userId || "") !== id) continue;
+          if (item.type !== "single") continue;
+          if (item.conditionType === "graded") continue;
+          if (String(item.setLanguage || "").toLowerCase() === "japanese") continue;
+          if (Number(item.manualPrice) > 0) continue;
+          const draft = { ...item };
+          const setCode = resolveSetCodeForItem(draft, lookup) || String(draft.setCode || "").trim().toUpperCase();
+          const cardNo =
+            resolveCanonicalCardNumber(draft, lookup) || String(draft.cardNumber || "").trim();
+          if (!setCode || !cardNo) continue;
+          if (readCachedCardDetails(setCode, cardNo)?.ok) continue;
+          await getOrFetchPriceChartingCardDetails(
+            {
+              setCode,
+              setName: String(draft.setName || "").trim(),
+              cardNo,
+              cardName: String(draft.name || "").trim()
+            },
+            { cacheOnly: false }
+          );
+          fetched += 1;
+        }
+        if (fetched > 0) {
+          const sync = await syncCollectionPricesFromSets(id, { cacheOnly: true, force: true });
+          if (sync.updated > 0) await persistStore();
+        }
+      } catch (err) {
+        console.warn(`[collection-price] sold-avg warm failed: ${err?.message || err}`);
+      } finally {
+        collectionSoldPriceWarmInFlight.delete(id);
+      }
+    })();
+  }, 0);
+}
+
 async function enrichCollectionItemsForShowcase(items) {
   const lookup = await getShowcaseSetLookup();
   const manifestCache = new Map();
   const out = [];
   for (const item of items) {
-    const draft = await applySetsCatalogPricingToItem(item, lookup, manifestCache);
+    const draft = await applySetsCatalogPricingToItem(item, lookup, manifestCache, {
+      cacheOnly: true
+    });
     out.push(draft);
   }
   return out;
@@ -3880,6 +4007,131 @@ function findCollectionItemForUser(itemId, userId) {
   const ownerId = String(userId || "").trim();
   if (!id || !ownerId) return null;
   return store.items.find((item) => item.id === id && String(item.userId || "") === ownerId) || null;
+}
+
+/** Normalize card numbers so "001", "1", and "1/102" merge as the same card. */
+function normalizeCollectionCardNumberKey(raw) {
+  let q = String(raw || "")
+    .trim()
+    .replace(/^#/, "");
+  if (!q) return "";
+  const slash = q.indexOf("/");
+  if (slash > 0) q = q.slice(0, slash);
+  const stripped = q.replace(/^0+/, "") || "0";
+  return stripped.toUpperCase();
+}
+
+function collectionItemLanguageKey(item) {
+  return String(item?.setLanguage || "english")
+    .trim()
+    .toLowerCase() === "japanese"
+    ? "japanese"
+    : "english";
+}
+
+function collectionItemConditionKey(item) {
+  const conditionType = item?.conditionType === "graded" ? "graded" : "raw";
+  if (conditionType !== "graded") return "raw";
+  const company = String(item?.gradeCompany || "")
+    .trim()
+    .toLowerCase();
+  const grade = String(item?.gradeValue || "")
+    .trim()
+    .toLowerCase();
+  return `graded::${company}::${grade}`;
+}
+
+/**
+ * Identity used to merge duplicate adds into quantity bumps.
+ * Graded copies stay separate from raw / other grades. Sealed only merges by UPC.
+ */
+function collectionItemMergeKey(item) {
+  const userId = String(item?.userId || "").trim();
+  if (!userId) return null;
+  const type = item?.type === "sealed" ? "sealed" : "single";
+  if (type === "sealed") {
+    const upc = String(item?.upc || "").trim();
+    return upc ? `${userId}::sealed::upc::${upc}` : null;
+  }
+  const setCode = String(item?.setCode || "")
+    .trim()
+    .toUpperCase();
+  const cardNo = normalizeCollectionCardNumberKey(item?.cardNumber);
+  if (!setCode || !cardNo) return null;
+  const lang = collectionItemLanguageKey(item);
+  const conditionKey = collectionItemConditionKey(item);
+  return `${userId}::single::${lang}::${setCode}::${cardNo}::${conditionKey}`;
+}
+
+function collectionItemsMatchForMerge(a, b) {
+  if (!a || !b) return false;
+  if (String(a.userId || "").trim() !== String(b.userId || "").trim()) return false;
+  const typeA = a.type === "sealed" ? "sealed" : "single";
+  const typeB = b.type === "sealed" ? "sealed" : "single";
+  if (typeA !== typeB) return false;
+  if (typeA === "sealed") {
+    const upcA = String(a.upc || "").trim();
+    const upcB = String(b.upc || "").trim();
+    return Boolean(upcA) && upcA === upcB;
+  }
+  if (normalizeCollectionCardNumberKey(a.cardNumber) !== normalizeCollectionCardNumberKey(b.cardNumber)) {
+    return false;
+  }
+  if (collectionItemLanguageKey(a) !== collectionItemLanguageKey(b)) return false;
+  if (collectionItemConditionKey(a) !== collectionItemConditionKey(b)) return false;
+  const codeA = String(a.setCode || "")
+    .trim()
+    .toUpperCase();
+  const codeB = String(b.setCode || "")
+    .trim()
+    .toUpperCase();
+  if (codeA && codeB) return codeA === codeB;
+  // Legacy rows may lack setCode — fall back to set name.
+  const nameA = String(a.setName || "")
+    .trim()
+    .toLowerCase();
+  const nameB = String(b.setName || "")
+    .trim()
+    .toLowerCase();
+  return Boolean(nameA && nameB && nameA === nameB);
+}
+
+function findMergableCollectionItem(candidate) {
+  const ownerId = String(candidate?.userId || "").trim();
+  if (!ownerId) return null;
+  const key = collectionItemMergeKey(candidate);
+  if (key) {
+    const byKey = store.items.find((item) => {
+      if (String(item?.userId || "") !== ownerId) return false;
+      return collectionItemMergeKey(item) === key;
+    });
+    if (byKey) return byKey;
+  }
+  // Legacy / incomplete rows (missing setCode) that still represent the same card.
+  return (
+    store.items.find((item) => {
+      if (String(item?.userId || "") !== ownerId) return false;
+      return collectionItemsMatchForMerge(candidate, item);
+    }) || null
+  );
+}
+
+function applyCollectionQuantityMerge(existing, incoming, addQty) {
+  existing.quantity = Math.max(0, Math.floor(safeNumber(existing.quantity, 1))) + addQty;
+  existing.updatedAt = new Date().toISOString();
+  if (!String(existing.imageUrl || "").trim() && String(incoming.imageUrl || "").trim()) {
+    existing.imageUrl = incoming.imageUrl;
+  }
+  if (!String(existing.setName || "").trim() && String(incoming.setName || "").trim()) {
+    existing.setName = incoming.setName;
+  }
+  if (!String(existing.setCode || "").trim() && String(incoming.setCode || "").trim()) {
+    existing.setCode = String(incoming.setCode).trim().toUpperCase();
+  }
+  if (!String(existing.setLanguage || "").trim() && String(incoming.setLanguage || "").trim()) {
+    existing.setLanguage = collectionItemLanguageKey(incoming);
+  }
+  return existing;
 }
 
 function safeNumber(value, fallback = 0) {
@@ -6088,13 +6340,17 @@ const TCG_INFINITE_HISTORY_RANGE = {
 
 function buildCardPricingLookupKeys(cardNo = "") {
   const rawCardNo = String(cardNo || "").trim();
-  const trailingDigitsMatch = rawCardNo.match(/(\d{1,4})$/);
+  const beforeSlash = rawCardNo.match(/^([^/]+)\s*\/\s*.+$/)?.[1]?.trim() || "";
+  const primary = beforeSlash || rawCardNo;
+  const trailingDigitsMatch = primary.match(/(\d{1,4})$/);
   const trailingDigits = trailingDigitsMatch ? trailingDigitsMatch[1] : "";
   const numericTail = trailingDigits ? String(Number(trailingDigits)) : "";
   return [
     rawCardNo.toUpperCase(),
+    primary.toUpperCase(),
     normalizeCardNumberKey(rawCardNo),
-    normalizeCardNumberKey(rawCardNo.replace(/^0+/, "")),
+    normalizeCardNumberKey(primary),
+    normalizeCardNumberKey(primary.replace(/^0+/, "")),
     trailingDigits,
     numericTail
   ].filter(Boolean);
@@ -9952,18 +10208,13 @@ async function route(req, res) {
       const type = parsedUrl.searchParams.get("type");
       const syncPrices = parsedUrl.searchParams.get("syncPrices") !== "0";
       if (syncPrices) {
-        const needsPrice = getCollectionItemsForUser(sessionUser.id).some(
-          (item) =>
-            item.type === "single" &&
-            !(Number(item.manualPrice) > 0) &&
-            !(Number(item.marketPrice) > 0) &&
-            String(item.setName || "").trim() &&
-            String(item.cardNumber || "").trim()
-        );
-        if (needsPrice) {
-          const sync = await syncCollectionPricesFromSets(sessionUser.id);
-          if (sync.updated > 0) await persistStore();
-        }
+        // Prefer average of recent ungraded PriceCharting sold listings (cache-only for speed).
+        const sync = await syncCollectionPricesFromSets(sessionUser.id, {
+          cacheOnly: true,
+          force: true
+        });
+        if (sync.updated > 0) await persistStore();
+        scheduleCollectionSoldPriceWarm(sessionUser.id);
       }
       let list = getCollectionItemsForUser(sessionUser.id);
       if (type) list = list.filter((item) => item.type === type);
@@ -10342,15 +10593,32 @@ async function route(req, res) {
         json(res, 400, { error: "Name is required" });
         return;
       }
+      item.userId = sessionUser.id;
+      const addQty = Math.max(1, Math.floor(safeNumber(body?.quantity, 1)));
+      const existing = findMergableCollectionItem(item);
+      if (existing) {
+        applyCollectionQuantityMerge(existing, item, addQty);
+        addActivity(
+          "updated",
+          existing.id,
+          `${existing.name} quantity +${addQty}`,
+          sessionUser.id
+        );
+        await persistStore();
+        json(res, 200, { item: existing, merged: true, quantityAdded: addQty });
+        return;
+      }
       const lookup = await getShowcaseSetLookup();
       const manifestCache = new Map();
-      const priced = await applySetsCatalogPricingToItem(item, lookup, manifestCache);
-      item = normalizeItem({ ...priced, userId: sessionUser.id }, item);
+      const priced = await applySetsCatalogPricingToItem(item, lookup, manifestCache, {
+        cacheOnly: false
+      });
+      item = normalizeItem({ ...priced, userId: sessionUser.id, quantity: addQty }, item);
       item.userId = sessionUser.id;
       store.items.unshift(item);
       addActivity("created", item.id, `${item.name} added`, sessionUser.id);
       await persistStore();
-      json(res, 201, { item });
+      json(res, 201, { item, merged: false });
     } catch (err) {
       json(res, 400, { error: err.message || "Bad request" });
     }

@@ -829,21 +829,55 @@
       font-size: 12px;
     }
 
+    /*
+     * Card art frame: fill the pocket (cover). Older EX/WOTC scans are ~400×550
+     * (wider than 63/88), so contain left empty bands; cover fills with a tiny side crop.
+     * Rounded clip removes square white scan corners.
+     */
+    .card-thumb-frame {
+      width: 100%;
+      aspect-ratio: 63 / 88;
+      border-radius: 5.2% / 3.7%;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: var(--thumb-bg);
+      line-height: 0;
+      isolation: isolate;
+    }
+
+    .card-thumb-frame .card-thumb {
+      width: 100%;
+      height: 100%;
+      aspect-ratio: unset;
+      object-fit: cover;
+      object-position: center;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      display: block;
+    }
+
     .card-thumb {
       width: 100%;
       aspect-ratio: 63 / 88;
       object-fit: cover;
-      border-radius: 10px;
+      object-position: center;
+      border-radius: 5.2% / 3.7%;
       border: 1px solid var(--border);
       background: var(--thumb-bg);
+      display: block;
     }
 
-    .card-thumb.placeholder {
+    .card-thumb.placeholder,
+    .card-thumb-frame .card-thumb.placeholder {
       display: grid;
       place-items: center;
       color: var(--muted);
       font-size: 11px;
       object-fit: unset;
+      background: var(--thumb-bg);
+      height: 100%;
+      min-height: 0;
     }
 
     .card-meta {
@@ -961,8 +995,11 @@
       width: 100%;
       display: block;
       border: 1px solid var(--image-frame-border);
-      border-radius: 14px;
+      border-radius: 5.2% / 3.7%;
       background: var(--thumb-bg);
+      object-fit: contain;
+      object-position: center;
+      overflow: hidden;
     }
 
     .card-page-image.placeholder {
@@ -1009,7 +1046,7 @@
     }
 
     .image-zoom-crop {
-      border-radius: 30px;
+      border-radius: 5.2% / 3.7%;
       overflow: hidden;
       background: var(--thumb-bg);
       border: 1px solid var(--border);
@@ -1355,9 +1392,12 @@
       color: #d1d4dc;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
       white-space: nowrap;
+      /* Positioned via JS so it can flip away from chart edges. */
       transform: translate(12px, -12px);
       display: none;
       font-family: Inter, "Segoe UI", Arial, sans-serif;
+      max-width: calc(100% - 8px);
+      box-sizing: border-box;
     }
 
     .mph-chart-crosshair {
@@ -5878,8 +5918,6 @@
       { key: "180", label: "6 Months" },
       { key: "365", label: "1 Year" }
     ];
-    const MARKET_HISTORY_EXTENDED_MIN_SPAN_MS = 30 * 24 * 60 * 60 * 1000;
-
     function getMarketHistoryEarliestTs(series) {
       let minTs = Infinity;
       for (const row of Array.isArray(series) ? series : []) {
@@ -5891,27 +5929,36 @@
       return Number.isFinite(minTs) ? minTs : null;
     }
 
-    function marketHistorySupportsExtendedRanges(series) {
+    /** Days of history available from the earliest point to now. */
+    function getMarketHistorySpanDays(series) {
       const minTs = getMarketHistoryEarliestTs(series);
-      if (!Number.isFinite(minTs)) return false;
-      return Date.now() - minTs > MARKET_HISTORY_EXTENDED_MIN_SPAN_MS;
+      if (!Number.isFinite(minTs)) return 0;
+      return Math.max(0, (Date.now() - minTs) / (24 * 60 * 60 * 1000));
     }
 
+    /**
+     * Only offer ranges the card's history can actually fill.
+     * e.g. ~28 days of data → All Time only (hide 30 Days / 3 Months / …).
+     */
     function getMarketHistoryRangeOptionsForCard(card, pricingInfo) {
+      const allOnly = MARKET_HISTORY_RANGE_OPTIONS.filter((opt) => opt.key === "all");
       const cacheKey = getMarketHistoryCacheKey(card);
       const cached = state.marketHistoryByKey[cacheKey];
       if (!cached || !cached.ok || state.marketHistoryLoadingKey === cacheKey) {
-        return MARKET_HISTORY_RANGE_OPTIONS.filter((opt) => opt.key === "all" || opt.key === "30");
+        return allOnly;
       }
       const fullSeries = filterMarketHistorySeriesForDisplay(
         Array.isArray(cached.series) ? cached.series : [],
         card,
         pricingInfo
       );
-      if (!marketHistorySupportsExtendedRanges(fullSeries)) {
-        return MARKET_HISTORY_RANGE_OPTIONS.filter((opt) => opt.key === "all" || opt.key === "30");
-      }
-      return MARKET_HISTORY_RANGE_OPTIONS;
+      const spanDays = getMarketHistorySpanDays(fullSeries);
+      if (spanDays <= 0) return allOnly;
+      return MARKET_HISTORY_RANGE_OPTIONS.filter((opt) => {
+        if (opt.key === "all") return true;
+        const days = Number(MARKET_HISTORY_RANGE_DAYS[opt.key]) || 0;
+        return days > 0 && spanDays >= days;
+      });
     }
 
     function computeMarketHistoryDeltaFromPoints(points) {
@@ -6801,6 +6848,36 @@
       });
 
       if (canvas && tooltip && chartWrap) {
+        const placeMarketHistoryTooltip = (pointerLeft, pointerTop) => {
+          const pad = 4;
+          const wrapW = chartWrap.clientWidth || 0;
+          const wrapH = chartWrap.clientHeight || 0;
+          tooltip.style.left = `${pointerLeft}px`;
+          tooltip.style.top = `${pointerTop}px`;
+          // Right half of the chart: show tooltip to the left of the cursor.
+          // Left half: show to the right. Then clamp so it never clips the border.
+          const tipW = tooltip.offsetWidth || 0;
+          const tipH = tooltip.offsetHeight || 0;
+          let ox = wrapW > 0 && pointerLeft >= wrapW / 2 ? -12 - tipW : 12;
+          let oy = -12;
+          if (pointerLeft + ox < pad) {
+            ox = pad - pointerLeft;
+          }
+          if (wrapW > 0 && pointerLeft + ox + tipW > wrapW - pad) {
+            ox = wrapW - pad - tipW - pointerLeft;
+          }
+          if (pointerTop + oy < pad) {
+            oy = 12;
+          }
+          if (wrapH > 0 && pointerTop + oy + tipH > wrapH - pad) {
+            oy = wrapH - pad - tipH - pointerTop;
+          }
+          if (pointerTop + oy < pad) {
+            oy = pad - pointerTop;
+          }
+          tooltip.style.transform = `translate(${ox}px, ${oy}px)`;
+        };
+
         const onMove = (event) => {
           const hover = findMarketHistoryHoverState(canvas, event.clientX, event.clientY);
           if (!hover) {
@@ -6813,10 +6890,9 @@
           const canvasRect = canvas.getBoundingClientRect();
           const pointerLeft = event.clientX - wrapRect.left;
           const pointerTop = event.clientY - wrapRect.top;
-          tooltip.style.left = `${pointerLeft}px`;
-          tooltip.style.top = `${pointerTop}px`;
           tooltip.innerHTML = buildMarketHistoryTooltipHtml(hover);
           tooltip.classList.add("visible");
+          placeMarketHistoryTooltip(pointerLeft, pointerTop);
           const offsetLeft = canvasRect.left - wrapRect.left;
           const offsetTop = canvasRect.top - wrapRect.top;
           if (crosshair) {
@@ -7263,6 +7339,16 @@
       return rarities;
     }
 
+    function renderCardThumbMarkup(card, { loading = "lazy", fetchPriority = "" } = {}) {
+      const alt = escapeHtml(getCardDisplayName(card));
+      const url = String(card?.imageUrl || "").trim();
+      if (!url) {
+        return `<div class="card-thumb-frame"><div class="card-thumb placeholder">No image</div></div>`;
+      }
+      const priorityAttr = fetchPriority ? ` fetchpriority="${escapeHtml(fetchPriority)}"` : "";
+      return `<div class="card-thumb-frame"><img class="card-thumb" src="${escapeHtml(url)}" alt="${alt}" loading="${escapeHtml(loading)}"${priorityAttr} /></div>`;
+    }
+
     function renderSetCardTileMarkup(card) {
       const code = String(card?.setCode || state.selectedSetCode || "")
         .trim()
@@ -7284,11 +7370,7 @@
                     : ""
                 }
                 <button type="button" class="card-tile">
-                ${
-                  card.imageUrl
-                    ? `<img class="card-thumb" src="${escapeHtml(card.imageUrl)}" alt="${escapeHtml(getCardDisplayName(card))}" loading="lazy" />`
-                    : `<div class="card-thumb placeholder">No image</div>`
-                }
+                ${renderCardThumbMarkup(card)}
                 <div>${renderCardName(card)}</div>
                 <div class="card-meta card-meta-row">
                   <span class="card-meta-left">${leftMeta}</span>
@@ -7855,7 +7937,15 @@
     function appendCardToCollectionCache(item) {
       if (!item) return;
       if (!Array.isArray(state.collectionItemsCache)) state.collectionItemsCache = [];
-      state.collectionItemsCache.unshift(item);
+      const id = String(item.id || "").trim();
+      const idx = id
+        ? state.collectionItemsCache.findIndex((row) => String(row?.id || "") === id)
+        : -1;
+      if (idx >= 0) {
+        state.collectionItemsCache[idx] = { ...state.collectionItemsCache[idx], ...item };
+      } else {
+        state.collectionItemsCache.unshift(item);
+      }
       const code = String(item.setCode || "").toUpperCase();
       if (!code) return;
       if (!state.collectionOwnedKeysBySetCode[code]) {
@@ -8865,13 +8955,10 @@
                       data-set-code="${escapeHtml(card.setCode)}"
                       data-card-number="${escapeHtml(card.cardNo)}"
                     >
-                      ${card.imageUrl
-                        ? `<img class="card-thumb" src="${escapeHtml(card.imageUrl)}" alt="${escapeHtml(getCardDisplayName(card))}" ${
-                            index < eagerLimit
-                              ? `loading="eager" fetchpriority="${index < 8 ? "high" : "auto"}"`
-                              : `loading="lazy"`
-                          } />`
-                        : `<div class="card-thumb placeholder">No image</div>`}
+                      ${renderCardThumbMarkup(card, {
+                        loading: index < eagerLimit ? "eager" : "lazy",
+                        fetchPriority: index < 8 ? "high" : index < eagerLimit ? "auto" : ""
+                      })}
                       <div>${renderCardName(card)}</div>
                       <div class="card-meta card-meta-row">
                         <span>${escapeHtml(card.setName)} (${escapeHtml(card.setCode)}) · ${escapeHtml(card.label)}</span>
@@ -9015,9 +9102,7 @@
                         data-set-code="${escapeHtml(card.setCode)}"
                         data-card-number="${escapeHtml(card.cardNo)}"
                       >
-                        ${card.imageUrl
-                          ? `<img class="card-thumb" src="${escapeHtml(card.imageUrl)}" alt="${escapeHtml(getCardDisplayName(card))}" loading="lazy" />`
-                          : `<div class="card-thumb placeholder">No image</div>`}
+                        ${renderCardThumbMarkup(card)}
                         <div>${renderCardName(card)}</div>
                         <div class="card-meta card-meta-row">
                           <span>${escapeHtml(card.setName)} (${escapeHtml(card.setCode)}) · ${escapeHtml(card.label)}</span>

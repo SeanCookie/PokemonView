@@ -16,6 +16,11 @@ function cardNoLookupKeys(cardNumberRaw) {
   const no = String(cardNumberRaw || "").trim();
   if (!no) return [];
   const keys = new Set([no]);
+  // Collectr / printed form "232/091" → also try "232"
+  const slash = no.match(/^([^/]+)\s*\/\s*.+$/);
+  if (slash) {
+    for (const part of cardNoLookupKeys(slash[1].trim())) keys.add(part);
+  }
   const n = Number(no);
   if (Number.isFinite(n)) {
     keys.add(String(n));

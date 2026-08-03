@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>PokemonView Dashboard</title>
-  <link rel="stylesheet" href="/showcase.css" />
+  <link rel="stylesheet" href="/showcase.css?v=11" />
   <link rel="stylesheet" href="/site-nav.css?v=12" />
   <style>
     :root {
@@ -700,8 +700,8 @@
 
     .binder-pocket {
       position: relative;
-      aspect-ratio: 2.5 / 3.5;
-      border-radius: 10px;
+      aspect-ratio: 63 / 88;
+      border-radius: 5.2% / 3.7%;
       border: 1px dashed rgba(147, 168, 199, 0.45);
       background: rgba(8, 14, 24, 0.72);
       padding: 0;
@@ -1113,20 +1113,45 @@
       box-shadow: 0 0 0 1px rgba(245, 217, 81, 0.35);
     }
 
+    .add-card-thumb-frame {
+      width: 100%;
+      aspect-ratio: 63 / 88;
+      border-radius: 5.2% / 3.7%;
+      overflow: hidden;
+      background: #0a0f18;
+      line-height: 0;
+    }
+
+    .add-card-thumb-frame .add-card-thumb {
+      width: 100%;
+      height: 100%;
+      aspect-ratio: unset;
+      object-fit: cover;
+      object-position: center;
+      border-radius: 0;
+      background: transparent;
+      display: block;
+    }
+
     .add-card-thumb {
       width: 100%;
       aspect-ratio: 63 / 88;
-      object-fit: contain;
-      border-radius: 6px;
+      object-fit: cover;
+      object-position: center;
+      border-radius: 5.2% / 3.7%;
       background: #0a0f18;
+      display: block;
     }
 
-    .add-card-thumb--ph {
+    .add-card-thumb--ph,
+    .add-card-thumb-frame .add-card-thumb--ph {
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 10px;
       color: var(--muted);
+      height: 100%;
+      min-height: 0;
     }
 
     .add-card-tile-name {
@@ -1353,7 +1378,7 @@
       <p class="subtle">Search the Sets catalog, choose a card, and add it as a single to your collection.</p>
       <div class="add-card-row">
         <label class="muted" for="addCardSearch" style="font-size:12px;">Search</label>
-        <input id="addCardSearch" type="search" autocomplete="off" placeholder="Search cards…" />
+        <input id="addCardSearch" type="search" autocomplete="off" placeholder="Search name, number, set, or nickname…" />
       </div>
       <div class="add-card-row add-card-results-wrap">
         <div id="addCardGrid" class="add-card-grid" role="listbox" aria-label="Matching cards"></div>
@@ -1413,6 +1438,8 @@
       cardIndex: [],
       cardIndexById: {},
       cardIndexLoaded: false,
+      cardNicknames: [],
+      cardNicknamesLoaded: false,
       addCardSelectedId: "",
       /** Built once per session: resolve thumbnails when items lack imageUrl */
       cardImagesForDashboard: null,
@@ -1581,6 +1608,131 @@
         .trim();
     }
 
+    function normalizeNicknameQuery(text) {
+      return String(text || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim();
+    }
+
+    function nicknameQueryMatchesText(nicknameKey, queryKey) {
+      if (!nicknameKey || !queryKey) return false;
+      if (nicknameKey === queryKey) return true;
+      if (queryKey.length < 3) return false;
+      return nicknameKey.includes(queryKey) || queryKey.includes(nicknameKey);
+    }
+
+    function cardNumberLookupKeys(raw) {
+      const q = String(raw || "")
+        .trim()
+        .replace(/^#/, "");
+      if (!q) return [];
+      const keys = new Set([q, q.toUpperCase(), q.toLowerCase()]);
+      const stripped = q.replace(/^0+/, "");
+      if (stripped) keys.add(stripped);
+      const n = Number(stripped);
+      if (Number.isFinite(n)) {
+        keys.add(String(n));
+        keys.add(String(n).padStart(3, "0"));
+      }
+      return [...keys];
+    }
+
+    function cardNumberMatchesTarget(cardNo, targetNo) {
+      const left = cardNumberLookupKeys(cardNo);
+      const right = new Set(cardNumberLookupKeys(targetNo));
+      return left.some((key) => right.has(key));
+    }
+
+    function getNicknameEntriesForQuery(query) {
+      const queryKey = normalizeNicknameQuery(query);
+      if (!queryKey) return [];
+      const exact = [];
+      const partial = [];
+      for (const entry of state.cardNicknames || []) {
+        const nickKey = normalizeNicknameQuery(entry.nickname);
+        if (!nickKey) continue;
+        if (nickKey === queryKey) exact.push(entry);
+        else if (nicknameQueryMatchesText(nickKey, queryKey)) partial.push(entry);
+      }
+      return [...exact, ...partial];
+    }
+
+    function findCardIndexRowForNicknameEntry(entry) {
+      if (!entry) return null;
+      const lang =
+        String(entry.language || "english").toLowerCase() === "japanese" ? "japanese" : "english";
+      const setCode = String(entry.setCode || "").toUpperCase();
+      if (!setCode) return null;
+      return (
+        state.cardIndex.find(
+          (row) =>
+            row.language === lang &&
+            row.setCode === setCode &&
+            cardNumberMatchesTarget(row.cardNo, entry.cardNumber)
+        ) || null
+      );
+    }
+
+    function cardIndexRowMatchesQuery(row, queryRaw) {
+      const q = String(queryRaw || "").trim();
+      if (!q || !row) return false;
+      const haystack = toQueryText(
+        `${row.card} ${row.cardNo} ${row.setCode} ${row.setDisplayName || ""}`
+      );
+      if (haystack.includes(toQueryText(q))) return true;
+      for (const entry of getNicknameEntriesForQuery(q)) {
+        const lang =
+          String(entry.language || "english").toLowerCase() === "japanese" ? "japanese" : "english";
+        if (row.language !== lang) continue;
+        if (row.setCode !== String(entry.setCode || "").toUpperCase()) continue;
+        if (cardNumberMatchesTarget(row.cardNo, entry.cardNumber)) return true;
+      }
+      return false;
+    }
+
+    function filterCardIndexByQuery(queryRaw, { requireQuery = true, limit = 300 } = {}) {
+      const q = String(queryRaw || "").trim();
+      if (!q) return requireQuery ? [] : state.cardIndex.slice(0, limit);
+      const seen = new Set();
+      const matches = [];
+      for (const entry of getNicknameEntriesForQuery(q)) {
+        const card = findCardIndexRowForNicknameEntry(entry);
+        if (!card || seen.has(card.id)) continue;
+        seen.add(card.id);
+        matches.push(card);
+      }
+      const query = toQueryText(q);
+      for (const row of state.cardIndex) {
+        if (seen.has(row.id)) continue;
+        const haystack = toQueryText(
+          `${row.card} ${row.cardNo} ${row.setCode} ${row.setDisplayName || ""}`
+        );
+        if (!haystack.includes(query)) continue;
+        seen.add(row.id);
+        matches.push(row);
+        if (matches.length >= limit) break;
+      }
+      return matches.slice(0, limit);
+    }
+
+    async function loadCardNicknames() {
+      if (state.cardNicknamesLoaded) return;
+      try {
+        const response = await fetch("/api/card-nicknames", { cache: "no-store" });
+        if (!response.ok) {
+          state.cardNicknames = [];
+          return;
+        }
+        const payload = await response.json();
+        state.cardNicknames = Array.isArray(payload?.nicknames) ? payload.nicknames : [];
+      } catch {
+        state.cardNicknames = [];
+      } finally {
+        state.cardNicknamesLoaded = true;
+      }
+    }
+
     async function loadCardImagesForDashboard() {
       if (state.cardImagesForDashboard) return;
       const empty = {
@@ -1721,28 +1873,26 @@
       const grid = byId("addCardGrid");
       const searchInput = byId("addCardSearch");
       if (!grid || !searchInput) return;
-      const query = toQueryText(searchInput.value);
-      const filtered = state.cardIndex
-        .filter((row) => {
-          if (!query) return false;
-          const haystack = toQueryText(`${row.card} ${row.cardNo} ${row.setCode}`);
-          return haystack.includes(query);
-        })
-        .slice(0, 300);
+      const query = String(searchInput.value || "").trim();
+      const filtered = filterCardIndexByQuery(query, { requireQuery: true, limit: 300 });
       const idSet = new Set(filtered.map((r) => r.id));
       if (state.addCardSelectedId && !idSet.has(state.addCardSelectedId)) {
         state.addCardSelectedId = "";
       }
       if (!filtered.length) {
-        grid.innerHTML = `<div class="add-card-grid-empty">${query ? "No matches — try a card name, card number, or set code." : "Type to search for a card by name, number, or set code."}</div>`;
+        grid.innerHTML = `<div class="add-card-grid-empty">${
+          query
+            ? "No matches — try a card name, nickname, card number, or set code."
+            : "Type to search for a card by name, nickname, number, or set code."
+        }</div>`;
         return;
       }
       grid.innerHTML = filtered
         .map((row) => {
           const sel = row.id === state.addCardSelectedId;
           const thumb = row.imageUrl
-            ? `<img class="add-card-thumb" src="${escapeAttr(row.imageUrl)}" alt="" loading="lazy" />`
-            : `<div class="add-card-thumb add-card-thumb--ph" aria-hidden="true">No image</div>`;
+            ? `<div class="add-card-thumb-frame"><img class="add-card-thumb" src="${escapeAttr(row.imageUrl)}" alt="" loading="lazy" /></div>`
+            : `<div class="add-card-thumb-frame"><div class="add-card-thumb add-card-thumb--ph" aria-hidden="true">No image</div></div>`;
           return `<button type="button" class="add-card-tile${sel ? " selected" : ""}" role="option" aria-selected="${sel ? "true" : "false"}" data-card-id="${escapeAttr(row.id)}">${thumb}<div class="add-card-tile-name">${escapeHtml(row.card)}</div><div class="add-card-tile-meta">${escapeHtml(row.setDisplayName)} · ${escapeHtml(row.setCode)} #${escapeHtml(row.cardNo)}${row.language === "japanese" ? " JP" : ""}</div></button>`;
         })
         .join("");
@@ -1821,6 +1971,15 @@
         if (qtyInput) qtyInput.value = "1";
         await loadData();
         renderAll();
+        if (payload && payload.merged) {
+          const added = Math.max(1, Math.floor(Number(payload.quantityAdded) || quantity));
+          const total = Math.max(0, Math.floor(Number(payload.item?.quantity) || 0));
+          window.alert(
+            total
+              ? `Already in your collection — quantity +${added} (now ${total}).`
+              : `Already in your collection — quantity +${added}.`
+          );
+        }
       } catch {
         window.alert("Network error while adding the card.");
       }
@@ -2770,8 +2929,8 @@
       grid.innerHTML = rows
         .map((row) => {
           const thumb = row.imageUrl
-            ? `<img class="add-card-thumb" src="${escapeAttr(row.imageUrl)}" alt="" loading="lazy" />`
-            : `<div class="add-card-thumb add-card-thumb--ph" aria-hidden="true">No image</div>`;
+            ? `<div class="add-card-thumb-frame"><img class="add-card-thumb" src="${escapeAttr(row.imageUrl)}" alt="" loading="lazy" /></div>`
+            : `<div class="add-card-thumb-frame"><div class="add-card-thumb add-card-thumb--ph" aria-hidden="true">No image</div></div>`;
           return `<button type="button" class="add-card-tile" data-binder-catalog-id="${escapeAttr(row.id)}">${thumb}<div class="add-card-tile-name">${escapeHtml(row.card)}</div><div class="add-card-tile-meta">#${escapeHtml(row.cardNo)} · ${escapeHtml(row.setCode)}</div></button>`;
         })
         .join("");
@@ -2821,7 +2980,7 @@
 
       if (state.binder.pickSource === "sets") {
         try {
-          await Promise.all([loadCardsFromSetsIndex(), loadSetProgressData()]);
+          await Promise.all([loadCardsFromSetsIndex(), loadSetProgressData(), loadCardNicknames()]);
         } catch {
           grid.innerHTML = `<div class="add-card-grid-empty">Could not load the Sets catalog.</div>`;
           return;
@@ -2833,7 +2992,7 @@
             .filter((row) => row.setCode === browseCode)
             .filter((row) => {
               if (!query) return true;
-              return toQueryText(`${row.card} ${row.cardNo}`).includes(query);
+              return cardIndexRowMatchesQuery(row, searchInput.value);
             })
             .sort(compareBinderCardsByNumber);
           if (!cards.length) {
@@ -2881,26 +3040,19 @@
 
       if (state.binder.pickSource === "search") {
         try {
-          await loadCardsFromSetsIndex();
+          await Promise.all([loadCardsFromSetsIndex(), loadCardNicknames()]);
         } catch {
           grid.innerHTML = `<div class="add-card-grid-empty">Could not load the Sets catalog.</div>`;
           return;
         }
-        const filtered = state.cardIndex
-          .filter((row) => {
-            if (!query) return false;
-            return toQueryText(`${row.card} ${row.cardNo} ${row.setCode} ${row.setDisplayName}`).includes(
-              query
-            );
-          })
-          .slice(0, 300);
+        const filtered = filterCardIndexByQuery(searchInput.value, { requireQuery: true, limit: 300 });
         if (!filtered.length) {
           grid.classList.add("add-card-grid");
           grid.classList.remove("binder-set-list");
           grid.innerHTML = `<div class="add-card-grid-empty">${
             query
               ? "No catalog matches."
-              : "Type to search the Sets catalog by name, number, or set code."
+              : "Type to search the Sets catalog by name, nickname, number, or set code."
           }</div>`;
           return;
         }
@@ -2931,8 +3083,8 @@
         .map((item) => {
           const img = lookupCardImageForItem(item);
           const thumb = img
-            ? `<img class="add-card-thumb" src="${escapeAttr(img)}" alt="" loading="lazy" />`
-            : `<div class="add-card-thumb add-card-thumb--ph" aria-hidden="true">No image</div>`;
+            ? `<div class="add-card-thumb-frame"><img class="add-card-thumb" src="${escapeAttr(img)}" alt="" loading="lazy" /></div>`
+            : `<div class="add-card-thumb-frame"><div class="add-card-thumb add-card-thumb--ph" aria-hidden="true">No image</div></div>`;
           const meta = [item.setName || item.setCode, item.cardNumber ? `#${item.cardNumber}` : ""]
             .filter(Boolean)
             .join(" · ");
@@ -3110,7 +3262,7 @@
 
     byId("openAddCardBtn").addEventListener("click", async () => {
       try {
-        await loadCardsFromSetsIndex();
+        await Promise.all([loadCardsFromSetsIndex(), loadCardNicknames()]);
         openAddCardModal();
       } catch {
         window.alert("Could not load the Sets card catalog. Check that the server is running.");

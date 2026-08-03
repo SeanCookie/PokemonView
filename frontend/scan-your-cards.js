@@ -346,7 +346,17 @@ async function addSelectedToCollection() {
       window.alert(payload?.error || `Could not add card (${res.status})`);
       return;
     }
-    window.alert(`Added ${card.name} to your collection.`);
+    if (payload?.merged) {
+      const added = Math.max(1, Math.floor(Number(payload.quantityAdded) || qty));
+      const total = Math.max(0, Math.floor(Number(payload.item?.quantity) || 0));
+      window.alert(
+        total
+          ? `${card.name} already in collection — quantity +${added} (now ${total}).`
+          : `${card.name} already in collection — quantity +${added}.`
+      );
+    } else {
+      window.alert(`Added ${card.name} to your collection.`);
+    }
     if ($("scanQty")) $("scanQty").value = "1";
   } catch {
     window.alert("Network error while adding the card.");

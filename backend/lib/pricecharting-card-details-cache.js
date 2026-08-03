@@ -85,6 +85,37 @@ function normalizeSoldGuides(value) {
   ];
 }
 
+function isLikelyGradedSoldListingTitle(title = "") {
+  return /\b(PSA|BGS|CGC|SGC|TAG|ACE)\b|\bgraded\b/i.test(String(title || ""));
+}
+
+/**
+ * Average of the most recent ungraded sold listings (newest-first in PriceCharting data).
+ * Uses up to `limit` listings; fewer is fine when history is short.
+ */
+function averageRecentUngradedSoldPrice(details, { limit = 10 } = {}) {
+  const max = Math.max(1, Math.min(50, Math.floor(Number(limit) || 10)));
+  const guides = normalizeSoldGuides(details);
+  if (!guides.length) return null;
+  const normal =
+    guides.find((guide) => String(guide.variant || "").trim().toLowerCase() === "normal") || guides[0];
+  const listings = Array.isArray(normal?.listings) ? normal.listings : [];
+  const prices = [];
+  for (const row of listings) {
+    if (isLikelyGradedSoldListingTitle(row?.title)) continue;
+    const price = Number(row?.price);
+    if (!Number.isFinite(price) || price <= 0) continue;
+    prices.push(price);
+    if (prices.length >= max) break;
+  }
+  if (!prices.length) return null;
+  const sum = prices.reduce((acc, n) => acc + n, 0);
+  return {
+    price: Number((sum / prices.length).toFixed(2)),
+    sampleSize: prices.length
+  };
+}
+
 function writeCachedCardDetails(setCode = "", cardNo = "", value) {
   const key = cacheKeyForCard(setCode, cardNo);
   if (!key || !cacheValueValid(value)) return false;
@@ -456,6 +487,7 @@ module.exports = {
   readCachedCardDetails,
   writeCachedCardDetails,
   getOrFetchPriceChartingCardDetails,
+  averageRecentUngradedSoldPrice,
   collectEnglishCardsForPriceChartingPrewarm,
   getPriceChartingEnglishCardUniverseCount,
   refreshPriceChartingCardDetailsBatch,
