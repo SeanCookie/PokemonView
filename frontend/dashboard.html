@@ -141,8 +141,70 @@
       flex-wrap: wrap;
     }
 
+    .collection-card-qty {
+      font-size: 12px;
+      font-weight: 700;
+      color: #9ef0c8;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .collection-card-qty-value {
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      font-weight: 700;
+      padding: 1px 4px;
+      margin: 0;
+      cursor: text;
+      border-radius: 4px;
+      text-decoration: underline dotted rgba(158, 240, 200, 0.5);
+      text-underline-offset: 2px;
+    }
+
+    .collection-card-qty-value:hover,
+    .collection-card-qty-value:focus-visible {
+      background: rgba(158, 240, 200, 0.12);
+      outline: none;
+    }
+
+    .collection-card-qty-input {
+      width: 52px;
+      height: 26px;
+      border: 1px solid #4f6e9c;
+      border-radius: 6px;
+      background: #0e1623;
+      color: var(--text);
+      padding: 0 6px;
+      font-size: 12px;
+      font-weight: 700;
+      font-family: inherit;
+      font-variant-numeric: tabular-nums;
+      -moz-appearance: textfield;
+      appearance: textfield;
+    }
+
+    .collection-card-qty-input::-webkit-outer-spin-button,
+    .collection-card-qty-input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    .collection-card-prices-right {
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-left: auto;
+      min-width: 0;
+    }
+
     .collection-card-prices .showcase-card-value {
       margin-top: 0;
+      text-align: right;
     }
 
     .collection-cost-basis {
@@ -2942,9 +3004,9 @@
       list.innerHTML = filtered
         .map((item) => {
           const unit = item.manualPrice ?? item.marketPrice ?? 0;
-          const total = Number(unit) * Number(item.quantity || 0);
+          const qtyNum = Math.max(1, Math.floor(Number(item.quantity) || 1));
+          const total = Number(unit) * qtyNum;
           const meta = [item.setName, item.cardNumber].filter(Boolean).join(" · ");
-          const qty = Number(item.quantity) > 1 ? ` ×${item.quantity}` : "";
           const value =
             total > 0 ? formatMoney(total) : unit > 0 ? formatMoney(unit) : "";
           const typeLabel = item.type === "sealed" ? "Sealed" : "Single";
@@ -2964,16 +3026,30 @@
                 />
               </label>`
             : "";
-          const priceRow =
-            value || showCost
-              ? `<div class="collection-card-prices">
-                  ${value ? `<div class="showcase-card-value">${escapeHtml(value)}</div>` : `<div class="showcase-card-value" style="opacity:0.45;">—</div>`}
-                  ${costInput}
-                </div>`
-              : "";
+          const priceRow = `<div class="collection-card-prices">
+                  <div class="collection-card-qty">
+                    Qty:
+                    <button
+                      type="button"
+                      class="collection-card-qty-value"
+                      data-qty-id="${escapeAttr(String(item.id || ""))}"
+                      data-qty-name="${escapeAttr(String(item.name || "Item"))}"
+                      title="Click to edit quantity (0 removes)"
+                      aria-label="Quantity ${qtyNum}. Click to edit"
+                    >${qtyNum}</button>
+                  </div>
+                  <div class="collection-card-prices-right">
+                    ${
+                      value
+                        ? `<div class="showcase-card-value">${escapeHtml(value)}</div>`
+                        : `<div class="showcase-card-value" style="opacity:0.45;">—</div>`
+                    }
+                    ${costInput}
+                  </div>
+                </div>`;
           const main = `<div class="showcase-card-thumb">${collectionCardImageHtml(item)}</div>
             <div class="showcase-card-body">
-              <h3 class="showcase-card-name">${escapeHtml(item.name || "Unnamed Item")}${escapeHtml(qty)}</h3>
+              <h3 class="showcase-card-name">${escapeHtml(item.name || "Unnamed Item")}</h3>
               <p class="showcase-card-meta">${escapeHtml(meta || typeLabel)}</p>
             </div>`;
           const removeBtn = `<button type="button" class="collection-card-remove" data-id="${escapeAttr(String(item.id || ""))}" data-name="${escapeAttr(String(item.name || "Item"))}" aria-label="Remove from collection" title="Remove from collection"><span class="card-btn-icon card-btn-icon--minus" aria-hidden="true"></span></button>`;
@@ -2983,7 +3059,7 @@
           return `<article class="collection-card showcase-card showcase-card--static">
             ${removeBtn}
             ${linkedMain}
-            ${priceRow ? `<div class="showcase-card-body" style="padding-top:0;">${priceRow}</div>` : ""}
+            <div class="showcase-card-body" style="padding-top:0;">${priceRow}</div>
           </article>`;
         })
         .join("");
@@ -3182,6 +3258,115 @@
         window.alert(err.message || "Could not save cost basis.");
       }
     }
+
+    async function saveCollectionQuantity(itemId, rawValue, displayName = "") {
+      const id = String(itemId || "").trim();
+      if (!id) return;
+      const item = state.items.find((row) => String(row.id) === id);
+      if (!item) return;
+      const parsed = Math.floor(Number(rawValue));
+      if (!Number.isFinite(parsed)) {
+        renderItems();
+        return;
+      }
+      if (parsed <= 0) {
+        if (!window.confirm(`Remove "${displayName || item.name || "this item"}" from your collection?`)) {
+          renderItems();
+          return;
+        }
+        try {
+          const res = await fetch(`/api/items/${encodeURIComponent(id)}`, {
+            method: "DELETE",
+            credentials: "same-origin"
+          });
+          if (!res.ok) {
+            const msg = await res.json().catch(() => ({}));
+            window.alert(msg && msg.error ? String(msg.error) : `Remove failed (${res.status})`);
+            return;
+          }
+          await loadData();
+          renderAll();
+        } catch {
+          window.alert("Network error while removing the item.");
+        }
+        return;
+      }
+      const quantity = Math.min(9999, parsed);
+      if (Number(item.quantity || 1) === quantity) {
+        renderItems();
+        return;
+      }
+      try {
+        const res = await fetch(`/api/items/${encodeURIComponent(id)}`, {
+          method: "PUT",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...item, quantity })
+        });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          window.alert(payload.error || `Could not save quantity (${res.status})`);
+          await loadData();
+          renderAll();
+          return;
+        }
+        item.quantity = quantity;
+        if (payload.item) Object.assign(item, payload.item);
+        await loadData();
+        renderAll();
+      } catch (err) {
+        window.alert(err.message || "Could not save quantity.");
+      }
+    }
+
+    function beginCollectionQtyEdit(btn) {
+      if (!btn || btn.dataset.editing === "1") return;
+      const id = btn.getAttribute("data-qty-id");
+      const name = btn.getAttribute("data-qty-name") || "";
+      const current = String(btn.textContent || "").trim() || "1";
+      const wrap = btn.parentElement;
+      if (!wrap || !id) return;
+      btn.dataset.editing = "1";
+      const input = document.createElement("input");
+      input.type = "number";
+      input.min = "0";
+      input.step = "1";
+      input.inputMode = "numeric";
+      input.className = "collection-card-qty-input";
+      input.value = current;
+      input.setAttribute("aria-label", "Edit quantity");
+      input.setAttribute("data-qty-id", id);
+      input.setAttribute("data-qty-name", name);
+      btn.replaceWith(input);
+      input.focus();
+      input.select();
+      let finished = false;
+      const finish = (save) => {
+        if (finished) return;
+        finished = true;
+        if (save) void saveCollectionQuantity(id, input.value, name);
+        else renderItems();
+      };
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          input.blur();
+        } else if (e.key === "Escape") {
+          e.preventDefault();
+          finished = true;
+          renderItems();
+        }
+      });
+      input.addEventListener("blur", () => finish(true));
+    }
+
+    byId("itemsList").addEventListener("click", (e) => {
+      const qtyBtn = e.target && e.target.closest ? e.target.closest(".collection-card-qty-value") : null;
+      if (!qtyBtn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      beginCollectionQtyEdit(qtyBtn);
+    });
 
     byId("itemsList").addEventListener("change", (e) => {
       const input = e.target && e.target.closest ? e.target.closest("input[data-cost-id]") : null;

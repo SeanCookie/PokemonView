@@ -862,6 +862,66 @@
       color: #8fd3ff;
       font-weight: 600;
       white-space: nowrap;
+      margin-left: auto;
+      text-align: right;
+      min-height: 1.2em;
+    }
+
+    .card-meta-left {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .card-qty-inline {
+      color: #9ef0c8;
+      font-weight: 700;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .card-qty-value {
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      font-weight: 700;
+      padding: 1px 4px;
+      margin: 0;
+      cursor: text;
+      border-radius: 4px;
+      text-decoration: underline dotted rgba(158, 240, 200, 0.5);
+      text-underline-offset: 2px;
+    }
+
+    .card-qty-value:hover,
+    .card-qty-value:focus-visible {
+      background: rgba(158, 240, 200, 0.12);
+      outline: none;
+    }
+
+    .card-qty-input {
+      width: 48px;
+      height: 24px;
+      border: 1px solid #4f6e9c;
+      border-radius: 6px;
+      background: #0e1623;
+      color: var(--text);
+      padding: 0 4px;
+      font-size: 11px;
+      font-weight: 700;
+      font-family: inherit;
+      font-variant-numeric: tabular-nums;
+      -moz-appearance: textfield;
+      appearance: textfield;
+    }
+
+    .card-qty-input::-webkit-outer-spin-button,
+    .card-qty-input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
     }
 
     .card-page {
@@ -2581,13 +2641,13 @@
         const priceEl = shell.querySelector(".card-price-inline");
         if (!priceEl || !card) return;
         const inline = formatCardPriceInline(card);
-        priceEl.textContent = inline || (linkHydrated ? "—" : "…");
+        priceEl.textContent = inline || (linkHydrated ? "—" : "");
       });
       const mostExpensive = getMostExpensiveCardInSet(allCards);
       const mostExpensiveText =
-        formatUsd(mostExpensive.price) || (linkHydrated ? "N/A" : "…");
+        formatUsd(mostExpensive.price) || (linkHydrated ? "N/A" : "");
       const fullSetValue = getFullSetMarketValue(allCards);
-      const fullSetText = formatUsd(fullSetValue.total) || (linkHydrated ? "N/A" : "…");
+      const fullSetText = formatUsd(fullSetValue.total) || (linkHydrated ? "N/A" : "");
       const statBlocks = content.querySelectorAll(".set-stat");
       for (const block of statBlocks) {
         const label = block.querySelector(".set-stat-label");
@@ -7210,7 +7270,12 @@
       const linkHydrated =
         state.language !== "english" || Boolean(state.setLinkPricesHydratedBySetCode[code]);
       const inlinePrice = formatCardPriceInline(card);
-      const priceLabel = inlinePrice || (linkHydrated ? "—" : "…");
+      const priceLabel = inlinePrice || (linkHydrated ? "—" : "");
+      const ownedQty = getOwnedQuantityForCard(code, card.cardNo);
+      const leftMeta =
+        ownedQty > 0
+          ? `<span class="card-qty-inline">Qty: <button type="button" class="card-qty-value" data-card-qty="${escapeHtml(card.cardNo)}" title="Click to edit quantity (0 removes)" aria-label="Quantity ${ownedQty}. Click to edit">${ownedQty}</button></span>`
+          : escapeHtml(card.label);
       return `
               <div class="card-tile-shell" data-card-number="${escapeHtml(card.cardNo)}">
                 ${
@@ -7226,7 +7291,7 @@
                 }
                 <div>${renderCardName(card)}</div>
                 <div class="card-meta card-meta-row">
-                  <span>${escapeHtml(card.label)}</span>
+                  <span class="card-meta-left">${leftMeta}</span>
                   <span class="card-price-inline">${escapeHtml(priceLabel)}</span>
                 </div>
                 </button>
@@ -7813,6 +7878,22 @@
       return null;
     }
 
+    /** Total quantity owned for a set card number (sums duplicate collection rows). */
+    function getOwnedQuantityForCard(setCode, cardNo) {
+      const code = String(setCode || "").toUpperCase();
+      const wanted = new Set(cardNumberLookupKeys(cardNo));
+      if (!code || !wanted.size || !Array.isArray(state.collectionItemsCache)) return 0;
+      let total = 0;
+      for (const item of state.collectionItemsCache) {
+        if (!item || item.type !== "single") continue;
+        if (resolveCollectionItemSetCode(item) !== code) continue;
+        const keys = cardNumberLookupKeys(item.cardNumber || "");
+        if (!keys.some((key) => wanted.has(key))) continue;
+        total += Math.max(1, Math.floor(Number(item.quantity) || 1));
+      }
+      return total;
+    }
+
     function removeCardFromCollectionCache(itemId, setCode) {
       const id = String(itemId || "");
       if (Array.isArray(state.collectionItemsCache) && id) {
@@ -7999,7 +8080,7 @@
       }
 
       state.collectionRemoveInFlight = flightKey;
-      removeBtn.disabled = true;
+      if (removeBtn) removeBtn.disabled = true;
       try {
         const res = await fetch(`/api/items/${encodeURIComponent(String(item.id))}`, {
           method: "DELETE",
@@ -8016,8 +8097,147 @@
         window.alert("Network error while removing the card.");
       } finally {
         state.collectionRemoveInFlight = "";
-        removeBtn.disabled = false;
+        if (removeBtn) removeBtn.disabled = false;
       }
+    }
+
+    function listCollectionItemsForCard(setCode, cardNo) {
+      const code = String(setCode || "").toUpperCase();
+      const wanted = new Set(cardNumberLookupKeys(cardNo));
+      if (!code || !wanted.size || !Array.isArray(state.collectionItemsCache)) return [];
+      return state.collectionItemsCache.filter((item) => {
+        if (!item || item.type !== "single" || !item.id) return false;
+        if (resolveCollectionItemSetCode(item) !== code) return false;
+        const keys = cardNumberLookupKeys(item.cardNumber || "");
+        return keys.some((key) => wanted.has(key));
+      });
+    }
+
+    async function saveOwnedQuantityForCard(setCode, cardNo, rawValue, allCards) {
+      const code = String(setCode || "").toUpperCase();
+      const number = String(cardNo || "").trim();
+      if (!code || !number) return;
+      if (!isCollectionSignedIn()) {
+        window.InfinityAccount?.openSignIn?.();
+        return;
+      }
+      const parsed = Math.floor(Number(rawValue));
+      if (!Number.isFinite(parsed)) {
+        patchCollectionOwnedUI(code, allCards);
+        return;
+      }
+      const matches = listCollectionItemsForCard(code, number);
+      if (!matches.length) {
+        patchCollectionOwnedUI(code, allCards);
+        return;
+      }
+      const cardName = String(matches[0].name || number);
+
+      if (parsed <= 0) {
+        if (!window.confirm(`Remove "${cardName}" from your collection?`)) {
+          patchCollectionOwnedUI(code, allCards);
+          return;
+        }
+        for (const item of matches) {
+          try {
+            const res = await fetch(`/api/items/${encodeURIComponent(String(item.id))}`, {
+              method: "DELETE",
+              credentials: "same-origin"
+            });
+            if (res.ok) removeCardFromCollectionCache(item.id, code);
+          } catch {
+            /* continue */
+          }
+        }
+        patchCollectionOwnedUI(code, allCards);
+        return;
+      }
+
+      const quantity = Math.min(9999, parsed);
+      const [primary, ...extras] = matches;
+      try {
+        const res = await fetch(`/api/items/${encodeURIComponent(String(primary.id))}`, {
+          method: "PUT",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...primary, quantity })
+        });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          window.alert(payload.error || `Could not save quantity (${res.status})`);
+          patchCollectionOwnedUI(code, allCards);
+          return;
+        }
+        if (payload.item && Array.isArray(state.collectionItemsCache)) {
+          const idx = state.collectionItemsCache.findIndex((row) => String(row?.id) === String(primary.id));
+          if (idx >= 0) state.collectionItemsCache[idx] = { ...state.collectionItemsCache[idx], ...payload.item };
+          else primary.quantity = quantity;
+        } else {
+          primary.quantity = quantity;
+        }
+        for (const extra of extras) {
+          try {
+            const del = await fetch(`/api/items/${encodeURIComponent(String(extra.id))}`, {
+              method: "DELETE",
+              credentials: "same-origin"
+            });
+            if (del.ok) removeCardFromCollectionCache(extra.id, code);
+          } catch {
+            /* ignore */
+          }
+        }
+        state.collectionOwnedKeysBySetCode[code] = buildOwnedKeysForSetFromItems(
+          code,
+          state.collectionItemsCache || []
+        );
+        patchCollectionOwnedUI(code, allCards);
+      } catch (err) {
+        window.alert(err.message || "Could not save quantity.");
+        patchCollectionOwnedUI(code, allCards);
+      }
+    }
+
+    function beginSetCardQtyEdit(btn, allCards) {
+      if (!btn || btn.dataset.editing === "1") return;
+      const cardNo = btn.getAttribute("data-card-qty") || "";
+      const code = String(state.selectedSetCode || "").toUpperCase();
+      if (!cardNo || !code) return;
+      const current = String(btn.textContent || "").trim() || "1";
+      btn.dataset.editing = "1";
+      const input = document.createElement("input");
+      input.type = "number";
+      input.min = "0";
+      input.step = "1";
+      input.inputMode = "numeric";
+      input.className = "card-qty-input";
+      input.value = current;
+      input.setAttribute("aria-label", "Edit quantity");
+      btn.replaceWith(input);
+      input.focus();
+      input.select();
+      let finished = false;
+      const finish = (save) => {
+        if (finished) return;
+        finished = true;
+        if (save) void saveOwnedQuantityForCard(code, cardNo, input.value, allCards);
+        else patchCollectionOwnedUI(code, allCards);
+      };
+      input.addEventListener("keydown", (e) => {
+        e.stopPropagation();
+        if (e.key === "Enter") {
+          e.preventDefault();
+          input.blur();
+        } else if (e.key === "Escape") {
+          e.preventDefault();
+          finished = true;
+          patchCollectionOwnedUI(code, allCards);
+        }
+      });
+      input.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      });
+      input.addEventListener("blur", () => finish(true));
     }
 
     function initCollectionAddDelegation() {
@@ -8025,6 +8245,21 @@
       if (!content || content.dataset.collectionAddDelegation === "1") return;
       content.dataset.collectionAddDelegation = "1";
       content.addEventListener("click", (event) => {
+        const qtyBtn = event.target.closest(".card-qty-value");
+        if (qtyBtn) {
+          const shell = qtyBtn.closest(".card-tile-shell[data-card-number]");
+          if (!shell || !shell.closest(".set-detail")) return;
+          event.preventDefault();
+          event.stopPropagation();
+          if (!state.selectedSetCode || state.selectedCardNumber) return;
+          const setEntry = getSetByCode(state.selectedSetCode);
+          if (!setEntry) return;
+          const setConfig = detailedSetConfigs[setEntry.code];
+          const allCards = getSetCards(setEntry, setConfig);
+          beginSetCardQtyEdit(qtyBtn, allCards);
+          return;
+        }
+
         const removeBtn = event.target.closest("[data-remove-from-collection]");
         if (removeBtn) {
           const shell = removeBtn.closest(".card-tile-shell[data-card-number]");
@@ -8110,6 +8345,9 @@
 
         const owned = ownershipReady && isCardOwnedInCollection({ cardNo, label: `#${cardNo}` }, ownedKeys);
         shell.classList.toggle("card-tile-shell--owned", owned);
+        const metaLeft = shell.querySelector(".card-meta-left");
+        const cardLabel =
+          cards.find((c) => String(c.cardNo || "") === String(cardNo))?.label || `#${cardNo}`;
         if (owned) {
           tile?.setAttribute("title", "In your collection");
           shell.querySelector(".card-add-btn")?.remove();
@@ -8124,11 +8362,16 @@
           } else {
             chip.textContent = "In your collection";
           }
+          const qty = Math.max(1, getOwnedQuantityForCard(code, cardNo));
+          if (metaLeft) {
+            metaLeft.innerHTML = `<span class="card-qty-inline">Qty: <button type="button" class="card-qty-value" data-card-qty="${escapeHtml(cardNo)}" title="Click to edit quantity (0 removes)" aria-label="Quantity ${qty}. Click to edit">${qty}</button></span>`;
+          }
         } else {
           tile?.removeAttribute("title");
           shell.querySelector(".card-owned-chip")?.remove();
           shell.querySelector(".card-owned-remove")?.remove();
           ensureCardAddButton(shell);
+          if (metaLeft) metaLeft.textContent = cardLabel;
         }
       });
     }
@@ -8232,14 +8475,14 @@
       const mostExpensive = getMostExpensiveCardInSet(allCards);
       const mostExpensivePriceLabel =
         formatUsd(mostExpensive.price) ||
-        (linkHydrated || state.language !== "english" ? "N/A" : "…");
+        (linkHydrated || state.language !== "english" ? "N/A" : "");
       const mostExpensiveCardLink = mostExpensive.card
         ? `<button type="button" id="mostExpensiveCardLink" class="set-stat-sub-link">${escapeHtml(String(getCardDisplayName(mostExpensive.card) || mostExpensive.card.label || "Open card"))}</button>`
         : "";
       const fullSetValue = getFullSetMarketValue(allCards);
       const fullSetValueLabel =
         formatUsd(fullSetValue.total) ||
-        (linkHydrated || state.language !== "english" ? "N/A" : "…");
+        (linkHydrated || state.language !== "english" ? "N/A" : "");
       const numberSortActive = state.setSort === "number" || state.setSort === "number-desc";
       const numberSortArrow = state.setSort === "number-desc" ? "▼" : "▲";
       const nameSortActive = state.setSort === "name" || state.setSort === "name-desc";
@@ -8633,7 +8876,7 @@
                       <div class="card-meta card-meta-row">
                         <span>${escapeHtml(card.setName)} (${escapeHtml(card.setCode)}) · ${escapeHtml(card.label)}</span>
                         <span class="card-price-inline">${escapeHtml(
-                          formatCardPriceInline(card) || (fillPrices ? "—" : "…")
+                          formatCardPriceInline(card) || (fillPrices ? "—" : "")
                         )}</span>
                       </div>
                     </button>
@@ -8779,7 +9022,7 @@
                         <div class="card-meta card-meta-row">
                           <span>${escapeHtml(card.setName)} (${escapeHtml(card.setCode)}) · ${escapeHtml(card.label)}</span>
                           <span class="card-price-inline">${escapeHtml(
-                            formatCardPriceInline(card) || (pricesReady ? "—" : "…")
+                            formatCardPriceInline(card) || (pricesReady ? "—" : "")
                           )}</span>
                         </div>
                       </button>
