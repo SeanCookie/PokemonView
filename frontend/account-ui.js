@@ -32,7 +32,11 @@
       position: absolute;
       top: calc(100% + 8px);
       right: 0;
-      min-width: 210px;
+      min-width: min(210px, calc(var(--app-vv-width, 100vw) - 24px));
+      max-width: min(280px, calc(var(--app-vv-width, 100vw) - 24px));
+      max-height: min(70vh, calc(var(--app-vv-height, 100dvh) - 72px));
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
       border: 1px solid #2d405e;
       border-radius: 10px;
       background: #0f1726;
@@ -40,6 +44,7 @@
       padding: 8px;
       display: none;
       z-index: 70;
+      box-sizing: border-box;
     }
     .acct-menu.open { display: grid; gap: 4px; }
     .acct-menu-head {
@@ -82,19 +87,29 @@
     .acct-overlay {
       position: fixed;
       inset: 0;
+      width: 100%;
+      max-width: 100vw;
+      max-height: var(--app-vv-height, 100dvh);
       background: rgba(4, 9, 15, 0.72);
       display: none;
-      align-items: center;
-      justify-content: center;
+      align-items: safe center;
+      justify-content: safe center;
       z-index: 60;
+      box-sizing: border-box;
+      overflow-x: hidden;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
       padding: max(12px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
     }
     .acct-overlay.open { display: flex; }
     .acct-modal {
-      width: min(460px, 100%);
-      max-height: min(90dvh, 900px);
+      width: min(460px, calc(var(--app-vv-width, 100vw) - 24px), 100%);
+      max-width: 100%;
+      max-height: min(900px, calc(var(--app-vv-height, 100dvh) - 24px));
       overflow: auto;
       -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
       border: 1px solid #2d405e;
       border-radius: 12px;
       background: #0f1726;
@@ -102,6 +117,21 @@
       display: grid;
       gap: 10px;
       color: #e9f1ff;
+      box-sizing: border-box;
+    }
+    @media (max-height: 560px), (max-width: 420px) {
+      .acct-overlay { align-items: flex-start; }
+      .acct-modal { border-radius: 10px; padding: 12px; gap: 8px; }
+    }
+    @media (max-width: 380px) {
+      .acct-tab {
+        font-size: 10px;
+        white-space: normal;
+        line-height: 1.15;
+        height: auto;
+        min-height: 36px;
+        padding: 6px 4px;
+      }
     }
     .acct-head {
       display: flex;
@@ -237,9 +267,39 @@
     .acct-google-wrap[hidden] {
       display: none !important;
     }
-    #acctGoogle { display: flex; justify-content: center; }
+    #acctGoogle {
+      display: flex;
+      justify-content: center;
+      max-width: 100%;
+      overflow: hidden;
+    }
+    .acct-google-wrap { max-width: 100%; min-width: 0; }
+    .acct-input, .acct-submit, .acct-form { max-width: 100%; box-sizing: border-box; }
   `;
   document.head.appendChild(style);
+
+  function syncAcctViewportSize() {
+    const root = document.documentElement;
+    if (!root) return;
+    const vv = window.visualViewport;
+    const width = Math.max(
+      0,
+      Math.round(Number(vv?.width) || window.innerWidth || root.clientWidth || 0)
+    );
+    const height = Math.max(
+      0,
+      Math.round(Number(vv?.height) || window.innerHeight || root.clientHeight || 0)
+    );
+    if (width > 0) root.style.setProperty("--app-vv-width", `${width}px`);
+    if (height > 0) root.style.setProperty("--app-vv-height", `${height}px`);
+  }
+  syncAcctViewportSize();
+  window.addEventListener("resize", syncAcctViewportSize, { passive: true });
+  window.addEventListener("orientationchange", syncAcctViewportSize, { passive: true });
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", syncAcctViewportSize, { passive: true });
+    window.visualViewport.addEventListener("scroll", syncAcctViewportSize, { passive: true });
+  }
 
   slot.innerHTML = `
     <div class="acct-menu-wrap">
@@ -511,6 +571,7 @@
   }
 
   function openModal() {
+    syncAcctViewportSize();
     overlay.classList.add("open");
     try {
       window.google?.accounts?.id?.cancel();

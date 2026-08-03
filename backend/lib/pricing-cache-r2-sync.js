@@ -20,6 +20,9 @@ const ALLOWED_FILES = new Set([
   "admin-set-refresh-timestamps.json"
 ]);
 
+/** Per-set snapshots: set-link-prices/{CODE}.json (strict set-code charset). */
+const SET_LINK_PRICES_R2_RE = /^set-link-prices\/[A-Z0-9][A-Z0-9_-]{0,31}\.json$/;
+
 /** Prefer gzip when payload exceeds this (keeps small files simple). */
 const GZIP_MIN_BYTES = 256 * 1024;
 
@@ -43,12 +46,27 @@ function getSyncConfig(env = {}) {
   };
 }
 
+function isAllowedPricingCacheFile(name) {
+  const file = String(name || "").trim();
+  if (!file) return false;
+  if (ALLOWED_FILES.has(file)) return true;
+  return SET_LINK_PRICES_R2_RE.test(file);
+}
+
 function assertAllowedFile(name) {
   const file = String(name || "").trim();
-  if (!ALLOWED_FILES.has(file)) {
+  if (!isAllowedPricingCacheFile(file)) {
     throw new Error(`Unsupported R2 data file: ${file}`);
   }
   return file;
+}
+
+function setLinkPricesR2FileName(setCode) {
+  const code = String(setCode || "")
+    .trim()
+    .toUpperCase();
+  if (!/^[A-Z0-9][A-Z0-9_-]{0,31}$/.test(code)) return null;
+  return `set-link-prices/${code}.json`;
 }
 
 function looksLikeGzip(buffer) {
@@ -139,6 +157,9 @@ async function pushPricingCacheToR2(fileName, bodyText, env = {}) {
 
 module.exports = {
   ALLOWED_FILES,
+  SET_LINK_PRICES_R2_RE,
+  isAllowedPricingCacheFile,
+  setLinkPricesR2FileName,
   getSyncConfig,
   setPricingCacheR2Env,
   pullPricingCacheFromR2,

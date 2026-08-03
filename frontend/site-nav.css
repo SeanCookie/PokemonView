@@ -7,6 +7,48 @@ html {
 }
 
 /*
+ * Live viewport size (updated by site-nav.js from window.visualViewport).
+ * Panels/modals use these so they fit phones with dynamic browser chrome.
+ */
+:root {
+  --app-vv-width: 100vw;
+  --app-vv-height: 100dvh;
+  --app-panel-pad: 12px;
+  --app-panel-max-width: min(920px, calc(var(--app-vv-width) - (2 * var(--app-panel-pad))));
+  --app-panel-max-height: calc(var(--app-vv-height) - (2 * var(--app-panel-pad)));
+}
+
+/* Shared overlay/panel fit — account modal, collection pickers, etc. */
+.modal-backdrop,
+.acct-overlay {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: 100vw !important;
+  max-height: var(--app-vv-height) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  align-items: safe center;
+  justify-content: safe center;
+}
+
+.modal-backdrop .add-card-panel,
+.acct-modal {
+  box-sizing: border-box !important;
+  width: min(100%, var(--app-panel-max-width)) !important;
+  max-width: 100% !important;
+  max-height: var(--app-panel-max-height) !important;
+}
+
+@media (max-height: 560px), (max-width: 420px) {
+  .modal-backdrop,
+  .acct-overlay {
+    align-items: flex-start !important;
+  }
+}
+
+/*
  * Header: logo/links on the left; search + Sign In clustered on the right.
  * Sign In is always immediately to the right of the search field.
  */
@@ -189,7 +231,7 @@ html.nav-drawer-open body {
     background: rgba(10, 15, 24, 0.98);
     border-bottom: 1px solid var(--border, #2a3340);
     box-shadow: 0 16px 28px rgba(0, 0, 0, 0.35);
-    max-height: min(70vh, 520px);
+    max-height: min(70vh, calc(var(--app-vv-height) - 72px), 520px);
     overflow: auto;
     -webkit-overflow-scrolling: touch;
     pointer-events: auto !important;

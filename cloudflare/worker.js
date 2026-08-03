@@ -115,6 +115,63 @@ const ALLOWED_APP_DATA_FILES = new Set([
   "pricecharting-card-details-fail-links.json",
   "admin-set-refresh-timestamps.json"
 ]);
+/** Per-set warm price snapshots written by the container. */
+const SET_LINK_PRICES_R2_RE = /^set-link-prices\/[A-Z0-9][A-Z0-9_-]{0,31}\.json$/;
+
+function isAllowedAppDataFile(file) {
+  const name = String(file || "").trim();
+  if (!name) return false;
+  if (ALLOWED_APP_DATA_FILES.has(name)) return true;
+  return SET_LINK_PRICES_R2_RE.test(name);
+}
+
+function normalizeSetLinkPriceCode(raw) {
+  const code = String(raw || "")
+    .trim()
+    .toUpperCase();
+  return /^[A-Z0-9][A-Z0-9_-]{0,31}$/.test(code) ? code : "";
+}
+
+/** Serve warm per-set link prices from R2 without booting the container. */
+async function tryServeSetLinkPricesFromR2(request, env) {
+  const url = new URL(request.url);
+  if (url.pathname !== "/api/sets/link-prices" || request.method !== "GET") return null;
+  const code = normalizeSetLinkPriceCode(
+    url.searchParams.get("setCode") || url.searchParams.get("code") || ""
+  );
+  if (!code) return null;
+  const bucket = env.CARD_IMAGES;
+  if (!bucket) return null;
+  try {
+    const object = await bucket.get(`app-data/set-link-prices/${code}.json`);
+    if (!object) return null;
+    const text = await object.text();
+    if (!text || text.length < 2) return null;
+    let payload;
+    try {
+      payload = JSON.parse(text);
+    } catch {
+      return null;
+    }
+    const byUrl =
+      payload && payload.byUrl && typeof payload.byUrl === "object" && !Array.isArray(payload.byUrl)
+        ? payload.byUrl
+        : null;
+    if (!byUrl || !Object.keys(byUrl).length) return null;
+    return new Response(text, {
+      status: 200,
+      headers: {
+        "content-type": "application/json; charset=utf-8",
+        "cache-control": "public, max-age=60, stale-while-revalidate=300"
+      }
+    });
+  } catch (err) {
+    console.warn(
+      `[pokemonview] set link-prices R2 serve failed: ${err instanceof Error ? err.message : err}`
+    );
+    return null;
+  }
+}
 
 async function handleDurableStoreRequest(request, env) {
   const url = new URL(request.url);
@@ -222,7 +279,7 @@ async function handleDurableAppDataRequest(request, env) {
   }
 
   const file = String(url.searchParams.get("file") || "").trim();
-  if (!ALLOWED_APP_DATA_FILES.has(file)) {
+  if (!isAllowedAppDataFile(file)) {
     return new Response(JSON.stringify({ ok: false, error: "Unsupported file" }), {
       status: 400,
       headers: { "content-type": "application/json; charset=utf-8" }
@@ -378,12 +435,16 @@ export default {
     const imageResponse = await tryServeCardImageFromR2(request, env);
     if (imageResponse) return imageResponse;
 
+    // Warm per-set prices — edge R2 hit skips container / monolith restore.
+    const setLinkPricesResponse = await tryServeSetLinkPricesFromR2(request, env);
+    if (setLinkPricesResponse) return setLinkPricesResponse;
+
     // Shared nav CSS/JS — serve from Worker so Sign In/search layout is not stuck on a stale image.
     const navAsset = tryServeNavAssetOverride(request);
     if (navAsset) return navAsset;
 
     // Fresh DO so the container boots with current secrets + latest image after CI rebuild.
-    const container = env.POKEMONVIEW.getByName("main-v37");
+    const container = env.POKEMONVIEW.getByName("main-v38");
     const response = await enrichAuthMePreferences(
       request,
       await container.fetch(request),

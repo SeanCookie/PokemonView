@@ -1,4 +1,32 @@
 (() => {
+  /**
+   * Keep --app-vv-* in sync with the real visible window (handles mobile
+   * browser chrome + on-screen keyboard better than 100vh alone).
+   */
+  function syncAppViewportSize() {
+    const root = document.documentElement;
+    if (!root) return;
+    const vv = window.visualViewport;
+    const width = Math.max(
+      0,
+      Math.round(Number(vv?.width) || window.innerWidth || root.clientWidth || 0)
+    );
+    const height = Math.max(
+      0,
+      Math.round(Number(vv?.height) || window.innerHeight || root.clientHeight || 0)
+    );
+    if (width > 0) root.style.setProperty("--app-vv-width", `${width}px`);
+    if (height > 0) root.style.setProperty("--app-vv-height", `${height}px`);
+  }
+
+  syncAppViewportSize();
+  window.addEventListener("resize", syncAppViewportSize, { passive: true });
+  window.addEventListener("orientationchange", syncAppViewportSize, { passive: true });
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", syncAppViewportSize, { passive: true });
+    window.visualViewport.addEventListener("scroll", syncAppViewportSize, { passive: true });
+  }
+
   function closeNav(nav, backdrop, panel) {
     if (!nav) return;
     nav.classList.remove("nav-open");

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>PokemonView Dashboard</title>
   <link rel="stylesheet" href="/showcase.css" />
-  <link rel="stylesheet" href="/site-nav.css?v=10" />
+  <link rel="stylesheet" href="/site-nav.css?v=12" />
   <style>
     :root {
       color-scheme: dark;
@@ -798,6 +798,14 @@
       pointer-events: auto;
     }
 
+    /* Touch devices have no hover — keep controls usable after a tap/focus. */
+    @media (hover: none) {
+      .binder-pocket.is-filled .binder-pocket-btn {
+        opacity: 0.92;
+        pointer-events: auto;
+      }
+    }
+
     .binder-pocket-empty {
       display: grid;
       gap: 4px;
@@ -938,10 +946,19 @@
       background: rgba(6, 10, 18, 0.72);
       backdrop-filter: blur(6px);
       display: none;
-      align-items: center;
-      justify-content: center;
+      align-items: safe center;
+      justify-content: safe center;
       z-index: 80;
-      padding: 14px;
+      box-sizing: border-box;
+      width: 100%;
+      max-width: 100vw;
+      max-height: var(--app-vv-height, 100dvh);
+      overflow-x: hidden;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      padding: max(12px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px))
+        max(12px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
     }
 
     .modal-backdrop.open {
@@ -949,8 +966,9 @@
     }
 
     .add-card-panel {
-      width: min(920px, 100%);
-      max-height: calc(100vh - 28px);
+      width: min(920px, calc(var(--app-vv-width, 100vw) - 24px), 100%);
+      max-width: 100%;
+      max-height: min(calc(var(--app-vv-height, 100dvh) - 24px), calc(100dvh - 24px));
       overflow: hidden;
       display: flex;
       flex-direction: column;
@@ -959,6 +977,17 @@
       background: var(--panel);
       padding: 16px;
       box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+      box-sizing: border-box;
+    }
+
+    @media (max-height: 560px), (max-width: 420px) {
+      .modal-backdrop {
+        align-items: flex-start;
+      }
+      .add-card-panel {
+        padding: 12px;
+        border-radius: 12px;
+      }
     }
 
     .add-card-panel h2 {
@@ -986,9 +1015,10 @@
 
     .add-card-results-wrap {
       flex: 1;
-      min-height: 200px;
-      max-height: min(52vh, 520px);
+      min-height: min(160px, 30vh);
+      max-height: min(52vh, calc(var(--app-vv-height, 100dvh) * 0.52), 520px);
       overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
       margin-bottom: 0;
     }
 
@@ -1305,8 +1335,8 @@
   </div>
 
   <script src="/english-sets-catalog.js"></script>
-  <script src="/site-nav.js?v=10" defer></script>
-  <script src="/account-ui.js?v=8"></script>
+  <script src="/site-nav.js?v=12" defer></script>
+  <script src="/account-ui.js?v=9"></script>
   <script>
     const BINDER_PAGE_SIZES = [4, 9, 12, 16];
     const BINDER_DEFAULT_SIZE = 9;
@@ -2250,6 +2280,32 @@
       return true;
     }
 
+    function clearBinderDropTargets(pageEl) {
+      if (!pageEl) return;
+      pageEl.querySelectorAll(".is-drop-target").forEach((el) => el.classList.remove("is-drop-target"));
+    }
+
+    function binderPocketFromPoint(clientX, clientY, pageEl) {
+      if (!pageEl) return null;
+      const stack =
+        typeof document.elementsFromPoint === "function"
+          ? document.elementsFromPoint(clientX, clientY)
+          : [document.elementFromPoint(clientX, clientY)].filter(Boolean);
+      for (const node of stack) {
+        if (!node || !pageEl.contains(node)) continue;
+        const pocket = node.closest?.("[data-binder-slot], [data-binder-add]");
+        if (!pocket || !pageEl.contains(pocket)) continue;
+        // Skip the card being dragged so the pocket underneath can receive the drop.
+        if (pocket.classList.contains("is-dragging")) continue;
+        const raw =
+          pocket.getAttribute("data-binder-slot") ?? pocket.getAttribute("data-binder-add");
+        const index = Number(raw);
+        if (!Number.isFinite(index)) continue;
+        return { index, el: pocket };
+      }
+      return null;
+    }
+
     function bindBinderDropTarget(el, toIndex) {
       if (!el || !Number.isFinite(toIndex)) return;
       el.addEventListener("dragover", (e) => {
@@ -2273,6 +2329,92 @@
         );
         moveBinderSlot(fromIndex, toIndex);
         state.binder.dragFromIndex = null;
+      });
+    }
+
+    /**
+     * Touch/pen drag — HTML5 DnD is unreliable on mobile browsers.
+     * Mouse keeps using native draggable=true handlers.
+     */
+    function bindBinderPointerDrag(pocket, slotIndex, pageEl) {
+      if (!pocket || !pageEl || !Number.isFinite(slotIndex)) return;
+      const DRAG_THRESHOLD_PX = 8;
+
+      pocket.addEventListener("pointerdown", (e) => {
+        if (e.pointerType === "mouse") return;
+        if (e.button != null && e.button !== 0) return;
+        if (e.target.closest?.(".binder-pocket-btn")) return;
+
+        const pointerId = e.pointerId;
+        const startX = e.clientX;
+        const startY = e.clientY;
+        let started = false;
+
+        const endPointerDrag = (ev, commit) => {
+          if (ev && ev.pointerId !== pointerId) return;
+          window.removeEventListener("pointermove", onMove, true);
+          window.removeEventListener("pointerup", onUp, true);
+          window.removeEventListener("pointercancel", onCancel, true);
+          try {
+            if (pocket.hasPointerCapture?.(pointerId)) pocket.releasePointerCapture(pointerId);
+          } catch {
+            /* ignore */
+          }
+          const fromIndex = Number(state.binder.dragFromIndex);
+          const hit =
+            commit && started
+              ? binderPocketFromPoint(
+                  ev?.clientX ?? startX,
+                  ev?.clientY ?? startY,
+                  pageEl
+                )
+              : null;
+          clearBinderDropTargets(pageEl);
+          pocket.classList.remove("is-dragging");
+          pageEl.classList.remove("binder-page--dragging");
+          state.binder.dragFromIndex = null;
+          if (
+            commit &&
+            started &&
+            hit &&
+            Number.isFinite(fromIndex) &&
+            hit.index !== fromIndex
+          ) {
+            if (hit.el.hasAttribute("data-binder-add")) {
+              hit.el.dataset.binderDidDrop = "1";
+            }
+            moveBinderSlot(fromIndex, hit.index);
+          }
+        };
+
+        const onMove = (ev) => {
+          if (ev.pointerId !== pointerId) return;
+          const dx = ev.clientX - startX;
+          const dy = ev.clientY - startY;
+          if (!started) {
+            if (dx * dx + dy * dy < DRAG_THRESHOLD_PX * DRAG_THRESHOLD_PX) return;
+            started = true;
+            state.binder.dragFromIndex = slotIndex;
+            pocket.classList.add("is-dragging");
+            pageEl.classList.add("binder-page--dragging");
+            try {
+              pocket.setPointerCapture(pointerId);
+            } catch {
+              /* ignore */
+            }
+          }
+          ev.preventDefault();
+          clearBinderDropTargets(pageEl);
+          const hit = binderPocketFromPoint(ev.clientX, ev.clientY, pageEl);
+          if (hit && hit.index !== slotIndex) hit.el.classList.add("is-drop-target");
+        };
+
+        const onUp = (ev) => endPointerDrag(ev, true);
+        const onCancel = (ev) => endPointerDrag(ev, false);
+
+        window.addEventListener("pointermove", onMove, true);
+        window.addEventListener("pointerup", onUp, true);
+        window.addEventListener("pointercancel", onCancel, true);
       });
     }
 
@@ -2374,7 +2516,7 @@
             .filter(Boolean)
             .join(" ");
           const invertedClass = slot.inverted ? " is-inverted" : "";
-          return `<div class="binder-pocket is-filled${invertedClass}" draggable="true" data-binder-slot="${slotIndex}" aria-label="Pocket ${slotIndex + 1}: ${escapeAttr(slot.name)}. Drag to another pocket to move or swap." title="Drag to move or swap">
+          return `<div class="binder-pocket is-filled${invertedClass}" draggable="true" data-binder-slot="${slotIndex}" aria-label="Pocket ${slotIndex + 1}: ${escapeAttr(slot.name)}. Drag to another pocket to move or swap." title="Drag (or press and drag on mobile) to move or swap">
             <button type="button" class="binder-pocket-btn binder-pocket-btn--flip" data-binder-flip="${slotIndex}" title="Flip card" aria-label="Flip card" draggable="false">↺</button>
             <button type="button" class="binder-pocket-btn binder-pocket-btn--remove" data-binder-remove="${slotIndex}" title="Remove card" aria-label="Remove card" draggable="false"><span class="binder-pocket-x" aria-hidden="true"></span></button>
             <div class="binder-pocket-art">
@@ -2430,9 +2572,10 @@
           state.binder.dragFromIndex = null;
           pocket.classList.remove("is-dragging");
           pageEl.classList.remove("binder-page--dragging");
-          pageEl.querySelectorAll(".is-drop-target").forEach((el) => el.classList.remove("is-drop-target"));
+          clearBinderDropTargets(pageEl);
         });
         bindBinderDropTarget(pocket, slotIndex);
+        bindBinderPointerDrag(pocket, slotIndex, pageEl);
       });
       pageEl.querySelectorAll("[data-binder-remove]").forEach((btn) => {
         btn.addEventListener("click", (e) => {

@@ -81,6 +81,7 @@ backend/data/target-*
 backend/data/set-card-import-status.json
 backend/data/set-card-details-import-status.json
 backend/data/set-card-details/by-code/
+backend/data/set-link-prices/
 
 # User-uploaded showcase avatars
 backend/data/showcase-avatars/*

@@ -922,9 +922,16 @@
       inset: 0;
       background: var(--zoom-overlay);
       display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
+      align-items: safe center;
+      justify-content: safe center;
+      box-sizing: border-box;
+      width: 100%;
+      max-width: 100vw;
+      max-height: var(--app-vv-height, 100dvh);
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: max(12px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px))
+        max(12px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
       z-index: 200;
     }
 
@@ -933,11 +940,12 @@
     }
 
     .image-zoom-inner {
-      max-width: min(95vw, 900px);
-      max-height: 92vh;
+      max-width: min(95vw, calc(var(--app-vv-width, 100vw) - 24px), 900px);
+      max-height: min(92vh, calc(var(--app-vv-height, 100dvh) - 24px));
       display: grid;
       gap: 10px;
       justify-items: center;
+      box-sizing: border-box;
     }
 
     .image-zoom-crop {
@@ -945,11 +953,12 @@
       overflow: hidden;
       background: var(--thumb-bg);
       border: 1px solid var(--border);
+      max-width: 100%;
     }
 
     .image-zoom-full {
       max-width: 100%;
-      max-height: calc(92vh - 40px);
+      max-height: min(calc(92vh - 40px), calc(var(--app-vv-height, 100dvh) - 64px));
       display: block;
       border-radius: 0;
       border: 0;
@@ -1932,7 +1941,7 @@
       }
     }
   </style>
-  <link rel="stylesheet" href="/site-nav.css?v=11" />
+  <link rel="stylesheet" href="/site-nav.css?v=12" />
   <script>
     (function () {
       try {
@@ -4875,6 +4884,147 @@
       }
     }
 
+    const SET_LINK_PRICES_STORAGE_PREFIX = "pokemonview.setLinkPrices.v1.";
+    const SET_LINK_PRICES_STORAGE_INDEX = "pokemonview.setLinkPrices.index.v1";
+    const SET_LINK_PRICES_STORAGE_MAX = 24;
+
+    function setLinkPricesStorageKey(setCode) {
+      return `${SET_LINK_PRICES_STORAGE_PREFIX}${String(setCode || "").trim().toUpperCase()}`;
+    }
+
+    function readLocalSetLinkPricesSnapshot(setCode) {
+      const code = String(setCode || "").trim().toUpperCase();
+      if (!code) return null;
+      try {
+        const raw = localStorage.getItem(setLinkPricesStorageKey(code));
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        const byUrl =
+          parsed && parsed.byUrl && typeof parsed.byUrl === "object" && !Array.isArray(parsed.byUrl)
+            ? parsed.byUrl
+            : null;
+        if (!byUrl || !Object.keys(byUrl).length) return null;
+        return {
+          byUrl,
+          cacheGenerationKey: String(parsed.cacheGenerationKey || "").trim(),
+          logicVersion: Number(parsed.logicVersion) || 0,
+          savedAt: Number(parsed.savedAt) || 0
+        };
+      } catch {
+        return null;
+      }
+    }
+
+    function touchSetLinkPricesStorageIndex(setCode) {
+      const code = String(setCode || "").trim().toUpperCase();
+      if (!code) return;
+      try {
+        let index = [];
+        try {
+          const raw = localStorage.getItem(SET_LINK_PRICES_STORAGE_INDEX);
+          const parsed = raw ? JSON.parse(raw) : [];
+          if (Array.isArray(parsed)) index = parsed.map((c) => String(c || "").trim().toUpperCase()).filter(Boolean);
+        } catch {
+          index = [];
+        }
+        index = [code, ...index.filter((c) => c !== code)].slice(0, SET_LINK_PRICES_STORAGE_MAX);
+        const drop = [];
+        try {
+          const raw = localStorage.getItem(SET_LINK_PRICES_STORAGE_INDEX);
+          const prev = raw ? JSON.parse(raw) : [];
+          if (Array.isArray(prev)) {
+            for (const old of prev) {
+              const oldCode = String(old || "").trim().toUpperCase();
+              if (oldCode && !index.includes(oldCode)) drop.push(oldCode);
+            }
+          }
+        } catch {
+          /* ignore */
+        }
+        localStorage.setItem(SET_LINK_PRICES_STORAGE_INDEX, JSON.stringify(index));
+        for (const oldCode of drop) {
+          try {
+            localStorage.removeItem(setLinkPricesStorageKey(oldCode));
+          } catch {
+            /* ignore */
+          }
+        }
+      } catch {
+        /* quota / private mode */
+      }
+    }
+
+    function writeLocalSetLinkPricesSnapshot(setCode, payload) {
+      const code = String(setCode || "").trim().toUpperCase();
+      const byUrl =
+        payload && payload.byUrl && typeof payload.byUrl === "object" ? payload.byUrl : null;
+      if (!code || !byUrl || !Object.keys(byUrl).length) return;
+      try {
+        localStorage.setItem(
+          setLinkPricesStorageKey(code),
+          JSON.stringify({
+            byUrl,
+            cacheGenerationKey: String(payload.cacheGenerationKey || "").trim(),
+            logicVersion: Number(payload.logicVersion) || 0,
+            savedAt: Date.now()
+          })
+        );
+        touchSetLinkPricesStorageIndex(code);
+      } catch {
+        /* quota / private mode */
+      }
+    }
+
+    /** Apply a link-prices payload (network or localStorage) into client price maps. */
+    function applySetLinkPricesHydratePayload(setCode, payload, hydrationKey = "") {
+      const code = String(setCode || "").trim().toUpperCase();
+      if (!code || !payload || typeof payload !== "object") return { applied: 0, serverKey: "" };
+      const payloadLogic = Number(payload.logicVersion);
+      if (Number.isFinite(payloadLogic) && payloadLogic > 0) {
+        state.tcgLinkServerLogicVersion = payloadLogic;
+      }
+      const serverKey = String(payload.cacheGenerationKey || "").trim();
+      if (serverKey && serverKey !== state.tcgLinkCacheGenerationKey) {
+        state.tcgLinkCacheGenerationKey = serverKey;
+        purgeStaleTcgLinkPricesFromClient();
+      }
+      const byUrl = payload.byUrl && typeof payload.byUrl === "object" ? payload.byUrl : {};
+      const fetchedAtMs = Date.now();
+      const storedByUrl = {};
+      for (const [url, node] of Object.entries(byUrl)) {
+        const normalized = normalizeTcgLinkPriceNode({
+          ...node,
+          pricingLogicVersion:
+            node.pricingLogicVersion ?? payloadLogic ?? getActiveTcgLinkPriceLogicVersion(),
+          fetchedAtMs,
+          cacheGenerationKey: serverKey || hydrationKey || state.tcgLinkCacheGenerationKey
+        });
+        if (normalized) {
+          storeTcgLinkPriceForUrl(url, normalized);
+          storedByUrl[url] = normalized;
+        }
+      }
+      applyHydratedLinkPricesToSetPricing(code, storedByUrl);
+      state.setLinkPricesHydratedBySetCode[code] = true;
+      state.setLinkPricesHydrationKeyByCode[code] = serverKey || hydrationKey;
+      return { applied: Object.keys(storedByUrl).length, serverKey, storedByUrl };
+    }
+
+    function refreshSetLinkPricesUiForCode(code, options = {}) {
+      const viewingSet = String(state.selectedSetCode || "").toUpperCase() === code;
+      if (viewingSet) {
+        if (state.selectedCardNumber) {
+          updateCardDetailTcgPanelPrices();
+        } else if (options.quiet) {
+          updateSetDetailInlinePrices();
+        } else {
+          renderSelectedSetDetail();
+        }
+      } else if (String(state.query || "").trim() && !state.selectedSetCode) {
+        scheduleSetPriceRerender();
+      }
+    }
+
     async function hydrateSetLinkPricesFromCache(setCode, setName = "", options = {}) {
       const code = String(setCode || "").trim().toUpperCase();
       if (!code || state.language !== "english") return;
@@ -4910,75 +5060,67 @@
         const hydrateToken = (setLinkHydrateTokenByCode[code] =
           (Number(setLinkHydrateTokenByCode[code]) || 0) + 1);
         state.setLinkPricesHydratingBySetCode[code] = true;
-        try {
-          const params = new URLSearchParams({ setCode: code });
-          const cleanName = String(setName || "").trim();
-          if (cleanName) params.set("setName", cleanName);
-          const response = await fetch(`/api/sets/link-prices?${params.toString()}`, {
-            cache: "no-store"
-          });
-          const payload = response.ok ? await response.json() : null;
-          if (hydrateToken !== setLinkHydrateTokenByCode[code]) return;
-          const payloadLogic = Number(payload?.logicVersion);
-          if (Number.isFinite(payloadLogic) && payloadLogic > 0) {
-            state.tcgLinkServerLogicVersion = payloadLogic;
-          }
-          const serverKey = String(payload?.cacheGenerationKey || "").trim();
-          if (serverKey && serverKey !== state.tcgLinkCacheGenerationKey) {
-            state.tcgLinkCacheGenerationKey = serverKey;
-            purgeStaleTcgLinkPricesFromClient();
-          }
-          const byUrl =
-            payload && payload.byUrl && typeof payload.byUrl === "object" ? payload.byUrl : {};
-          const fetchedAtMs = Date.now();
-          const storedByUrl = {};
-          for (const [url, node] of Object.entries(byUrl)) {
-            const normalized = normalizeTcgLinkPriceNode({
-              ...node,
-              pricingLogicVersion:
-                node.pricingLogicVersion ??
-                payloadLogic ??
-                getActiveTcgLinkPriceLogicVersion(),
-              fetchedAtMs,
-              cacheGenerationKey: serverKey || hydrationKey || state.tcgLinkCacheGenerationKey
-            });
-            if (normalized) {
-              storeTcgLinkPriceForUrl(url, normalized);
-              storedByUrl[url] = normalized;
-            }
-          }
-          if (hydrateToken !== setLinkHydrateTokenByCode[code]) return;
-          applyHydratedLinkPricesToSetPricing(code, storedByUrl);
-          state.setLinkPricesHydratedBySetCode[code] = true;
-          state.setLinkPricesHydrationKeyByCode[code] = serverKey || hydrationKey;
-        } catch {
-          // best effort only
-        } finally {
-          if (hydrateToken === setLinkHydrateTokenByCode[code]) {
-            // Always clear the "…" gate so stats can show cache hits or seed fallbacks.
-            if (!state.setLinkPricesHydratedBySetCode[code]) {
-              state.setLinkPricesHydratedBySetCode[code] = true;
-              state.setLinkPricesHydrationKeyByCode[code] = String(
-                state.tcgLinkCacheGenerationKey || hydrationKey || ""
-              );
-            }
-            delete state.setLinkPricesHydratingBySetCode[code];
-          }
-          purgeStaleTcgLinkPricesFromClient();
-          const viewingSet = String(state.selectedSetCode || "").toUpperCase() === code;
-          if (viewingSet) {
-            if (state.selectedCardNumber) {
-              updateCardDetailTcgPanelPrices();
-            } else if (options.quiet) {
-              updateSetDetailInlinePrices();
-            } else {
-              // Re-render once so Most Expensive / Full Set Market Value + card link refresh.
-              renderSelectedSetDetail();
-            }
-          } else if (String(state.query || "").trim() && !state.selectedSetCode) {
-            scheduleSetPriceRerender();
+
+        let paintedLocal = false;
+        if (!force) {
+          const local = readLocalSetLinkPricesSnapshot(code);
+          if (local && local.byUrl && Object.keys(local.byUrl).length) {
+            if (hydrateToken !== setLinkHydrateTokenByCode[code]) return;
+            const localResult = applySetLinkPricesHydratePayload(code, local, hydrationKey);
+            paintedLocal = localResult.applied > 0;
+            if (paintedLocal) refreshSetLinkPricesUiForCode(code, options);
           }
         }
+
+        const finishHydrateGate = () => {
+          if (hydrateToken !== setLinkHydrateTokenByCode[code]) return;
+          if (!state.setLinkPricesHydratedBySetCode[code]) {
+            state.setLinkPricesHydratedBySetCode[code] = true;
+            state.setLinkPricesHydrationKeyByCode[code] = String(
+              state.tcgLinkCacheGenerationKey || hydrationKey || ""
+            );
+          }
+          delete state.setLinkPricesHydratingBySetCode[code];
+        };
+
+        const revalidateFromNetwork = async () => {
+          try {
+            const params = new URLSearchParams({ setCode: code });
+            const cleanName = String(setName || "").trim();
+            if (cleanName) params.set("setName", cleanName);
+            const response = await fetch(`/api/sets/link-prices?${params.toString()}`, {
+              // Honor warm Cache-Control unless forced refresh / generation wipe.
+              cache: force ? "no-store" : "default"
+            });
+            const payload = response.ok ? await response.json() : null;
+            if (hydrateToken !== setLinkHydrateTokenByCode[code]) return;
+            if (payload && payload.byUrl && typeof payload.byUrl === "object") {
+              const result = applySetLinkPricesHydratePayload(code, payload, hydrationKey);
+              if (result.applied > 0) {
+                writeLocalSetLinkPricesSnapshot(code, {
+                  byUrl: result.storedByUrl,
+                  cacheGenerationKey: result.serverKey || hydrationKey,
+                  logicVersion: Number(payload.logicVersion) || 0
+                });
+              }
+            }
+          } catch {
+            // best effort only
+          } finally {
+            finishHydrateGate();
+            purgeStaleTcgLinkPricesFromClient();
+            refreshSetLinkPricesUiForCode(code, options);
+          }
+        };
+
+        if (paintedLocal) {
+          // Clear "…" immediately; refresh quietly in the background.
+          finishHydrateGate();
+          void revalidateFromNetwork();
+          return;
+        }
+
+        await revalidateFromNetwork();
       })();
       try {
         await setLinkHydratePromisesByCode[code];
@@ -9253,8 +9395,8 @@
       }
     })();
   </script>
-  <script src="/site-nav.js?v=11" defer></script>
-  <script src="/account-ui.js?v=8"></script>
+  <script src="/site-nav.js?v=12" defer></script>
+  <script src="/account-ui.js?v=9"></script>
 </body>
 </html>
 

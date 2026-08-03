@@ -92,7 +92,8 @@ const { pullStoreFromR2, pushStoreToR2 } = require("./lib/store-r2-sync");
 const {
   pullPricingCacheFromR2,
   pushPricingCacheToR2,
-  setPricingCacheR2Env
+  setPricingCacheR2Env,
+  setLinkPricesR2FileName
 } = require("./lib/pricing-cache-r2-sync");
 const {
   defaultShowcaseSettings,
@@ -224,6 +225,7 @@ function invalidateCardNicknamesCache() {
 const POWER_PACKS_CACHE_DIR = path.join(DATA_DIR, "power-packs-cache");
 const TCG_LINK_PRICE_CACHE_FILE = path.join(DATA_DIR, "tcg-link-prices-cache.json");
 const TCG_LINK_PRICE_FAIL_LINKS_FILE = path.join(DATA_DIR, "tcg-link-price-fail-links.json");
+const SET_LINK_PRICES_BY_CODE_DIR = path.join(DATA_DIR, "set-link-prices", "by-code");
 const TCG_LINK_PRICE_FAIL_LINKS_MAX = 2000;
 const PRICECHARTING_DETAILS_FAIL_LINKS_FILE = path.join(DATA_DIR, "pricecharting-card-details-fail-links.json");
 const PRICECHARTING_DETAILS_FAIL_LINKS_MAX = 2000;
@@ -1299,6 +1301,51 @@ async function buildSetLinkPricesPayload(setCode = "", setName = "") {
     prewarmLastRunAt: tcgLinkPricePrewarmStatus.lastRunAt,
     byUrl
   };
+}
+
+/** Persist a small per-set byUrl snapshot for edge/local instant hydrate. */
+async function persistSetLinkPricesSnapshot(payload) {
+  const code = String(payload?.setCode || "")
+    .trim()
+    .toUpperCase();
+  const byUrl =
+    payload?.byUrl && typeof payload.byUrl === "object" && !Array.isArray(payload.byUrl)
+      ? payload.byUrl
+      : null;
+  if (!code || !byUrl || !Object.keys(byUrl).length) return { ok: false, skipped: true };
+  const r2File = setLinkPricesR2FileName(code);
+  if (!r2File) return { ok: false, skipped: true };
+  const snapshot = {
+    ok: true,
+    setCode: code,
+    setName: String(payload?.setName || "").trim(),
+    cachedCount: Object.keys(byUrl).length,
+    linkCount: Number(payload?.linkCount) || Object.keys(byUrl).length,
+    pendingCount: Number(payload?.pendingCount) || 0,
+    logicVersion: Number(payload?.logicVersion) || TCG_LINK_PRICE_LOGIC_VERSION,
+    cacheGenerationKey: String(payload?.cacheGenerationKey || "").trim() || null,
+    cacheSavedAt: payload?.cacheSavedAt || null,
+    lastSuccessfulAt: payload?.lastSuccessfulAt || null,
+    setStampRevision: Number(payload?.setStampRevision) || 0,
+    pricedInCacheCount: Number(payload?.pricedInCacheCount) || 0,
+    savedAt: new Date().toISOString(),
+    byUrl
+  };
+  const body = `${JSON.stringify(snapshot)}\n`;
+  await fsp.mkdir(SET_LINK_PRICES_BY_CODE_DIR, { recursive: true });
+  await fsp.writeFile(path.join(SET_LINK_PRICES_BY_CODE_DIR, `${code}.json`), body, "utf8");
+  const r2 = await pushPricingCacheToR2(r2File, body, { ...env, ...process.env });
+  return { ok: Boolean(r2?.ok || r2?.skipped), r2, code };
+}
+
+function schedulePersistSetLinkPricesSnapshot(payload) {
+  const cachedCount = Number(payload?.cachedCount) || 0;
+  const byUrlKeys =
+    payload?.byUrl && typeof payload.byUrl === "object" ? Object.keys(payload.byUrl).length : 0;
+  if (cachedCount <= 0 && byUrlKeys <= 0) return;
+  persistSetLinkPricesSnapshot(payload).catch((err) => {
+    console.warn(`[pricing-cache] set link-price snapshot failed: ${err?.message || err}`);
+  });
 }
 
 async function collectAllTcgplayerUrlsForPrewarm({ onProgress } = {}) {
@@ -10214,6 +10261,7 @@ async function route(req, res) {
       const warm =
         Number(payload?.cachedCount) > 0 ||
         (payload?.byUrl && typeof payload.byUrl === "object" && Object.keys(payload.byUrl).length > 0);
+      if (warm) schedulePersistSetLinkPricesSnapshot(payload);
       json(res, 200, payload, {
         "Cache-Control": warm
           ? "public, max-age=60, stale-while-revalidate=300"
