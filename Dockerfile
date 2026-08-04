@@ -67,6 +67,7 @@ RUN node scripts/split-set-card-details.js
 COPY backend/data/card-nicknames.json ./backend/data/
 COPY backend/data/tcgplayer-card-overrides.json ./backend/data/
 COPY backend/data/pricecharting-set-slugs.json ./backend/data/
+COPY backend/data/pricecharting-sealed-by-set.json ./backend/data/
 COPY backend/data/restock-tracker.json ./backend/data/
 COPY backend/data/restock-manual-items.json ./backend/data/
 COPY backend/data/pokesymbols ./backend/data/pokesymbols
