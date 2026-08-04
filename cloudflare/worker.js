@@ -444,7 +444,7 @@ export default {
     if (navAsset) return navAsset;
 
     // Fresh DO so the container boots with current secrets + latest image after CI rebuild.
-    const container = env.POKEMONVIEW.getByName("main-v40");
+    const container = env.POKEMONVIEW.getByName("main-v41");
     const response = await enrichAuthMePreferences(
       request,
       await container.fetch(request),

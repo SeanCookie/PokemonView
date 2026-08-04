@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Pokéball">
+  <!-- Matches .pokeball-logo in brand-logo.css -->
+  <circle cx="16" cy="16" r="15" fill="#f6f8ff"/>
+  <path d="M1 16a15 15 0 0 1 30 0Z" fill="#ef4f5f"/>
+  <rect x="1" y="14.4" width="30" height="3.2" fill="#1d2738"/>
+  <circle cx="16" cy="16" r="15" fill="none" stroke="#d7e3f9" stroke-width="2"/>
+  <circle cx="16" cy="16" r="4" fill="#162132" stroke="#d7e3f9" stroke-width="2"/>
+</svg>

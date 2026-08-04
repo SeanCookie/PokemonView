@@ -8557,7 +8557,10 @@ function sendStatic(req, res, pathname) {
       ".html": "text/html; charset=utf-8",
       ".css": "text/css; charset=utf-8",
       ".js": "application/javascript; charset=utf-8",
-      ".json": "application/json; charset=utf-8"
+      ".json": "application/json; charset=utf-8",
+      ".svg": "image/svg+xml",
+      ".ico": "image/x-icon",
+      ".png": "image/png"
     };
     const headers = {
       "Content-Type": typeMap[ext] || "application/octet-stream",
@@ -11896,6 +11899,12 @@ async function route(req, res) {
       return;
     }
     sendPrivateAdminFile(res, "admin.js", "application/javascript; charset=utf-8");
+    return;
+  }
+
+  // Browsers often request /favicon.ico by default — serve the SVG brand mark.
+  if (pathname === "/favicon.ico" && req.method === "GET") {
+    sendStatic(req, res, "/favicon.svg");
     return;
   }
 
