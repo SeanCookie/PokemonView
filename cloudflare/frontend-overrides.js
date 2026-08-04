@@ -2,13 +2,45 @@
  * Edge overrides for shared nav assets + HTML structure.
  * Keeps Sign In immediately to the right of the search bar even when the container image is stale.
  * Also serves a fresh /sets.html so set-open perf fixes are not stuck on an old Docker image.
+ * Favicon is served from the Worker so tab icons update without a container rebuild.
  */
-import { SITE_NAV_CSS, SITE_NAV_JS, SETS_HTML } from "./frontend-overrides.generated.js";
+import {
+  SITE_NAV_CSS,
+  SITE_NAV_JS,
+  SETS_HTML,
+  FAVICON_SVG,
+  FAVICON_PNG_BASE64,
+  APPLE_TOUCH_ICON_PNG_BASE64
+} from "./frontend-overrides.generated.js";
 
 const NAV_ASSET_CACHE = "no-store";
+const FAVICON_CACHE = "public, max-age=86400";
+
+const FAVICON_LINK_TAGS = [
+  `<link rel="icon" href="/favicon.svg" type="image/svg+xml" />`,
+  `<link rel="icon" href="/favicon.png" type="image/png" sizes="32x32" />`,
+  `<link rel="apple-touch-icon" href="/apple-touch-icon.png" />`
+].join("\n  ");
+
+function base64ToBytes(base64) {
+  const bin = atob(String(base64 || ""));
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i += 1) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+function ensureFaviconLinks(html) {
+  if (typeof html !== "string" || !html.includes("<head")) return html;
+  if (html.includes('rel="icon"') && html.includes("/favicon.svg")) return html;
+  const inject = `\n  ${FAVICON_LINK_TAGS}\n`;
+  if (/<meta\s+charset=["']UTF-8["']\s*\/?>/i.test(html)) {
+    return html.replace(/(<meta\s+charset=["']UTF-8["']\s*\/?>)/i, `$1${inject}`);
+  }
+  return html.replace(/<head([^>]*)>/i, `<head$1>${inject}`);
+}
 
 /**
- * Serve fresh site-nav.css / site-nav.js / sets.html from the Worker bundle.
+ * Serve fresh site-nav.css / site-nav.js / sets.html / favicon from the Worker bundle.
  * @param {Request} request
  * @returns {Response|null}
  */
@@ -36,8 +68,35 @@ export function tryServeNavAssetOverride(request) {
     return new Response(SITE_NAV_JS, { status: 200, headers });
   }
 
+  if (path === "/favicon.svg" || path === "/favicon.ico") {
+    const headers = {
+      "content-type": "image/svg+xml",
+      "cache-control": FAVICON_CACHE
+    };
+    if (request.method === "HEAD") return new Response(null, { status: 200, headers });
+    return new Response(FAVICON_SVG, { status: 200, headers });
+  }
+
+  if (path === "/favicon.png") {
+    const headers = {
+      "content-type": "image/png",
+      "cache-control": FAVICON_CACHE
+    };
+    if (request.method === "HEAD") return new Response(null, { status: 200, headers });
+    return new Response(base64ToBytes(FAVICON_PNG_BASE64), { status: 200, headers });
+  }
+
+  if (path === "/apple-touch-icon.png" || path === "/apple-touch-icon") {
+    const headers = {
+      "content-type": "image/png",
+      "cache-control": FAVICON_CACHE
+    };
+    if (request.method === "HEAD") return new Response(null, { status: 200, headers });
+    return new Response(base64ToBytes(APPLE_TOUCH_ICON_PNG_BASE64), { status: 200, headers });
+  }
+
   if (path === "/sets.html" || path === "/sets") {
-    const html = clusterNavSearchWithAccount(SETS_HTML);
+    const html = ensureFaviconLinks(clusterNavSearchWithAccount(SETS_HTML));
     const headers = {
       "content-type": "text/html; charset=utf-8",
       "cache-control": NAV_ASSET_CACHE
@@ -132,7 +191,8 @@ export async function maybeRewriteHtmlNav(request, response) {
   if (request.method === "HEAD") return response;
 
   const html = await response.text();
-  const fixed = clusterNavSearchWithAccount(html);
+  const clustered = clusterNavSearchWithAccount(html);
+  const fixed = ensureFaviconLinks(clustered);
   const headers = new Headers(response.headers);
   if (fixed !== html) {
     headers.set("cache-control", "no-store");
