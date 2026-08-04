@@ -1,6 +1,9 @@
 const fsp = require("fs/promises");
 const path = require("path");
-const { fetchPriceChartingCardDetailsForCard } = require("./pricecharting-market-history");
+const {
+  fetchPriceChartingCardDetailsForCard,
+  fetchPriceChartingSealedProductBundle
+} = require("./pricecharting-market-history");
 const {
   pullPricingCacheFromR2,
   pushPricingCacheToR2
@@ -39,6 +42,13 @@ function cacheKeyForCard(setCode = "", cardNo = "") {
   const no = String(cardNo || "").trim();
   if (!code || !no) return "";
   return `${code}:${no}`;
+}
+
+function cacheKeyForSealedProduct(setCode = "", productId = "") {
+  const id = String(productId || "").trim();
+  if (!id) return "";
+  const code = String(setCode || "").trim().toUpperCase() || "SEALED";
+  return cacheKeyForCard(code, `sealed:${id}`);
 }
 
 function cacheValueValid(value) {
@@ -121,14 +131,30 @@ function writeCachedCardDetails(setCode = "", cardNo = "", value) {
   if (!key || !cacheValueValid(value)) return false;
   const soldGuides = normalizeSoldGuides(value);
   const soldListings = soldGuides[0]?.listings || (Array.isArray(value.soldListings) ? value.soldListings : []);
+  const entry = {
+    ok: true,
+    productUrl: String(value.productUrl || ""),
+    soldListings,
+    soldGuides,
+    gradedGuides: Array.isArray(value.gradedGuides) ? value.gradedGuides : []
+  };
+  // Sealed product extras — kept in the same PriceCharting details cache.
+  if (String(value.kind || "").trim().toLowerCase() === "sealed" || Array.isArray(value.series)) {
+    entry.kind = "sealed";
+    if (value.productId != null) entry.productId = String(value.productId || "").trim();
+    if (Array.isArray(value.series)) entry.series = value.series;
+    if (value.ungradedPrice != null && Number.isFinite(Number(value.ungradedPrice))) {
+      entry.ungradedPrice = Number(value.ungradedPrice);
+    }
+    if (value.priceText != null) entry.priceText = String(value.priceText || "");
+    if (value.tcgplayerUrl != null) entry.tcgplayerUrl = String(value.tcgplayerUrl || "");
+    if (value.ebayUrl != null) entry.ebayUrl = String(value.ebayUrl || "");
+    if (value.source != null) entry.source = String(value.source || "");
+    if (value.rangeKey != null) entry.rangeKey = String(value.rangeKey || "");
+    if (value.rangeLabel != null) entry.rangeLabel = String(value.rangeLabel || "");
+  }
   memCache.set(key, {
-    value: {
-      ok: true,
-      productUrl: String(value.productUrl || ""),
-      soldListings,
-      soldGuides,
-      gradedGuides: Array.isArray(value.gradedGuides) ? value.gradedGuides : []
-    },
+    value: entry,
     expiresAt: Date.now() + CACHE_TTL_MS
   });
   cacheMeta.entryCount = memCache.size;
@@ -136,6 +162,82 @@ function writeCachedCardDetails(setCode = "", cardNo = "", value) {
     schedulePersistPriceChartingCardDetailsCache();
   }
   return true;
+}
+
+function readCachedSealedProductDetails(setCode = "", productId = "") {
+  const key = cacheKeyForSealedProduct(setCode, productId);
+  if (!key) return null;
+  const row = memCache.get(key);
+  if (!row || row.expiresAt <= Date.now() || !cacheValueValid(row.value)) {
+    if (row) memCache.delete(key);
+    return null;
+  }
+  const soldGuides = normalizeSoldGuides(row.value);
+  return {
+    ...row.value,
+    kind: "sealed",
+    soldListings: soldGuides[0]?.listings || row.value.soldListings || [],
+    soldGuides,
+    series: Array.isArray(row.value.series) ? row.value.series : [],
+    cached: true
+  };
+}
+
+function writeCachedSealedProductDetails(setCode = "", productId = "", value) {
+  const id = String(productId || value?.productId || "").trim();
+  const code = String(setCode || "").trim().toUpperCase() || "SEALED";
+  if (!id) return false;
+  return writeCachedCardDetails(code, `sealed:${id}`, {
+    ...value,
+    kind: "sealed",
+    productId: id
+  });
+}
+
+async function getOrFetchPriceChartingSealedDetails(
+  {
+    setCode = "",
+    productUrl = "",
+    productId = "",
+    productTitle = "",
+    setName = ""
+  } = {},
+  { forceRefresh = false, cacheOnly = false } = {}
+) {
+  const id = String(productId || "").trim();
+  if (!forceRefresh && id) {
+    const cached = readCachedSealedProductDetails(setCode, id);
+    if (cached) return cached;
+  }
+  if (cacheOnly) {
+    return {
+      ok: false,
+      pending: true,
+      cached: false,
+      kind: "sealed",
+      productId: id,
+      productUrl: String(productUrl || "").trim(),
+      series: [],
+      soldListings: [],
+      soldGuides: [],
+      gradedGuides: [],
+      ungradedPrice: null,
+      priceText: "",
+      tcgplayerUrl: "",
+      ebayUrl: ""
+    };
+  }
+  const fresh = await fetchPriceChartingSealedProductBundle({
+    productUrl,
+    productId: id,
+    productTitle,
+    setName
+  });
+  const resolvedId = String(fresh?.productId || id || "").trim();
+  if (fresh?.ok && resolvedId) {
+    writeCachedSealedProductDetails(setCode, resolvedId, fresh);
+  }
+  return { ...fresh, kind: "sealed", cached: false };
 }
 
 function buildCacheFilePayload() {
@@ -487,6 +589,10 @@ module.exports = {
   readCachedCardDetails,
   writeCachedCardDetails,
   getOrFetchPriceChartingCardDetails,
+  cacheKeyForSealedProduct,
+  readCachedSealedProductDetails,
+  writeCachedSealedProductDetails,
+  getOrFetchPriceChartingSealedDetails,
   averageRecentUngradedSoldPrice,
   collectEnglishCardsForPriceChartingPrewarm,
   getPriceChartingEnglishCardUniverseCount,

@@ -172,10 +172,7 @@
       display: none;
     }
 
-    /* Keep English / Sealed visible while viewing a sealed set. */
-    .toolbar.focused.sealed-mode .toggle {
-      display: inline-flex;
-    }
+    /* In-set Singles ↔ Products switch lives in the set toolbar. */
 
     .toggle {
       display: inline-flex;
@@ -2207,7 +2204,7 @@
   <main class="page">
     <section class="toolbar">
       <div class="toggle" id="languageToggle" role="tablist" aria-label="Catalog">
-        <button id="langEnglish" class="active" type="button">English</button>
+        <button id="langEnglish" class="active" type="button">Singles</button>
         <button id="langSealed" type="button">Sealed</button>
         <button id="langJapanese" type="button" hidden>Japanese</button>
       </div>
@@ -2750,6 +2747,8 @@
       }
       setPriceRerenderTimer = setTimeout(() => {
         setPriceRerenderTimer = null;
+        // Sealed product detail is not the card set grid — never rewrite it for TCG price updates.
+        if (isSealedCatalogMode() && state.selectedSealedProductId) return;
         if (state.selectedSetCode && state.selectedCardNumber) {
           updateCardDetailTcgPanelPrices();
           return;
@@ -2811,6 +2810,7 @@
 
     function updateSetDetailInlinePrices() {
       if (!state.selectedSetCode || state.selectedCardNumber) return;
+      if (isSealedCatalogMode()) return;
       const selectedSet = getSetByCode(state.selectedSetCode);
       const setConfig = selectedSet ? detailedSetConfigs[selectedSet.code] : null;
       if (!selectedSet) return;
@@ -3079,11 +3079,12 @@
         updateSetsCardSky();
         return;
       }
-      // Leave set/card detail so global Search Results can show (toolbar search is catalog-wide).
-      if (state.selectedSetCode || state.selectedCardNumber) {
+      // Leave set/card/product detail so global Search Results can show (toolbar search is catalog-wide).
+      if (state.selectedSetCode || state.selectedCardNumber || state.selectedSealedProductId) {
         state.selectedSetCode = null;
         state.selectedSetName = "";
         state.selectedCardNumber = null;
+        state.selectedSealedProductId = null;
         state.setCardQuery = "";
         state.savedSetGridScrollY = null;
       }
@@ -3965,10 +3966,8 @@
         const root = document.getElementById("content");
         const product = getSelectedSealedProduct();
         const selectedSet = getSetByCode(state.selectedSetCode);
-        if (!host || !root || !product || !selectedSet) {
-          renderAll();
-          return;
-        }
+        // Soft miss: keep the product page — do not renderAll (that can clear selection / kick back).
+        if (!host || !root || !product || !selectedSet) return;
         const historyCard = sealedProductHistoryCard(product, selectedSet);
         const detailsKey = getPriceChartingDetailsCacheKey(historyCard);
         const detailsPayload = state.priceChartingDetailsByKey[detailsKey] || null;
@@ -4861,6 +4860,41 @@
       return state.catalogMode === "sealed";
     }
 
+    function switchOpenSetCatalogMode(targetMode) {
+      const mode = targetMode === "sealed" ? "sealed" : "english";
+      if (state.catalogMode === mode) return;
+      const setCode = String(state.selectedSetCode || "").trim().toUpperCase();
+      if (!setCode) return;
+      state.catalogMode = mode;
+      state.language = "english";
+      state.selectedCardNumber = null;
+      state.selectedSealedProductId = null;
+      state.setBoosterPackView = false;
+      state.setRarityMenuOpen = false;
+      state.setCardQuery = "";
+      const finish = () => {
+        scrollToPageTop();
+        renderAll();
+      };
+      if (mode === "sealed") {
+        const loadPromise = state.sealedCatalogLoaded
+          ? Promise.resolve()
+          : loadSealedProductsCatalog();
+        void loadPromise.finally(finish);
+        return;
+      }
+      void ensureSetCardsLoaded(setCode).catch(() => {}).finally(finish);
+    }
+
+    function wireSetCatalogModeSwitchButtons(root) {
+      root?.querySelector("#switchToSinglesBtn")?.addEventListener("click", () => {
+        switchOpenSetCatalogMode("english");
+      });
+      root?.querySelector("#switchToProductsBtn")?.addEventListener("click", () => {
+        switchOpenSetCatalogMode("sealed");
+      });
+    }
+
     function getCatalogSetsLanguage() {
       return state.language === "japanese" ? "japanese" : "english";
     }
@@ -5000,11 +5034,13 @@
         requestCardDetailRefresh();
       }
       try {
-        const params = new URLSearchParams({
-          productUrl: String(product.productUrl || "").trim()
-        });
+        const params = new URLSearchParams();
+        const productUrl = String(product.productUrl || "").trim();
+        if (productUrl) params.set("productUrl", productUrl);
         if (product.productId) params.set("productId", String(product.productId));
         if (product.title) params.set("productTitle", String(product.title));
+        const setCode = String((setEntry && setEntry.code) || state.selectedSetCode || "").trim().toUpperCase();
+        if (setCode) params.set("setCode", setCode);
         const setName = String((setEntry && setEntry.name) || state.selectedSetName || "").trim();
         if (setName) params.set("setName", setName);
         const response = await fetch(`/api/sets/sealed-product-details?${params.toString()}`);
@@ -5141,6 +5177,18 @@
             <div class="set-stat-value">${escapeHtml(selectedSet.name)}</div>
           </div>`;
 
+      const boosterPacks = getBoosterPacksForSet(selectedSet.code);
+      if (state.setBoosterPackView && !boosterPacks.length) {
+        state.setBoosterPackView = false;
+      }
+      const showBoosterPackView = Boolean(state.setBoosterPackView && boosterPacks.length);
+      const sealedBodyMarkup = showBoosterPackView
+        ? renderBoosterPackGridMarkup(boosterPacks, selectedSet.name)
+        : renderSealedProductGridMarkup(products);
+      const sealedSub = showBoosterPackView
+        ? `${boosterPacks.length} booster pack${boosterPacks.length === 1 ? "" : "s"}`
+        : `${products.length} sealed product${products.length === 1 ? "" : "s"} · PriceCharting`;
+
       content.innerHTML = `
         <article class="set-detail">
           <div class="set-banner">
@@ -5170,36 +5218,77 @@
             </div>
             <div class="set-filter-row">
               <div class="set-filter-tabs set-filter-tabs--set-toolbar">
+                ${
+                  boosterPacks.length
+                    ? `<button type="button" id="setBoosterPackBtn" class="set-filter-tab${showBoosterPackView ? " active" : ""}" aria-pressed="${showBoosterPackView ? "true" : "false"}">Pack Arts</button>`
+                    : ""
+                }
+                <button type="button" id="switchToSinglesBtn" class="set-filter-tab">Switch to Singles</button>
                 <button id="backToSets" type="button" class="set-filter-tab">Back to Sets</button>
               </div>
             </div>
           </div>
-          <div class="sub">${products.length} sealed product${products.length === 1 ? "" : "s"} · PriceCharting</div>
-          ${renderSealedProductGridMarkup(products)}
+          <div class="sub">${sealedSub}</div>
+          ${sealedBodyMarkup}
         </article>
       `;
 
       document.getElementById("backToSets")?.addEventListener("click", () => {
         exitSelectedSetToCatalog();
       });
+      wireSetCatalogModeSwitchButtons(content);
 
-      content.querySelectorAll("[data-sealed-product-id]").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          const id = btn.getAttribute("data-sealed-product-id") || "";
-          if (!id) return;
-          state.savedSetGridScrollY = window.scrollY;
-          state.selectedSealedProductId = id;
-          scrollToPageTop();
-          renderAll();
+      const setBoosterPackBtn = document.getElementById("setBoosterPackBtn");
+      if (setBoosterPackBtn) {
+        setBoosterPackBtn.addEventListener("click", () => {
+          state.setBoosterPackView = !state.setBoosterPackView;
+          renderSealedSetDetail();
         });
-      });
+      }
+
+      if (showBoosterPackView) {
+        const zoomOverlay = document.getElementById("imageZoomOverlay");
+        const zoomImg = zoomOverlay?.querySelector(".image-zoom-full");
+        if (zoomOverlay && zoomImg) {
+          document.body.appendChild(zoomOverlay);
+          const closePackZoom = () => zoomOverlay.classList.remove("open");
+          content.querySelectorAll("[data-booster-pack-src]").forEach((btn) => {
+            btn.addEventListener("click", () => {
+              const src = btn.getAttribute("data-booster-pack-src") || "";
+              if (!src) return;
+              zoomImg.src = src;
+              zoomImg.alt = btn.getAttribute("data-booster-pack-alt") || "Booster pack art";
+              zoomOverlay.classList.add("open");
+            });
+          });
+          zoomOverlay.addEventListener("click", (event) => {
+            if (event.target === zoomOverlay) closePackZoom();
+          });
+        }
+      } else {
+        content.querySelectorAll("[data-sealed-product-id]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const id = btn.getAttribute("data-sealed-product-id") || "";
+            if (!id) return;
+            state.savedSetGridScrollY = window.scrollY;
+            state.selectedSealedProductId = id;
+            scrollToPageTop();
+            renderAll();
+          });
+        });
+      }
     }
 
     function renderSealedProductDetail() {
       const selectedSet = getSetByCode(state.selectedSetCode);
       const product = getSelectedSealedProduct();
       if (!selectedSet || !product) {
+        // Keep set selection; only drop the product pick if it truly cannot be resolved.
         state.selectedSealedProductId = null;
+        if (selectedSet) {
+          renderSealedSetDetail();
+          return;
+        }
         renderAll();
         return;
       }
@@ -5869,6 +5958,8 @@
     function refreshSetLinkPricesUiForCode(code, options = {}) {
       const viewingSet = String(state.selectedSetCode || "").toUpperCase() === code;
       if (viewingSet) {
+        // Sealed catalog / product detail must not be replaced by English card set rendering.
+        if (isSealedCatalogMode()) return;
         if (state.selectedCardNumber) {
           updateCardDetailTcgPanelPrices();
         } else if (options.quiet) {
@@ -7781,6 +7872,9 @@
     }
 
     function buildPriceChartingSoldListingsMarkup(card, payload, loading) {
+      const sealed = Boolean(card && card._sealed);
+      const sectionTitle = sealed ? "Sealed Sold Listings" : "Ungraded Sold Listings";
+      const guidePrefix = sealed ? "Sealed Sold Listings" : "Ungraded Sold Listings";
       const guides = getPriceChartingSoldGuides(payload);
       const filterKey = String(state.priceChartingSoldSourceFilter || "all").toLowerCase();
       const activeFilter =
@@ -7816,21 +7910,23 @@
           </tr>`;
             })
             .join("");
-          const heading = soldGuideDisplayTitle(guide);
+          const heading = sealed
+            ? String(guide?.title || card?.name || "Sealed").trim() || "Sealed"
+            : soldGuideDisplayTitle(guide);
           return `<div class="pc-sold-guide-card">
-            <h5 class="pc-sold-guide-heading">Ungraded Sold Listings : ${escapeHtml(heading)}</h5>
+            <h5 class="pc-sold-guide-heading">${escapeHtml(guidePrefix)} : ${escapeHtml(heading)}</h5>
             <span class="pc-sold-count">${escapeHtml(String(listings.length))} of ${escapeHtml(String(allListings.length))}</span>
             ${
               rows
                 ? `<div class="pc-sold-table-wrap"><table class="pc-sold-table"><thead><tr><th>Date</th><th>Title</th><th>Price</th><th>Source</th></tr></thead><tbody>${rows}</tbody></table></div>`
-                : `<p class="mph-empty">No ${escapeHtml(activeFilter.label.toLowerCase())} sold listings for this print.</p>`
+                : `<p class="mph-empty">No ${escapeHtml(activeFilter.label.toLowerCase())} sold listings for this ${sealed ? "product" : "print"}.</p>`
             }
           </div>`;
         })
         .join("");
 
       return `<section class="card-price-panel pc-sold-listings" id="pcSoldListingsPanel">
-        <h4 class="pc-section-title">Ungraded Sold Listings</h4>
+        <h4 class="pc-section-title">${escapeHtml(sectionTitle)}</h4>
         <p class="pc-section-sub">Recent eBay and TCGPlayer completed sales from PriceCharting.</p>
         ${
           loading && !anyListings
@@ -9272,13 +9368,9 @@
         return;
       }
       const content = document.getElementById("content");
-      const boosterPacks = getBoosterPacksForSet(selectedSet.code);
-      if (state.setBoosterPackView && !boosterPacks.length) {
-        state.setBoosterPackView = false;
-      }
-      const showBoosterPackView = Boolean(state.setBoosterPackView && boosterPacks.length);
+      state.setBoosterPackView = false;
       const allCards = getSetCards(selectedSet, setConfig);
-      if (!allCards.length && !showBoosterPackView) {
+      if (!allCards.length) {
         content.innerHTML = `<div class="card-meta" style="padding:16px;">Loading ${escapeHtml(selectedSet.name || "set")}…</div>`;
         void ensureSetCardsLoaded(selectedSet.code)
           .then(() => {
@@ -9330,9 +9422,7 @@
         lastPrimedSetCode = setCodeKey;
         primeActiveSetPrices(selectedSet.code, selectedSet.name);
       }
-      const countLabel = showBoosterPackView
-        ? `${boosterPacks.length} booster pack${boosterPacks.length === 1 ? "" : "s"}`
-        : `${visibleCards.length}/${vaultFilteredCards.length} cards`;
+      const countLabel = `${visibleCards.length}/${vaultFilteredCards.length} cards`;
       const cardsSummaryLabel = `${allCards.length} total`;
       const releaseLabel = formatReleaseDate(selectedSet.releaseDate);
       const mostExpensive = getMostExpensiveCardInSet(allCards);
@@ -9353,9 +9443,7 @@
       const priceSortActive = state.setSort === "price" || state.setSort === "price-desc";
       const priceSortArrow = state.setSort === "price-desc" ? "▼" : "▲";
 
-      const cardsMarkup = showBoosterPackView
-        ? renderBoosterPackGridMarkup(boosterPacks, selectedSet.name)
-        : renderSetCardsGridMarkup(visibleCards);
+      const cardsMarkup = renderSetCardsGridMarkup(visibleCards);
 
       const setCoverUrl = resolveSetImage(selectedSet);
       const setCoverFallback = getBulbaFallbackImage(selectedSet.code);
@@ -9445,29 +9533,21 @@
                   `).join("")}
                 </select>
                 <button type="button" class="set-filter-tab ${priceSortActive ? "active" : ""}" data-sort-mode="price">Price ${priceSortActive ? priceSortArrow : ""}</button>
-                ${
-                  boosterPacks.length
-                    ? `<button type="button" id="setBoosterPackBtn" class="set-filter-tab${showBoosterPackView ? " active" : ""}" aria-pressed="${showBoosterPackView ? "true" : "false"}">Pack Arts</button>`
-                    : ""
-                }
+                <button type="button" id="switchToProductsBtn" class="set-filter-tab">Switch to Products</button>
                 <button id="backToSets" type="button" class="set-filter-tab">Back to Sets</button>
               </div>
             </div>
           </div>
-          <div class="sub">${
-            showBoosterPackView
-              ? countLabel
-              : `${countLabel}${state.setShinyVaultOnly && setHasShinyVaultFilter(selectedSet.code) ? " · Shiny Vault only" : ""} · sorted by ${
-                  state.setSort === "name"
-                    ? "name (A-Z)"
-                    : state.setSort === "name-desc"
-                      ? "name (Z-A)"
-                      : state.setSort === "price"
-                        ? "price (low-high)"
-                        : state.setSort === "price-desc"
-                          ? "price (high-low)"
-                          : "number"
-                }`
+          <div class="sub">${countLabel}${state.setShinyVaultOnly && setHasShinyVaultFilter(selectedSet.code) ? " · Shiny Vault only" : ""} · sorted by ${
+            state.setSort === "name"
+              ? "name (A-Z)"
+              : state.setSort === "name-desc"
+                ? "name (Z-A)"
+                : state.setSort === "price"
+                  ? "price (low-high)"
+                  : state.setSort === "price-desc"
+                    ? "price (high-low)"
+                    : "number"
           }</div>
           ${cardsMarkup}
         </article>
@@ -9483,39 +9563,7 @@
       document.getElementById("backToSets").addEventListener("click", () => {
         exitSelectedSetToCatalog();
       });
-
-      const setBoosterPackBtn = document.getElementById("setBoosterPackBtn");
-      if (setBoosterPackBtn) {
-        setBoosterPackBtn.addEventListener("click", () => {
-          state.setBoosterPackView = !state.setBoosterPackView;
-          state.setRarityMenuOpen = false;
-          renderSelectedSetDetail();
-        });
-      }
-
-      if (showBoosterPackView) {
-        if (!allCards.length) {
-          void ensureSetCardsLoaded(selectedSet.code).catch(() => {});
-        }
-        const zoomOverlay = document.getElementById("imageZoomOverlay");
-        const zoomImg = zoomOverlay?.querySelector(".image-zoom-full");
-        if (zoomOverlay && zoomImg) {
-          document.body.appendChild(zoomOverlay);
-          const closePackZoom = () => zoomOverlay.classList.remove("open");
-          content.querySelectorAll("[data-booster-pack-src]").forEach((btn) => {
-            btn.addEventListener("click", () => {
-              const src = btn.getAttribute("data-booster-pack-src") || "";
-              if (!src) return;
-              zoomImg.src = src;
-              zoomImg.alt = btn.getAttribute("data-booster-pack-alt") || "Booster pack art";
-              zoomOverlay.classList.add("open");
-            });
-          });
-          zoomOverlay.addEventListener("click", (event) => {
-            if (event.target === zoomOverlay) closePackZoom();
-          });
-        }
-      }
+      wireSetCatalogModeSwitchButtons(content);
 
       const setShinyVaultFilterBtn = document.getElementById("setShinyVaultFilterBtn");
       if (setShinyVaultFilterBtn) {

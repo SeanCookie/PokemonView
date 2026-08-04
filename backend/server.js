@@ -58,7 +58,6 @@ const {
   fetchPriceChartingUngradedPriceForCard,
   fetchPriceChartingUngradedPriceFromProductUrl,
   fetchPriceChartingCardDetailsFromProductUrl,
-  fetchPriceChartingSealedProductBundle,
   comparePriceChartingSeries,
   parsePriceChartingConsoleSlug,
   getConsoleIndex,
@@ -68,6 +67,7 @@ const {
 const {
   loadPersistedPriceChartingCardDetailsCache,
   getOrFetchPriceChartingCardDetails,
+  getOrFetchPriceChartingSealedDetails,
   getPriceChartingCardDetailsCacheMeta,
   collectEnglishCardsForPriceChartingPrewarm,
   getPriceChartingEnglishCardUniverseCount,
@@ -4097,7 +4097,9 @@ function collectionItemMergeKey(item) {
   const type = item?.type === "sealed" ? "sealed" : "single";
   if (type === "sealed") {
     const upc = String(item?.upc || "").trim();
-    return upc ? `${userId}::sealed::upc::${upc}` : null;
+    if (upc) return `${userId}::sealed::upc::${upc}`;
+    const priceChartingId = String(item?.priceChartingId || "").trim();
+    return priceChartingId ? `${userId}::sealed::pc::${priceChartingId}` : null;
   }
   const setCode = String(item?.setCode || "")
     .trim()
@@ -4118,7 +4120,10 @@ function collectionItemsMatchForMerge(a, b) {
   if (typeA === "sealed") {
     const upcA = String(a.upc || "").trim();
     const upcB = String(b.upc || "").trim();
-    return Boolean(upcA) && upcA === upcB;
+    if (upcA && upcB) return upcA === upcB;
+    const pcA = String(a.priceChartingId || "").trim();
+    const pcB = String(b.priceChartingId || "").trim();
+    return Boolean(pcA) && pcA === pcB;
   }
   if (normalizeCollectionCardNumberKey(a.cardNumber) !== normalizeCollectionCardNumberKey(b.cardNumber)) {
     return false;
@@ -10611,10 +10616,15 @@ async function route(req, res) {
       const productId = String(parsedUrl.searchParams.get("productId") || "").trim();
       const productTitle = String(parsedUrl.searchParams.get("productTitle") || "").trim();
       const setName = String(parsedUrl.searchParams.get("setName") || "").trim();
-      if (!productUrl) {
+      const setCode = String(
+        parsedUrl.searchParams.get("setCode") || parsedUrl.searchParams.get("code") || ""
+      )
+        .trim()
+        .toUpperCase();
+      if (!productUrl && !productId) {
         json(res, 400, {
           ok: false,
-          error: "productUrl is required",
+          error: "productUrl or productId is required",
           series: [],
           soldListings: [],
           soldGuides: [],
@@ -10622,13 +10632,23 @@ async function route(req, res) {
         });
         return;
       }
-      const payload = await fetchPriceChartingSealedProductBundle({
-        productUrl,
-        productId,
-        productTitle,
-        setName
-      });
-      json(res, payload.ok ? 200 : 404, payload);
+      const forceRefresh = String(parsedUrl.searchParams.get("refresh") || "").trim() === "1";
+      // Default to live fetch on cache miss so first open still works; hits populate the shared details cache.
+      const cacheOnly = forceRefresh
+        ? false
+        : String(parsedUrl.searchParams.get("cacheOnly") || "0").trim() === "1";
+      const payload = await getOrFetchPriceChartingSealedDetails(
+        {
+          setCode,
+          productUrl,
+          productId,
+          productTitle,
+          setName
+        },
+        { forceRefresh, cacheOnly }
+      );
+      const status = payload.ok ? 200 : payload.pending ? 202 : 404;
+      json(res, status, payload);
     } catch (err) {
       json(res, 500, {
         ok: false,
