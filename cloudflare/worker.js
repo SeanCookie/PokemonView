@@ -132,6 +132,109 @@ function normalizeSetLinkPriceCode(raw) {
   return /^[A-Z0-9][A-Z0-9_-]{0,31}$/.test(code) ? code : "";
 }
 
+const SEALED_CATALOG_R2_KEY = "app-data/pricecharting-sealed-by-set.json";
+
+function normalizeSealedCatalogForEdge(catalog) {
+  if (!catalog || typeof catalog !== "object") return null;
+  const byCodeIn = catalog.byCode && typeof catalog.byCode === "object" ? catalog.byCode : {};
+  const byCode = {};
+  for (const [code, row] of Object.entries(byCodeIn)) {
+    const key = String(code || "")
+      .trim()
+      .toUpperCase();
+    if (!key || !row || typeof row !== "object") continue;
+    const products = Array.isArray(row.products)
+      ? row.products.map((product) => {
+          const productId = String(product?.productId || "").trim();
+          const localUrl = productId ? `/pricecharting-sealed/${productId}.jpg` : "";
+          const remote = String(product?.remoteImageUrl || "").trim();
+          const imageUrl = String(product?.imageUrl || "").trim();
+          return {
+            ...product,
+            productId,
+            imageUrl: imageUrl.startsWith("/pricecharting-sealed/")
+              ? imageUrl
+              : localUrl || imageUrl || remote,
+            remoteImageUrl: remote || imageUrl
+          };
+        })
+      : [];
+    byCode[key] = {
+      ...row,
+      products,
+      productCount: products.length
+    };
+  }
+  return {
+    ok: true,
+    source: catalog.source || "https://www.pricecharting.com/category/pokemon-cards",
+    credit: catalog.credit || "",
+    generatedAt: catalog.generatedAt || null,
+    setCount: Number(catalog.setCount) || Object.keys(byCode).length,
+    consoleCount: Number(catalog.consoleCount) || 0,
+    productCount: Number(catalog.productCount) || 0,
+    byCode
+  };
+}
+
+/** Serve sealed catalog from R2 when the container image is missing the JSON file. */
+async function tryServeSealedCatalogFromR2(request, env) {
+  const url = new URL(request.url);
+  if (url.pathname !== "/api/sets/sealed" || request.method !== "GET") return null;
+  const bucket = env.CARD_IMAGES;
+  if (!bucket) return null;
+  try {
+    const object = await bucket.get(SEALED_CATALOG_R2_KEY);
+    if (!object) return null;
+    const text = await object.text();
+    if (!text || text.length < 2) return null;
+    let catalog;
+    try {
+      catalog = JSON.parse(text);
+    } catch {
+      return null;
+    }
+    const payload = normalizeSealedCatalogForEdge(catalog);
+    if (!payload || !Object.keys(payload.byCode).length) return null;
+
+    const setCode = String(url.searchParams.get("setCode") || url.searchParams.get("code") || "")
+      .trim()
+      .toUpperCase();
+    if (setCode) {
+      const row = payload.byCode[setCode] || null;
+      const products = Array.isArray(row?.products) ? row.products : [];
+      return Response.json(
+        {
+          ok: true,
+          setCode,
+          name: row?.name || "",
+          consoleSlug: row?.consoleSlug || "",
+          productCount: products.length,
+          products,
+          generatedAt: payload.generatedAt,
+          source: payload.source
+        },
+        {
+          headers: {
+            "cache-control": "public, max-age=300, stale-while-revalidate=3600"
+          }
+        }
+      );
+    }
+
+    return Response.json(payload, {
+      headers: {
+        "cache-control": "public, max-age=300, stale-while-revalidate=3600"
+      }
+    });
+  } catch (err) {
+    console.warn(
+      `[pokemonview] sealed catalog R2 serve failed: ${err instanceof Error ? err.message : err}`
+    );
+    return null;
+  }
+}
+
 /** Serve warm per-set link prices from R2 without booting the container. */
 async function tryServeSetLinkPricesFromR2(request, env) {
   const url = new URL(request.url);
@@ -438,6 +541,10 @@ export default {
     // Warm per-set prices — edge R2 hit skips container / monolith restore.
     const setLinkPricesResponse = await tryServeSetLinkPricesFromR2(request, env);
     if (setLinkPricesResponse) return setLinkPricesResponse;
+
+    // Sealed catalog — serve from R2 so Sets → Sealed works even if the container lacks the JSON.
+    const sealedCatalogResponse = await tryServeSealedCatalogFromR2(request, env);
+    if (sealedCatalogResponse) return sealedCatalogResponse;
 
     // Shared nav CSS/JS — serve from Worker so Sign In/search layout is not stuck on a stale image.
     const navAsset = tryServeNavAssetOverride(request);
