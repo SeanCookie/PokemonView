@@ -94,6 +94,12 @@ backend/data/poke-scanner/*.db
 backend/data/card-images/*
 !backend/data/card-images/README.md
 
+# Sealed product images (local/R2; not uploaded to GitHub)
+backend/data/pricecharting-sealed-images/*
+
+# Booster pack art binaries (local/R2; manifest stays tracked)
+backend/data/pokesymbols/booster-pack-art/*
+
 # Live user store (use empty template in repo)
 backend/data/store.json
 

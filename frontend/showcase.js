@@ -10,7 +10,12 @@
     binder: document.getElementById("showcaseBinder"),
     empty: document.getElementById("showcaseEmpty"),
     error: document.getElementById("showcaseError"),
-    search: document.getElementById("showcaseSearch"),
+    priceToggle: document.getElementById("showcasePriceToggle"),
+    priceFilterWrap: document.getElementById("showcasePriceFilterWrap"),
+    pagePrice: document.getElementById("showcasePagePrice"),
+    imageZoom: document.getElementById("showcaseImageZoom"),
+    imageZoomImg: document.getElementById("showcaseImageZoomImg"),
+    imageZoomClose: document.getElementById("showcaseImageZoomClose"),
     tabs: document.querySelectorAll("[data-showcase-filter]")
   };
 
@@ -22,9 +27,11 @@
     binderPages: [],
     binderPageIndex: 0,
     filter: "all",
-    query: "",
+    priceOn: false,
+    priceLoading: false,
     isOwner: false,
-    setCatalogLookup: null
+    setCatalogLookup: null,
+    setPricingCache: new Map()
   };
 
   function escapeHtml(value) {
@@ -71,14 +78,9 @@
 
   function filteredItems() {
     if (state.filter === "binder") return [];
-    const q = state.query.trim().toLowerCase();
     return state.items.filter((item) => {
       if (state.filter !== "all" && item.type !== state.filter) return false;
-      if (!q) return true;
-      const hay = [item.name, item.setName, item.cardNumber, item.setCode, item.condition]
-        .join(" ")
-        .toLowerCase();
-      return hay.includes(q);
+      return true;
     });
   }
 
@@ -104,20 +106,222 @@
     return BINDER_GRID_COLS[binderPageSize({ size })] || 3;
   }
 
-  function filteredBinderPages() {
-    const pages = Array.isArray(state.binderPages) ? state.binderPages : [];
-    const q = state.query.trim().toLowerCase();
-    if (!q) return pages;
-    return pages.filter((page) => {
-      if (binderPageTitle(page).toLowerCase().includes(q)) return true;
-      return (Array.isArray(page.slots) ? page.slots : []).some((slot) => {
-        if (!slot) return false;
-        return [slot.name, slot.setName, slot.setCode, slot.cardNumber]
-          .join(" ")
-          .toLowerCase()
-          .includes(q);
-      });
-    });
+  function normalizeShowcaseCardNo(raw) {
+    let q = String(raw || "")
+      .trim()
+      .replace(/^#/, "");
+    if (!q) return "";
+    const slash = q.indexOf("/");
+    if (slash > 0) q = q.slice(0, slash);
+    return (q.replace(/^0+/, "") || "0").toUpperCase();
+  }
+
+  function itemUnitPrice(item) {
+    const unit = Number(item?.unitValue);
+    if (Number.isFinite(unit) && unit > 0) return unit;
+    const total = Number(item?.totalValue);
+    const qty = Math.max(1, Math.floor(Number(item?.quantity) || 1));
+    if (Number.isFinite(total) && total > 0) return total / qty;
+    return 0;
+  }
+
+  function buildBinderCollectionPriceIndex() {
+    const byId = new Map();
+    const byKey = new Map();
+    const byName = new Map();
+    for (const item of state.items) {
+      if (!item || item.type === "sealed") continue;
+      const price = itemUnitPrice(item);
+      if (!(price > 0)) continue;
+      const id = String(item.id || "").trim();
+      if (id) byId.set(id, price);
+      const code = String(item.setCode || "")
+        .trim()
+        .toUpperCase();
+      const cardNo = normalizeShowcaseCardNo(item.cardNumber);
+      if (code && cardNo) {
+        const key = `${code}:${cardNo}`;
+        const prev = byKey.get(key);
+        if (!prev || price > prev) byKey.set(key, price);
+      }
+      const name = String(item.name || "")
+        .trim()
+        .toLowerCase();
+      if (name) {
+        const prev = byName.get(name);
+        if (!prev || price > prev) byName.set(name, price);
+      }
+    }
+    return { byId, byKey, byName };
+  }
+
+  async function ensureSetPricingManifest(setCode, setName = "") {
+    const code = String(setCode || "")
+      .trim()
+      .toUpperCase();
+    if (!code) return null;
+    if (state.setPricingCache.has(code)) return state.setPricingCache.get(code);
+    const pending = (async () => {
+      try {
+        const params = new URLSearchParams({ setCode: code });
+        if (setName) params.set("setName", String(setName).trim());
+        const res = await fetch(`/api/sets/pricing?${params.toString()}`);
+        return res.ok ? await res.json().catch(() => null) : null;
+      } catch {
+        return null;
+      }
+    })();
+    state.setPricingCache.set(code, pending);
+    const manifest = await pending;
+    state.setPricingCache.set(code, manifest);
+    return manifest;
+  }
+
+  async function ensureBinderSlotPricing(slots) {
+    const needed = new Map();
+    for (const slot of slots) {
+      if (!slot) continue;
+      if (Number(slot.unitValue) > 0) continue;
+      const code = String(slot.setCode || "")
+        .trim()
+        .toUpperCase();
+      if (!code || !slot.cardNumber) continue;
+      if (!needed.has(code)) needed.set(code, String(slot.setName || "").trim());
+    }
+    await Promise.all(
+      [...needed.entries()].map(([code, setName]) => ensureSetPricingManifest(code, setName))
+    );
+  }
+
+  function slotUnitPrice(slot, collectionIndex) {
+    if (!slot) return 0;
+    const embedded = Number(slot.unitValue);
+    if (Number.isFinite(embedded) && embedded > 0) return embedded;
+
+    const collectionItemId = String(slot.collectionItemId || "").trim();
+    if (collectionItemId && collectionIndex?.byId?.has(collectionItemId)) {
+      return Number(collectionIndex.byId.get(collectionItemId)) || 0;
+    }
+
+    const code = String(slot.setCode || "")
+      .trim()
+      .toUpperCase();
+    const cardNo = normalizeShowcaseCardNo(slot.cardNumber);
+    if (code && cardNo && collectionIndex?.byKey?.has(`${code}:${cardNo}`)) {
+      return Number(collectionIndex.byKey.get(`${code}:${cardNo}`)) || 0;
+    }
+
+    if (code && slot.cardNumber) {
+      const cached = state.setPricingCache.get(code);
+      const manifest = cached && typeof cached.then !== "function" ? cached : null;
+      const fromManifest = pickPriceFromManifest(manifest?.byCardNo, slot.cardNumber);
+      if (fromManifest > 0) return fromManifest;
+    }
+
+    const name = String(slot.name || "")
+      .trim()
+      .toLowerCase();
+    if (name && collectionIndex?.byName?.has(name)) {
+      return Number(collectionIndex.byName.get(name)) || 0;
+    }
+    return 0;
+  }
+
+  function binderPagesList() {
+    return Array.isArray(state.binderPages) ? state.binderPages : [];
+  }
+
+  function currentBinderPageSlots() {
+    const pages = binderPagesList();
+    const page = pages[state.binderPageIndex];
+    if (!page) return [];
+    const size = binderPageSize(page);
+    const rawSlots = Array.isArray(page.slots) ? page.slots : [];
+    return Array.from({ length: size }, (_, i) => rawSlots[i] || null);
+  }
+
+  function sumBinderPageValue(slots, collectionIndex) {
+    let total = 0;
+    for (const slot of slots) {
+      if (!slot) continue;
+      total += slotUnitPrice(slot, collectionIndex);
+    }
+    return Number(total.toFixed(2));
+  }
+
+  function syncToolbarControls() {
+    const onBinder = state.filter === "binder";
+    if (els.priceFilterWrap) els.priceFilterWrap.hidden = !onBinder;
+    if (els.priceToggle) {
+      els.priceToggle.classList.toggle("is-on", state.priceOn);
+      els.priceToggle.setAttribute("aria-pressed", state.priceOn ? "true" : "false");
+      els.priceToggle.disabled = Boolean(state.priceLoading);
+    }
+    if (!onBinder && els.pagePrice) {
+      els.pagePrice.hidden = true;
+      els.pagePrice.textContent = "";
+    }
+  }
+
+  function syncPagePriceDisplay(total) {
+    if (!els.pagePrice || !els.priceToggle) return;
+    if (!state.priceOn || state.filter !== "binder") {
+      els.pagePrice.hidden = true;
+      els.pagePrice.textContent = "";
+      return;
+    }
+    if (!showValuesEnabled()) {
+      els.pagePrice.hidden = false;
+      els.pagePrice.textContent = "Hidden";
+      return;
+    }
+    if (state.priceLoading) {
+      els.pagePrice.hidden = false;
+      els.pagePrice.textContent = "…";
+      return;
+    }
+    const n = Number(total);
+    els.pagePrice.hidden = false;
+    els.pagePrice.textContent =
+      Number.isFinite(n) && n > 0 ? formatUsd(n) : "—";
+  }
+
+  async function refreshBinderPagePriceTotal() {
+    if (!state.priceOn || state.filter !== "binder" || !showValuesEnabled()) {
+      syncPagePriceDisplay(0);
+      return;
+    }
+    const slots = currentBinderPageSlots();
+    state.priceLoading = true;
+    syncToolbarControls();
+    syncPagePriceDisplay(0);
+    try {
+      await ensureBinderSlotPricing(slots);
+    } finally {
+      state.priceLoading = false;
+    }
+    const collectionIndex = buildBinderCollectionPriceIndex();
+    const total = sumBinderPageValue(slots, collectionIndex);
+    syncToolbarControls();
+    syncPagePriceDisplay(total);
+  }
+
+  function closeBinderCardZoom() {
+    if (!els.imageZoom) return;
+    els.imageZoom.hidden = true;
+    if (els.imageZoomImg) {
+      els.imageZoomImg.removeAttribute("src");
+      els.imageZoomImg.alt = "";
+    }
+  }
+
+  function openBinderCardZoom(imageUrl, altText = "Card") {
+    if (!els.imageZoom || !els.imageZoomImg) return;
+    const url = String(imageUrl || "").trim();
+    if (!url) return;
+    els.imageZoomImg.src = url;
+    els.imageZoomImg.alt = String(altText || "Card");
+    els.imageZoom.hidden = false;
   }
 
   function renderHero() {
@@ -238,13 +442,20 @@
   function cardLookupKeys(cardNo) {
     const raw = String(cardNo || "").trim();
     const keys = new Set([raw, raw.toUpperCase()]);
-    const n = Number(raw);
-    if (Number.isFinite(n)) {
-      keys.add(String(n));
-      keys.add(String(n).padStart(3, "0"));
+    const beforeSlash = raw.match(/^([^/]+)\s*\/\s*.+$/)?.[1]?.trim() || "";
+    if (beforeSlash) {
+      keys.add(beforeSlash);
+      keys.add(beforeSlash.toUpperCase());
     }
-    const stripped = raw.replace(/^0+/, "");
-    if (stripped) keys.add(stripped);
+    for (const token of [raw, beforeSlash].filter(Boolean)) {
+      const n = Number(token);
+      if (Number.isFinite(n)) {
+        keys.add(String(n));
+        keys.add(String(n).padStart(3, "0"));
+      }
+      const stripped = token.replace(/^0+/, "");
+      if (stripped) keys.add(stripped);
+    }
     return [...keys];
   }
 
@@ -466,7 +677,7 @@
       } else if (state.filter === "single" && !filteredOut) {
         els.empty.innerHTML = `<h2>No singles</h2><p>This collector has not added singles yet.</p>`;
       } else {
-        els.empty.innerHTML = `<h2>No matches</h2><p>Try another filter or search term.</p>`;
+        els.empty.innerHTML = `<h2>No matches</h2><p>Try another filter.</p>`;
       }
       return;
     }
@@ -529,14 +740,13 @@
       return;
     }
 
-    const pages = filteredBinderPages();
+    const pages = binderPagesList();
     if (!pages.length) {
       setVisible(els.binder, false);
       setVisible(els.grid, false);
       setVisible(els.empty, true);
-      els.empty.innerHTML = state.binderPages.length
-        ? `<h2>No matches</h2><p>Try another search term.</p>`
-        : `<h2>No binder pages yet</h2><p>This collector has not built a binder in their Collection yet.</p>`;
+      syncPagePriceDisplay(0);
+      els.empty.innerHTML = `<h2>No binder pages yet</h2><p>This collector has not built a binder in their Collection yet.</p>`;
       return;
     }
 
@@ -552,21 +762,31 @@
     const cols = binderGridCols(size);
     const rawSlots = Array.isArray(page.slots) ? page.slots : [];
     const slots = Array.from({ length: size }, (_, i) => rawSlots[i] || null);
+    const collectionIndex = buildBinderCollectionPriceIndex();
+    const pageTotal = state.priceOn ? sumBinderPageValue(slots, collectionIndex) : 0;
     const pockets = slots
-      .map((slot) => {
+      .map((slot, slotIndex) => {
         if (!slot) {
           return `<div class="showcase-binder-pocket"><span class="placeholder">Empty</span></div>`;
         }
         const invertedClass = slot.inverted ? " is-inverted" : "";
         const img = String(slot.imageUrl || "").trim();
-        return `<div class="showcase-binder-pocket${invertedClass}">
-              <div class="showcase-binder-pocket-art">
-                ${
-                  img
-                    ? `<img src="${escapeHtml(img)}" alt="${escapeHtml(slot.name || "Card")}" loading="lazy" />`
-                    : `<span class="placeholder">No image</span>`
-                }
-              </div>
+        const art = img
+          ? `<img src="${escapeHtml(img)}" alt="${escapeHtml(slot.name || "Card")}" loading="lazy" />`
+          : `<span class="placeholder">No image</span>`;
+        if (img) {
+          return `<button
+              type="button"
+              class="showcase-binder-pocket is-zoomable${invertedClass}"
+              data-binder-zoom-src="${escapeHtml(img)}"
+              data-binder-zoom-alt="${escapeHtml(slot.name || "Card")}"
+              aria-label="Zoom ${escapeHtml(slot.name || "card")}"
+            >
+              <div class="showcase-binder-pocket-art">${art}</div>
+            </button>`;
+        }
+        return `<div class="showcase-binder-pocket${invertedClass}" data-slot="${slotIndex}">
+              <div class="showcase-binder-pocket-art">${art}</div>
             </div>`;
       })
       .join("");
@@ -575,6 +795,10 @@
     setVisible(els.grid, false);
     if (els.grid) els.grid.innerHTML = "";
     setVisible(els.binder, true);
+    syncPagePriceDisplay(pageTotal);
+    if (state.priceOn) {
+      void refreshBinderPagePriceTotal();
+    }
     els.binder.innerHTML = `
       <div class="showcase-binder-toolbar">
         <div class="showcase-binder-page-nav">
@@ -598,10 +822,18 @@
       renderBinderPages();
     });
     els.binder.querySelector("#showcaseBinderNext")?.addEventListener("click", () => {
-      const total = filteredBinderPages().length;
+      const total = binderPagesList().length;
       if (state.binderPageIndex >= total - 1) return;
       state.binderPageIndex += 1;
       renderBinderPages();
+    });
+    els.binder.querySelectorAll("[data-binder-zoom-src]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        openBinderCardZoom(
+          btn.getAttribute("data-binder-zoom-src") || "",
+          btn.getAttribute("data-binder-zoom-alt") || "Card"
+        );
+      });
     });
   }
 
@@ -626,6 +858,7 @@
       els.ownerBanner.innerHTML =
         'You are viewing your public showcase. <a href="/settings.html#showcase">Privacy & display settings</a>';
     }
+    syncToolbarControls();
     renderHero();
     renderStats();
     renderCollectionView();
@@ -748,14 +981,31 @@
         state.binderPageIndex = 0;
       }
       state.filter = nextFilter;
+      syncToolbarControls();
       renderCollectionView();
     });
   }
 
-  els.search?.addEventListener("input", () => {
-    state.query = els.search.value;
-    if (state.filter === "binder") state.binderPageIndex = 0;
-    renderCollectionView();
+  els.priceToggle?.addEventListener("click", () => {
+    if (state.priceLoading) return;
+    state.priceOn = !state.priceOn;
+    syncToolbarControls();
+    if (state.priceOn) {
+      syncPagePriceDisplay(0);
+      void refreshBinderPagePriceTotal();
+    } else {
+      syncPagePriceDisplay(0);
+    }
+  });
+
+  els.imageZoomClose?.addEventListener("click", closeBinderCardZoom);
+  els.imageZoom?.addEventListener("click", (event) => {
+    if (event.target === els.imageZoom) closeBinderCardZoom();
+  });
+  window.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && els.imageZoom && !els.imageZoom.hidden) {
+      closeBinderCardZoom();
+    }
   });
 
   const username = parseUsernameFromLocation();

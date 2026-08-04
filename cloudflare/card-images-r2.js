@@ -6,6 +6,7 @@
  *   /card-images-japanese/...          → (path after prefix)
  *   /pokesymbols/symbols/foo.png       → pokesymbols/symbols/foo.png
  *   /set-images/BS/cover.png           → set-images/BS/cover.png
+ *   /pricecharting-sealed/123.jpg      → pricecharting-sealed/123.jpg
  */
 const IMAGE_CACHE_CONTROL = "public, max-age=31536000, immutable";
 
@@ -22,7 +23,8 @@ const ROUTE_PREFIXES = [
   { urlPrefix: "/card-images/", keyPrefix: "" },
   { urlPrefix: "/card-images-japanese/", keyPrefix: "" },
   { urlPrefix: "/pokesymbols/", keyPrefix: "pokesymbols/" },
-  { urlPrefix: "/set-images/", keyPrefix: "set-images/" }
+  { urlPrefix: "/set-images/", keyPrefix: "set-images/" },
+  { urlPrefix: "/pricecharting-sealed/", keyPrefix: "pricecharting-sealed/" }
 ];
 
 function contentTypeForPath(pathname) {

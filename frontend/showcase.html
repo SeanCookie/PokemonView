@@ -7,7 +7,7 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Showcase — PokemonView</title>
-  <link rel="stylesheet" href="/showcase.css?v=11" />
+  <link rel="stylesheet" href="/showcase.css?v=16" />
   <link rel="stylesheet" href="/site-nav.css?v=12" />
 </head>
 <body>
@@ -64,7 +64,18 @@
         <button type="button" class="showcase-tab" data-showcase-filter="sealed">Sealed</button>
         <button type="button" class="showcase-tab" data-showcase-filter="binder">Binder</button>
       </div>
-      <input id="showcaseSearch" class="showcase-search" type="search" placeholder="Search this showcase…" />
+      <div class="showcase-price-filter" id="showcasePriceFilterWrap" hidden>
+        <button
+          type="button"
+          id="showcasePriceToggle"
+          class="showcase-price-toggle"
+          aria-pressed="false"
+          aria-label="Show page price total"
+        >
+          Price
+        </button>
+        <span id="showcasePagePrice" class="showcase-page-price" hidden></span>
+      </div>
     </section>
 
     <section id="showcaseError" class="showcase-error" hidden></section>
@@ -73,8 +84,24 @@
     <section id="showcaseBinder" class="showcase-binder" hidden></section>
   </main>
 
+  <div
+    id="showcaseImageZoom"
+    class="showcase-image-zoom"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Zoomed card image"
+    hidden
+  >
+    <div class="showcase-image-zoom-inner">
+      <div class="showcase-image-zoom-crop">
+        <img id="showcaseImageZoomImg" class="showcase-image-zoom-full" alt="" />
+      </div>
+      <button id="showcaseImageZoomClose" type="button" class="showcase-btn">Close</button>
+    </div>
+  </div>
+
   <script src="/site-nav.js?v=12" defer></script>
   <script src="/account-ui.js?v=9"></script>
-  <script src="/showcase.js?v=11"></script>
+  <script src="/showcase.js?v=15"></script>
 </body>
 </html>

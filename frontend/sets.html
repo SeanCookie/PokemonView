@@ -172,6 +172,11 @@
       display: none;
     }
 
+    /* Keep English / Sealed visible while viewing a sealed set. */
+    .toolbar.focused.sealed-mode .toggle {
+      display: inline-flex;
+    }
+
     .toggle {
       display: inline-flex;
       border: 1px solid var(--border);
@@ -678,6 +683,115 @@
       gap: 10px;
     }
 
+    .booster-pack-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .booster-pack-tile {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--card-surface);
+      padding: 8px;
+      display: grid;
+      gap: 6px;
+      cursor: zoom-in;
+      width: 100%;
+      font: inherit;
+      text-align: left;
+      color: var(--text);
+    }
+
+    .booster-pack-tile:hover {
+      border-color: rgba(120, 170, 255, 0.55);
+    }
+
+    .booster-pack-tile img {
+      width: 100%;
+      aspect-ratio: 3 / 4;
+      object-fit: contain;
+      background: var(--thumb-bg);
+      border-radius: 6px;
+      display: block;
+    }
+
+    .booster-pack-tile .booster-pack-featured {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      text-align: center;
+    }
+
+    .sealed-product-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .sealed-product-tile {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--card-surface);
+      padding: 8px;
+      display: grid;
+      gap: 6px;
+      text-decoration: none;
+      color: var(--text);
+      width: 100%;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .sealed-product-tile:hover {
+      border-color: rgba(120, 170, 255, 0.55);
+    }
+
+    .sealed-product-tile img,
+    .sealed-product-tile .sealed-product-placeholder {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      object-fit: contain;
+      background: var(--thumb-bg);
+      border-radius: 6px;
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .sealed-product-tile .sealed-product-title {
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.3;
+      text-align: center;
+    }
+
+    .sealed-product-tile .sealed-product-price {
+      font-size: 13px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .sealed-product-tile .sealed-product-price.has-price {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    @media (max-width: 1080px) {
+      .sealed-product-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 640px) {
+      .sealed-product-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+    }
+
     .card-tile-shell {
       position: relative;
       display: block;
@@ -1027,12 +1141,14 @@
       box-sizing: border-box;
       width: 100%;
       max-width: 100vw;
+      /* Cover full visual viewport; sticky top-nav is z-index 10000 */
+      height: var(--app-vv-height, 100dvh);
       max-height: var(--app-vv-height, 100dvh);
       overflow: auto;
       -webkit-overflow-scrolling: touch;
       padding: max(12px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px))
         max(12px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
-      z-index: 200;
+      z-index: 10100;
     }
 
     .image-zoom-overlay.open {
@@ -1972,6 +2088,10 @@
         grid-template-columns: repeat(3, minmax(0, 1fr));
       }
 
+      .booster-pack-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
       .set-stats-grid {
         grid-template-columns: repeat(3, minmax(0, 1fr));
       }
@@ -2007,6 +2127,11 @@
       }
 
       .cards-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .booster-pack-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 8px;
       }
@@ -2081,8 +2206,9 @@
 
   <main class="page">
     <section class="toolbar">
-      <div class="toggle" id="languageToggle" role="tablist" aria-label="Language" hidden>
+      <div class="toggle" id="languageToggle" role="tablist" aria-label="Catalog">
         <button id="langEnglish" class="active" type="button">English</button>
+        <button id="langSealed" type="button">Sealed</button>
         <button id="langJapanese" type="button" hidden>Japanese</button>
       </div>
       <div class="toolbar-search-cluster">
@@ -2300,6 +2426,8 @@
 
     const state = {
       language: "english",
+      /** "english" shows cards; "sealed" shows PriceCharting sealed products per set. */
+      catalogMode: "english",
       eraFilter: "all",
       query: "",
       catalogArtistFilter: "all",
@@ -2313,6 +2441,15 @@
       pokesymbolsBySlug: {},
       /** Resolved per app set code for logos/symbols (rebuilt from slugs + overrides). */
       pokesymbolsByCode: {},
+      /** From /api/pokesymbols/booster-pack-art — packs keyed by set code. */
+      boosterPackArtByCode: {},
+      /** Set detail: show booster pack art instead of cards. */
+      setBoosterPackView: false,
+      /** From /api/sets/sealed — sealed products keyed by set code. */
+      sealedProductsByCode: {},
+      sealedCatalogLoaded: false,
+      /** Selected sealed product id within the open set (sealed catalog mode). */
+      selectedSealedProductId: null,
       imagesByCode: {},
       imagesByName: {},
       cardNamesBySetCode: {},
@@ -2486,6 +2623,8 @@
 
       state.selectedSetCode = setCode;
       state.selectedSetName = setName;
+      state.setBoosterPackView = false;
+      state.selectedSealedProductId = null;
       if (Object.prototype.hasOwnProperty.call(options, "cardNumber")) {
         state.selectedCardNumber = options.cardNumber;
       } else if (!options.keepCardNumber) {
@@ -2502,6 +2641,15 @@
         state.savedSetGridScrollY = null;
       }
 
+      // Sealed catalog only needs the sealed product grid — skip card/pricing enrichment
+      // that would otherwise re-render the set as cards after async loads finish.
+      if (isSealedCatalogMode()) {
+        state.selectedCardNumber = null;
+        scrollToPageTop();
+        renderAll();
+        return;
+      }
+
       const hadCards = Object.keys(state.cardNamesBySetCode[setCode] || {}).length > 0;
       // Start card fetch before first paint so the loading flag is set (avoids bouncing back to catalog).
       const cardsPromise = ensureSetCardsLoaded(setCode).catch(() => {});
@@ -2510,6 +2658,10 @@
 
       await cardsPromise;
       if (String(state.selectedSetCode || "").toUpperCase() !== setCode) return;
+      if (isSealedCatalogMode()) {
+        renderAll();
+        return;
+      }
       if (!hadCards) renderAll();
 
       void enrichOpenSetView(setCode, setName);
@@ -2518,6 +2670,7 @@
     async function enrichOpenSetView(setCode, setName = "") {
       const code = String(setCode || "").trim().toUpperCase();
       if (!code) return;
+      if (isSealedCatalogMode()) return;
       try {
         if (state.language === "english") {
           await syncTcgLinkCacheGeneration();
@@ -2535,10 +2688,13 @@
         /* ignore */
       }
       if (String(state.selectedSetCode || "").toUpperCase() !== code) return;
+      if (isSealedCatalogMode()) return;
       primeActiveSetPrices(code, setName);
       const y = window.scrollY;
       if (state.selectedCardNumber) {
         renderAll();
+      } else if (isSealedCatalogMode()) {
+        renderSealedSetDetail();
       } else {
         renderSelectedSetDetail();
       }
@@ -3803,6 +3959,25 @@
     }
 
     function refreshCardDetailPricingExtra() {
+      if (isSealedCatalogMode() && state.selectedSealedProductId) {
+        const host = document.getElementById("cardPagePricingExtra");
+        const tcgHost = document.getElementById("cardPagePricingTcg");
+        const root = document.getElementById("content");
+        const product = getSelectedSealedProduct();
+        const selectedSet = getSetByCode(state.selectedSetCode);
+        if (!host || !root || !product || !selectedSet) {
+          renderAll();
+          return;
+        }
+        const historyCard = sealedProductHistoryCard(product, selectedSet);
+        const detailsKey = getPriceChartingDetailsCacheKey(historyCard);
+        const detailsPayload = state.priceChartingDetailsByKey[detailsKey] || null;
+        if (tcgHost) tcgHost.innerHTML = buildSealedPricingPanelHtml(product, detailsPayload);
+        host.innerHTML = buildSealedProductPricingExtraHtml(historyCard);
+        wireMarketPriceHistoryPanel(root, historyCard);
+        wirePriceChartingSoldListingsPanel(root);
+        return;
+      }
       if (!state.selectedCardNumber) {
         renderAll();
         return;
@@ -3838,6 +4013,10 @@
     }
 
     function requestCardDetailRefresh() {
+      if (isSealedCatalogMode() && state.selectedSealedProductId) {
+        refreshCardDetailPricingExtra();
+        return;
+      }
       if (!state.selectedCardNumber) {
         renderAll();
         return;
@@ -4604,6 +4783,580 @@
         state.pokesymbolsBySlug = {};
         state.pokesymbolsByCode = {};
       }
+    }
+
+    async function loadBoosterPackArtManifest() {
+      try {
+        const response = await fetch("/api/pokesymbols/booster-pack-art");
+        if (!response.ok) return;
+        const payload = await response.json();
+        if (!payload || !payload.ok) return;
+        const byCode = payload.byCode && typeof payload.byCode === "object" ? payload.byCode : {};
+        const normalized = {};
+        for (const [code, row] of Object.entries(byCode)) {
+          const key = String(code || "").trim().toUpperCase();
+          if (!key || !row || typeof row !== "object") continue;
+          const packs = Array.isArray(row.packs) ? row.packs : [];
+          normalized[key] = {
+            slug: String(row.slug || ""),
+            name: String(row.name || ""),
+            packs: packs
+              .map((pack) => ({
+                packIndex: Number(pack && pack.packIndex),
+                featured: String((pack && pack.featured) || "").trim(),
+                released: String((pack && pack.released) || "").trim(),
+                image: String((pack && pack.image) || "").trim()
+              }))
+              .filter((pack) => Number.isFinite(pack.packIndex) && pack.image)
+              .sort((a, b) => a.packIndex - b.packIndex)
+          };
+        }
+        state.boosterPackArtByCode = normalized;
+      } catch {
+        state.boosterPackArtByCode = {};
+      }
+    }
+
+    async function loadSealedProductsCatalog() {
+      try {
+        const response = await fetch("/api/sets/sealed");
+        if (!response.ok) return;
+        const payload = await response.json();
+        if (!payload || !payload.ok) return;
+        const byCode = payload.byCode && typeof payload.byCode === "object" ? payload.byCode : {};
+        const normalized = {};
+        for (const [code, row] of Object.entries(byCode)) {
+          const key = String(code || "").trim().toUpperCase();
+          if (!key || !row || typeof row !== "object") continue;
+          const products = Array.isArray(row.products) ? row.products : [];
+          normalized[key] = products
+            .map((product) => ({
+              productId: String((product && product.productId) || "").trim(),
+              title: String((product && product.title) || "").trim(),
+              productType: String((product && product.productType) || "other").trim(),
+              productUrl: String((product && product.productUrl) || "").trim(),
+              imageUrl: String((product && product.imageUrl) || "").trim(),
+              remoteImageUrl: String((product && product.remoteImageUrl) || "").trim(),
+              ungradedPrice: Number(product && product.ungradedPrice),
+              priceText: String((product && product.priceText) || "").trim()
+            }))
+            .filter((product) => product.title);
+        }
+        state.sealedProductsByCode = normalized;
+        state.sealedCatalogLoaded = true;
+      } catch {
+        state.sealedProductsByCode = {};
+        state.sealedCatalogLoaded = false;
+      }
+    }
+
+    function getSealedProductsForSet(setCode) {
+      const key = String(setCode || "").trim().toUpperCase();
+      if (!key) return [];
+      const list = state.sealedProductsByCode[key];
+      return Array.isArray(list) ? list : [];
+    }
+
+    function isSealedCatalogMode() {
+      return state.catalogMode === "sealed";
+    }
+
+    function getCatalogSetsLanguage() {
+      return state.language === "japanese" ? "japanese" : "english";
+    }
+
+    function formatSealedPrice(product) {
+      if (product && Number.isFinite(product.ungradedPrice) && product.ungradedPrice > 0) {
+        return formatUsd(product.ungradedPrice) || product.priceText || "";
+      }
+      return product && product.priceText ? product.priceText : "";
+    }
+
+    function getSealedProductPrice(product) {
+      if (product && Number.isFinite(product.ungradedPrice) && product.ungradedPrice > 0) {
+        return product.ungradedPrice;
+      }
+      return null;
+    }
+
+    function getMostExpensiveSealedProduct(products) {
+      const list = Array.isArray(products) ? products : [];
+      let bestProduct = null;
+      let bestPrice = -1;
+      for (const product of list) {
+        const price = getSealedProductPrice(product);
+        if (!Number.isFinite(price) || price <= 0) continue;
+        if (price > bestPrice) {
+          bestPrice = price;
+          bestProduct = product;
+        }
+      }
+      return {
+        product: bestProduct,
+        price: Number.isFinite(bestPrice) && bestPrice > 0 ? bestPrice : null
+      };
+    }
+
+    function getFullSealedProductSetMarketValue(products) {
+      const list = Array.isArray(products) ? products : [];
+      let total = 0;
+      let count = 0;
+      for (const product of list) {
+        const price = getSealedProductPrice(product);
+        if (!Number.isFinite(price) || price <= 0) continue;
+        total += price;
+        count += 1;
+      }
+      return {
+        total: count > 0 ? Number(total.toFixed(2)) : null,
+        pricedCount: count
+      };
+    }
+
+    function sealedProductHistoryCard(product, setEntry) {
+      const setCode = String((setEntry && setEntry.code) || state.selectedSetCode || "").trim().toUpperCase();
+      const productId = String((product && product.productId) || "").trim();
+      return {
+        setCode,
+        setName: String((setEntry && setEntry.name) || state.selectedSetName || "").trim(),
+        cardNo: `sealed:${productId}`,
+        name: String((product && product.title) || "").trim(),
+        label: String((product && product.title) || "").trim(),
+        imageUrl: String((product && product.imageUrl) || "").trim(),
+        remoteImageUrl: String((product && product.remoteImageUrl) || "").trim(),
+        productUrl: String((product && product.productUrl) || "").trim(),
+        productId,
+        ungradedPrice: Number(product && product.ungradedPrice),
+        priceText: String((product && product.priceText) || "").trim(),
+        productType: String((product && product.productType) || "").trim(),
+        _sealed: true
+      };
+    }
+
+    function getSelectedSealedProduct() {
+      const products = getSealedProductsForSet(state.selectedSetCode);
+      const id = String(state.selectedSealedProductId || "").trim();
+      if (!id) return null;
+      return products.find((p) => String(p.productId || "") === id) || null;
+    }
+
+    function buildSealedPricingPanelHtml(product, detailsPayload = null) {
+      const livePrice =
+        detailsPayload && Number.isFinite(detailsPayload.ungradedPrice) && detailsPayload.ungradedPrice > 0
+          ? detailsPayload.ungradedPrice
+          : getSealedProductPrice(product);
+      const priceLabel = formatUsd(livePrice) || (detailsPayload && detailsPayload.priceText) || formatSealedPrice(product) || "—";
+      const tcgUrl = String((detailsPayload && detailsPayload.tcgplayerUrl) || "").trim();
+      const ebayUrl =
+        String((detailsPayload && detailsPayload.ebayUrl) || "").trim() ||
+        `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(
+          [product.title, state.selectedSetName].filter(Boolean).join(" ")
+        )}`;
+      const tcgLink = tcgUrl
+        ? `<a class="card-price-link" href="${escapeHtml(tcgUrl)}" target="_blank" rel="noopener noreferrer">TCGplayer ↗</a>`
+        : "";
+      const ebayLink = ebayUrl
+        ? `<a class="card-price-link card-price-link-ebay" href="${escapeHtml(ebayUrl)}" target="_blank" rel="noopener noreferrer" aria-label="Search eBay"><span class="ebay-brand"><span class="ebay-e">e</span><span class="ebay-b">B</span><span class="ebay-a">a</span><span class="ebay-y">y</span></span><span class="ebay-arrow">↗</span></a>`
+        : "";
+      return `<section class="card-price-panel card-price-panel-tcg">
+        <h4 class="card-price-condition-heading">Sealed + Shipping</h4>
+        <div class="card-price-print-row">
+          <span class="card-price-print-label">Market</span>
+          <span class="card-price-print-sep">:</span>
+          <span class="card-price-value">${escapeHtml(priceLabel)}</span>
+          <span class="card-price-links">${tcgLink}${ebayLink}</span>
+        </div>
+      </section>`;
+    }
+
+    function buildSealedProductPricingExtraHtml(historyCard) {
+      const marketHistoryCacheKey = getMarketHistoryCacheKey(historyCard);
+      const marketHistoryPayload = state.marketHistoryByKey[marketHistoryCacheKey] || null;
+      const marketHistoryLoading =
+        state.marketHistoryLoadingKey === marketHistoryCacheKey ||
+        !state.marketHistoryByKey[marketHistoryCacheKey];
+      const priceChartingDetailsKey = getPriceChartingDetailsCacheKey(historyCard);
+      const priceChartingDetailsLoading = state.priceChartingDetailsLoadingKey === priceChartingDetailsKey;
+      const priceChartingDetailsPayload = state.priceChartingDetailsByKey[priceChartingDetailsKey] || null;
+      return `${buildMarketPriceHistoryMarkup(historyCard, marketHistoryPayload, marketHistoryLoading)}${buildPriceChartingSoldListingsMarkup(
+        historyCard,
+        priceChartingDetailsPayload,
+        priceChartingDetailsLoading
+      )}`;
+    }
+
+    async function ensureSealedProductDetailsLoaded(product, setEntry) {
+      const historyCard = sealedProductHistoryCard(product, setEntry);
+      const cacheKey = getMarketHistoryCacheKey(historyCard);
+      const detailsKey = getPriceChartingDetailsCacheKey(historyCard);
+      if (state.marketHistoryByKey[cacheKey] && state.priceChartingDetailsByKey[detailsKey]) return;
+      if (state.marketHistoryLoadingKey === cacheKey || state.priceChartingDetailsLoadingKey === detailsKey) {
+        return;
+      }
+
+      state.marketHistoryLoadingKey = cacheKey;
+      state.priceChartingDetailsLoadingKey = detailsKey;
+      if (document.getElementById("cardPagePricing")) {
+        requestCardDetailRefresh();
+      }
+      try {
+        const params = new URLSearchParams({
+          productUrl: String(product.productUrl || "").trim()
+        });
+        if (product.productId) params.set("productId", String(product.productId));
+        if (product.title) params.set("productTitle", String(product.title));
+        const setName = String((setEntry && setEntry.name) || state.selectedSetName || "").trim();
+        if (setName) params.set("setName", setName);
+        const response = await fetch(`/api/sets/sealed-product-details?${params.toString()}`);
+        const payload = response.ok ? await response.json() : null;
+        const okPayload = payload && payload.ok ? payload : null;
+        state.marketHistoryByKey[cacheKey] = okPayload
+          ? {
+              ok: true,
+              series: Array.isArray(okPayload.series) ? okPayload.series : [],
+              rangeKey: "all",
+              rangeLabel: "All Time",
+              source: "pricecharting"
+            }
+          : { ok: false, series: [], rangeKey: "all", rangeLabel: "All Time" };
+        state.priceChartingDetailsByKey[detailsKey] = okPayload
+          ? {
+              ok: true,
+              soldListings: Array.isArray(okPayload.soldListings) ? okPayload.soldListings : [],
+              soldGuides: Array.isArray(okPayload.soldGuides) ? okPayload.soldGuides : [],
+              gradedGuides: Array.isArray(okPayload.gradedGuides) ? okPayload.gradedGuides : [],
+              productUrl: okPayload.productUrl || product.productUrl || "",
+              ungradedPrice: okPayload.ungradedPrice,
+              priceText: okPayload.priceText || "",
+              tcgplayerUrl: okPayload.tcgplayerUrl || "",
+              ebayUrl: okPayload.ebayUrl || ""
+            }
+          : {
+              ok: false,
+              soldListings: [],
+              soldGuides: [],
+              gradedGuides: [],
+              productUrl: product.productUrl || "",
+              tcgplayerUrl: "",
+              ebayUrl: ""
+            };
+      } catch {
+        state.marketHistoryByKey[cacheKey] = {
+          ok: false,
+          series: [],
+          rangeKey: "all",
+          rangeLabel: "All Time"
+        };
+        state.priceChartingDetailsByKey[detailsKey] = {
+          ok: false,
+          soldListings: [],
+          soldGuides: [],
+          gradedGuides: [],
+          productUrl: product.productUrl || "",
+          tcgplayerUrl: "",
+          ebayUrl: ""
+        };
+      } finally {
+        if (state.marketHistoryLoadingKey === cacheKey) state.marketHistoryLoadingKey = "";
+        if (state.priceChartingDetailsLoadingKey === detailsKey) {
+          state.priceChartingDetailsLoadingKey = "";
+        }
+        if (
+          isSealedCatalogMode() &&
+          String(state.selectedSealedProductId || "") === String(product.productId || "")
+        ) {
+          requestCardDetailRefresh();
+        }
+      }
+    }
+
+    function renderSealedProductGridMarkup(products) {
+      const list = Array.isArray(products) ? products : [];
+      if (!list.length) {
+        return `<div class="card-meta" style="padding:12px 0;">No sealed products found for this set on PriceCharting.</div>`;
+      }
+      const tiles = list
+        .map((product) => {
+          const price = formatSealedPrice(product);
+          const primaryImg = product.imageUrl || "";
+          const fallbackImg = product.remoteImageUrl && product.remoteImageUrl !== primaryImg
+            ? product.remoteImageUrl
+            : "";
+          const img = primaryImg
+            ? `<img src="${escapeHtml(primaryImg)}" alt="${escapeHtml(product.title)}" loading="lazy" decoding="async"${
+                fallbackImg
+                  ? ` onerror="this.onerror=null;this.src='${escapeHtml(fallbackImg)}'"`
+                  : ""
+              } />`
+            : `<div class="sealed-product-placeholder">No image</div>`;
+          return `<button type="button" class="sealed-product-tile" data-sealed-product-id="${escapeHtml(String(product.productId || ""))}">
+            ${img}
+            <div class="sealed-product-title">${escapeHtml(product.title)}</div>
+            <div class="sealed-product-price${price ? " has-price" : ""}">${escapeHtml(price || "—")}</div>
+          </button>`;
+        })
+        .join("");
+      return `<div class="sealed-product-grid">${tiles}</div>`;
+    }
+
+    function renderSealedSetDetail() {
+      const selectedSet = getSetByCode(state.selectedSetCode);
+      if (!selectedSet) {
+        state.selectedSetCode = null;
+        state.selectedSetName = "";
+        renderAll();
+        return;
+      }
+      const content = document.getElementById("content");
+      const products = getSealedProductsForSet(selectedSet.code);
+      const releaseLabel = formatReleaseDate(selectedSet.releaseDate);
+      const mostExpensive = getMostExpensiveSealedProduct(products);
+      const mostExpensivePriceLabel = formatUsd(mostExpensive.price) || "N/A";
+      const mostExpensiveProductLink = mostExpensive.product
+        ? mostExpensive.product.productUrl
+          ? `<a class="set-stat-sub-link" href="${escapeHtml(mostExpensive.product.productUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(mostExpensive.product.title || "View product")}</a>`
+          : `<div class="set-stat-sub-link" style="cursor:default;">${escapeHtml(mostExpensive.product.title || "View product")}</div>`
+        : "";
+      const fullProductValue = getFullSealedProductSetMarketValue(products);
+      const fullProductValueLabel = formatUsd(fullProductValue.total) || "N/A";
+      const setCoverUrl = resolveSetImage(selectedSet);
+      const setCoverFallback = getBulbaFallbackImage(selectedSet.code);
+      const setCoverAlt = `${selectedSet.name} cover image`;
+      const detailZoomClass =
+        selectedSet.code === "BS" || selectedSet.code === "BS-1ST" || selectedSet.code === "BS-SHADOWLESS"
+          ? " set-detail-cover--zoom-cover"
+          : selectedSet.code === "HSP"
+            ? " set-detail-cover--blank-bg"
+            : "";
+      const firstSetStatMarkup = setCoverUrl
+        ? `<div class="set-stat set-stat--cover">
+            <img class="set-detail-cover${detailZoomClass}" src="${escapeHtml(setCoverUrl)}" alt="${escapeHtml(setCoverAlt)}" loading="lazy"${
+              setCoverFallback && setCoverFallback !== setCoverUrl
+                ? ` onerror="this.onerror=null;this.src='${escapeHtml(setCoverFallback)}'"`
+                : ""
+            } />
+          </div>`
+        : `<div class="set-stat">
+            <div class="set-stat-label">Set Name</div>
+            <div class="set-stat-value">${escapeHtml(selectedSet.name)}</div>
+          </div>`;
+
+      content.innerHTML = `
+        <article class="set-detail">
+          <div class="set-banner">
+            <div class="set-stats-grid">
+              ${firstSetStatMarkup}
+              <div class="set-stat">
+                <div class="set-stat-label">Series</div>
+                <div class="set-stat-value">${escapeHtml(selectedSet.era || "N/A")}</div>
+              </div>
+              <div class="set-stat">
+                <div class="set-stat-label">Release Date</div>
+                <div class="set-stat-value">${escapeHtml(releaseLabel)}</div>
+              </div>
+              <div class="set-stat">
+                <div class="set-stat-label">Sealed Products</div>
+                <div class="set-stat-value">${products.length}</div>
+              </div>
+              <div class="set-stat">
+                <div class="set-stat-label">Most Expensive Product</div>
+                <div class="set-stat-value">${escapeHtml(mostExpensivePriceLabel)}</div>
+                ${mostExpensiveProductLink}
+              </div>
+              <div class="set-stat">
+                <div class="set-stat-label">Full Product Set Market Value</div>
+                <div class="set-stat-value accent">${escapeHtml(fullProductValueLabel)}</div>
+              </div>
+            </div>
+            <div class="set-filter-row">
+              <div class="set-filter-tabs set-filter-tabs--set-toolbar">
+                <button id="backToSets" type="button" class="set-filter-tab">Back to Sets</button>
+              </div>
+            </div>
+          </div>
+          <div class="sub">${products.length} sealed product${products.length === 1 ? "" : "s"} · PriceCharting</div>
+          ${renderSealedProductGridMarkup(products)}
+        </article>
+      `;
+
+      document.getElementById("backToSets")?.addEventListener("click", () => {
+        exitSelectedSetToCatalog();
+      });
+
+      content.querySelectorAll("[data-sealed-product-id]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const id = btn.getAttribute("data-sealed-product-id") || "";
+          if (!id) return;
+          state.savedSetGridScrollY = window.scrollY;
+          state.selectedSealedProductId = id;
+          scrollToPageTop();
+          renderAll();
+        });
+      });
+    }
+
+    function renderSealedProductDetail() {
+      const selectedSet = getSetByCode(state.selectedSetCode);
+      const product = getSelectedSealedProduct();
+      if (!selectedSet || !product) {
+        state.selectedSealedProductId = null;
+        renderAll();
+        return;
+      }
+
+      const products = getSealedProductsForSet(selectedSet.code);
+      const currentIndex = products.findIndex(
+        (entry) => String(entry.productId || "") === String(product.productId || "")
+      );
+      const prevProduct = currentIndex > 0 ? products[currentIndex - 1] : null;
+      const nextProduct =
+        currentIndex >= 0 && currentIndex < products.length - 1 ? products[currentIndex + 1] : null;
+      const historyCard = sealedProductHistoryCard(product, selectedSet);
+      const detailsKey = getPriceChartingDetailsCacheKey(historyCard);
+      const detailsPayload = state.priceChartingDetailsByKey[detailsKey] || null;
+      const primaryImg = product.imageUrl || "";
+      const fallbackImg =
+        product.remoteImageUrl && product.remoteImageUrl !== primaryImg ? product.remoteImageUrl : "";
+      const content = document.getElementById("content");
+      const typeLabel = product.productType
+        ? product.productType
+            .split("-")
+            .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+            .join(" ")
+        : "Sealed";
+
+      content.innerHTML = `
+        <article class="card-page">
+          <div class="card-page-top">
+            <div>
+              <h2 class="era-title" style="margin-bottom:4px;">${escapeHtml(product.title)}</h2>
+              <div class="sub card-detail-set-line">
+                <span class="card-detail-set-ident">${escapeHtml(selectedSet.name)} (${escapeHtml(selectedSet.code)})</span>
+                <span aria-hidden="true" class="card-detail-set-dot">·</span>
+                <span>Sealed Product</span>
+              </div>
+            </div>
+            <div class="set-detail-controls">
+              <button id="backToSealedProducts" type="button" class="btn">Back to ${escapeHtml(selectedSet.name)}</button>
+              <button id="prevSealedProduct" type="button" class="btn" ${prevProduct ? "" : "disabled"}>← Prev</button>
+              <button id="nextSealedProduct" type="button" class="btn" ${nextProduct ? "" : "disabled"}>Next →</button>
+            </div>
+          </div>
+          <div class="card-page-body">
+            <div class="card-page-media">
+              ${
+                primaryImg
+                  ? `<img id="cardPageImage" class="card-page-image zoomable" src="${escapeHtml(primaryImg)}" alt="${escapeHtml(product.title)}" loading="lazy"${
+                      fallbackImg
+                        ? ` onerror="this.onerror=null;this.src='${escapeHtml(fallbackImg)}'"`
+                        : ""
+                    } />`
+                  : `<div class="card-page-image placeholder">No product image available</div>`
+              }
+            </div>
+            <section class="card-page-panel">
+              <h3 style="margin:0;">Product Details</h3>
+              <p class="card-page-sub">Sealed product details from PriceCharting.</p>
+              <div class="meta-grid">
+                <div class="meta-chip"><span class="meta-chip-label">Name:</span>${escapeHtml(product.title)}</div>
+                <div class="meta-chip"><span class="meta-chip-label">Type:</span>${escapeHtml(typeLabel)}</div>
+                <div class="meta-chip"><span class="meta-chip-label">Set:</span>${escapeHtml(selectedSet.name)} (${escapeHtml(selectedSet.code)})</div>
+                <div class="meta-chip"><span class="meta-chip-label">Language:</span>English</div>
+                <div class="meta-chip"><span class="meta-chip-label">Market Price:</span>${escapeHtml(formatSealedPrice(product) || "N/A")}</div>
+              </div>
+              <div class="sub">Click the product image to open full-size zoom.</div>
+            </section>
+          </div>
+          <div class="card-page-pricing" id="cardPagePricing">
+            <div id="cardPagePricingTcg">${buildSealedPricingPanelHtml(product, detailsPayload)}</div>
+            <div id="cardPagePricingExtra">${buildSealedProductPricingExtraHtml(historyCard)}</div>
+          </div>
+          ${
+            primaryImg
+              ? `<div id="imageZoomOverlay" class="image-zoom-overlay" role="dialog" aria-modal="true" aria-label="Zoomed product image">
+                  <div class="image-zoom-inner">
+                    <div class="image-zoom-crop" style="border-radius:10px;">
+                      <img class="image-zoom-full" src="${escapeHtml(primaryImg)}" alt="${escapeHtml(`${product.title} zoomed`)}" />
+                    </div>
+                    <button id="closeImageZoom" type="button" class="btn">Close</button>
+                  </div>
+                </div>`
+              : ""
+          }
+        </article>
+      `;
+
+      wireMarketPriceHistoryPanel(content, historyCard);
+      wirePriceChartingSoldListingsPanel(content);
+      void ensureSealedProductDetailsLoaded(product, selectedSet);
+
+      document.getElementById("backToSealedProducts")?.addEventListener("click", () => {
+        state.selectedSealedProductId = null;
+        renderAll();
+        restoreSavedSetGridScroll();
+      });
+
+      document.getElementById("prevSealedProduct")?.addEventListener("click", () => {
+        if (!prevProduct) return;
+        state.selectedSealedProductId = String(prevProduct.productId || "");
+        scrollToPageTop();
+        renderAll();
+      });
+      document.getElementById("nextSealedProduct")?.addEventListener("click", () => {
+        if (!nextProduct) return;
+        state.selectedSealedProductId = String(nextProduct.productId || "");
+        scrollToPageTop();
+        renderAll();
+      });
+
+      if (primaryImg) {
+        const image = document.getElementById("cardPageImage");
+        const overlay = document.getElementById("imageZoomOverlay");
+        const closeBtn = document.getElementById("closeImageZoom");
+        if (image && overlay && closeBtn) {
+          document.body.appendChild(overlay);
+          const openZoom = () => overlay.classList.add("open");
+          const closeZoom = () => overlay.classList.remove("open");
+          image.addEventListener("click", openZoom);
+          closeBtn.addEventListener("click", closeZoom);
+          overlay.addEventListener("click", (event) => {
+            if (event.target === overlay) closeZoom();
+          });
+        }
+      }
+    }
+
+    function getBoosterPacksForSet(setCode) {
+      const key = String(setCode || "").trim().toUpperCase();
+      if (!key) return [];
+      const row = state.boosterPackArtByCode[key];
+      return row && Array.isArray(row.packs) ? row.packs : [];
+    }
+
+    function renderBoosterPackGridMarkup(packs, setName = "") {
+      const list = Array.isArray(packs) ? packs : [];
+      if (!list.length) {
+        return `<div class="card-meta" style="padding:12px 0;">No booster pack art for this set yet.</div>`;
+      }
+      const setLabel = String(setName || "Set").trim() || "Set";
+      const tiles = list
+        .map((pack) => {
+          const featured = pack.featured || `Pack ${pack.packIndex + 1}`;
+          const alt = `${setLabel} booster pack — ${featured}`;
+          return `<button type="button" class="booster-pack-tile zoomable" data-booster-pack-src="${escapeHtml(pack.image)}" data-booster-pack-alt="${escapeHtml(alt)}">
+            <img src="${escapeHtml(pack.image)}" alt="${escapeHtml(alt)}" loading="lazy" decoding="async" />
+            <div class="booster-pack-featured">${escapeHtml(featured)}</div>
+          </button>`;
+        })
+        .join("");
+      return `<div class="booster-pack-grid">${tiles}</div>
+        <div id="imageZoomOverlay" class="image-zoom-overlay" role="dialog" aria-modal="true" aria-label="Zoomed booster pack art">
+          <div class="image-zoom-inner">
+            <div class="image-zoom-crop" style="border-radius:10px;">
+              <img class="image-zoom-full" src="" alt="" />
+            </div>
+          </div>
+        </div>`;
     }
 
     async function loadSetCatalog(language = state.language) {
@@ -6002,6 +6755,7 @@
     /* Align series colors with Poke View / TradingView palette */
     const MARKET_HISTORY_COLOR_BY_LABEL = {
       Normal: "#089981",
+      Ungraded: "#089981",
       Holofoil: "#2962ff",
       "Reverse Holofoil": "#d1d4dc",
       "Holo Rare": "#2962ff",
@@ -6132,6 +6886,7 @@
     function marketHistoryDisplayLabelForRow(row, card, pricingInfo) {
       if (isPriceChartingPsa10Series(row)) return "PSA 10";
       if (isPriceChartingUngradedSeries(row)) {
+        if (card && card._sealed) return "Ungraded";
         const rarity = getCardRarity(card);
         if (rarity) return rarity;
       }
@@ -6436,6 +7191,7 @@
     }
 
     async function ensureMarketHistoryLoaded(card) {
+      if (card && card._sealed) return;
       const code = String(card?.setCode || "").trim().toUpperCase();
       const cardNo = String(card?.cardNo || "").trim();
       if (!code || !cardNo || state.language !== "english") return;
@@ -6759,7 +7515,7 @@
           const nextRange = btn.getAttribute("data-mph-range");
           if (!nextRange || nextRange === state.marketHistoryRange) return;
           state.marketHistoryRange = nextRange;
-          if (state.selectedCardNumber) {
+          if (state.selectedCardNumber || state.selectedSealedProductId) {
             refreshCardDetailPricingExtra();
           } else {
             renderAll();
@@ -6935,6 +7691,7 @@
     }
 
     async function ensurePriceChartingDetailsLoaded(card) {
+      if (card && card._sealed) return;
       const code = String(card?.setCode || "").trim().toUpperCase();
       const cardNo = String(card?.cardNo || "").trim();
       if (!code || !cardNo || state.language !== "english") return;
@@ -7094,7 +7851,7 @@
           const nextFilter = btn.getAttribute("data-pc-sold-source");
           if (!nextFilter || nextFilter === state.priceChartingSoldSourceFilter) return;
           state.priceChartingSoldSourceFilter = nextFilter;
-          if (state.selectedCardNumber) {
+          if (state.selectedCardNumber || state.selectedSealedProductId) {
             refreshCardDetailPricingExtra();
           } else {
             renderAll();
@@ -7874,6 +8631,7 @@
       state.selectedSetCode = null;
       state.selectedSetName = "";
       state.selectedCardNumber = null;
+      state.selectedSealedProductId = null;
       state.setCardQuery = "";
       state.setArtistFilter = "all";
       state.catalogArtistFilter = "all";
@@ -7884,6 +8642,7 @@
       state.setRarityFilter = "all";
       state.setRarityMenuOpen = false;
       state.setShinyVaultOnly = false;
+      state.setBoosterPackView = false;
       state.savedSetGridScrollY = null;
       renderAll();
       if (typeof catalogY === "number" && catalogY >= 0) {
@@ -8481,6 +9240,10 @@
     }
 
     function renderSelectedSetDetail() {
+      if (isSealedCatalogMode()) {
+        renderSealedSetDetail();
+        return;
+      }
       try {
         renderSelectedSetDetailInner();
       } catch (err) {
@@ -8509,8 +9272,13 @@
         return;
       }
       const content = document.getElementById("content");
+      const boosterPacks = getBoosterPacksForSet(selectedSet.code);
+      if (state.setBoosterPackView && !boosterPacks.length) {
+        state.setBoosterPackView = false;
+      }
+      const showBoosterPackView = Boolean(state.setBoosterPackView && boosterPacks.length);
       const allCards = getSetCards(selectedSet, setConfig);
-      if (!allCards.length) {
+      if (!allCards.length && !showBoosterPackView) {
         content.innerHTML = `<div class="card-meta" style="padding:16px;">Loading ${escapeHtml(selectedSet.name || "set")}…</div>`;
         void ensureSetCardsLoaded(selectedSet.code)
           .then(() => {
@@ -8562,7 +9330,9 @@
         lastPrimedSetCode = setCodeKey;
         primeActiveSetPrices(selectedSet.code, selectedSet.name);
       }
-      const countLabel = `${visibleCards.length}/${vaultFilteredCards.length} cards`;
+      const countLabel = showBoosterPackView
+        ? `${boosterPacks.length} booster pack${boosterPacks.length === 1 ? "" : "s"}`
+        : `${visibleCards.length}/${vaultFilteredCards.length} cards`;
       const cardsSummaryLabel = `${allCards.length} total`;
       const releaseLabel = formatReleaseDate(selectedSet.releaseDate);
       const mostExpensive = getMostExpensiveCardInSet(allCards);
@@ -8583,7 +9353,9 @@
       const priceSortActive = state.setSort === "price" || state.setSort === "price-desc";
       const priceSortArrow = state.setSort === "price-desc" ? "▼" : "▲";
 
-      const cardsMarkup = renderSetCardsGridMarkup(visibleCards);
+      const cardsMarkup = showBoosterPackView
+        ? renderBoosterPackGridMarkup(boosterPacks, selectedSet.name)
+        : renderSetCardsGridMarkup(visibleCards);
 
       const setCoverUrl = resolveSetImage(selectedSet);
       const setCoverFallback = getBulbaFallbackImage(selectedSet.code);
@@ -8673,20 +9445,29 @@
                   `).join("")}
                 </select>
                 <button type="button" class="set-filter-tab ${priceSortActive ? "active" : ""}" data-sort-mode="price">Price ${priceSortActive ? priceSortArrow : ""}</button>
+                ${
+                  boosterPacks.length
+                    ? `<button type="button" id="setBoosterPackBtn" class="set-filter-tab${showBoosterPackView ? " active" : ""}" aria-pressed="${showBoosterPackView ? "true" : "false"}">Pack Arts</button>`
+                    : ""
+                }
                 <button id="backToSets" type="button" class="set-filter-tab">Back to Sets</button>
               </div>
             </div>
           </div>
-          <div class="sub">${countLabel}${state.setShinyVaultOnly && setHasShinyVaultFilter(selectedSet.code) ? " · Shiny Vault only" : ""} · sorted by ${
-            state.setSort === "name"
-              ? "name (A-Z)"
-              : state.setSort === "name-desc"
-                ? "name (Z-A)"
-                : state.setSort === "price"
-                  ? "price (low-high)"
-                  : state.setSort === "price-desc"
-                    ? "price (high-low)"
-                : "number"
+          <div class="sub">${
+            showBoosterPackView
+              ? countLabel
+              : `${countLabel}${state.setShinyVaultOnly && setHasShinyVaultFilter(selectedSet.code) ? " · Shiny Vault only" : ""} · sorted by ${
+                  state.setSort === "name"
+                    ? "name (A-Z)"
+                    : state.setSort === "name-desc"
+                      ? "name (Z-A)"
+                      : state.setSort === "price"
+                        ? "price (low-high)"
+                        : state.setSort === "price-desc"
+                          ? "price (high-low)"
+                          : "number"
+                }`
           }</div>
           ${cardsMarkup}
         </article>
@@ -8702,6 +9483,39 @@
       document.getElementById("backToSets").addEventListener("click", () => {
         exitSelectedSetToCatalog();
       });
+
+      const setBoosterPackBtn = document.getElementById("setBoosterPackBtn");
+      if (setBoosterPackBtn) {
+        setBoosterPackBtn.addEventListener("click", () => {
+          state.setBoosterPackView = !state.setBoosterPackView;
+          state.setRarityMenuOpen = false;
+          renderSelectedSetDetail();
+        });
+      }
+
+      if (showBoosterPackView) {
+        if (!allCards.length) {
+          void ensureSetCardsLoaded(selectedSet.code).catch(() => {});
+        }
+        const zoomOverlay = document.getElementById("imageZoomOverlay");
+        const zoomImg = zoomOverlay?.querySelector(".image-zoom-full");
+        if (zoomOverlay && zoomImg) {
+          document.body.appendChild(zoomOverlay);
+          const closePackZoom = () => zoomOverlay.classList.remove("open");
+          content.querySelectorAll("[data-booster-pack-src]").forEach((btn) => {
+            btn.addEventListener("click", () => {
+              const src = btn.getAttribute("data-booster-pack-src") || "";
+              if (!src) return;
+              zoomImg.src = src;
+              zoomImg.alt = btn.getAttribute("data-booster-pack-alt") || "Booster pack art";
+              zoomOverlay.classList.add("open");
+            });
+          });
+          zoomOverlay.addEventListener("click", (event) => {
+            if (event.target === zoomOverlay) closePackZoom();
+          });
+        }
+      }
 
       const setShinyVaultFilterBtn = document.getElementById("setShinyVaultFilterBtn");
       if (setShinyVaultFilterBtn) {
@@ -8993,7 +9807,16 @@
 
     function renderEraSidebar() {
       const eraList = document.getElementById("eraList");
-      const eras = Object.keys(setsByEra[state.language]);
+      let eras = Object.keys(setsByEra[getCatalogSetsLanguage()] || {});
+      if (isSealedCatalogMode()) {
+        eras = eras.filter((era) => {
+          const sets = (setsByEra[getCatalogSetsLanguage()] || {})[era] || [];
+          return sets.some((setEntry) => getSealedProductsForSet(setEntry.code).length > 0);
+        });
+        if (state.eraFilter !== "all" && !eras.includes(state.eraFilter)) {
+          state.eraFilter = "all";
+        }
+      }
       const buttons = [
         { key: "all", label: "All Eras" },
         ...eras.map((era) => ({ key: era, label: era }))
@@ -9044,18 +9867,90 @@
     function renderContent() {
       disposeBodyImageZoomOverlay();
       state.catalogSearchPreviewMatches = null;
-      if (state.selectedSetCode && state.selectedCardNumber) {
+      if (state.selectedSetCode && state.selectedCardNumber && !isSealedCatalogMode()) {
         renderCardPageDetail();
         return;
       }
 
       if (state.selectedSetCode) {
+        if (isSealedCatalogMode()) {
+          if (state.selectedSealedProductId) {
+            renderSealedProductDetail();
+            return;
+          }
+          renderSealedSetDetail();
+          return;
+        }
         renderSelectedSetDetail();
         return;
       }
 
       const content = document.getElementById("content");
       const eraSuffix = state.eraFilter !== "all" ? ` · ${escapeHtml(state.eraFilter)}` : "";
+
+      if (isSealedCatalogMode()) {
+        // Sealed mode keeps the same set/era catalog; search filters set names only.
+        const eraEntries = Object.entries(setsByEra[getCatalogSetsLanguage()] || {});
+        const filteredEras = eraEntries.filter(([era]) => state.eraFilter === "all" || era === state.eraFilter);
+        const blocks = filteredEras.map(([era, sets]) => {
+          const filteredSets = sets.filter((setEntry) => {
+            if (!getSealedProductsForSet(setEntry.code).length) return false;
+            return matchesQuery(`${setEntry.name} ${setEntry.code}`, state.query);
+          });
+          if (!filteredSets.length) return "";
+          return `
+            <article class="era-block">
+              <h2 class="era-title">${era}</h2>
+              <div class="sets-grid">
+                ${filteredSets.map((setEntry, setIndex) => {
+                  const imageUrl = resolveSetImage(setEntry);
+                  const fallbackImageUrl = resolveSetCoverFallbackUrl(setEntry);
+                  const symbolUrl = resolveSetSymbolUrl(setEntry.code);
+                  const alt = `${setEntry.name} cover image`;
+                  const zoomCoverClass =
+                    setEntry.code === "BS" ? " set-image--zoom-cover" : setEntry.code === "HSP" ? " set-image--blank-bg" : "";
+                  const eagerLoad = setIndex < 24 ? ' loading="eager" fetchpriority="high"' : ' loading="lazy"';
+                  const visual = imageUrl
+                    ? `<img class="set-image${zoomCoverClass}" src="${escapeHtml(imageUrl)}" alt="${escapeHtml(alt)}" decoding="async"${eagerLoad}${
+                      fallbackImageUrl && fallbackImageUrl !== imageUrl
+                        ? ` onerror="this.onerror=null;this.src='${escapeHtml(fallbackImageUrl)}'"`
+                        : ""
+                    } />`
+                    : `<div class="set-image placeholder">No image</div>`;
+                  const symbolLoad = setIndex < 24 ? ' loading="eager" fetchpriority="high"' : ' loading="lazy"';
+                  const symbolBadge = symbolUrl
+                    ? `<div class="set-symbol-row"><img class="set-symbol-image" src="${escapeHtml(symbolUrl)}" alt="${escapeHtml(`${setEntry.name} set symbol`)}" decoding="async" width="24" height="24"${symbolLoad} /></div>`
+                    : `<div class="set-symbol-row"></div>`;
+                  const sealedCount = getSealedProductsForSet(setEntry.code).length;
+                  return `
+                  <a href="#" class="set-card" data-set-code="${escapeHtml(setEntry.code)}" data-set-name="${escapeHtml(setEntry.name)}">
+                    ${visual}
+                    <h3 class="set-name">${escapeHtml(setEntry.name)}</h3>
+                    ${symbolBadge}
+                    <div class="set-meta">${sealedCount} sealed</div>
+                  </a>
+                `;
+                }).join("")}
+              </div>
+            </article>
+          `;
+        }).join("");
+
+        content.innerHTML = blocks || `<article class="era-block"><h2 class="era-title">No sets found</h2></article>`;
+        content.querySelectorAll(".set-card[data-set-code]").forEach((node) => {
+          node.addEventListener("click", (event) => {
+            event.preventDefault();
+            const code = node.dataset.setCode || "";
+            const name = node.dataset.setName || "";
+            if (!canOpenSet(code)) return;
+            state.catalogBrowseReturnSnapshot = null;
+            state.savedSetsCatalogScrollY = window.scrollY;
+            void openSetView(code, name);
+          });
+        });
+        updateCatalogSearchControls();
+        return;
+      }
 
       if (state.query.trim()) {
         const queryAtRender = state.query.trim();
@@ -9136,7 +10031,7 @@
         return;
       }
 
-      const eraEntries = Object.entries(setsByEra[state.language]);
+      const eraEntries = Object.entries(setsByEra[getCatalogSetsLanguage()] || {});
       const filteredEras = eraEntries.filter(([era]) => state.eraFilter === "all" || era === state.eraFilter);
 
       const blocks = filteredEras.map(([era, sets]) => {
@@ -9412,14 +10307,30 @@
       }
       if (toolbar) {
         toolbar.classList.toggle("focused", Boolean(state.selectedSetCode));
+        toolbar.classList.toggle("sealed-mode", isSealedCatalogMode());
       }
 
       const languageToggle = document.getElementById("languageToggle");
-      if (languageToggle) languageToggle.hidden = !JAPANESE_CATALOG_ENABLED;
+      if (languageToggle) languageToggle.hidden = false;
 
-      document.getElementById("langEnglish").classList.toggle("active", state.language === "english");
+      document
+        .getElementById("langEnglish")
+        .classList.toggle("active", state.catalogMode === "english" && state.language === "english");
+      const langSealed = document.getElementById("langSealed");
+      if (langSealed) langSealed.classList.toggle("active", state.catalogMode === "sealed");
       if (JAPANESE_CATALOG_ENABLED) {
         document.getElementById("langJapanese").classList.toggle("active", state.language === "japanese");
+      }
+
+      const artistSelect = document.getElementById("globalArtistFilterSelect");
+      if (artistSelect) artistSelect.hidden = isSealedCatalogMode();
+      const filterSearch = document.getElementById("filterSearch");
+      if (filterSearch) {
+        filterSearch.placeholder = isSealedCatalogMode() ? "Search sets..." : "Search cards...";
+      }
+      const topSearch = document.getElementById("topSearch");
+      if (topSearch) {
+        topSearch.placeholder = isSealedCatalogMode() ? "Search sets..." : "Search cards...";
       }
       renderEraSidebar();
       updateGlobalArtistFilterSelect();
@@ -9437,14 +10348,14 @@
       if (filter) filter.value = v;
     }
 
-    document.getElementById("langEnglish").addEventListener("click", () => {
+    function resetCatalogBrowseState() {
       clearCatalogSearchTimers();
       invalidateCatalogSearchIndex();
-      state.language = "english";
       state.eraFilter = "all";
       state.selectedSetCode = null;
       state.selectedCardNumber = null;
       state.setCardQuery = "";
+      state.query = "";
       state.catalogArtistFilter = "all";
       state.globalSearchSortMode = "set";
       state.globalSearchSetOrder = "asc";
@@ -9453,26 +10364,33 @@
       state.savedSetGridScrollY = null;
       state.savedSetsCatalogScrollY = null;
       state.catalogBrowseReturnSnapshot = null;
+      state.setBoosterPackView = false;
+      state.selectedSealedProductId = null;
+      syncSearchInputsFromState();
+    }
+
+    document.getElementById("langEnglish").addEventListener("click", () => {
+      resetCatalogBrowseState();
+      state.language = "english";
+      state.catalogMode = "english";
       loadSetCardManifest("english").finally(renderAll);
+    });
+
+    document.getElementById("langSealed").addEventListener("click", () => {
+      resetCatalogBrowseState();
+      state.language = "english";
+      state.catalogMode = "sealed";
+      const loadPromise = state.sealedCatalogLoaded
+        ? Promise.resolve()
+        : loadSealedProductsCatalog();
+      loadPromise.finally(renderAll);
     });
 
     if (JAPANESE_CATALOG_ENABLED) {
       document.getElementById("langJapanese").addEventListener("click", () => {
-        clearCatalogSearchTimers();
-        invalidateCatalogSearchIndex();
+        resetCatalogBrowseState();
         state.language = "japanese";
-        state.eraFilter = "all";
-        state.selectedSetCode = null;
-        state.selectedCardNumber = null;
-        state.setCardQuery = "";
-        state.catalogArtistFilter = "all";
-        state.globalSearchSortMode = "set";
-        state.globalSearchSetOrder = "asc";
-        state.globalSearchCardNumberOrder = "asc";
-        state.globalSearchPriceOrder = "asc";
-        state.savedSetGridScrollY = null;
-        state.savedSetsCatalogScrollY = null;
-        state.catalogBrowseReturnSnapshot = null;
+        state.catalogMode = "english";
         Promise.all([loadSetCatalog("japanese"), loadSetCardManifest("japanese")]).finally(renderAll);
       });
     }
@@ -9538,6 +10456,15 @@
         event.preventDefault();
         event.stopImmediatePropagation();
         zoomOverlay.classList.remove("open");
+        return true;
+      }
+
+      if (state.selectedSealedProductId) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        state.selectedSealedProductId = null;
+        renderAll();
+        restoreSavedSetGridScroll();
         return true;
       }
 
@@ -9709,6 +10636,8 @@
       try {
         await Promise.all([
           loadPokesymbolsManifest(),
+          loadBoosterPackArtManifest(),
+          loadSealedProductsCatalog(),
           loadSetImageManifest(),
           loadCardNicknames(),
           loadSetCatalog(state.language),

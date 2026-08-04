@@ -6,6 +6,7 @@
  *   node scripts/upload-static-assets-to-r2.js --dry-run
  *   node scripts/upload-static-assets-to-r2.js --only pokesymbols
  *   node scripts/upload-static-assets-to-r2.js --only set-images
+ *   node scripts/upload-static-assets-to-r2.js --only pricecharting-sealed
  */
 const fs = require("fs");
 const fsp = require("fs/promises");
@@ -18,7 +19,12 @@ const CONCURRENCY = Math.max(1, Number(process.env.UPLOAD_CONCURRENCY) || 8);
 
 const ASSET_ROOTS = [
   { name: "pokesymbols", dir: path.join(ROOT, "backend", "data", "pokesymbols"), keyPrefix: "pokesymbols" },
-  { name: "set-images", dir: path.join(ROOT, "backend", "data", "set-images"), keyPrefix: "set-images" }
+  { name: "set-images", dir: path.join(ROOT, "backend", "data", "set-images"), keyPrefix: "set-images" },
+  {
+    name: "pricecharting-sealed",
+    dir: path.join(ROOT, "backend", "data", "pricecharting-sealed-images"),
+    keyPrefix: "pricecharting-sealed"
+  }
 ];
 
 function wranglerJsPath() {

@@ -118,6 +118,20 @@ function slugifyForPriceCharting(text) {
     .replace(/^-+|-+$/g, "");
 }
 
+/** Keep & / ' so console slugs match PriceCharting (scarlet-&-violet, champion's-path). */
+function slugifyForPriceChartingConsole(text) {
+  return decodeHtmlEntities(text)
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/&/g, "\u0001")
+    .replace(/'/g, "\u0002")
+    .replace(/[^a-z0-9\u0001\u0002]+/g, "-")
+    .replace(/\u0001/g, "&")
+    .replace(/\u0002/g, "'")
+    .replace(/^-+|-+$/g, "");
+}
+
 function isReverseHoloProduct(title = "", gameSlug = "") {
   return /reverse\s*holo/i.test(String(title || "")) || /reverse-holo/i.test(String(gameSlug || ""));
 }
@@ -277,6 +291,18 @@ function resolveConsoleSlugCandidates(setCode = "", setName = "") {
   const out = [];
   const primary = resolveConsoleSlug(setCode, setName);
   if (primary) out.push(primary);
+  const specialNameSlug = slugifyForPriceChartingConsole(setName);
+  if (specialNameSlug) {
+    const special = specialNameSlug.startsWith("pokemon-")
+      ? specialNameSlug
+      : `pokemon-${specialNameSlug}`;
+    if (!out.includes(special)) out.push(special);
+  }
+  const plainNameSlug = slugifyForPriceCharting(setName);
+  if (plainNameSlug) {
+    const plain = plainNameSlug.startsWith("pokemon-") ? plainNameSlug : `pokemon-${plainNameSlug}`;
+    if (!out.includes(plain)) out.push(plain);
+  }
   const code = String(setCode || "").trim().toUpperCase();
   if ((POKEMON_PROMO_SET_CODES.has(code) || /promo/i.test(String(setName || ""))) && !out.includes("pokemon-promo")) {
     out.push("pokemon-promo");
@@ -1151,12 +1177,178 @@ async function fetchPriceChartingCardDetailsFromProductUrl(
   };
 }
 
+function parsePriceChartingProductUrlParts(productUrl = "") {
+  const url = String(productUrl || "").trim();
+  const match = url.match(/pricecharting\.com\/game\/([^/?#]+)\/([^/?#]+)/i);
+  if (!match) return null;
+  const decodePath = (value) => {
+    const raw = decodeHtmlEntities(value).trim();
+    try {
+      return decodeURIComponent(raw);
+    } catch {
+      return raw;
+    }
+  };
+  return {
+    consoleSlug: decodePath(match[1]),
+    gameSlug: decodePath(match[2]),
+    productUrl: buildPriceChartingProductUrl(decodePath(match[1]), decodePath(match[2])) || url.split("?")[0]
+  };
+}
+
+function parseTcgplayerProductUrlFromGameHtml(html = "") {
+  const text = String(html || "");
+  const linkMatch = text.match(/id="js-tcg-id-link"[^>]*>(\d{4,})<\/a>/i);
+  if (linkMatch) {
+    return `https://www.tcgplayer.com/product/${linkMatch[1]}`;
+  }
+  const encoded = text.match(/tcgplayer\.com%2Fproduct%2F(\d{4,})/i);
+  if (encoded) {
+    return `https://www.tcgplayer.com/product/${encoded[1]}`;
+  }
+  const direct = text.match(/https?:\/\/(?:www\.)?tcgplayer\.com\/product\/(\d{4,})/i);
+  if (direct) {
+    return `https://www.tcgplayer.com/product/${direct[1]}`;
+  }
+  return "";
+}
+
+function buildEbaySearchUrlForSealedTitle(title = "", setName = "") {
+  const terms = [];
+  const productTitle = String(title || "").trim();
+  const set = String(setName || "").trim();
+  if (productTitle) terms.push(...productTitle.split(/\s+/).filter(Boolean));
+  if (set && !productTitle.toLowerCase().includes(set.toLowerCase())) {
+    terms.push(...set.split(/\s+/).filter(Boolean));
+  }
+  if (!terms.length) return "";
+  return `https://www.ebay.com/sch/i.html?_nkw=${terms.map(encodeURIComponent).join("+")}`;
+}
+
+async function fetchPriceChartingSealedProductBundle({
+  productUrl = "",
+  productId = "",
+  productTitle = "",
+  setName = ""
+} = {}) {
+  const parts = parsePriceChartingProductUrlParts(productUrl);
+  if (!parts) {
+    return {
+      ok: false,
+      error: "Not a PriceCharting product URL",
+      series: [],
+      soldListings: [],
+      soldGuides: [],
+      gradedGuides: [],
+      productUrl: String(productUrl || "").trim(),
+      ungradedPrice: null,
+      tcgplayerUrl: "",
+      ebayUrl: ""
+    };
+  }
+
+  const product = {
+    productId: String(productId || "").trim(),
+    consoleSlug: parts.consoleSlug,
+    gameSlug: parts.gameSlug,
+    productUrl: parts.productUrl
+  };
+
+  let pageData;
+  let html = "";
+  try {
+    html = await fetchPriceChartingHtml(product.productUrl);
+    if (!html || /Page Not Found|404 Not Found/i.test(html.slice(0, 1200))) {
+      throw new Error("PriceCharting product page not found");
+    }
+    const chartData = parseChartDataFromGameHtml(html);
+    pageData = {
+      chartData: chartData && typeof chartData === "object" ? chartData : null,
+      category: parseCategoryFromGameHtml(html),
+      consoleSlug: product.consoleSlug,
+      soldListings: parseSoldListingsFromGameHtml(html),
+      gradedGuide: parseGradedGuideFromGameHtml(html),
+      productUrl: product.productUrl
+    };
+    if (!product.productId) {
+      product.productId = parseProductIdFromGameHtml(html) || "";
+    }
+  } catch (err) {
+    return {
+      ok: false,
+      error: err?.message || "PriceCharting page fetch failed",
+      series: [],
+      soldListings: [],
+      soldGuides: [],
+      gradedGuides: [],
+      productUrl: product.productUrl,
+      ungradedPrice: null,
+      tcgplayerUrl: "",
+      ebayUrl: buildEbaySearchUrlForSealedTitle(productTitle, setName)
+    };
+  }
+
+  const series = pageData?.chartData
+    ? chartDataToSeries(pageData.chartData, 0, {
+        productId: product.productId,
+        category: pageData.category,
+        consoleSlug: pageData.consoleSlug || product.consoleSlug
+      }).sort(comparePriceChartingSeries)
+    : [];
+
+  const gradedGuides = [];
+  const soldGuides = [];
+  if (pageData?.gradedGuide?.grades?.length) {
+    gradedGuides.push({
+      variant: "normal",
+      title: pageData.gradedGuide.title,
+      grades: pageData.gradedGuide.grades,
+      productUrl: product.productUrl
+    });
+  }
+  if (pageData?.soldListings?.length) {
+    soldGuides.push({
+      variant: "normal",
+      title: pageData.gradedGuide?.title || String(productTitle || "").trim() || "Sealed",
+      listings: pageData.soldListings,
+      productUrl: product.productUrl
+    });
+  }
+
+  const ungradedPrice = extractUngradedPriceFromPageData(pageData);
+  const tcgplayerUrl = parseTcgplayerProductUrlFromGameHtml(html);
+  const ebayUrl =
+    buildEbaySearchUrlForSealedTitle(productTitle, setName) ||
+    (() => {
+      const m = html.match(/https?:\/\/(?:www\.)?ebay\.com\/sch\/i\.html\?[^"'\\\s]+/i);
+      return m ? decodeHtmlEntities(m[0]) : "";
+    })();
+
+  return {
+    ok: Boolean(series.length || soldGuides.length || Number.isFinite(ungradedPrice)),
+    productId: product.productId,
+    productUrl: product.productUrl,
+    series,
+    soldListings: pageData?.soldListings || [],
+    soldGuides,
+    gradedGuides,
+    ungradedPrice: Number.isFinite(ungradedPrice) ? ungradedPrice : null,
+    priceText: Number.isFinite(ungradedPrice) ? `$${Number(ungradedPrice).toFixed(2)}` : "",
+    tcgplayerUrl,
+    ebayUrl,
+    source: "pricecharting",
+    rangeKey: "all",
+    rangeLabel: "All Time"
+  };
+}
+
 module.exports = {
   fetchPriceChartingMarketHistoryForCard,
   fetchPriceChartingCardDetailsForCard,
   fetchPriceChartingCardDetailsFromProductUrl,
   fetchPriceChartingUngradedPriceForCard,
   fetchPriceChartingUngradedPriceFromProductUrl,
+  fetchPriceChartingSealedProductBundle,
   resolveConsoleSlug,
   resolveConsoleSlugCandidates,
   loadSetSlugsByCode,

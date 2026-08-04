@@ -24,6 +24,11 @@ const {
 const { fetchCardImageBytes } = require("./lib/card-image-remote");
 const { isLfsPointer, materializeLfsFile, materializeDirectoryIfNeeded } = require("./lib/github-lfs-materialize");
 const { fetchPokesymbolBytes, hydratePokesymbolsFromCdnIfNeeded } = require("./lib/pokesymbols-cdn");
+const {
+  readSealedCatalog,
+  getSealedProductsForSetCode,
+  SEALED_IMAGE_DIR
+} = require("./lib/pricecharting-sealed");
 const { isSelfHosted } = require("./lib/self-hosted");
 const {
   isDetailsCatalogComplete,
@@ -53,6 +58,7 @@ const {
   fetchPriceChartingUngradedPriceForCard,
   fetchPriceChartingUngradedPriceFromProductUrl,
   fetchPriceChartingCardDetailsFromProductUrl,
+  fetchPriceChartingSealedProductBundle,
   comparePriceChartingSeries,
   parsePriceChartingConsoleSlug,
   getConsoleIndex,
@@ -137,9 +143,12 @@ const DATA_FILE = path.join(DATA_DIR, "store.json");
 const SET_IMAGE_DIR = path.join(DATA_DIR, "set-images");
 const POKESYMBOLS_DIR = path.join(DATA_DIR, "pokesymbols");
 const POKESYMBOLS_MANIFEST_FILE = path.join(POKESYMBOLS_DIR, "manifest.json");
+const BOOSTER_PACK_ART_MANIFEST_FILE = path.join(POKESYMBOLS_DIR, "booster-pack-art-manifest.json");
 const POKESYMBOLS_JSON_CACHE_CONTROL = "public, max-age=3600, stale-while-revalidate=86400";
 let pokesymbolsManifestMem = null;
 let pokesymbolsManifestMemMtime = 0;
+let boosterPackArtManifestMem = null;
+let boosterPackArtManifestMemMtime = 0;
 let setImageManifestMem = null;
 let setImageManifestMemMtime = 0;
 
@@ -177,6 +186,24 @@ async function getPokesymbolsManifestCached() {
   pokesymbolsManifestMem = sanitizePokesymbolsManifest(JSON.parse(raw));
   pokesymbolsManifestMemMtime = mtimeMs;
   return pokesymbolsManifestMem;
+}
+
+async function getBoosterPackArtManifestCached() {
+  let mtimeMs = 0;
+  try {
+    const stat = await fsp.stat(BOOSTER_PACK_ART_MANIFEST_FILE);
+    mtimeMs = stat.mtimeMs;
+    if (boosterPackArtManifestMem && mtimeMs === boosterPackArtManifestMemMtime) {
+      return boosterPackArtManifestMem;
+    }
+  } catch {
+    throw new Error("Booster pack art manifest missing");
+  }
+  const raw = await fsp.readFile(BOOSTER_PACK_ART_MANIFEST_FILE, "utf8");
+  const parsed = JSON.parse(raw);
+  boosterPackArtManifestMem = parsed && typeof parsed === "object" ? parsed : {};
+  boosterPackArtManifestMemMtime = mtimeMs;
+  return boosterPackArtManifestMem;
 }
 const CARD_IMAGE_DIR = path.join(DATA_DIR, "card-images");
 const CARD_IMAGE_JAPANESE_DIR = path.join(DATA_DIR, "card-images-japanese");
@@ -512,6 +539,8 @@ async function ensureStore() {
   await fsp.mkdir(POKESYMBOLS_DIR, { recursive: true });
   await fsp.mkdir(path.join(POKESYMBOLS_DIR, "symbols"), { recursive: true });
   await fsp.mkdir(path.join(POKESYMBOLS_DIR, "logos"), { recursive: true });
+  await fsp.mkdir(path.join(POKESYMBOLS_DIR, "booster-pack-art"), { recursive: true });
+  await fsp.mkdir(SEALED_IMAGE_DIR, { recursive: true });
   await fsp.mkdir(CARD_IMAGE_DIR, { recursive: true });
   await fsp.mkdir(CARD_IMAGE_JAPANESE_DIR, { recursive: true });
   await fsp.mkdir(SHOWCASE_AVATAR_DIR, { recursive: true });
@@ -3115,22 +3144,39 @@ function ensureUserBinder(user) {
 /** Binder pages from the user's Collection for public Showcase (includes incomplete pages). */
 function publicShowcaseBinderPages(user) {
   const binder = ensureUserBinder(user);
+  const showcase = ensureUserShowcase(user);
+  const showValues = showcase.showValues !== false;
+  const collectionById = new Map();
+  if (showValues) {
+    for (const item of getCollectionItemsForUser(user?.id)) {
+      if (!item?.id) continue;
+      collectionById.set(String(item.id), item);
+    }
+  }
   return binder.pages
     .map((page, index) => {
       const rawSlots = Array.isArray(page.slots) ? page.slots : [];
       const size = normalizeBinderPageSize(page.size, rawSlots.length);
       const slots = Array.from({ length: size }, (_, slotIndex) => {
         const slot = rawSlots[slotIndex] || null;
-        return slot
-          ? {
-              name: slot.name,
-              setCode: slot.setCode || "",
-              setName: slot.setName || "",
-              cardNumber: slot.cardNumber || "",
-              imageUrl: slot.imageUrl || "",
-              inverted: slot.inverted === true
-            }
-          : null;
+        if (!slot) return null;
+        const collectionItemId = String(slot.collectionItemId || "").trim();
+        const fromCollection = collectionItemId ? collectionById.get(collectionItemId) : null;
+        const unitFromCollection = fromCollection ? effectiveItemValue(fromCollection) : 0;
+        const out = {
+          name: slot.name,
+          setCode: slot.setCode || "",
+          setName: slot.setName || "",
+          cardNumber: slot.cardNumber || "",
+          imageUrl: slot.imageUrl || "",
+          inverted: slot.inverted === true,
+          collectionItemId,
+          source: slot.source === "catalog" ? "catalog" : "collection"
+        };
+        if (showValues && unitFromCollection > 0) {
+          out.unitValue = Number(unitFromCollection.toFixed(2));
+        }
+        return out;
       });
       const title = normalizeBinderPageTitle(page.title);
       const out = { pageNumber: index + 1, size, slots };
@@ -10363,6 +10409,66 @@ async function route(req, res) {
     return;
   }
 
+  if (pathname === "/api/sets/sealed" && req.method === "GET") {
+    try {
+      const catalog = await readSealedCatalog();
+      const setCode = String(
+        parsedUrl.searchParams.get("setCode") || parsedUrl.searchParams.get("code") || ""
+      )
+        .trim()
+        .toUpperCase();
+      if (setCode) {
+        const products = getSealedProductsForSetCode(catalog, setCode);
+        const row = catalog.byCode && catalog.byCode[setCode] ? catalog.byCode[setCode] : null;
+        json(
+          res,
+          200,
+          {
+            ok: true,
+            setCode,
+            name: row?.name || "",
+            consoleSlug: row?.consoleSlug || "",
+            productCount: products.length,
+            products,
+            generatedAt: catalog.generatedAt || null,
+            source: catalog.source || "https://www.pricecharting.com/category/pokemon-cards"
+          },
+          { "Cache-Control": API_CATALOG_CACHE_CONTROL }
+        );
+        return;
+      }
+      json(
+        res,
+        200,
+        {
+          ok: true,
+          source: catalog.source,
+          credit: catalog.credit,
+          generatedAt: catalog.generatedAt,
+          setCount: catalog.setCount,
+          consoleCount: catalog.consoleCount,
+          productCount: catalog.productCount,
+          byCode: catalog.byCode && typeof catalog.byCode === "object" ? catalog.byCode : {}
+        },
+        { "Cache-Control": API_CATALOG_CACHE_CONTROL }
+      );
+    } catch (err) {
+      json(
+        res,
+        200,
+        {
+          ok: false,
+          byCode: {},
+          products: [],
+          message: "Run: node backend/scripts/import-pricecharting-sealed.js",
+          error: err.message || "Sealed catalog missing"
+        },
+        { "Cache-Control": "no-store" }
+      );
+    }
+    return;
+  }
+
   if (pathname === "/api/sets/card-details" && req.method === "GET") {
     try {
       const setCode = parsedUrl.searchParams.get("setCode") || parsedUrl.searchParams.get("code") || "";
@@ -10493,6 +10599,43 @@ async function route(req, res) {
         ok: false,
         error: err.message || "Failed to load PriceCharting card details",
         soldListings: [],
+        gradedGuides: []
+      });
+    }
+    return;
+  }
+
+  if (pathname === "/api/sets/sealed-product-details" && req.method === "GET") {
+    try {
+      const productUrl = String(parsedUrl.searchParams.get("productUrl") || "").trim();
+      const productId = String(parsedUrl.searchParams.get("productId") || "").trim();
+      const productTitle = String(parsedUrl.searchParams.get("productTitle") || "").trim();
+      const setName = String(parsedUrl.searchParams.get("setName") || "").trim();
+      if (!productUrl) {
+        json(res, 400, {
+          ok: false,
+          error: "productUrl is required",
+          series: [],
+          soldListings: [],
+          soldGuides: [],
+          gradedGuides: []
+        });
+        return;
+      }
+      const payload = await fetchPriceChartingSealedProductBundle({
+        productUrl,
+        productId,
+        productTitle,
+        setName
+      });
+      json(res, payload.ok ? 200 : 404, payload);
+    } catch (err) {
+      json(res, 500, {
+        ok: false,
+        error: err.message || "Failed to load sealed product details",
+        series: [],
+        soldListings: [],
+        soldGuides: [],
         gradedGuides: []
       });
     }
@@ -11839,8 +11982,47 @@ async function route(req, res) {
     return;
   }
 
+  if (pathname === "/api/pokesymbols/booster-pack-art" && req.method === "GET") {
+    try {
+      const parsed = await getBoosterPackArtManifestCached();
+      json(
+        res,
+        200,
+        {
+          ok: true,
+          source: parsed.source,
+          credit: parsed.credit,
+          generatedAt: parsed.generatedAt,
+          setCount: parsed.setCount,
+          bySlug: parsed.bySlug && typeof parsed.bySlug === "object" ? parsed.bySlug : {},
+          byCode: parsed.byCode && typeof parsed.byCode === "object" ? parsed.byCode : {}
+        },
+        { "Cache-Control": POKESYMBOLS_JSON_CACHE_CONTROL }
+      );
+    } catch {
+      json(
+        res,
+        200,
+        {
+          ok: false,
+          source: "https://pokesymbols.com/tcg/booster-pack-art",
+          byCode: {},
+          bySlug: {},
+          message: "Run: node backend/scripts/download-booster-pack-art.js"
+        },
+        { "Cache-Control": POKESYMBOLS_JSON_CACHE_CONTROL }
+      );
+    }
+    return;
+  }
+
   if (pathname.startsWith("/pokesymbols/") && req.method === "GET") {
     await sendImageFromDir(res, pathname, "pokesymbols", POKESYMBOLS_DIR);
+    return;
+  }
+
+  if (pathname.startsWith("/pricecharting-sealed/") && req.method === "GET") {
+    await sendImageFromDir(res, pathname, "pricecharting-sealed", SEALED_IMAGE_DIR);
     return;
   }
 
