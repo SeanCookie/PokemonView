@@ -91,9 +91,18 @@ function normalizeAlert(raw, { userId } = {}) {
   const cardName = String(raw.cardName || raw.card || "").trim();
   const setName = String(raw.setName || "").trim();
   const watchlistCardId = String(raw.watchlistCardId || raw.cardId || "").trim();
+  const productId = String(raw.productId || "").trim();
+  const productUrl = String(raw.productUrl || raw.priceChartingUrl || "").trim();
+  const kindRaw = String(raw.kind || "").trim().toLowerCase();
+  const kind =
+    kindRaw === "sealed" ||
+    watchlistCardId.startsWith("sealed:") ||
+    Boolean(productId)
+      ? "sealed"
+      : "single";
   const price = clampNumber(raw.price);
   if (!Number.isFinite(price) || price <= 0) return null;
-  if (!setCode && !cardName && !watchlistCardId) return null;
+  if (!setCode && !cardName && !watchlistCardId && !productId) return null;
 
   const condition = normalizeCondition(raw.condition);
   const recurrence = normalizeRecurrence(raw.recurrence || raw.trigger);
@@ -131,12 +140,15 @@ function normalizeAlert(raw, { userId } = {}) {
     id,
     userId: uid,
     watchlistCardId,
+    kind,
     setCode,
-    cardNo,
+    cardNo: kind === "sealed" ? "" : cardNo,
     cardName,
     setName,
+    productId: kind === "sealed" ? productId || watchlistCardId.replace(/^sealed:/i, "") : "",
+    productUrl: kind === "sealed" ? productUrl : "",
     cardLabel,
-    cardKey: cardIdentityKey({ setCode, cardNo, cardName }),
+    cardKey: cardIdentityKey({ setCode, cardNo: kind === "sealed" ? "" : cardNo, cardName }),
     price: Number(price.toFixed(4)),
     condition,
     recurrence,

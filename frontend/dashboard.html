@@ -108,6 +108,158 @@
     .kpi-value { font-size: 20px; font-weight: 700; }
     .kpi-value.up { color: var(--up); }
     .kpi-value.down { color: var(--down); }
+    .kpi-sub { font-size: 10px; color: var(--muted); min-height: 1.2em; }
+
+    .collection-value-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    .collection-value-title {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .cvh-filters {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 1px;
+      justify-content: flex-end;
+    }
+
+    .cvh-filter {
+      border: none;
+      background: transparent;
+      color: #787b86;
+      border-radius: 2px;
+      padding: 5px 9px;
+      font-size: 11px;
+      font-weight: 500;
+      font-family: inherit;
+      line-height: 1.2;
+      cursor: pointer;
+    }
+
+    .cvh-filter:hover {
+      color: #d1d4dc;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .cvh-filter.active {
+      color: #d1d4dc;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .cvh-chart-wrap {
+      position: relative;
+      margin-top: 12px;
+      border: 1px solid #2a2e39;
+      border-radius: 8px;
+      background: #131722;
+      min-height: 220px;
+      overflow: hidden;
+    }
+
+    .cvh-chart-wrap[hidden],
+    .cvh-filters[hidden],
+    .cvh-coverage[hidden] {
+      display: none !important;
+    }
+
+    .cvh-chart-wrap.is-loading .cvh-chart {
+      opacity: 0.35;
+    }
+
+    .cvh-chart {
+      display: block;
+      width: 100%;
+      height: 228px;
+      touch-action: none;
+      cursor: crosshair;
+    }
+
+    .cvh-chart.cvh-cursor-grab {
+      cursor: grab;
+    }
+
+    .cvh-chart.cvh-cursor-grabbing {
+      cursor: grabbing;
+    }
+
+    .cvh-chart.cvh-cursor-ns {
+      cursor: ns-resize;
+    }
+
+    .cvh-chart.cvh-cursor-ew {
+      cursor: ew-resize;
+    }
+
+    .cvh-chart-msg {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
+      padding: 10px;
+      z-index: 1;
+      pointer-events: none;
+      text-align: center;
+      color: #787b86;
+      font-size: 12px;
+    }
+
+    .cvh-chart-tip {
+      position: absolute;
+      z-index: 3;
+      max-width: min(260px, calc(100% - 16px));
+      padding: 8px 10px;
+      border: 1px solid #3d4f6a;
+      border-radius: 8px;
+      background: rgba(12, 18, 28, 0.96);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      color: #e9f1ff;
+      font-size: 11px;
+      line-height: 1.35;
+      pointer-events: none;
+      transform: translate(-50%, calc(-100% - 10px));
+    }
+
+    .cvh-chart-tip[hidden] {
+      display: none !important;
+    }
+
+    .cvh-chart-tip-date {
+      margin: 0 0 4px;
+      color: #f5d951;
+      font-weight: 700;
+    }
+
+    .cvh-chart-tip-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 3px;
+    }
+
+    .cvh-chart-tip-list li {
+      color: #cfe0ff;
+      overflow-wrap: anywhere;
+    }
+
+    .cvh-coverage {
+      margin: 8px 0 0;
+      font-size: 11px;
+      color: var(--muted);
+    }
 
     .collection-toolbar {
       display: flex;
@@ -131,17 +283,118 @@
       max-width: 360px;
     }
 
-    .collection-card {
-      position: relative;
+    #itemsList.showcase-grid {
+      grid-template-columns: repeat(auto-fill, minmax(188px, 1fr));
+      align-items: stretch;
     }
 
-    .collection-card-prices {
+    .collection-card.showcase-card {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      height: 100%;
+    }
+
+    .collection-card.showcase-card:hover {
+      transform: none;
+    }
+
+    .collection-card .collection-card-link {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+
+    /* Match Sets card-thumb-frame: cover + rounded clip hides white scan corners. */
+    .collection-card .showcase-card-thumb {
+      aspect-ratio: 63 / 88;
+      width: 100%;
+      border-radius: 5.2% / 3.7%;
+      background: #0a101a;
+      padding: 0;
+      overflow: hidden;
+      line-height: 0;
+      display: block;
+      isolation: isolate;
+    }
+
+    .collection-card--sealed .showcase-card-thumb {
+      /* Same pocket as singles so name/meta lines align in the grid */
+      aspect-ratio: 63 / 88;
+      border-radius: 5.2% / 3.7%;
+    }
+
+    .collection-card .showcase-card-thumb img,
+    .collection-card .collection-card-thumb-frame {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .collection-card .collection-card-thumb-frame {
+      width: 100%;
+      height: 100%;
+      border-radius: inherit;
+      overflow: hidden;
+      background: #0a101a;
+      line-height: 0;
+    }
+
+    .collection-card .showcase-card-thumb img {
+      object-fit: cover;
+      object-position: center;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+    }
+
+    .collection-card .showcase-card-thumb .placeholder {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      place-items: center;
+      color: #5f7394;
+      font-size: 11px;
+      text-align: center;
+      padding: 8px;
+      box-sizing: border-box;
+    }
+
+    .collection-card .showcase-card-body {
+      padding: 8px 10px 6px;
+      display: grid;
+      gap: 2px;
+      min-height: 52px;
+      align-content: start;
+    }
+
+    .collection-card .showcase-card-name {
+      overflow-wrap: anywhere;
+      margin: 0;
+    }
+
+    .collection-card .showcase-card-meta {
+      margin: 0;
+      min-height: 1.35em;
+    }
+
+    .collection-card-footer {
+      margin-top: auto;
+      padding: 8px 10px 10px;
+      display: grid;
+      gap: 8px;
+      border-top: 1px solid rgba(38, 54, 79, 0.65);
+      min-width: 0;
+    }
+
+    .collection-card-footer-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 8px;
-      margin-top: 2px;
-      flex-wrap: wrap;
+      min-width: 0;
     }
 
     .collection-card-qty {
@@ -196,51 +449,159 @@
       margin: 0;
     }
 
-    .collection-card-prices-right {
-      display: inline-flex;
-      align-items: center;
-      justify-content: flex-end;
-      gap: 8px;
-      margin-left: auto;
+    .collection-card-footer .showcase-card-value {
+      margin-top: 0;
+      text-align: right;
+      font-size: 13px;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+
+    .collection-card-value-total {
+      color: var(--muted);
+      font-weight: 500;
+      font-size: 11px;
+    }
+
+    .collection-card-value-block {
+      display: grid;
+      justify-items: end;
+      gap: 2px;
       min-width: 0;
     }
 
-    .collection-card-prices .showcase-card-value {
-      margin-top: 0;
-      text-align: right;
+    .collection-card-delta {
+      font-size: 10px;
+      line-height: 1.2;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      color: var(--muted);
+      white-space: nowrap;
     }
 
-    .collection-cost-basis {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 11px;
+    .collection-card-delta.up {
+      color: var(--up);
+    }
+
+    .collection-card-delta.down {
+      color: var(--down);
+    }
+
+    .collection-card-delta-pct {
       color: var(--muted);
       font-weight: 500;
     }
 
-    .collection-cost-basis input {
-      width: 78px;
-      height: 28px;
+    .collection-card-field {
+      display: grid;
+      grid-template-columns: 58px minmax(0, 1fr);
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+      min-width: 0;
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .collection-card-field--stack {
+      grid-template-columns: 1fr;
+      gap: 4px;
+    }
+
+    .collection-card-field > span {
+      min-width: 0;
+    }
+
+    .collection-card-field input[type="number"] {
+      width: 100%;
+      min-width: 0;
+      height: 30px;
       border: 1px solid var(--border);
       border-radius: 6px;
       background: #0e1623;
       color: var(--text);
-      padding: 0 6px;
+      padding: 0 8px;
       font-size: 12px;
       font-family: inherit;
+      text-align: right;
       font-variant-numeric: tabular-nums;
       -moz-appearance: textfield;
       appearance: textfield;
+      cursor: text;
+      color-scheme: dark;
+      box-sizing: border-box;
     }
 
-    .collection-cost-basis input::-webkit-outer-spin-button,
-    .collection-cost-basis input::-webkit-inner-spin-button {
+    .collection-date-input-wrap {
+      position: relative;
+      display: flex;
+      align-items: stretch;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .collection-date-input-wrap input[data-cost-date-id] {
+      flex: 1 1 auto;
+      min-width: 0;
+      width: 100%;
+      height: 30px;
+      border: 1px solid var(--border);
+      border-right: 0;
+      border-radius: 6px 0 0 6px;
+      background: #0e1623;
+      color: var(--text);
+      padding: 0 8px;
+      font-size: 12px;
+      font-family: inherit;
+      font-variant-numeric: tabular-nums;
+      cursor: text;
+      box-sizing: border-box;
+    }
+
+    .collection-date-native {
+      position: absolute;
+      width: 0;
+      height: 0;
+      opacity: 0;
+      border: 0;
+      padding: 0;
+      margin: 0;
+      overflow: hidden;
+      pointer-events: none;
+      color-scheme: dark;
+    }
+
+    .collection-date-picker-btn {
+      flex: 0 0 30px;
+      width: 30px;
+      height: 30px;
+      margin: 0;
+      padding: 0;
+      border: 1px solid var(--border);
+      border-radius: 0 6px 6px 0;
+      background: #121a27;
+      color: #9ab0d1;
+      font-size: 12px;
+      font-family: inherit;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .collection-date-picker-btn:hover {
+      color: #e9f1ff;
+      background: #18263a;
+      border-color: #4a5f7a;
+    }
+
+    .collection-card-field input[type="number"]::-webkit-outer-spin-button,
+    .collection-card-field input[type="number"]::-webkit-inner-spin-button {
       -webkit-appearance: none;
       margin: 0;
     }
 
-    .collection-cost-basis input:focus {
+    .collection-card-field input:focus {
       outline: none;
       border-color: #4f6e9c;
     }
@@ -1045,6 +1406,263 @@
       box-sizing: border-box;
     }
 
+    /* Match Poke View "Add to Watchlist" picker */
+    .add-card-wl-panel {
+      padding: 12px;
+      border-radius: 12px;
+      background: #0f1520;
+      border-color: #2c394d;
+      display: grid;
+      gap: 10px;
+      overflow: hidden;
+    }
+
+    .add-card-wl-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .add-card-wl-head-text {
+      min-width: 0;
+      display: grid;
+      gap: 6px;
+    }
+
+    .add-card-wl-title {
+      margin: 0;
+      font-size: 15px;
+    }
+
+    .add-card-wl-sub {
+      margin: 0;
+      color: #9ab0d1;
+      font-size: 12px;
+    }
+
+    .add-card-set-sort-btn {
+      flex: 0 0 auto;
+      border: 1px solid #2f3d50;
+      border-radius: 8px;
+      background: #121a27;
+      color: #9ab0d1;
+      padding: 7px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .add-card-set-sort-btn:hover {
+      border-color: #4a5f7a;
+      color: #cfe0ff;
+      background: #161f2e;
+    }
+
+    .add-card-set-sort-btn[hidden] {
+      display: none !important;
+    }
+
+    .add-card-source-tabs {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .add-card-source-tabs.single-tab {
+      grid-template-columns: 1fr;
+    }
+
+    .add-card-source-tab {
+      border: 1px solid #2f3d50;
+      border-radius: 8px;
+      background: #121a27;
+      color: #9ab0d1;
+      padding: 7px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .add-card-source-tab:hover {
+      border-color: #4a5f7a;
+      color: #cfe0ff;
+      background: #161f2e;
+    }
+
+    .add-card-source-tab.active {
+      border-color: #5a7ab0;
+      background: #18263a;
+      color: #e9f1ff;
+      box-shadow: inset 0 0 0 1px rgba(90, 122, 176, 0.35);
+    }
+
+    .add-card-source-tab[hidden] {
+      display: none !important;
+    }
+
+    .add-card-wl-input {
+      width: 100%;
+      border: 1px solid #2f3d50;
+      border-radius: 8px;
+      background: #121a27;
+      color: #e4eeff;
+      padding: 8px 10px;
+      font-size: 13px;
+      font-family: inherit;
+      box-sizing: border-box;
+    }
+
+    .add-card-wl-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+      gap: 10px;
+      max-height: min(420px, 52vh);
+      overflow: auto;
+      padding: 4px 2px 8px;
+      align-content: start;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .add-card-wl-tile {
+      margin: 0;
+      padding: 6px;
+      border: 1px solid #2f3d50;
+      border-radius: 10px;
+      background: #121a27;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      text-align: left;
+      font: inherit;
+      color: inherit;
+      transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+    }
+
+    .add-card-wl-tile:hover {
+      border-color: #4a5f7a;
+      background: #161f2e;
+    }
+
+    .add-card-wl-tile.selected {
+      border-color: #5a7ab0;
+      background: #18263a;
+      box-shadow: inset 0 0 0 1px rgba(90, 122, 176, 0.45);
+    }
+
+    .add-card-wl-tile-visual {
+      width: 100%;
+      aspect-ratio: 63 / 88;
+      border-radius: 6px;
+      background: #0a0f18;
+      border: 1px solid #1b2432;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+    }
+
+    .add-card-wl-tile-visual img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .add-card-wl-tile-ph {
+      font-size: 11px;
+      font-weight: 700;
+      color: #5c6d8a;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 6px;
+      text-align: center;
+      line-height: 1.2;
+    }
+
+    .add-card-wl-tile-label {
+      font-size: 10px;
+      line-height: 1.25;
+      color: #9ab0d1;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      min-height: 2.5em;
+    }
+
+    .add-card-wl-grid-empty {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 28px 12px;
+      color: #7f95b7;
+      font-size: 13px;
+    }
+
+    .add-card-wl-qty {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .add-card-wl-qty label {
+      font-size: 12px;
+      color: #9ab0d1;
+      font-weight: 600;
+    }
+
+    .add-card-wl-qty input {
+      width: 72px;
+      height: 34px;
+      border: 1px solid #2f3d50;
+      border-radius: 8px;
+      background: #121a27;
+      color: #e4eeff;
+      padding: 0 8px;
+      font-size: 13px;
+      font-family: inherit;
+      box-sizing: border-box;
+    }
+
+    .add-card-wl-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .add-card-wl-btn {
+      height: 34px;
+      padding: 0 14px;
+      border-radius: 8px;
+      border: 1px solid #2f3d50;
+      background: #121a27;
+      color: #9ab0d1;
+      font-size: 13px;
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    .add-card-wl-btn:hover {
+      border-color: #4a5f7a;
+      color: #cfe0ff;
+      background: #161f2e;
+    }
+
+    .add-card-wl-btn.primary {
+      border-color: #5a7ab0;
+      background: #18263a;
+      color: #e9f1ff;
+    }
+
+    .add-card-wl-btn.primary:hover {
+      border-color: #7a9ad0;
+      background: #1e3048;
+    }
+
     @media (max-height: 560px), (max-width: 420px) {
       .modal-backdrop {
         align-items: flex-start;
@@ -1066,7 +1684,7 @@
       color: var(--muted);
     }
 
-    .add-card-panel input {
+    .binder-pick-panel input[type="search"] {
       width: 100%;
       height: 36px;
       border: 1px solid var(--border);
@@ -1076,6 +1694,7 @@
       padding: 0 10px;
       font-size: 13px;
       font-family: inherit;
+      box-sizing: border-box;
     }
 
     .add-card-results-wrap {
@@ -1325,7 +1944,24 @@
     </section>
 
     <section id="kpiPanel" class="panel">
+      <div class="collection-value-toolbar">
+        <h2 class="collection-value-title">Collection value</h2>
+        <div class="cvh-filters" id="collectionValueFilters" role="group" aria-label="Collection value range" hidden>
+          <button type="button" class="cvh-filter active" data-cvh-range="all">All Time</button>
+          <button type="button" class="cvh-filter" data-cvh-range="30">30 Days</button>
+          <button type="button" class="cvh-filter" data-cvh-range="90">3 Months</button>
+          <button type="button" class="cvh-filter" data-cvh-range="180">6 Months</button>
+          <button type="button" class="cvh-filter" data-cvh-range="ytd">YTD</button>
+          <button type="button" class="cvh-filter" data-cvh-range="365">1 Year</button>
+        </div>
+      </div>
       <div class="kpis" id="kpis"></div>
+      <div class="cvh-chart-wrap" id="collectionValueChartWrap" hidden>
+        <canvas id="collectionValueChart" class="cvh-chart" aria-label="Collection market value history"></canvas>
+        <div id="collectionValueChartTip" class="cvh-chart-tip" hidden role="tooltip"></div>
+        <p class="cvh-chart-msg" id="collectionValueChartMsg">Loading collection history…</p>
+      </div>
+      <p class="cvh-coverage" id="collectionValueCoverage" hidden></p>
     </section>
 
     <section class="panel collection-panel" id="collectionPanel">
@@ -1376,32 +2012,58 @@
   </main>
 
   <div id="addCardModal" class="modal-backdrop" aria-hidden="true">
-    <section class="add-card-panel binder-pick-panel" role="dialog" aria-labelledby="addCardTitle" aria-modal="true">
-      <h2 id="addCardTitle">Add card/product to collection</h2>
-      <p id="addCardSubtitle" class="subtle">Search cards and sealed products, then add them to your collection.</p>
-      <div class="binder-pick-tabs" role="tablist" aria-label="Add to collection source">
-        <button type="button" class="showcase-tab active" data-add-card-source="search">Search</button>
-        <button type="button" class="showcase-tab" data-add-card-source="sets">Browse sets</button>
-      </div>
-      <div id="addCardBrowseNav" class="binder-pick-browse-nav" hidden>
-        <button type="button" class="ghost" id="addCardBackSets">← Sets</button>
-        <span id="addCardBrowseSetLabel" class="binder-pick-browse-label"></span>
-      </div>
-      <div class="add-card-row">
-        <input id="addCardSearch" type="search" autocomplete="off" placeholder="Search name, number, set, product, or nickname…" />
-      </div>
-      <div class="add-card-row add-card-results-wrap">
-        <div id="addCardGrid" class="add-card-grid" role="listbox" aria-label="Matching cards and products"></div>
-      </div>
-      <div class="add-card-row" style="grid-template-columns: 1fr 1fr; display: grid; gap: 8px;">
-        <div>
-          <label class="muted" for="addCardQty" style="font-size:12px;">Quantity</label>
-          <input id="addCardQty" type="number" min="1" step="1" value="1" />
+    <section class="add-card-panel add-card-wl-panel" role="dialog" aria-labelledby="addCardTitle" aria-modal="true">
+      <div class="add-card-wl-head">
+        <div class="add-card-wl-head-text">
+          <h2 id="addCardTitle" class="add-card-wl-title">Add card/product to collection</h2>
+          <p id="addCardSubtitle" class="add-card-wl-sub">Click a card or product to select, double-click or use Add</p>
         </div>
+        <button
+          type="button"
+          id="addCardSealedSetSortBtn"
+          class="add-card-set-sort-btn"
+          hidden
+          aria-label="Sort sealed products by set release date"
+          title="Sort by set release date"
+        >
+          Sets ▼
+        </button>
       </div>
-      <div class="add-card-actions">
-        <button type="button" class="ghost" id="addCardCancelBtn">Cancel</button>
-        <button type="button" class="btn-primary" id="addCardConfirmBtn">Add to collection</button>
+      <div id="addCardSourceTabs" class="add-card-source-tabs" role="tablist" aria-label="Add to collection source">
+        <button
+          type="button"
+          class="add-card-source-tab active"
+          data-add-card-source="catalog"
+          role="tab"
+          aria-selected="true"
+        >
+          Sets catalog
+        </button>
+        <button
+          type="button"
+          class="add-card-source-tab"
+          data-add-card-source="sealed"
+          role="tab"
+          aria-selected="false"
+        >
+          Sealed products
+        </button>
+      </div>
+      <input
+        id="addCardSearch"
+        class="add-card-wl-input"
+        type="search"
+        autocomplete="off"
+        placeholder="Search card name, set code, or nickname..."
+      />
+      <div id="addCardGrid" class="add-card-wl-grid" role="listbox" aria-label="Matching cards and products"></div>
+      <div class="add-card-wl-qty">
+        <label for="addCardQty">Quantity</label>
+        <input id="addCardQty" type="number" min="1" step="1" value="1" />
+      </div>
+      <div class="add-card-wl-actions">
+        <button type="button" class="add-card-wl-btn" id="addCardCancelBtn">Cancel</button>
+        <button type="button" class="add-card-wl-btn primary" id="addCardConfirmBtn">Add</button>
       </div>
     </section>
   </div>
@@ -1440,11 +2102,30 @@
     const BINDER_MAX_PAGES = 100;
     const BINDER_GRID_COLS = { 4: 2, 9: 3, 12: 4, 16: 4 };
 
+    const COLLECTION_VALUE_RANGE_OPTIONS = [
+      { key: "all", label: "All Time" },
+      { key: "30", label: "30 Days" },
+      { key: "90", label: "3 Months" },
+      { key: "180", label: "6 Months" },
+      { key: "ytd", label: "YTD" },
+      { key: "365", label: "1 Year" }
+    ];
+
     const state = {
       items: [],
       dashboard: null,
       query: "",
       type: "all",
+      collectionValueRange: "all",
+      collectionValueByRange: {},
+      collectionValueLoadingKey: "",
+      collectionValueLoadToken: 0,
+      collectionValueMarkerHits: [],
+      collectionValueView: null,
+      collectionValueDataExtent: null,
+      collectionValueLayout: null,
+      collectionValueAxisDrag: null,
+      collectionValuePoints: [],
       cardIndex: [],
       cardIndexById: {},
       cardIndexLoaded: false,
@@ -1454,8 +2135,11 @@
       cardNicknames: [],
       cardNicknamesLoaded: false,
       addCardSelectedId: "",
-      addCardSource: "search",
-      addCardBrowseSetCode: "",
+      addCardSource: "catalog",
+      sealedSetSortOrder: "desc",
+      setReleaseTsByCode: {},
+      setRecencyRankByCode: {},
+      setReleaseDatesLoaded: false,
       /** Built once per session: resolve thumbnails when items lack imageUrl */
       cardImagesForDashboard: null,
       /** English set catalog + card counts for Sets tab */
@@ -1620,6 +2304,15 @@
     function toQueryText(value) {
       return String(value || "")
         .toLowerCase()
+        .trim();
+    }
+
+    /** Treat hyphens/punctuation like spaces so "3-pack blister" matches "3 pack blister". */
+    function toLooseQueryText(value) {
+      return String(value || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, " ")
+        .replace(/\s+/g, " ")
         .trim();
     }
 
@@ -1846,17 +2539,116 @@
     }
 
     function syncAddCardSourceTabs() {
+      const mode = getAddCollectionMode();
+      const tabs = byId("addCardSourceTabs");
+      const catalogBtn = document.querySelector('[data-add-card-source="catalog"]');
+      const sealedBtn = document.querySelector('[data-add-card-source="sealed"]');
+      if (catalogBtn) catalogBtn.hidden = mode === "sealed";
+      if (sealedBtn) sealedBtn.hidden = mode === "single";
+      if (tabs) tabs.classList.toggle("single-tab", mode === "sealed" || mode === "single");
       document.querySelectorAll("[data-add-card-source]").forEach((btn) => {
-        const source = btn.getAttribute("data-add-card-source") || "search";
-        btn.classList.toggle("active", source === state.addCardSource);
+        if (btn.hidden) return;
+        const source = btn.getAttribute("data-add-card-source") || "catalog";
+        const on = source === state.addCardSource;
+        btn.classList.toggle("active", on);
+        btn.setAttribute("aria-selected", on ? "true" : "false");
       });
+      syncAddCardSealedSetSortButton();
     }
 
     function resetAddCardScroll() {
-      const wrap = byId("addCardModal")?.querySelector(".add-card-results-wrap");
-      if (wrap) wrap.scrollTop = 0;
       const grid = byId("addCardGrid");
       if (grid) grid.scrollTop = 0;
+    }
+
+    function ensureAddCardReleaseDates() {
+      if (state.setReleaseDatesLoaded) return;
+      state.setReleaseTsByCode =
+        typeof window.buildEnglishSetReleaseTsByCode === "function"
+          ? window.buildEnglishSetReleaseTsByCode()
+          : {};
+      state.setRecencyRankByCode =
+        typeof window.buildEnglishSetRecencyRankByCode === "function"
+          ? window.buildEnglishSetRecencyRankByCode()
+          : {};
+      state.setReleaseDatesLoaded = true;
+    }
+
+    function releaseTimestampForSetCode(setCode) {
+      const code = String(setCode || "")
+        .trim()
+        .toUpperCase();
+      if (!code) return 0;
+      const ts = Number(state.setReleaseTsByCode[code]);
+      return Number.isFinite(ts) && ts > 0 ? ts : 0;
+    }
+
+    function recencyRankForSetCode(setCode) {
+      const code = String(setCode || "")
+        .trim()
+        .toUpperCase();
+      if (!code) return Number.MAX_SAFE_INTEGER;
+      const rank = Number(state.setRecencyRankByCode[code]);
+      return Number.isFinite(rank) ? rank : Number.MAX_SAFE_INTEGER;
+    }
+
+    function compareSealedBySetRelease(a, b, releaseDesc) {
+      const ta = Number(a?.releaseTs) || releaseTimestampForSetCode(a?.setCode);
+      const tb = Number(b?.releaseTs) || releaseTimestampForSetCode(b?.setCode);
+      const unkA = ta <= 0;
+      const unkB = tb <= 0;
+      if (unkA && unkB) {
+        /* fall through */
+      } else if (unkA) return 1;
+      else if (unkB) return -1;
+      else if (ta !== tb) return releaseDesc ? tb - ta : ta - tb;
+      const ra = recencyRankForSetCode(a?.setCode);
+      const rb = recencyRankForSetCode(b?.setCode);
+      if (ra !== rb) return releaseDesc ? ra - rb : rb - ra;
+      const bySet = String(a?.setCode || "").localeCompare(String(b?.setCode || ""));
+      if (bySet !== 0) return bySet;
+      const byName = String(a?.card || "").localeCompare(String(b?.card || ""));
+      if (byName !== 0) return byName;
+      return String(a?.productId || "").localeCompare(String(b?.productId || ""));
+    }
+
+    function sortSealedProductsIndex() {
+      const desc = state.sealedSetSortOrder !== "asc";
+      state.sealedIndex.sort((a, b) => compareSealedBySetRelease(a, b, desc));
+    }
+
+    function syncAddCardSealedSetSortButton() {
+      const btn = byId("addCardSealedSetSortBtn");
+      if (!btn) return;
+      const sealedActive = state.addCardSource === "sealed";
+      btn.hidden = !sealedActive;
+      const desc = state.sealedSetSortOrder !== "asc";
+      btn.textContent = desc ? "Sets ▼" : "Sets ▲";
+      btn.title = desc
+        ? "Sorted by set release (newest first). Click for oldest first."
+        : "Sorted by set release (oldest first). Click for newest first.";
+    }
+
+    function toggleAddCardSealedSetSortOrder() {
+      state.sealedSetSortOrder = state.sealedSetSortOrder === "asc" ? "desc" : "asc";
+      sortSealedProductsIndex();
+      syncAddCardSealedSetSortButton();
+      if (state.addCardSource === "sealed") void renderAddCardGrid();
+    }
+
+    function buildLocalCardImageUrl(setCode, cardNo) {
+      const code = String(setCode || "").trim().toUpperCase();
+      const no = String(cardNo || "").trim();
+      if (!code || !no) return "";
+      return `/card-images/${encodeURIComponent(code)}/${encodeURIComponent(no)}.jpg`;
+    }
+
+    function resolveAddCardImageUrl(row) {
+      if (!row) return "";
+      const direct = String(row.imageUrl || row.remoteImageUrl || "").trim();
+      if (direct) return direct;
+      if (row.kind === "sealed" || String(row.id || "").startsWith("sealed:")) return "";
+      return buildLocalCardImageUrl(row.setCode, row.cardNo);
     }
 
     function listSealedBrowseSets() {
@@ -1969,15 +2761,17 @@
 
     function syncAddCollectionUi() {
       const mode = getAddCollectionMode();
+      if (mode === "sealed") state.addCardSource = "sealed";
+      else if (mode === "single") state.addCardSource = "catalog";
+      else if (state.addCardSource !== "catalog" && state.addCardSource !== "sealed") {
+        state.addCardSource = "catalog";
+      }
       const openBtn = byId("openAddCardBtn");
       const title = byId("addCardTitle");
       const subtitle = byId("addCardSubtitle");
       const search = byId("addCardSearch");
       const grid = byId("addCardGrid");
-      const nav = byId("addCardBrowseNav");
-      const label = byId("addCardBrowseSetLabel");
-      const browsingSets = state.addCardSource === "sets";
-      const inSet = browsingSets && Boolean(state.addCardBrowseSetCode);
+      const confirmBtn = byId("addCardConfirmBtn");
       if (openBtn) {
         openBtn.textContent =
           mode === "sealed" ? "Add product…" : mode === "single" ? "Add card…" : "Add card/product…";
@@ -1991,62 +2785,19 @@
               : "Add card/product to collection";
       }
       if (subtitle) {
-        subtitle.textContent =
-          mode === "sealed"
-            ? "Search sealed products or browse a set, then add them to your collection."
-            : mode === "single"
-              ? "Search the Sets catalog or browse a set, then add a card to your collection."
-              : "Search cards and sealed products, or browse a set, then add them to your collection.";
+        subtitle.textContent = "Click a card or product to select, double-click or use Add";
       }
-      if (nav) {
-        if (inSet) nav.removeAttribute("hidden");
-        else nav.setAttribute("hidden", "");
-      }
-      if (label && inSet) {
-        const setRow = listAddCardBrowseSets().find(
-          (row) => row.code === String(state.addCardBrowseSetCode || "").toUpperCase()
-        );
-        const fromCard = state.cardIndex.find(
-          (row) => row.setCode === String(state.addCardBrowseSetCode || "").toUpperCase()
-        );
-        const fromSealed = state.sealedIndex.find(
-          (row) => row.setCode === String(state.addCardBrowseSetCode || "").toUpperCase()
-        );
-        label.textContent =
-          setRow?.name ||
-          fromCard?.setDisplayName ||
-          fromSealed?.setDisplayName ||
-          state.addCardBrowseSetCode ||
-          "Set";
-      }
+      if (confirmBtn) confirmBtn.textContent = "Add";
       if (search) {
-        if (browsingSets && !inSet) {
-          search.placeholder = "Filter sets…";
-        } else if (browsingSets && inSet) {
-          search.placeholder =
-            mode === "sealed"
-              ? "Filter products in this set…"
-              : mode === "all"
-                ? "Filter cards or products in this set…"
-                : "Filter cards in this set…";
-        } else if (mode === "sealed") {
-          search.placeholder = "Search product name, type, or set…";
-        } else if (mode === "single") {
-          search.placeholder = "Search name, number, set, or nickname…";
-        } else {
-          search.placeholder = "Search name, number, set, product, or nickname…";
-        }
+        search.placeholder =
+          state.addCardSource === "sealed"
+            ? "Search product name, set, or type..."
+            : "Search card name, set code, or nickname...";
       }
       if (grid) {
         grid.setAttribute(
           "aria-label",
-          browsingSets && !inSet
-            ? "Sets to browse"
-            : mode === "sealed"
-              ? "Matching products"
-              : mode === "single"
-                ? "Matching cards"
-                : "Matching cards and products"
+          state.addCardSource === "sealed" ? "Choose a sealed product" : "Choose a card from Sets"
         );
       }
       syncAddCardSourceTabs();
@@ -2065,6 +2816,7 @@
     async function loadSealedProductsIndex() {
       if (state.sealedIndexLoaded) return;
       try {
+        ensureAddCardReleaseDates();
         const response = await fetch("/api/sets/sealed");
         const payload = response.ok ? await response.json() : null;
         const byCode = payload && payload.ok && payload.byCode && typeof payload.byCode === "object"
@@ -2075,6 +2827,7 @@
           const code = String(setCode || "").trim().toUpperCase();
           const setName = String((row && row.name) || code).trim();
           const list = Array.isArray(row?.products) ? row.products : [];
+          const releaseTs = releaseTimestampForSetCode(code);
           for (const product of list) {
             const productId = String((product && product.productId) || "").trim();
             const title = String((product && product.title) || "").trim();
@@ -2098,19 +2851,15 @@
               remoteImageUrl: String((product && product.remoteImageUrl) || "").trim(),
               ungradedPrice: Number.isFinite(ungradedPrice) ? ungradedPrice : null,
               priceText: String((product && product.priceText) || "").trim(),
+              releaseTs,
               label: `${title} · ${setName} (${code}) · ${formatSealedProductTypeLabel(productType)}`
             });
           }
         }
-        products.sort(
-          (a, b) =>
-            a.card.localeCompare(b.card) ||
-            a.setCode.localeCompare(b.setCode) ||
-            a.productId.localeCompare(b.productId)
-        );
-        const byIdMap = {};
-        for (const row of products) byIdMap[row.id] = row;
         state.sealedIndex = products;
+        sortSealedProductsIndex();
+        const byIdMap = {};
+        for (const row of state.sealedIndex) byIdMap[row.id] = row;
         state.sealedIndexById = byIdMap;
       } catch {
         state.sealedIndex = [];
@@ -2120,47 +2869,54 @@
       }
     }
 
-    function filterSealedIndexByQuery(queryRaw, { requireQuery = true, limit = 300 } = {}) {
-      const q = String(queryRaw || "").trim();
-      if (!q) return requireQuery ? [] : state.sealedIndex.slice(0, limit);
-      const query = toQueryText(q);
-      const matches = [];
-      for (const row of state.sealedIndex) {
-        const haystack = toQueryText(
-          `${row.card} ${row.setCode} ${row.setDisplayName || ""} ${row.productType || ""} ${formatSealedProductTypeLabel(row.productType)}`
-        );
-        if (!haystack.includes(query)) continue;
-        matches.push(row);
-        if (matches.length >= limit) break;
-      }
-      return matches;
+    function sealedProductMatchesQuery(row, queryRaw) {
+      const query = toLooseQueryText(queryRaw);
+      if (!query) return true;
+      const haystack = toLooseQueryText(
+        [
+          row?.card,
+          row?.setCode,
+          row?.setDisplayName,
+          row?.productType,
+          formatSealedProductTypeLabel(row?.productType)
+        ]
+          .filter(Boolean)
+          .join(" ")
+      );
+      if (haystack.includes(query)) return true;
+      // Also allow token match in any order: "blister 3 pack" ↔ "3-pack blister".
+      const tokens = query.split(" ").filter(Boolean);
+      return tokens.length > 1 && tokens.every((token) => haystack.includes(token));
     }
 
-    function filterAddCatalogByQuery(queryRaw, { requireQuery = true, limit = 300 } = {}) {
-      const mode = getAddCollectionMode();
-      if (mode === "single") {
-        return filterCardIndexByQuery(queryRaw, { requireQuery, limit }).map((row) => ({
-          ...row,
-          kind: "single"
-        }));
+    function filterSealedIndexByQuery(queryRaw, { requireQuery = true, limit = 300 } = {}) {
+      const q = String(queryRaw || "").trim();
+      const desc = state.sealedSetSortOrder !== "asc";
+      if (!q) {
+        if (requireQuery) return [];
+        return state.sealedIndex.slice(0, limit);
       }
-      if (mode === "sealed") {
-        return filterSealedIndexByQuery(queryRaw, { requireQuery, limit });
+      const matches = [];
+      for (const row of state.sealedIndex) {
+        if (!sealedProductMatchesQuery(row, q)) continue;
+        matches.push(row);
       }
-      const cards = filterCardIndexByQuery(queryRaw, { requireQuery, limit }).map((row) => ({
+      matches.sort((a, b) => compareSealedBySetRelease(a, b, desc));
+      return matches.slice(0, limit);
+    }
+
+    function filterAddPickerRows(queryRaw, { limit = 300 } = {}) {
+      const source = state.addCardSource === "sealed" ? "sealed" : "catalog";
+      if (source === "sealed") {
+        return filterSealedIndexByQuery(queryRaw, { requireQuery: false, limit });
+      }
+      return filterCardIndexByQuery(queryRaw, { requireQuery: false, limit }).map((row) => ({
         ...row,
-        kind: "single"
+        kind: "single",
+        label:
+          row.label ||
+          `${row.card} · ${row.setDisplayName || row.setCode} (${row.setCode} #${row.cardNo})`
       }));
-      const sealed = filterSealedIndexByQuery(queryRaw, { requireQuery, limit });
-      const merged = [...cards, ...sealed];
-      merged.sort((a, b) => {
-        const nameA = String(a.card || "").toLowerCase();
-        const nameB = String(b.card || "").toLowerCase();
-        if (nameA !== nameB) return nameA.localeCompare(nameB);
-        if (a.kind !== b.kind) return a.kind === "single" ? -1 : 1;
-        return String(a.id || "").localeCompare(String(b.id || ""));
-      });
-      return merged.slice(0, limit);
     }
 
     async function loadCardsFromSetsIndex() {
@@ -2188,7 +2944,8 @@
             const id = `${language}:${String(setCode).toUpperCase()}:${cardNo}`;
             const suffix = language === "japanese" ? " JP" : "";
             const rawImg = imagesByNo[cardNo] ?? imagesByNo[String(cardNo)] ?? "";
-            const imageUrl = typeof rawImg === "string" && rawImg.trim() ? rawImg.trim() : "";
+            const fromMaps = typeof rawImg === "string" && rawImg.trim() ? rawImg.trim() : "";
+            const imageUrl = fromMaps || buildLocalCardImageUrl(setCode, cardNo);
             cards.push({
               id,
               language,
@@ -2211,183 +2968,121 @@
       state.cardIndexLoaded = true;
     }
 
+    function syncAddCardSelectionUi() {
+      const grid = byId("addCardGrid");
+      if (!grid) return;
+      const selectedId = state.addCardSelectedId;
+      grid.querySelectorAll(".add-card-wl-tile").forEach((node) => {
+        const on = node.getAttribute("data-card-id") === selectedId;
+        node.classList.toggle("selected", on);
+        node.setAttribute("aria-selected", on ? "true" : "false");
+      });
+    }
+
+    function selectAddCard(id) {
+      if (!id) return;
+      state.addCardSelectedId = id;
+      syncAddCardSelectionUi();
+    }
+
     function bindAddCardTiles(grid) {
-      grid.querySelectorAll(".add-card-tile[data-card-id]").forEach((btn) => {
+      grid.querySelectorAll(".add-card-wl-tile[data-card-id]").forEach((btn) => {
         btn.addEventListener("click", () => {
-          state.addCardSelectedId = btn.getAttribute("data-card-id") || "";
-          void renderAddCardGrid();
+          selectAddCard(btn.getAttribute("data-card-id") || "");
         });
         btn.addEventListener("dblclick", () => {
-          state.addCardSelectedId = btn.getAttribute("data-card-id") || "";
+          selectAddCard(btn.getAttribute("data-card-id") || "");
           confirmAddCard();
         });
+      });
+      grid.querySelectorAll(".add-card-wl-tile-visual img").forEach((img) => {
+        img.addEventListener(
+          "error",
+          () => {
+            const wrap = img.closest(".add-card-wl-tile-visual");
+            const tile = img.closest(".add-card-wl-tile");
+            const id = tile ? tile.getAttribute("data-card-id") : "";
+            const row = id
+              ? state.sealedIndexById[id] || state.cardIndexById[id]
+              : null;
+            const shortName = String(row?.card || "Card");
+            const ph = document.createElement("div");
+            ph.className = "add-card-wl-tile-ph";
+            ph.textContent = `${shortName.slice(0, 22)}${shortName.length > 22 ? "…" : ""}`;
+            img.remove();
+            if (wrap) wrap.appendChild(ph);
+          },
+          { once: true }
+        );
       });
     }
 
     function renderAddCardCatalogTiles(grid, rows) {
-      grid.classList.add("add-card-grid");
-      grid.classList.remove("binder-set-list");
       const idSet = new Set(rows.map((r) => r.id));
-      if (state.addCardSelectedId && !idSet.has(state.addCardSelectedId)) {
-        state.addCardSelectedId = "";
+      if (!state.addCardSelectedId || !idSet.has(state.addCardSelectedId)) {
+        state.addCardSelectedId = rows[0]?.id || "";
       }
       grid.innerHTML = rows
         .map((row) => {
           const sel = row.id === state.addCardSelectedId;
-          const img = String(row.imageUrl || row.remoteImageUrl || "").trim();
-          const thumb = img
-            ? `<div class="add-card-thumb-frame"><img class="add-card-thumb" src="${escapeAttr(img)}" alt="" loading="lazy" /></div>`
-            : `<div class="add-card-thumb-frame"><div class="add-card-thumb add-card-thumb--ph" aria-hidden="true">No image</div></div>`;
-          const meta =
-            row.kind === "sealed"
-              ? `Sealed · ${row.setDisplayName} · ${formatSealedProductTypeLabel(row.productType)}`
-              : `${row.setDisplayName} · ${row.setCode} #${row.cardNo}${row.language === "japanese" ? " JP" : ""}`;
-          return `<button type="button" class="add-card-tile${sel ? " selected" : ""}" role="option" aria-selected="${sel ? "true" : "false"}" data-card-id="${escapeAttr(row.id)}">${thumb}<div class="add-card-tile-name">${escapeHtml(row.card)}</div><div class="add-card-tile-meta">${escapeHtml(meta)}</div></button>`;
+          const img = resolveAddCardImageUrl(row);
+          const label =
+            String(row.label || "").trim() ||
+            (row.kind === "sealed"
+              ? `${row.card} · ${row.setDisplayName || row.setCode} · ${formatSealedProductTypeLabel(row.productType)}`
+              : `${row.card} (${row.setCode} #${row.cardNo})`);
+          const shortName = `${String(row.card || "").slice(0, 18)}${String(row.card || "").length > 18 ? "…" : ""}`;
+          const visual = img
+            ? `<img src="${escapeAttr(img)}" alt="" loading="eager" decoding="async" />`
+            : `<div class="add-card-wl-tile-ph">${escapeHtml(shortName || "Card")}</div>`;
+          return `<button type="button" class="add-card-wl-tile${sel ? " selected" : ""}" role="option" aria-selected="${
+            sel ? "true" : "false"
+          }" data-card-id="${escapeAttr(row.id)}">
+            <div class="add-card-wl-tile-visual">${visual}</div>
+            <div class="add-card-wl-tile-label">${escapeHtml(label)}</div>
+          </button>`;
         })
         .join("");
       bindAddCardTiles(grid);
+    }
+
+    function showAddCardGridEmpty(grid, message) {
+      state.addCardSelectedId = "";
+      grid.innerHTML = `<div class="add-card-wl-grid-empty">${message}</div>`;
     }
 
     async function renderAddCardGrid() {
       const grid = byId("addCardGrid");
       const searchInput = byId("addCardSearch");
       if (!grid || !searchInput) return;
-      const mode = getAddCollectionMode();
-      const queryText = toQueryText(searchInput.value);
       syncAddCollectionUi();
-
-      if (state.addCardSource === "sets") {
-        try {
-          if (mode === "sealed") {
-            await loadSealedProductsIndex();
-          } else if (mode === "all") {
-            await Promise.all([
-              loadCardsFromSetsIndex(),
-              loadSetProgressData(),
-              loadCardNicknames(),
-              loadSealedProductsIndex()
-            ]);
-          } else {
-            await Promise.all([loadCardsFromSetsIndex(), loadSetProgressData(), loadCardNicknames()]);
-          }
-        } catch {
-          grid.classList.add("add-card-grid");
-          grid.classList.remove("binder-set-list");
-          grid.innerHTML = `<div class="add-card-grid-empty">Could not load the Sets catalog.</div>`;
-          return;
+      const source = state.addCardSource === "sealed" ? "sealed" : "catalog";
+      try {
+        if (source === "sealed") {
+          await loadSealedProductsIndex();
+        } else {
+          await Promise.all([loadCardsFromSetsIndex(), loadCardNicknames()]);
         }
-
-        const browseCode = String(state.addCardBrowseSetCode || "").toUpperCase();
-        if (browseCode) {
-          if (mode === "sealed") {
-            const products = state.sealedIndex
-              .filter((row) => row.setCode === browseCode)
-              .filter((row) => {
-                if (!queryText) return true;
-                return toQueryText(
-                  `${row.card} ${row.productType || ""} ${formatSealedProductTypeLabel(row.productType)}`
-                ).includes(queryText);
-              });
-            if (!products.length) {
-              grid.classList.add("add-card-grid");
-              grid.classList.remove("binder-set-list");
-              grid.innerHTML = `<div class="add-card-grid-empty">${
-                queryText ? "No products in this set match that filter." : "No sealed products found for this set."
-              }</div>`;
-              return;
-            }
-            renderAddCardCatalogTiles(grid, products);
-            return;
-          }
-
-          const cards = state.cardIndex
-            .filter((row) => row.setCode === browseCode)
-            .filter((row) => {
-              if (!queryText) return true;
-              return cardIndexRowMatchesQuery(row, searchInput.value);
-            })
-            .sort(compareBinderCardsByNumber)
-            .map((row) => ({ ...row, kind: "single" }));
-          const products =
-            mode === "all"
-              ? state.sealedIndex
-                  .filter((row) => row.setCode === browseCode)
-                  .filter((row) => {
-                    if (!queryText) return true;
-                    return toQueryText(
-                      `${row.card} ${row.productType || ""} ${formatSealedProductTypeLabel(row.productType)} sealed product`
-                    ).includes(queryText);
-                  })
-              : [];
-          const combined = [...cards, ...products];
-          if (!combined.length) {
-            grid.classList.add("add-card-grid");
-            grid.classList.remove("binder-set-list");
-            grid.innerHTML = `<div class="add-card-grid-empty">${
-              queryText
-                ? mode === "all"
-                  ? "No cards or products in this set match that filter."
-                  : "No cards in this set match that filter."
-                : mode === "all"
-                  ? "No cards or sealed products found for this set."
-                  : "No cards found for this set."
-            }</div>`;
-            return;
-          }
-          renderAddCardCatalogTiles(grid, combined);
-          return;
-        }
-
-        const sets = listAddCardBrowseSets().filter((row) => {
-          if (!queryText) return true;
-          return toQueryText(`${row.name} ${row.code} ${row.era}`).includes(queryText);
-        });
-        grid.classList.remove("add-card-grid");
-        grid.classList.add("binder-set-list");
-        state.addCardSelectedId = "";
-        if (!sets.length) {
-          grid.innerHTML = `<div class="add-card-grid-empty">${
-            queryText ? "No sets match that filter." : "No sets available yet."
-          }</div>`;
-          return;
-        }
-        grid.innerHTML = sets
-          .map(
-            (row) => `<button type="button" class="binder-set-row" data-add-card-set-code="${escapeAttr(row.code)}">
-              <span class="binder-set-row-name">${escapeHtml(row.name)}</span>
-              <span class="binder-set-row-meta">${escapeHtml(formatAddBrowseSetMeta(row, mode))}</span>
-            </button>`
-          )
-          .join("");
-        grid.querySelectorAll("[data-add-card-set-code]").forEach((btn) => {
-          btn.addEventListener("click", () => {
-            state.addCardBrowseSetCode = btn.getAttribute("data-add-card-set-code") || "";
-            const search = byId("addCardSearch");
-            if (search) search.value = "";
-            void renderAddCardGrid().then(() => resetAddCardScroll());
-          });
-        });
+      } catch {
+        showAddCardGridEmpty(
+          grid,
+          source === "sealed" ? "Could not load sealed products." : "Could not load the Sets catalog."
+        );
         return;
       }
 
       const query = String(searchInput.value || "").trim();
-      const filtered = filterAddCatalogByQuery(query, { requireQuery: true, limit: 300 });
+      const filtered = filterAddPickerRows(query, { limit: 300 });
       if (!filtered.length) {
-        grid.classList.add("add-card-grid");
-        grid.classList.remove("binder-set-list");
         const emptyHint =
-          mode === "sealed"
-            ? query
-              ? "No matches — try a product name, type, or set code."
-              : "Type to search for a sealed product by name, type, or set."
-            : mode === "single"
-              ? query
-                ? "No matches — try a card name, nickname, card number, or set code."
-                : "Type to search for a card by name, nickname, number, or set code."
-              : query
-                ? "No matches — try a card or product name, nickname, number, or set."
-                : "Type to search for a card or sealed product.";
-        grid.innerHTML = `<div class="add-card-grid-empty">${emptyHint}</div>`;
+          source === "sealed"
+            ? state.sealedIndex.length
+              ? "No matching sealed products."
+              : "No sealed products loaded."
+            : state.cardIndex.length
+              ? "No matching cards."
+              : "No cards loaded.";
+        showAddCardGridEmpty(grid, emptyHint);
         return;
       }
       renderAddCardCatalogTiles(grid, filtered);
@@ -2396,9 +3091,11 @@
     function openAddCardModal() {
       const modal = byId("addCardModal");
       if (!modal) return;
+      const mode = getAddCollectionMode();
       state.addCardSelectedId = "";
-      state.addCardSource = "search";
-      state.addCardBrowseSetCode = "";
+      state.addCardSource = mode === "sealed" ? "sealed" : "catalog";
+      state.sealedSetSortOrder = "desc";
+      if (state.sealedIndexLoaded) sortSealedProductsIndex();
       syncAddCollectionUi();
       modal.classList.add("open");
       modal.setAttribute("aria-hidden", "false");
@@ -2416,17 +3113,12 @@
       modal.classList.remove("open");
       modal.setAttribute("aria-hidden", "true");
       state.addCardSelectedId = "";
-      state.addCardSource = "search";
-      state.addCardBrowseSetCode = "";
+      state.addCardSource = "catalog";
       resetAddCardScroll();
       const s = byId("addCardSearch");
       if (s) s.value = "";
       const grid = byId("addCardGrid");
-      if (grid) {
-        grid.classList.add("add-card-grid");
-        grid.classList.remove("binder-set-list");
-        grid.innerHTML = "";
-      }
+      if (grid) grid.innerHTML = "";
     }
 
     async function confirmAddCard() {
@@ -2521,6 +3213,840 @@
 
     function formatMoney(value) {
       return `$${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+
+    function formatSignedMoney(value) {
+      if (!Number.isFinite(Number(value))) return "—";
+      const n = Number(value);
+      const abs = formatMoney(Math.abs(n));
+      if (n > 0) return `+${abs}`;
+      if (n < 0) return `-${abs}`;
+      return abs;
+    }
+
+    function formatSignedPercent(value) {
+      if (!Number.isFinite(Number(value))) return "—";
+      const n = Number(value);
+      const abs = Math.abs(n).toFixed(2);
+      if (n > 0) return `+${abs}%`;
+      if (n < 0) return `-${abs}%`;
+      return `${abs}%`;
+    }
+
+    function deltaDirectionClass(value) {
+      const n = Number(value);
+      if (!Number.isFinite(n) || n === 0) return "";
+      return n > 0 ? "up" : "down";
+    }
+
+    function getCollectionItemValueDelta(item) {
+      const unit = Number(item?.manualPrice ?? item?.marketPrice ?? 0);
+      const qty = Math.max(1, Math.floor(Number(item?.quantity) || 1));
+      if (!(unit > 0)) return null;
+      const current = unit * qty;
+      const rangeKey = String(state.collectionValueRange || "all");
+      const costUnit = Math.max(0, Number(item?.costBasis) || 0);
+
+      let basis = null;
+      let source = "";
+      if (rangeKey === "all" && costUnit > 0) {
+        basis = costUnit * qty;
+        source = "cost";
+      } else {
+        const history = getActiveCollectionValueHistory();
+        const start =
+          history && history.ok && history.itemStarts
+            ? history.itemStarts[String(item?.id || "")]
+            : null;
+        const startUnit = Number(start?.startUnitPrice);
+        if (Number.isFinite(startUnit) && startUnit > 0) {
+          basis = startUnit * qty;
+          source = "range";
+        }
+      }
+      if (!(basis > 0) || !Number.isFinite(current)) return null;
+      const valueAdded = Number((current - basis).toFixed(2));
+      const percentChange = Number(((valueAdded / basis) * 100).toFixed(2));
+      return { valueAdded, percentChange, source, basis, current };
+    }
+
+    function formatCollectionItemDeltaHtml(item) {
+      const delta = getCollectionItemValueDelta(item);
+      if (!delta) return "";
+      const dir = deltaDirectionClass(delta.valueAdded);
+      return `<div class="collection-card-delta ${dir}" title="${
+        delta.source === "cost" ? "vs cost basis" : "vs selected time range"
+      }"><span class="collection-card-delta-amt">${escapeHtml(
+        formatSignedMoney(delta.valueAdded)
+      )}</span> <span class="collection-card-delta-pct">(${escapeHtml(
+        formatSignedPercent(delta.percentChange)
+      )})</span></div>`;
+    }
+
+    function getCollectionValueRangeLabel(rangeKey) {
+      const opt = COLLECTION_VALUE_RANGE_OPTIONS.find((row) => row.key === rangeKey);
+      return opt ? opt.label : "All Time";
+    }
+
+    function getActiveCollectionValueHistory() {
+      return state.collectionValueByRange[state.collectionValueRange] || null;
+    }
+
+    function syncCollectionValueFilterButtons() {
+      document.querySelectorAll("[data-cvh-range]").forEach((btn) => {
+        const key = btn.getAttribute("data-cvh-range") || "all";
+        btn.classList.toggle("active", key === state.collectionValueRange);
+      });
+    }
+
+    function setCollectionValueChartMessage(text) {
+      const msg = byId("collectionValueChartMsg");
+      if (!msg) return;
+      if (text) {
+        msg.hidden = false;
+        msg.textContent = text;
+      } else {
+        msg.hidden = true;
+        msg.textContent = "";
+      }
+    }
+
+    function parseCostBasisDateToTs(dateStr) {
+      const raw = String(dateStr || "").trim();
+      const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!match) return NaN;
+      const year = Number(match[1]);
+      const month = Number(match[2]);
+      const day = Number(match[3]);
+      if (!year || month < 1 || month > 12 || day < 1 || day > 31) return NaN;
+      return new Date(year, month - 1, day, 12, 0, 0, 0).getTime();
+    }
+
+    function formatAcquisitionItemLabel(item) {
+      const name = String(item?.name || "Item").trim() || "Item";
+      if (item?.type === "sealed") {
+        const setName = String(item.setName || resolveItemSetCode(item) || "").trim();
+        return setName ? `${name} · ${setName}` : name;
+      }
+      const setName = String(item?.setName || "").trim();
+      const cardNo = String(item?.cardNumber || "").trim();
+      const bits = [name];
+      if (setName && cardNo) bits.push(`${setName} #${cardNo}`);
+      else if (setName) bits.push(setName);
+      else if (cardNo) bits.push(`#${cardNo}`);
+      return bits.join(" · ");
+    }
+
+    function formatChartAxisDate(ts) {
+      const d = new Date(ts);
+      if (!Number.isFinite(d.getTime())) return "";
+      return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+    }
+
+    function formatAcquisitionTooltipDate(dateStr) {
+      const ts = parseCostBasisDateToTs(dateStr);
+      return Number.isFinite(ts) ? formatChartAxisDate(ts) : String(dateStr || "");
+    }
+
+    function getCollectionAcquisitionMarkers() {
+      const byDate = new Map();
+      for (const item of state.items || []) {
+        const date = String(item.costBasisDate || "").trim();
+        const ts = parseCostBasisDateToTs(date);
+        if (!Number.isFinite(ts)) continue;
+        const label = formatAcquisitionItemLabel(item);
+        const prev = byDate.get(date);
+        if (prev) {
+          prev.count += 1;
+          prev.items.push(label);
+        } else {
+          byDate.set(date, { date, ts, count: 1, items: [label] });
+        }
+      }
+      return [...byDate.values()].sort((a, b) => a.ts - b.ts);
+    }
+
+    function hideCollectionValueChartTip() {
+      const tip = byId("collectionValueChartTip");
+      if (!tip) return;
+      tip.hidden = true;
+      tip.innerHTML = "";
+    }
+
+    function showCollectionValueChartTip(marker, clientX, clientY) {
+      const tip = byId("collectionValueChartTip");
+      const wrap = byId("collectionValueChartWrap");
+      if (!tip || !wrap || !marker) return;
+      const items = Array.isArray(marker.items) ? marker.items : [];
+      const listHtml = items
+        .slice(0, 8)
+        .map((name) => `<li>${escapeHtml(name)}</li>`)
+        .join("");
+      const more =
+        items.length > 8 ? `<li>+${items.length - 8} more</li>` : "";
+      tip.innerHTML = `<p class="cvh-chart-tip-date">Acquired ${escapeHtml(
+        formatAcquisitionTooltipDate(marker.date)
+      )}</p><ul class="cvh-chart-tip-list">${listHtml}${more}</ul>`;
+      tip.hidden = false;
+      const wrapRect = wrap.getBoundingClientRect();
+      const tipW = tip.offsetWidth || 180;
+      const tipH = tip.offsetHeight || 48;
+      let left = clientX - wrapRect.left;
+      let top = clientY - wrapRect.top;
+      left = Math.max(tipW / 2 + 8, Math.min(wrapRect.width - tipW / 2 - 8, left));
+      top = Math.max(tipH + 12, Math.min(wrapRect.height - 8, top));
+      tip.style.left = `${left}px`;
+      tip.style.top = `${top}px`;
+    }
+
+    function resetCollectionValueChartView() {
+      state.collectionValueView = null;
+      state.collectionValueAxisDrag = null;
+    }
+
+    function getCollectionValueAutoView(list) {
+      let minTs = list[0].ts;
+      let maxTs = list[0].ts;
+      let minPrice = list[0].price;
+      let maxPrice = list[0].price;
+      for (const point of list) {
+        minTs = Math.min(minTs, point.ts);
+        maxTs = Math.max(maxTs, point.ts);
+        minPrice = Math.min(minPrice, point.price);
+        maxPrice = Math.max(maxPrice, point.price);
+      }
+      if (maxTs <= minTs) maxTs = minTs + 86400000;
+      if (maxPrice <= minPrice) maxPrice = minPrice + 0.05;
+      const pricePad = Math.max(0.02, (maxPrice - minPrice) * 0.08);
+      return {
+        minTs,
+        maxTs,
+        chartMin: Math.max(0, minPrice - pricePad),
+        chartMax: maxPrice + pricePad
+      };
+    }
+
+    function clampCollectionValueView(view, extent) {
+      if (!view || !extent) return view;
+      let { minTs, maxTs, chartMin, chartMax } = view;
+      const dataSpan = Math.max(86400000, extent.maxTs - extent.minTs);
+      const minTimeSpan = Math.max(86400000, dataSpan * 0.02);
+      const maxTimeSpan = dataSpan * 4;
+      let timeSpan = Math.max(minTimeSpan, Math.min(maxTimeSpan, maxTs - minTs));
+      const midTs = (minTs + maxTs) / 2;
+      minTs = midTs - timeSpan / 2;
+      maxTs = midTs + timeSpan / 2;
+      const padTs = dataSpan * 0.15;
+      const leftmost = extent.minTs - padTs;
+      const rightmost = extent.maxTs + padTs;
+      if (maxTs - minTs > rightmost - leftmost) {
+        minTs = leftmost;
+        maxTs = rightmost;
+      } else {
+        if (minTs < leftmost) {
+          maxTs += leftmost - minTs;
+          minTs = leftmost;
+        }
+        if (maxTs > rightmost) {
+          minTs -= maxTs - rightmost;
+          maxTs = rightmost;
+        }
+      }
+
+      const dataPriceSpan = Math.max(0.05, extent.chartMax - extent.chartMin);
+      const minPriceSpan = Math.max(0.05, dataPriceSpan * 0.02);
+      const maxPriceSpan = dataPriceSpan * 8;
+      let priceSpan = Math.max(minPriceSpan, Math.min(maxPriceSpan, chartMax - chartMin));
+      const midPrice = (chartMin + chartMax) / 2;
+      chartMin = midPrice - priceSpan / 2;
+      chartMax = midPrice + priceSpan / 2;
+      const padPrice = dataPriceSpan * 0.25;
+      const bottom = Math.max(0, extent.chartMin - padPrice);
+      const top = extent.chartMax + padPrice;
+      if (chartMax - chartMin > top - bottom) {
+        chartMin = bottom;
+        chartMax = top;
+      } else {
+        if (chartMin < bottom) {
+          chartMax += bottom - chartMin;
+          chartMin = bottom;
+        }
+        if (chartMax > top) {
+          chartMin -= chartMax - top;
+          chartMax = top;
+        }
+      }
+      if (chartMin < 0) {
+        chartMax -= chartMin;
+        chartMin = 0;
+      }
+      return { minTs, maxTs, chartMin, chartMax };
+    }
+
+    function getCollectionValueActiveView() {
+      const extent = state.collectionValueDataExtent;
+      if (!extent) return null;
+      if (!state.collectionValueView) return { ...extent };
+      return clampCollectionValueView(state.collectionValueView, extent);
+    }
+
+    function collectionValueHitZone(x, y) {
+      const layout = state.collectionValueLayout;
+      if (!layout) return null;
+      const { padL, padR, padT, padB, plotW, plotH, cssW, cssH } = layout;
+      if (x >= padL + plotW && x <= cssW && y >= padT && y <= padT + plotH) return "price";
+      if (x >= padL && x <= padL + plotW && y >= padT + plotH && y <= cssH) return "time";
+      if (x >= padL && x <= padL + plotW && y >= padT && y <= padT + plotH) return "plot";
+      if (x >= padL + plotW && y > padT + plotH) return "corner";
+      if (padR && x < padL) return null;
+      if (padB && y < padT) return null;
+      return null;
+    }
+
+    function setCollectionValueChartCursor(zone, dragging) {
+      const canvas = byId("collectionValueChart");
+      if (!canvas) return;
+      canvas.classList.remove(
+        "cvh-cursor-grab",
+        "cvh-cursor-grabbing",
+        "cvh-cursor-ns",
+        "cvh-cursor-ew"
+      );
+      if (dragging === "plot") canvas.classList.add("cvh-cursor-grabbing");
+      else if (dragging === "price" || zone === "price") canvas.classList.add("cvh-cursor-ns");
+      else if (dragging === "time" || zone === "time") canvas.classList.add("cvh-cursor-ew");
+      else if (zone === "plot") canvas.classList.add("cvh-cursor-grab");
+    }
+
+    function redrawCollectionValueChartFromState() {
+      if (!state.collectionValuePoints.length) return;
+      drawCollectionValueChart(state.collectionValuePoints, { keepTip: false });
+    }
+
+    function applyCollectionValuePan(dx, dy) {
+      const layout = state.collectionValueLayout;
+      const view = getCollectionValueActiveView();
+      const extent = state.collectionValueDataExtent;
+      if (!layout || !view || !extent) return;
+      const timeSpan = view.maxTs - view.minTs;
+      const priceSpan = view.chartMax - view.chartMin;
+      const next = {
+        minTs: view.minTs - (dx / layout.plotW) * timeSpan,
+        maxTs: view.maxTs - (dx / layout.plotW) * timeSpan,
+        chartMin: view.chartMin + (dy / layout.plotH) * priceSpan,
+        chartMax: view.chartMax + (dy / layout.plotH) * priceSpan
+      };
+      state.collectionValueView = clampCollectionValueView(next, extent);
+      redrawCollectionValueChartFromState();
+    }
+
+    function applyCollectionValueAxisScale(kind, dx, dy, anchorX, anchorY) {
+      const layout = state.collectionValueLayout;
+      const view = getCollectionValueActiveView();
+      const extent = state.collectionValueDataExtent;
+      if (!layout || !view || !extent) return;
+      if (kind === "price") {
+        const factor = Math.exp(dy / Math.max(40, layout.plotH * 0.45));
+        const anchorRatio = Math.max(0, Math.min(1, (anchorY - layout.padT) / layout.plotH));
+        const anchorPrice = view.chartMax - anchorRatio * (view.chartMax - view.chartMin);
+        const nextSpan = (view.chartMax - view.chartMin) * factor;
+        state.collectionValueView = clampCollectionValueView(
+          {
+            minTs: view.minTs,
+            maxTs: view.maxTs,
+            chartMin: anchorPrice - (1 - anchorRatio) * nextSpan,
+            chartMax: anchorPrice + anchorRatio * nextSpan
+          },
+          extent
+        );
+      } else if (kind === "time") {
+        const factor = Math.exp(-dx / Math.max(40, layout.plotW * 0.45));
+        const anchorRatio = Math.max(0, Math.min(1, (anchorX - layout.padL) / layout.plotW));
+        const anchorTs = view.minTs + anchorRatio * (view.maxTs - view.minTs);
+        const nextSpan = (view.maxTs - view.minTs) * factor;
+        state.collectionValueView = clampCollectionValueView(
+          {
+            minTs: anchorTs - anchorRatio * nextSpan,
+            maxTs: anchorTs + (1 - anchorRatio) * nextSpan,
+            chartMin: view.chartMin,
+            chartMax: view.chartMax
+          },
+          extent
+        );
+      }
+      redrawCollectionValueChartFromState();
+    }
+
+    function applyCollectionValueWheelZoom(deltaY, x, y, shiftKey) {
+      const layout = state.collectionValueLayout;
+      const view = getCollectionValueActiveView();
+      const extent = state.collectionValueDataExtent;
+      if (!layout || !view || !extent) return;
+      const factor = Math.exp(Math.sign(deltaY) * 0.12);
+      const zone = collectionValueHitZone(x, y) || "plot";
+      const zoomTime = zone === "time" || (zone === "plot" && !shiftKey);
+      const zoomPrice = zone === "price" || (zone === "plot" && shiftKey) || zone === "corner";
+      let next = { ...view };
+      if (zoomTime) {
+        const anchorRatio = Math.max(0, Math.min(1, (x - layout.padL) / layout.plotW));
+        const anchorTs = view.minTs + anchorRatio * (view.maxTs - view.minTs);
+        const nextSpan = (view.maxTs - view.minTs) * factor;
+        next.minTs = anchorTs - anchorRatio * nextSpan;
+        next.maxTs = anchorTs + (1 - anchorRatio) * nextSpan;
+      }
+      if (zoomPrice) {
+        const anchorRatio = Math.max(0, Math.min(1, (y - layout.padT) / layout.plotH));
+        const anchorPrice = view.chartMax - anchorRatio * (view.chartMax - view.chartMin);
+        const nextSpan = (view.chartMax - view.chartMin) * factor;
+        next.chartMin = anchorPrice - (1 - anchorRatio) * nextSpan;
+        next.chartMax = anchorPrice + anchorRatio * nextSpan;
+      }
+      state.collectionValueView = clampCollectionValueView(next, extent);
+      redrawCollectionValueChartFromState();
+    }
+
+    function bindCollectionValueChartInteraction() {
+      const canvas = byId("collectionValueChart");
+      const wrap = byId("collectionValueChartWrap");
+      if (!canvas || !wrap || canvas.dataset.cvhInteractBound === "1") return;
+      canvas.dataset.cvhInteractBound = "1";
+      const hitSlop = 7;
+
+      const pointerPos = (event) => {
+        const rect = canvas.getBoundingClientRect();
+        return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+      };
+
+      canvas.addEventListener("pointerdown", (event) => {
+        if (event.button !== 0) return;
+        const { x, y } = pointerPos(event);
+        const zone = collectionValueHitZone(x, y);
+        if (!zone || zone === "corner") return;
+        const view = getCollectionValueActiveView();
+        if (!view) return;
+        hideCollectionValueChartTip();
+        state.collectionValueAxisDrag = {
+          kind: zone,
+          pointerId: event.pointerId,
+          lastX: x,
+          lastY: y,
+          startX: x,
+          startY: y
+        };
+        try {
+          canvas.setPointerCapture(event.pointerId);
+        } catch {
+          /* ignore */
+        }
+        setCollectionValueChartCursor(zone, zone);
+        event.preventDefault();
+      });
+
+      canvas.addEventListener("pointermove", (event) => {
+        const { x, y } = pointerPos(event);
+        const drag = state.collectionValueAxisDrag;
+        if (drag && drag.pointerId === event.pointerId) {
+          const dx = x - drag.lastX;
+          const dy = y - drag.lastY;
+          drag.lastX = x;
+          drag.lastY = y;
+          if (drag.kind === "plot") applyCollectionValuePan(dx, dy);
+          else if (drag.kind === "price") applyCollectionValueAxisScale("price", dx, dy, drag.startX, drag.startY);
+          else if (drag.kind === "time") applyCollectionValueAxisScale("time", dx, dy, drag.startX, drag.startY);
+          event.preventDefault();
+          return;
+        }
+
+        const zone = collectionValueHitZone(x, y);
+        const hits = state.collectionValueMarkerHits || [];
+        const hit = hits.find(
+          (marker) =>
+            Math.abs(x - marker.x) <= hitSlop && y >= marker.y0 - 4 && y <= marker.y1 + 4
+        );
+        if (hit && zone === "plot") {
+          canvas.classList.remove(
+            "cvh-cursor-grab",
+            "cvh-cursor-grabbing",
+            "cvh-cursor-ns",
+            "cvh-cursor-ew"
+          );
+          canvas.style.cursor = "pointer";
+          showCollectionValueChartTip(hit, event.clientX, event.clientY);
+          return;
+        }
+        canvas.style.cursor = "";
+        hideCollectionValueChartTip();
+        setCollectionValueChartCursor(zone, null);
+      });
+
+      const endDrag = (event) => {
+        const drag = state.collectionValueAxisDrag;
+        if (!drag || drag.pointerId !== event.pointerId) return;
+        state.collectionValueAxisDrag = null;
+        try {
+          canvas.releasePointerCapture(event.pointerId);
+        } catch {
+          /* ignore */
+        }
+        const { x, y } = pointerPos(event);
+        setCollectionValueChartCursor(collectionValueHitZone(x, y), null);
+      };
+      canvas.addEventListener("pointerup", endDrag);
+      canvas.addEventListener("pointercancel", endDrag);
+
+      canvas.addEventListener("pointerleave", () => {
+        if (state.collectionValueAxisDrag) return;
+        hideCollectionValueChartTip();
+        canvas.style.cursor = "";
+        setCollectionValueChartCursor(null, null);
+      });
+
+      canvas.addEventListener(
+        "wheel",
+        (event) => {
+          if (!state.collectionValueDataExtent) return;
+          const { x, y } = pointerPos(event);
+          event.preventDefault();
+          hideCollectionValueChartTip();
+          applyCollectionValueWheelZoom(event.deltaY, x, y, event.shiftKey);
+        },
+        { passive: false }
+      );
+
+      canvas.addEventListener("dblclick", (event) => {
+        const { x, y } = pointerPos(event);
+        const zone = collectionValueHitZone(x, y);
+        if (!zone) return;
+        resetCollectionValueChartView();
+        redrawCollectionValueChartFromState();
+        event.preventDefault();
+      });
+    }
+
+    function drawCollectionValueChart(points, options = {}) {
+      const canvas = byId("collectionValueChart");
+      const wrap = byId("collectionValueChartWrap");
+      if (!canvas || !wrap) return;
+      bindCollectionValueChartInteraction();
+      const list = (Array.isArray(points) ? points : []).filter(
+        (point) => Number.isFinite(Number(point?.price)) && Number(point.price) > 0 && Number.isFinite(Number(point?.ts))
+      );
+      state.collectionValuePoints = list;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      const cssW = Math.max(200, wrap.clientWidth || canvas.clientWidth || 600);
+      const cssH = 228;
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      canvas.width = Math.floor(cssW * dpr);
+      canvas.height = Math.floor(cssH * dpr);
+      canvas.style.width = `${cssW}px`;
+      canvas.style.height = `${cssH}px`;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, cssW, cssH);
+      state.collectionValueMarkerHits = [];
+      if (!options.keepTip) hideCollectionValueChartTip();
+
+      if (list.length < 1) {
+        state.collectionValueDataExtent = null;
+        state.collectionValueLayout = null;
+        setCollectionValueChartMessage("No market history available for this range.");
+        return;
+      }
+
+      setCollectionValueChartMessage("");
+      const padL = 8;
+      const padR = 64;
+      const padT = 10;
+      const padB = 30;
+      const plotW = Math.max(40, cssW - padL - padR);
+      const plotH = Math.max(40, cssH - padT - padB);
+      state.collectionValueLayout = { padL, padR, padT, padB, plotW, plotH, cssW, cssH };
+
+      const autoView = getCollectionValueAutoView(list);
+      state.collectionValueDataExtent = autoView;
+      const view = getCollectionValueActiveView() || autoView;
+      const { minTs, maxTs, chartMin, chartMax } = view;
+      const xAt = (ts) => padL + ((ts - minTs) / (maxTs - minTs)) * plotW;
+      const yAt = (price) => padT + plotH - ((price - chartMin) / (chartMax - chartMin)) * plotH;
+
+      const grid = "#2a2e39";
+      const axis = "#363a45";
+      const label = "#787b86";
+      const line = "#089981";
+      const acquiredLine = "rgba(245, 217, 81, 0.9)";
+      ctx.strokeStyle = grid;
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= 5; i += 1) {
+        const y = padT + (plotH / 5) * i;
+        ctx.beginPath();
+        ctx.moveTo(padL, y);
+        ctx.lineTo(padL + plotW, y);
+        ctx.stroke();
+      }
+
+      ctx.strokeStyle = axis;
+      ctx.beginPath();
+      ctx.moveTo(padL + plotW + 0.5, padT);
+      ctx.lineTo(padL + plotW + 0.5, padT + plotH);
+      ctx.moveTo(padL, padT + plotH + 0.5);
+      ctx.lineTo(padL + plotW, padT + plotH + 0.5);
+      ctx.stroke();
+
+      ctx.fillStyle = label;
+      ctx.font = "11px Inter, Segoe UI, Arial, sans-serif";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      for (let i = 0; i <= 5; i += 1) {
+        const y = padT + (plotH / 5) * i;
+        const price = chartMax - ((chartMax - chartMin) / 5) * i;
+        const priceText =
+          price >= 1000 ? `$${price.toFixed(0)}` : price >= 10 ? `$${price.toFixed(1)}` : `$${price.toFixed(2)}`;
+        ctx.fillText(priceText, padL + plotW + 8, y);
+      }
+
+      ctx.textAlign = "center";
+      ctx.textBaseline = "alphabetic";
+      ctx.font = "10px Inter, Segoe UI, Arial, sans-serif";
+      for (let i = 0; i <= 4; i += 1) {
+        const ts = minTs + ((maxTs - minTs) / 4) * i;
+        ctx.fillStyle = label;
+        ctx.fillText(formatChartAxisDate(ts), xAt(ts), cssH - 7);
+      }
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(padL, padT, plotW, plotH);
+      ctx.clip();
+
+      const acquisitionMarkers = getCollectionAcquisitionMarkers().filter(
+        (marker) => marker.ts >= minTs && marker.ts <= maxTs
+      );
+      state.collectionValueMarkerHits = acquisitionMarkers.map((marker) => ({
+        x: xAt(marker.ts),
+        y0: padT,
+        y1: padT + plotH,
+        date: marker.date,
+        items: marker.items || []
+      }));
+      for (const marker of acquisitionMarkers) {
+        const x = xAt(marker.ts);
+        ctx.strokeStyle = acquiredLine;
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([5, 4]);
+        ctx.beginPath();
+        ctx.moveTo(x + 0.5, padT);
+        ctx.lineTo(x + 0.5, padT + plotH);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      if (list.length > 1) {
+        ctx.beginPath();
+        list.forEach((point, index) => {
+          const x = xAt(point.ts);
+          const y = yAt(point.price);
+          if (index === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        });
+        ctx.lineTo(xAt(list[list.length - 1].ts), padT + plotH);
+        ctx.lineTo(xAt(list[0].ts), padT + plotH);
+        ctx.closePath();
+        ctx.fillStyle = "rgba(8, 153, 129, 0.12)";
+        ctx.fill();
+      }
+
+      ctx.strokeStyle = line;
+      ctx.lineWidth = 2;
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      if (list.length === 1) {
+        const y = yAt(list[0].price);
+        ctx.moveTo(padL, y);
+        ctx.lineTo(padL + plotW, y);
+      } else {
+        list.forEach((point, index) => {
+          const x = xAt(point.ts);
+          const y = yAt(point.price);
+          if (index === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        });
+      }
+      ctx.stroke();
+
+      const last = list[list.length - 1];
+      if (last.ts >= minTs && last.ts <= maxTs) {
+        ctx.fillStyle = line;
+        ctx.beginPath();
+        ctx.arc(xAt(last.ts), yAt(last.price), 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    function hasCollectionItems() {
+      return Array.isArray(state.items) && state.items.length > 0;
+    }
+
+    function syncCollectionValueChartVisibility() {
+      const hasItems = hasCollectionItems();
+      const wrap = byId("collectionValueChartWrap");
+      const filters = byId("collectionValueFilters");
+      const coverage = byId("collectionValueCoverage");
+      if (wrap) wrap.hidden = !hasItems;
+      if (filters) filters.hidden = !hasItems;
+      if (!hasItems && coverage) {
+        coverage.hidden = true;
+        coverage.textContent = "";
+      }
+    }
+
+    function renderCollectionValueChart() {
+      const wrap = byId("collectionValueChartWrap");
+      const coverage = byId("collectionValueCoverage");
+      syncCollectionValueChartVisibility();
+      if (!wrap || !hasCollectionItems()) return;
+      const loading = Boolean(state.collectionValueLoadingKey);
+      wrap.classList.toggle("is-loading", loading);
+      const payload = getActiveCollectionValueHistory();
+      if (loading && !payload) {
+        drawCollectionValueChart([]);
+        setCollectionValueChartMessage("Loading collection history…");
+        if (coverage) coverage.hidden = true;
+        return;
+      }
+      if (!payload || !payload.ok) {
+        drawCollectionValueChart([]);
+        setCollectionValueChartMessage(
+          payload && payload.error ? String(payload.error) : "No market history available for this range."
+        );
+        if (coverage) coverage.hidden = true;
+        return;
+      }
+      if (!Array.isArray(payload.points) || !payload.points.length) {
+        drawCollectionValueChart([]);
+        setCollectionValueChartMessage("No market history available for this range.");
+        if (coverage) coverage.hidden = true;
+        return;
+      }
+      drawCollectionValueChart(payload.points);
+      if (coverage) {
+        const acquiredInRange = getCollectionAcquisitionMarkers().filter((marker) => {
+          const points = payload.points || [];
+          if (!points.length) return false;
+          let minTs = points[0].ts;
+          let maxTs = points[0].ts;
+          for (const point of points) {
+            minTs = Math.min(minTs, point.ts);
+            maxTs = Math.max(maxTs, point.ts);
+          }
+          return marker.ts >= minTs && marker.ts <= maxTs;
+        }).length;
+        const acquiredNote =
+          acquiredInRange > 0
+            ? ` Yellow lines mark ${acquiredInRange} acquisition date${acquiredInRange === 1 ? "" : "s"}.`
+            : "";
+        if (payload.incomplete && payload.totalItemCount > 0) {
+          coverage.hidden = false;
+          coverage.textContent = `History covers ${payload.pricedItemCount} of ${payload.totalItemCount} items (others lack PriceCharting history).${acquiredNote}`;
+        } else if (acquiredNote) {
+          coverage.hidden = false;
+          coverage.textContent = acquiredNote.trim();
+        } else {
+          coverage.hidden = true;
+          coverage.textContent = "";
+        }
+      }
+    }
+
+    async function ensureCollectionValueHistory(rangeKey = state.collectionValueRange) {
+      const key = String(rangeKey || "all");
+      if (!hasCollectionItems()) {
+        state.collectionValueLoadingKey = "";
+        state.collectionValueByRange = {};
+        syncCollectionValueChartVisibility();
+        renderKpis();
+        return null;
+      }
+      if (
+        state.collectionValueByRange[key]?.ok &&
+        state.collectionValueByRange[key].itemStarts &&
+        typeof state.collectionValueByRange[key].itemStarts === "object"
+      ) {
+        renderCollectionValueChart();
+        if (state.type !== "sets" && state.type !== "binder") renderItems();
+        return state.collectionValueByRange[key];
+      }
+      const token = ++state.collectionValueLoadToken;
+      state.collectionValueLoadingKey = key;
+      renderCollectionValueChart();
+      try {
+        const response = await fetch(`/api/dashboard/value-history?range=${encodeURIComponent(key)}`, {
+          credentials: "same-origin",
+          cache: "no-store"
+        });
+        let payload = null;
+        try {
+          payload = await response.json();
+        } catch {
+          payload = null;
+        }
+        if (token !== state.collectionValueLoadToken) return null;
+        if (response.ok && payload && payload.ok) {
+          state.collectionValueByRange[key] = payload;
+        } else {
+          state.collectionValueByRange[key] = {
+            ok: false,
+            error:
+              (payload && payload.error) ||
+              (response.status === 404
+                ? "Collection history API is unavailable. Restart the server to pick up the latest routes."
+                : `Failed to load history (${response.status})`),
+            points: [],
+            itemStarts: {},
+            priceChange: null,
+            percentChange: null
+          };
+        }
+      } catch (err) {
+        if (token !== state.collectionValueLoadToken) return null;
+        state.collectionValueByRange[key] = {
+          ok: false,
+          error: err?.message || "Failed to load collection history",
+          points: [],
+          itemStarts: {},
+          priceChange: null,
+          percentChange: null
+        };
+      } finally {
+        if (token === state.collectionValueLoadToken) {
+          state.collectionValueLoadingKey = "";
+        }
+      }
+      if (token === state.collectionValueLoadToken) {
+        renderKpis();
+        renderCollectionValueChart();
+        if (state.type !== "sets" && state.type !== "binder") renderItems();
+      }
+      return state.collectionValueByRange[key] || null;
+    }
+
+    function setCollectionValueRange(rangeKey) {
+      const next = String(rangeKey || "all");
+      resetCollectionValueChartView();
+      if (next === state.collectionValueRange && state.collectionValueByRange[next]) {
+        syncCollectionValueFilterButtons();
+        renderKpis();
+        renderCollectionValueChart();
+        if (state.type !== "sets" && state.type !== "binder") renderItems();
+        return;
+      }
+      state.collectionValueRange = next;
+      syncCollectionValueFilterButtons();
+      renderKpis();
+      if (state.type !== "sets" && state.type !== "binder") renderItems();
+      void ensureCollectionValueHistory(next);
     }
 
     function timeAgo(iso) {
@@ -2622,8 +4148,17 @@
       const itemsPayload = itemsRes.ok ? await itemsRes.json() : { items: [] };
       state.dashboard = dashboard;
       state.items = Array.isArray(itemsPayload.items) ? itemsPayload.items : [];
+      state.collectionValueByRange = {};
+      state.collectionValueLoadToken += 1;
+      state.collectionValueLoadingKey = "";
       await loadCardImagesForDashboard();
       void loadSetProgressData();
+      syncCollectionValueChartVisibility();
+      if (hasCollectionItems()) {
+        void ensureCollectionValueHistory(state.collectionValueRange);
+      } else {
+        renderKpis();
+      }
     }
 
     function getDisplayPreferences() {
@@ -2645,10 +4180,31 @@
       const k = state.dashboard?.kpis || {};
       const prefs = getDisplayPreferences();
       const pnl = Number(k.unrealizedPnL || 0);
+      const history = hasCollectionItems() ? getActiveCollectionValueHistory() : null;
+      const rangeLabel = getCollectionValueRangeLabel(state.collectionValueRange);
+      const loadingHistory =
+        hasCollectionItems() && Boolean(state.collectionValueLoadingKey) && !history;
+      const priceChange = history && history.ok ? history.priceChange : null;
+      const percentChange = history && history.ok ? history.percentChange : null;
       const parts = [
         `<div class="kpi">
           <div class="kpi-label">Market Value</div>
           <div class="kpi-value">${formatMoney(k.marketValue)}</div>
+          <div class="kpi-sub">Current</div>
+        </div>`,
+        `<div class="kpi">
+          <div class="kpi-label">Price Change</div>
+          <div class="kpi-value ${deltaDirectionClass(priceChange)}">${
+            loadingHistory ? "…" : formatSignedMoney(priceChange)
+          }</div>
+          <div class="kpi-sub">${escapeHtml(rangeLabel)}</div>
+        </div>`,
+        `<div class="kpi">
+          <div class="kpi-label">Percent Change</div>
+          <div class="kpi-value ${deltaDirectionClass(percentChange)}">${
+            loadingHistory ? "…" : formatSignedPercent(percentChange)
+          }</div>
+          <div class="kpi-sub">${escapeHtml(rangeLabel)}</div>
         </div>`
       ];
       if (prefs.showCostBasis) {
@@ -2667,21 +4223,29 @@
         `<div class="kpi">
           <div class="kpi-label">Total Items</div>
           <div class="kpi-value">${Number(k.totalItems || 0).toLocaleString()}</div>
-        </div>`,
-        `<div class="kpi">
-          <div class="kpi-label">Line Items</div>
-          <div class="kpi-value">${Number(k.lineItems || 0).toLocaleString()}</div>
         </div>`
       );
       byId("kpis").innerHTML = parts.join("");
+      syncCollectionValueFilterButtons();
     }
 
     function matches(item) {
-      const q = state.query.toLowerCase();
+      const q = String(state.query || "").trim();
       if (state.type === "sets") return false;
       if (state.type !== "all" && item.type !== state.type) return false;
       if (!q) return true;
-      return `${item.name} ${item.setName} ${item.cardNumber}`.toLowerCase().includes(q);
+      if (item.type === "sealed") {
+        return sealedProductMatchesQuery(
+          {
+            card: item.name,
+            setCode: item.setCode,
+            setDisplayName: item.setName,
+            productType: item.productType
+          },
+          q
+        );
+      }
+      return `${item.name} ${item.setName} ${item.cardNumber}`.toLowerCase().includes(q.toLowerCase());
     }
 
     function bulbapediaSymbolUrl(setCode) {
@@ -3662,16 +5226,23 @@
     function collectionCardImageHtml(item) {
       const imgUrl = lookupCardImageForItem(item);
       if (imgUrl) {
-        return `<img src="${escapeAttr(imgUrl)}" alt="${escapeAttr(String(item.name || "Card"))}" loading="lazy" />`;
+        return `<div class="collection-card-thumb-frame"><img src="${escapeAttr(imgUrl)}" alt="${escapeAttr(String(item.name || "Card"))}" loading="lazy" decoding="async" /></div>`;
       }
-      return `<span class="placeholder">No image</span>`;
+      return `<div class="collection-card-thumb-frame"><span class="placeholder">No image</span></div>`;
     }
 
     function collectionCardSetsHref(item) {
       const setCode = resolveItemSetCode(item);
-      if (item.type !== "single" || !setCode) return "";
+      if (!setCode) return "";
       const qs = new URLSearchParams();
       qs.set("set", setCode);
+      if (item.type === "sealed") {
+        qs.set("mode", "sealed");
+        const productId = String(item.priceChartingId || "").trim();
+        if (productId) qs.set("product", productId);
+        return `/sets.html?${qs.toString()}`;
+      }
+      if (item.type !== "single") return "";
       const cardNum = String(item.cardNumber || "").trim();
       if (cardNum) qs.set("card", cardNum);
       if (String(item.setLanguage || "english").toLowerCase() === "japanese") qs.set("lang", "ja");
@@ -3693,47 +5264,95 @@
           const unit = item.manualPrice ?? item.marketPrice ?? 0;
           const qtyNum = Math.max(1, Math.floor(Number(item.quantity) || 1));
           const total = Number(unit) * qtyNum;
-          const meta = [item.setName, item.cardNumber].filter(Boolean).join(" · ");
-          const value =
-            total > 0 ? formatMoney(total) : unit > 0 ? formatMoney(unit) : "";
           const typeLabel = item.type === "sealed" ? "Sealed" : "Single";
+          const meta =
+            item.type === "sealed"
+              ? [item.setName || resolveItemSetCode(item), "Sealed"].filter(Boolean).join(" · ")
+              : [item.setName, item.cardNumber].filter(Boolean).join(" · ");
+          const unitPrice = Number(unit) > 0 ? formatMoney(unit) : "";
+          const valueHtml = unitPrice
+            ? qtyNum > 1 && total > 0
+              ? `${escapeHtml(unitPrice)} <span class="collection-card-value-total">(${escapeHtml(
+                  formatMoney(total)
+                )})</span>`
+              : escapeHtml(unitPrice)
+            : "";
           const setsHref = collectionCardSetsHref(item);
           const costUnit = Math.max(0, Number(item.costBasis) || 0);
-          const costInput = showCost
-            ? `<label class="collection-cost-basis" title="Cost basis (per card)">
-                Cost
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  inputmode="decimal"
-                  data-cost-id="${escapeAttr(String(item.id || ""))}"
-                  value="${escapeAttr(costUnit.toFixed(2))}"
-                  aria-label="Cost basis for ${escapeAttr(String(item.name || "item"))}"
-                />
-              </label>`
-            : "";
-          const priceRow = `<div class="collection-card-prices">
-                  <div class="collection-card-qty">
-                    Qty:
+          const costDate = String(item.costBasisDate || "").trim();
+          const isSealed = item.type === "sealed";
+          const costRows = showCost
+            ? `<div class="collection-card-footer-row">
+                <label class="collection-card-field" title="Cost basis (per card)">
+                  <span>Cost</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    inputmode="decimal"
+                    data-cost-id="${escapeAttr(String(item.id || ""))}"
+                    value="${escapeAttr(costUnit.toFixed(2))}"
+                    aria-label="Cost basis for ${escapeAttr(String(item.name || "item"))}"
+                  />
+                </label>
+              </div>
+              <div class="collection-card-footer-row">
+                <label class="collection-card-field collection-card-field--stack" title="When you got this item — type mm/dd/yyyy or use the calendar">
+                  <span>Acquired</span>
+                  <span class="collection-date-input-wrap">
+                    <input
+                      type="text"
+                      inputmode="numeric"
+                      autocomplete="off"
+                      spellcheck="false"
+                      placeholder="mm/dd/yyyy"
+                      data-cost-date-id="${escapeAttr(String(item.id || ""))}"
+                      value="${escapeAttr(formatCostDateDisplay(costDate))}"
+                      aria-label="Acquisition date for ${escapeAttr(String(item.name || "item"))}"
+                    />
+                    <input
+                      type="date"
+                      class="collection-date-native"
+                      data-cost-date-native="${escapeAttr(String(item.id || ""))}"
+                      value="${escapeAttr(costDate)}"
+                      max="${escapeAttr(new Date().toISOString().slice(0, 10))}"
+                      tabindex="-1"
+                      aria-hidden="true"
+                    />
                     <button
                       type="button"
-                      class="collection-card-qty-value"
-                      data-qty-id="${escapeAttr(String(item.id || ""))}"
-                      data-qty-name="${escapeAttr(String(item.name || "Item"))}"
-                      title="Click to edit quantity (0 removes)"
-                      aria-label="Quantity ${qtyNum}. Click to edit"
-                    >${qtyNum}</button>
-                  </div>
-                  <div class="collection-card-prices-right">
-                    ${
-                      value
-                        ? `<div class="showcase-card-value">${escapeHtml(value)}</div>`
-                        : `<div class="showcase-card-value" style="opacity:0.45;">—</div>`
-                    }
-                    ${costInput}
-                  </div>
-                </div>`;
+                      class="collection-date-picker-btn"
+                      data-cost-date-picker="${escapeAttr(String(item.id || ""))}"
+                      title="Open calendar"
+                      aria-label="Open calendar for ${escapeAttr(String(item.name || "item"))}"
+                    >▾</button>
+                  </span>
+                </label>
+              </div>`
+            : "";
+          const footer = `<div class="collection-card-footer">
+              <div class="collection-card-footer-row">
+                <div class="collection-card-qty">
+                  Qty:
+                  <button
+                    type="button"
+                    class="collection-card-qty-value"
+                    data-qty-id="${escapeAttr(String(item.id || ""))}"
+                    data-qty-name="${escapeAttr(String(item.name || "Item"))}"
+                    title="Click to edit quantity (0 removes)"
+                    aria-label="Quantity ${qtyNum}. Click to edit"
+                  >${qtyNum}</button>
+                </div>
+                ${
+                  valueHtml
+                    ? `<div class="collection-card-value-block"><div class="showcase-card-value">${valueHtml}</div>${formatCollectionItemDeltaHtml(
+                        item
+                      )}</div>`
+                    : `<div class="showcase-card-value" style="opacity:0.45;">—</div>`
+                }
+              </div>
+              ${costRows}
+            </div>`;
           const main = `<div class="showcase-card-thumb">${collectionCardImageHtml(item)}</div>
             <div class="showcase-card-body">
               <h3 class="showcase-card-name">${escapeHtml(item.name || "Unnamed Item")}</h3>
@@ -3741,19 +5360,93 @@
             </div>`;
           const removeBtn = `<button type="button" class="collection-card-remove" data-id="${escapeAttr(String(item.id || ""))}" data-name="${escapeAttr(String(item.name || "Item"))}" aria-label="Remove from collection" title="Remove from collection"><span class="card-btn-icon card-btn-icon--minus" aria-hidden="true"></span></button>`;
           const linkedMain = setsHref
-            ? `<a class="collection-card-link" href="${escapeAttr(setsHref)}" title="View in Sets">${main}</a>`
-            : main;
-          return `<article class="collection-card showcase-card showcase-card--static">
+            ? `<a class="collection-card-link" href="${escapeAttr(setsHref)}" title="${
+                isSealed ? "View sealed product" : "View in Sets"
+              }">${main}</a>`
+            : `<div class="collection-card-link">${main}</div>`;
+          return `<article class="collection-card showcase-card showcase-card--static${
+            isSealed ? " collection-card--sealed" : ""
+          }">
             ${removeBtn}
             ${linkedMain}
-            <div class="showcase-card-body" style="padding-top:0;">${priceRow}</div>
+            ${footer}
           </article>`;
         })
         .join("");
+      bindCollectionCostDatePickers();
+    }
+
+    function formatCostDateDisplay(isoDate) {
+      const raw = String(isoDate || "").trim();
+      const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!match) return "";
+      return `${Number(match[2])}/${Number(match[3])}/${match[1]}`;
+    }
+
+    function normalizeCostDateInput(rawDate) {
+      const raw = String(rawDate || "").trim();
+      if (!raw) return "";
+      if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+        const ts = parseCostBasisDateToTs(raw);
+        return Number.isFinite(ts) ? raw : "";
+      }
+      const slash = raw.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2}|\d{4})$/);
+      if (!slash) return "";
+      let month = Number(slash[1]);
+      let day = Number(slash[2]);
+      let year = Number(slash[3]);
+      if (year < 100) year += year >= 70 ? 1900 : 2000;
+      if (!year || month < 1 || month > 12 || day < 1 || day > 31) return "";
+      const iso = `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      const ts = parseCostBasisDateToTs(iso);
+      if (!Number.isFinite(ts)) return "";
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+      if (ts > today.getTime()) return "";
+      return iso;
+    }
+
+    function bindCollectionCostDatePickers() {
+      const list = byId("itemsList");
+      if (!list) return;
+      list.querySelectorAll("[data-cost-date-picker]").forEach((btn) => {
+        if (btn.dataset.pickerBound === "1") return;
+        btn.dataset.pickerBound = "1";
+        btn.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          const id = String(btn.getAttribute("data-cost-date-picker") || "").trim();
+          if (!id) return;
+          const native = list.querySelector(`input[data-cost-date-native="${CSS.escape(id)}"]`);
+          const text = list.querySelector(`input[data-cost-date-id="${CSS.escape(id)}"]`);
+          if (!native) return;
+          const parsed = normalizeCostDateInput(text?.value || "");
+          if (parsed) native.value = parsed;
+          try {
+            if (typeof native.showPicker === "function") native.showPicker();
+            else native.focus();
+          } catch {
+            native.focus();
+          }
+        });
+      });
+      list.querySelectorAll("input[data-cost-date-native]").forEach((native) => {
+        if (native.dataset.pickerBound === "1") return;
+        native.dataset.pickerBound = "1";
+        native.addEventListener("change", () => {
+          const id = String(native.getAttribute("data-cost-date-native") || "").trim();
+          if (!id) return;
+          const text = list.querySelector(`input[data-cost-date-id="${CSS.escape(id)}"]`);
+          const iso = String(native.value || "").trim();
+          if (text) text.value = formatCostDateDisplay(iso);
+          void saveCollectionCostBasisDate(id, iso);
+        });
+      });
     }
 
     function renderAll() {
       renderKpis();
+      renderCollectionValueChart();
       renderCollectionView();
       syncCollectionFilterTabs();
     }
@@ -3776,6 +5469,16 @@
         });
       }
     }
+
+    document.querySelectorAll("[data-cvh-range]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        setCollectionValueRange(btn.getAttribute("data-cvh-range") || "all");
+      });
+    });
+
+    window.addEventListener("resize", () => {
+      if (getActiveCollectionValueHistory()) renderCollectionValueChart();
+    });
 
     byId("topSearch").addEventListener("input", (e) => {
       state.query = e.target.value || "";
@@ -3832,8 +5535,8 @@
 
     document.querySelectorAll("[data-add-card-source]").forEach((btn) => {
       btn.addEventListener("click", () => {
-        state.addCardSource = btn.getAttribute("data-add-card-source") || "search";
-        state.addCardBrowseSetCode = "";
+        const next = btn.getAttribute("data-add-card-source") || "catalog";
+        state.addCardSource = next === "sealed" ? "sealed" : "catalog";
         state.addCardSelectedId = "";
         const search = byId("addCardSearch");
         if (search) search.value = "";
@@ -3841,13 +5544,7 @@
         void renderAddCardGrid().then(() => resetAddCardScroll());
       });
     });
-    byId("addCardBackSets")?.addEventListener("click", () => {
-      state.addCardBrowseSetCode = "";
-      state.addCardSelectedId = "";
-      const search = byId("addCardSearch");
-      if (search) search.value = "";
-      void renderAddCardGrid().then(() => resetAddCardScroll());
-    });
+    byId("addCardSealedSetSortBtn")?.addEventListener("click", toggleAddCardSealedSetSortOrder);
     byId("addCardSearch").addEventListener("input", () => {
       void renderAddCardGrid();
     });
@@ -3959,6 +5656,47 @@
       removeCollectionItem(id, name);
     });
 
+    async function persistCollectionCostFields(item, { costBasis, costBasisDate } = {}) {
+      const id = String(item?.id || "").trim();
+      if (!id) return false;
+      const nextCost =
+        costBasis !== undefined
+          ? Number.isFinite(Number(costBasis))
+            ? Number(Math.max(0, Number(costBasis)).toFixed(2))
+            : 0
+          : Number(item.costBasis || 0);
+      const nextDate =
+        costBasisDate !== undefined
+          ? String(costBasisDate || "").trim()
+          : String(item.costBasisDate || "").trim();
+      try {
+        const res = await fetch(`/api/items/${encodeURIComponent(id)}`, {
+          method: "PUT",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...item, costBasis: nextCost, costBasisDate: nextDate })
+        });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          window.alert(payload.error || `Could not save cost basis (${res.status})`);
+          await loadData();
+          renderAll();
+          return false;
+        }
+        item.costBasis = nextCost;
+        item.costBasisDate = nextDate;
+        if (payload.item) {
+          Object.assign(item, payload.item);
+        }
+        await loadData();
+        renderAll();
+        return true;
+      } catch (err) {
+        window.alert(err.message || "Could not save cost basis.");
+        return false;
+      }
+    }
+
     async function saveCollectionCostBasis(itemId, rawValue) {
       const id = String(itemId || "").trim();
       if (!id) return;
@@ -3966,29 +5704,83 @@
       if (!item) return;
       const nextCost = Math.max(0, Number(rawValue));
       const costBasis = Number.isFinite(nextCost) ? Number(nextCost.toFixed(2)) : 0;
+      // Manual price always wins; keep any existing cost date.
       if (Number(item.costBasis || 0) === costBasis) return;
-      try {
-        const res = await fetch(`/api/items/${encodeURIComponent(id)}`, {
-          method: "PUT",
-          credentials: "same-origin",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...item, costBasis })
+      await persistCollectionCostFields(item, {
+        costBasis,
+        costBasisDate: item.costBasisDate || ""
+      });
+    }
+
+    function getCollectionCostInputValue(itemId) {
+      const id = String(itemId || "").trim();
+      if (!id) return null;
+      const input = byId("itemsList")?.querySelector(`input[data-cost-id="${CSS.escape(id)}"]`);
+      if (!input) return null;
+      const n = Number(input.value);
+      return Number.isFinite(n) ? Math.max(0, n) : null;
+    }
+
+    async function saveCollectionCostBasisDate(itemId, rawDate) {
+      const id = String(itemId || "").trim();
+      if (!id) return;
+      const item = state.items.find((row) => String(row.id) === id);
+      if (!item) return;
+      const typed = String(rawDate || "").trim();
+      if (!typed) {
+        if (!String(item.costBasisDate || "").trim()) return;
+        await persistCollectionCostFields(item, {
+          costBasis: item.costBasis,
+          costBasisDate: ""
         });
+        return;
+      }
+      const date = normalizeCostDateInput(typed);
+      if (!date) {
+        window.alert("Enter a valid date as mm/dd/yyyy (or use the calendar).");
+        renderItems();
+        return;
+      }
+      if (date === String(item.costBasisDate || "").trim()) {
+        renderItems();
+        return;
+      }
+
+      // If the user already entered a cost, keep it — only store the acquired date.
+      const typedCost = getCollectionCostInputValue(id);
+      const existingCost = Number(item.costBasis || 0);
+      const manualCost =
+        typedCost != null && typedCost > 0
+          ? Number(typedCost.toFixed(2))
+          : existingCost > 0
+            ? Number(existingCost.toFixed(2))
+            : 0;
+      if (manualCost > 0) {
+        await persistCollectionCostFields(item, {
+          costBasis: manualCost,
+          costBasisDate: date
+        });
+        return;
+      }
+
+      try {
+        const res = await fetch(
+          `/api/collection/historical-price?itemId=${encodeURIComponent(id)}&date=${encodeURIComponent(date)}`,
+          { credentials: "same-origin", cache: "no-store" }
+        );
         const payload = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          window.alert(payload.error || `Could not save cost basis (${res.status})`);
-          await loadData();
-          renderAll();
+        if (!res.ok || !payload?.ok || !(Number(payload.price) > 0)) {
+          window.alert(payload?.error || "No historical price for that date");
+          renderItems();
           return;
         }
-        item.costBasis = costBasis;
-        if (payload.item) {
-          Object.assign(item, payload.item);
-        }
-        await loadData();
-        renderAll();
+        await persistCollectionCostFields(item, {
+          costBasis: Number(payload.price),
+          costBasisDate: date
+        });
       } catch (err) {
-        window.alert(err.message || "Could not save cost basis.");
+        window.alert(err.message || "Could not load historical price.");
+        renderItems();
       }
     }
 
@@ -4102,13 +5894,20 @@
     });
 
     byId("itemsList").addEventListener("change", (e) => {
-      const input = e.target && e.target.closest ? e.target.closest("input[data-cost-id]") : null;
-      if (!input) return;
-      saveCollectionCostBasis(input.getAttribute("data-cost-id"), input.value);
+      const costInput = e.target && e.target.closest ? e.target.closest("input[data-cost-id]") : null;
+      if (costInput) {
+        saveCollectionCostBasis(costInput.getAttribute("data-cost-id"), costInput.value);
+        return;
+      }
+      const dateInput =
+        e.target && e.target.closest ? e.target.closest("input[data-cost-date-id]") : null;
+      if (dateInput) {
+        saveCollectionCostBasisDate(dateInput.getAttribute("data-cost-date-id"), dateInput.value);
+      }
     });
 
     byId("itemsList").addEventListener("keydown", (e) => {
-      const input = e.target && e.target.closest ? e.target.closest("input[data-cost-id]") : null;
+      const input = e.target && e.target.closest ? e.target.closest("input[data-cost-id], input[data-cost-date-id]") : null;
       if (!input) return;
       if (e.key === "Enter") {
         e.preventDefault();

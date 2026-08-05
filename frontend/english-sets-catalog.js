@@ -350,4 +350,179 @@
     JU: "SetSymbolJungle.png",
     BS: "SetSymbolBase_Set.png"
   };
+
+  /** Same release dates as Sets page catalog sort (newest/oldest by set). */
+  global.ENGLISH_SET_RELEASE_DATES = {
+    N1: "December 16, 2000",
+    FST: "November 12, 2021",
+    FCO: "May 2, 2016",
+    JTG: "March 28, 2025",
+    PLS: "February 6, 2013",
+    B2: "February 24, 2000",
+    PAF: "January 26, 2024",
+    DET: "March 29, 2019",
+    CG: "August 30, 2006",
+    SHF: "February 19, 2021",
+    BLK: "July 18, 2025",
+    HL: "June 14, 2004",
+    UPR: "February 2, 2018",
+    SF: "November 5, 2008",
+    SV: "August 19, 2009",
+    PRC: "February 4, 2015",
+    SW: "November 7, 2007",
+    SLG: "October 6, 2017",
+    RR: "May 16, 2009",
+    EX: "September 15, 2002",
+    DRM: "September 7, 2018",
+    MA: "March 15, 2004",
+    HP: "May 3, 2006",
+    DF: "November 8, 2006",
+    SSH: "February 7, 2020",
+    UNM: "August 2, 2019",
+    RM: "December 2, 2009",
+    HIF: "August 23, 2019",
+    SMP: "November 18, 2016",
+    SUM: "February 3, 2017",
+    GRI: "May 5, 2017",
+    N4: "February 28, 2002",
+    TWM: "May 24, 2024",
+    FUT20: "September 11, 2020",
+    SWSHP: "November 15, 2019",
+    NXD: "February 8, 2012",
+    UD: "August 18, 2010",
+    CRE: "June 18, 2021",
+    SI: "July 31, 2001",
+    CL: "February 9, 2011",
+    BRS: "February 25, 2022",
+    RG: "August 30, 2004",
+    PFL: "November 14, 2025",
+    RCL: "May 1, 2020",
+    CEL: "October 8, 2021",
+    CRZ: "January 20, 2023",
+    N3: "September 21, 2001",
+    UF: "August 22, 2005",
+    FLI: "May 4, 2018",
+    TR: "April 24, 2000",
+    LC: "May 24, 2002",
+    PAR: "November 3, 2023",
+    EVS: "August 27, 2021",
+    PAL: "June 9, 2023",
+    GE: "February 13, 2008",
+    PBL: "July 17, 2026",
+    CRI: "May 22, 2026",
+    POR: "March 27, 2026",
+    HS: "February 10, 2010",
+    SVI: "March 31, 2023",
+    DR: "November 24, 2003",
+    TM: "November 3, 2010",
+    CPA: "September 25, 2020",
+    MD: "May 21, 2008",
+    FFI: "August 13, 2014",
+    GEN: "February 22, 2016",
+    DRI: "May 30, 2025",
+    SCR: "September 13, 2024",
+    NVI: "November 16, 2011",
+    FLF: "May 7, 2014",
+    BKT: "November 4, 2015",
+    DRX: "August 15, 2012",
+    STS: "August 3, 2016",
+    PLF: "May 8, 2013",
+    AOR: "August 12, 2015",
+    CIN: "November 3, 2017",
+    EVO: "November 2, 2016",
+    LM: "February 13, 2006",
+    M23: "July 27, 2023",
+    BST: "March 19, 2021",
+    LA: "August 20, 2008",
+    ROS: "May 6, 2015",
+    DS: "October 31, 2005",
+    N2: "June 1, 2001",
+    DX: "February 14, 2005",
+    CES: "August 3, 2018",
+    MEW: "September 22, 2023",
+    XY: "February 5, 2014",
+    CEC: "November 1, 2019",
+    EPO: "August 31, 2011",
+    BUS: "August 4, 2017",
+    FO: "October 10, 1999",
+    JU: "June 16, 1999",
+    AR: "November 4, 2009",
+    SFA: "August 2, 2024",
+    ASC: "January 30, 2026",
+    PRE: "January 17, 2025",
+    VIV: "November 13, 2020",
+    RS: "July 18, 2003",
+    MEG: "September 26, 2025",
+    PL: "February 11, 2009",
+    MT: "August 22, 2007",
+    ASR: "May 27, 2022",
+    SIT: "November 11, 2022",
+    BKP: "February 3, 2016",
+    SSP: "November 8, 2024",
+    OBF: "August 11, 2023",
+    DP: "May 23, 2007",
+    LTR: "November 6, 2013",
+    DEX: "May 9, 2012",
+    SK: "May 12, 2003",
+    BS: "January 9, 1999",
+    TEU: "February 1, 2019",
+    UNB: "May 3, 2019",
+    PGO: "July 1, 2022",
+    UL: "May 12, 2010",
+    PLB: "August 14, 2013",
+    PHF: "November 5, 2014",
+    PK: "February 14, 2007",
+    AQ: "January 15, 2003",
+    BLW: "April 25, 2011",
+    BCR: "November 7, 2012",
+    SS: "September 18, 2003",
+    DAA: "August 14, 2020",
+    LOR: "September 9, 2022",
+    EM: "May 9, 2005",
+    LOT: "November 2, 2018",
+    TEF: "March 22, 2024",
+    WHT: "July 18, 2025",
+    RO: "April 24, 2000",
+    "BS-SHADOWLESS": "January 9, 1999",
+    "BS-1ST": "January 9, 1999",
+    MCD22: "January 1, 2022",
+    MCD19: "January 1, 2019",
+    MCD16: "January 1, 2016",
+    MCD12: "January 1, 2012",
+    MCD11: "January 1, 2011",
+    MEE: "September 26, 2025"
+  };
+
+  /** Lower rank = newer (matches ENGLISH_SETS_BY_ERA listing order). */
+  global.buildEnglishSetRecencyRankByCode = function buildEnglishSetRecencyRankByCode() {
+    const rank = {};
+    let i = 0;
+    const byEra = global.ENGLISH_SETS_BY_ERA || {};
+    for (const list of Object.values(byEra)) {
+      if (!Array.isArray(list)) continue;
+      for (const row of list) {
+        const code = String(row?.code || "")
+          .trim()
+          .toUpperCase();
+        if (!code || rank[code] != null) continue;
+        rank[code] = i;
+        i += 1;
+      }
+    }
+    return rank;
+  };
+
+  global.buildEnglishSetReleaseTsByCode = function buildEnglishSetReleaseTsByCode() {
+    const map = {};
+    const dates = global.ENGLISH_SET_RELEASE_DATES || {};
+    for (const [codeRaw, raw] of Object.entries(dates)) {
+      const code = String(codeRaw || "")
+        .trim()
+        .toUpperCase();
+      if (!code) continue;
+      const ts = Date.parse(String(raw || "").trim());
+      if (Number.isFinite(ts) && ts > 0) map[code] = ts;
+    }
+    return map;
+  };
 })(typeof window !== "undefined" ? window : globalThis);

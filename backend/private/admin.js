@@ -315,10 +315,10 @@
       }
       const counts = total ? ` · ${done.toLocaleString()}/${total.toLocaleString()} (${pct}%)` : "";
       setStatus(pcStatusMsg, `${statusLine}${counts}`, "");
-    } else if (totalSections > 0 && updated > 0 && updated < totalSections * 0.5) {
+    } else if (totalSections > 0 && updated > 0 && updated < totalSections * 0.35) {
       setStatus(
         pcStatusMsg,
-        `Only ${updated.toLocaleString()} of ${totalSections.toLocaleString()} sections are cached. Run “Update PriceCharting cache” again and keep the server running until the count catches up.`,
+        `Cache has ${updated.toLocaleString()} of ${totalSections.toLocaleString()} catalog cards. Run “Update PriceCharting cache” again to fill gaps (many cards are not on PriceCharting, so 100% is not expected).`,
         "error"
       );
     }

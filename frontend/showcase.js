@@ -960,11 +960,7 @@
         }
         const hint = document.getElementById("showcaseLandingHint");
         if (hint) {
-          hint.innerHTML = `Signed in as <strong>@${escapeHtml(
-            payload.user.username
-          )}</strong>. <a href="/showcase/@${encodeURIComponent(
-            payload.user.username
-          )}">View your showcase</a>`;
+          hint.innerHTML = `Signed in as <strong>@${escapeHtml(payload.user.username)}</strong>.`;
         }
       }
     } catch {

@@ -11,6 +11,7 @@ const SET_SLUGS_FILE = path.join(DATA_DIR, "pricecharting-set-slugs.json");
 const INDEX_CACHE_DIR = path.join(DATA_DIR, "pricecharting-index-cache");
 
 const PC_FETCH_MIN_INTERVAL_MS = 1100;
+const PC_FETCH_TIMEOUT_MS = 25_000;
 const CONSOLE_INDEX_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const CHART_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const PRODUCT_PAGE_PARSE_VERSION = 3;
@@ -92,6 +93,8 @@ function chartSortOrderForProduct(category = "", consoleSlug = "") {
 let setSlugsByCode = null;
 let lastFetchMs = 0;
 const consoleIndexMem = new Map();
+/** Console slugs already force-refreshed this process — avoids re-downloading on every miss. */
+const consoleIndexForceRefreshed = new Set();
 const chartDataMem = new Map();
 const productPageMem = new Map();
 
@@ -230,22 +233,73 @@ function normalizePcCardNumberKey(raw) {
     .replace(/^#+/, "");
   if (!token) return "";
   if (/^\d+$/.test(token)) return String(Number(token));
+  const prefixed = token.match(/^([A-Z]+)(\d+)$/);
+  if (prefixed) {
+    // Keep letter prefix; collapse leading zeros in the numeric tail (TG01 -> TG1).
+    return `${prefixed[1]}${String(Number(prefixed[2]))}`;
+  }
   return token;
 }
 
+/**
+ * Lookup keys for a card number.
+ * Bare numbers (001/1) never collide with prefixed gallery codes (TG01/SV01/GG01).
+ */
 function cardNumberLookupKeys(raw) {
   const primary = normalizePcCardNumberKey(raw);
   if (!primary) return [];
   const keys = new Set([primary]);
-  const digits = primary.match(/^([A-Z]{0,4})(\d+)$/);
-  if (digits) {
-    keys.add(digits[2]);
-    keys.add(String(Number(digits[2])));
-    if (digits[1]) keys.add(`${digits[1]}${digits[2]}`);
+  if (/^\d+$/.test(primary)) {
+    keys.add(String(Number(primary)));
+  } else {
+    const prefixed = primary.match(/^([A-Z]+)(\d+)$/);
+    if (prefixed) {
+      const prefix = prefixed[1];
+      const n = String(Number(prefixed[2]));
+      keys.add(`${prefix}${n}`);
+      // Keep a zero-padded 2-digit variant for TG01-style titles, but never bare digits.
+      if (n.length < 2) keys.add(`${prefix}${n.padStart(2, "0")}`);
+    }
   }
   const slash = String(raw).match(/#?\s*([A-Za-z0-9]+)\s*\/\s*\d+/);
   if (slash) keys.add(normalizePcCardNumberKey(slash[1]));
   return [...keys].filter(Boolean);
+}
+
+function extractTitleCardNumber(title = "") {
+  const match = String(title || "").match(/#\s*([^#]+)\s*$/);
+  return normalizePcCardNumberKey(match ? match[1] : "");
+}
+
+/** Bare #1 must not match #TG01 / #SV01 / #GG01. */
+function cardNumbersMatch(queryNo, productNo) {
+  const q = normalizePcCardNumberKey(queryNo);
+  const p = normalizePcCardNumberKey(productNo);
+  if (!q || !p) return false;
+  if (q === p) return true;
+  const qPref = q.match(/^([A-Z]+)(\d+)$/);
+  const pPref = p.match(/^([A-Z]+)(\d+)$/);
+  if (qPref && pPref) {
+    return qPref[1] === pPref[1] && Number(qPref[2]) === Number(pPref[2]);
+  }
+  if (/^\d+$/.test(q) && /^\d+$/.test(p)) {
+    return Number(q) === Number(p);
+  }
+  return false;
+}
+
+function entryMatchesCardNumber(entry, cardNo = "") {
+  if (!entry || !cardNo) return false;
+  const fromTitle = extractTitleCardNumber(entry.title);
+  if (fromTitle) return cardNumbersMatch(cardNo, fromTitle);
+  const slug = String(entry.gameSlug || "").toLowerCase();
+  const num = normalizePcCardNumberKey(cardNo).toLowerCase();
+  if (!slug || !num) return false;
+  if (/^\d+$/.test(num)) {
+    // Require exact -N suffix, not -tgN / -svN.
+    return slug.endsWith(`-${num}`) && !/-[a-z]{1,4}\d+$/i.test(slug);
+  }
+  return slug.endsWith(`-${num}`) || slug.includes(`-${num}-`);
 }
 
 async function rateLimitPriceChartingFetch() {
@@ -258,20 +312,47 @@ async function rateLimitPriceChartingFetch() {
 
 async function fetchPriceChartingHtml(url) {
   await rateLimitPriceChartingFetch();
-  const response = await fetch(url, {
-    method: "GET",
-    headers: {
-      Accept: "text/html,application/xhtml+xml",
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36"
-    },
-    redirect: "follow"
-  });
-  const text = await response.text().catch(() => "");
-  if (!response.ok) {
-    throw new Error(`PriceCharting page failed (${response.status})`);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), PC_FETCH_TIMEOUT_MS);
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        Accept: "text/html,application/xhtml+xml",
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36"
+      },
+      redirect: "follow",
+      signal: controller.signal
+    });
+    const text = await response.text().catch(() => "");
+    if (!response.ok) {
+      throw new Error(`PriceCharting page failed (${response.status})`);
+    }
+    return text;
+  } catch (err) {
+    if (err?.name === "AbortError") {
+      throw new Error(`PriceCharting page timed out after ${PC_FETCH_TIMEOUT_MS}ms`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
   }
-  return text;
+}
+
+/**
+ * Load a console index, optionally force-refreshing at most once per slug per process.
+ * PriceCharting console pages are large and often incomplete; refreshing on every
+ * card miss made bulk cache updates look stuck for hours.
+ */
+async function getConsoleIndexLimitedRefresh(consoleSlug = "", { refreshIfMissingProduct = false } = {}) {
+  const slug = String(consoleSlug || "").trim();
+  if (!slug) return null;
+  let index = await getConsoleIndex(slug);
+  if (!refreshIfMissingProduct) return index;
+  if (consoleIndexForceRefreshed.has(slug)) return index;
+  consoleIndexForceRefreshed.add(slug);
+  return getConsoleIndex(slug, { forceRefresh: true });
 }
 
 function resolveConsoleSlug(setCode = "", setName = "") {
@@ -457,16 +538,23 @@ function pickProductFromIndex(index, cardNo = "", cardName = "") {
   if (!index?.byCardNo) return null;
   const nameSlug = slugifyForPriceCharting(cardName);
   const num = normalizePcCardNumberKey(cardNo);
+  const numLower = String(num || "").toLowerCase();
 
   if (nameSlug && num) {
     let best = null;
     let bestScore = -1;
     for (const entry of Object.values(index.byCardNo)) {
       if (!entry || typeof entry !== "object") continue;
+      if (!entryMatchesCardNumber(entry, cardNo)) continue;
       const gameSlug = String(entry.gameSlug || "").toLowerCase();
       const title = String(entry.title || "").toLowerCase();
       if (!gameSlug.includes(nameSlug) && !title.includes(nameSlug.replace(/-/g, " "))) continue;
-      if (!gameSlug.endsWith(`-${num}`) && !gameSlug.includes(`-${num}-`)) continue;
+      if (
+        !gameSlug.endsWith(`-${numLower}`) &&
+        !gameSlug.includes(`-${numLower}-`)
+      ) {
+        continue;
+      }
       if (isReverseHoloProduct(entry.title, entry.gameSlug)) continue;
       let score = 10;
       if (gameSlug.includes(nameSlug)) score += 20;
@@ -480,12 +568,14 @@ function pickProductFromIndex(index, cardNo = "", cardName = "") {
   }
 
   if (nameSlug && index.byCardNo[`title:${nameSlug}`]) {
-    return index.byCardNo[`title:${nameSlug}`];
+    const byTitle = index.byCardNo[`title:${nameSlug}`];
+    if (byTitle && entryMatchesCardNumber(byTitle, cardNo)) return byTitle;
   }
   if (nameSlug) {
     for (const [key, entry] of Object.entries(index.byCardNo)) {
       if (!key.startsWith("title:")) continue;
-      if (key.includes(nameSlug) || nameSlug.includes(key.replace(/^title:/, ""))) {
+      if (!(key.includes(nameSlug) || nameSlug.includes(key.replace(/^title:/, "")))) continue;
+      if (entry && entryMatchesCardNumber(entry, cardNo) && !isReverseHoloProduct(entry.title, entry.gameSlug)) {
         return entry;
       }
     }
@@ -494,7 +584,13 @@ function pickProductFromIndex(index, cardNo = "", cardName = "") {
   const keys = cardNumberLookupKeys(cardNo);
   for (const key of keys) {
     const entry = index.byCardNo[key];
-    if (entry && !isReverseHoloProduct(entry.title, entry.gameSlug)) return entry;
+    if (
+      entry &&
+      !isReverseHoloProduct(entry.title, entry.gameSlug) &&
+      entryMatchesCardNumber(entry, cardNo)
+    ) {
+      return entry;
+    }
   }
   return null;
 }
@@ -573,10 +669,10 @@ async function fetchPriceChartingUngradedPriceForCard({
 
   let product = null;
   for (const consoleSlug of candidates) {
-    let index = await getConsoleIndex(consoleSlug);
+    let index = await getConsoleIndexLimitedRefresh(consoleSlug);
     if (index) product = pickProductFromIndex(index, cardNo, cardName);
     if (!product) {
-      index = await getConsoleIndex(consoleSlug, { forceRefresh: true });
+      index = await getConsoleIndexLimitedRefresh(consoleSlug, { refreshIfMissingProduct: true });
       if (index) product = pickProductFromIndex(index, cardNo, cardName);
     }
     if (product) break;
@@ -876,10 +972,10 @@ async function resolvePriceChartingProductForCard({
 
   let product = null;
   for (const consoleSlug of candidates) {
-    let index = await getConsoleIndex(consoleSlug);
+    let index = await getConsoleIndexLimitedRefresh(consoleSlug);
     if (index) product = pickProductFromIndex(index, cardNo, cardName);
     if (!product) {
-      index = await getConsoleIndex(consoleSlug, { forceRefresh: true });
+      index = await getConsoleIndexLimitedRefresh(consoleSlug, { refreshIfMissingProduct: true });
       if (index) product = pickProductFromIndex(index, cardNo, cardName);
     }
     if (product) break;
@@ -1349,6 +1445,7 @@ module.exports = {
   fetchPriceChartingUngradedPriceForCard,
   fetchPriceChartingUngradedPriceFromProductUrl,
   fetchPriceChartingSealedProductBundle,
+  resolvePriceChartingProductForCard,
   resolveConsoleSlug,
   resolveConsoleSlugCandidates,
   loadSetSlugsByCode,
@@ -1362,5 +1459,9 @@ module.exports = {
   chartDataToSeries,
   parseSoldListingsFromGameHtml,
   parseGradedGuideFromGameHtml,
-  extractUngradedPriceFromPageData
+  extractUngradedPriceFromPageData,
+  normalizePcCardNumberKey,
+  cardNumberLookupKeys,
+  cardNumbersMatch,
+  extractTitleCardNumber
 };

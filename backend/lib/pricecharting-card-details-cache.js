@@ -18,6 +18,8 @@ const CACHE_VERSION = 2;
 const PERSIST_DEBOUNCE_MS = 500;
 /** Default for admin bulk runs — save to disk/R2 every N processed cards (not on every write). */
 const DEFAULT_BULK_PERSIST_EVERY = 1000;
+/** Keep details cache smaller — average-of-recent only needs a short window. */
+const MAX_CACHED_SOLD_LISTINGS = 40;
 
 const memCache = new Map();
 let persistTimer = null;
@@ -126,11 +128,19 @@ function averageRecentUngradedSoldPrice(details, { limit = 10 } = {}) {
   };
 }
 
+function trimSoldListings(listings = []) {
+  const list = Array.isArray(listings) ? listings : [];
+  return list.length > MAX_CACHED_SOLD_LISTINGS ? list.slice(0, MAX_CACHED_SOLD_LISTINGS) : list;
+}
+
 function writeCachedCardDetails(setCode = "", cardNo = "", value) {
   const key = cacheKeyForCard(setCode, cardNo);
   if (!key || !cacheValueValid(value)) return false;
-  const soldGuides = normalizeSoldGuides(value);
-  const soldListings = soldGuides[0]?.listings || (Array.isArray(value.soldListings) ? value.soldListings : []);
+  const soldGuides = normalizeSoldGuides(value).map((guide) => ({
+    ...guide,
+    listings: trimSoldListings(guide.listings)
+  }));
+  const soldListings = soldGuides[0]?.listings || trimSoldListings(value.soldListings);
   const entry = {
     ok: true,
     productUrl: String(value.productUrl || ""),
@@ -465,8 +475,19 @@ async function refreshPriceChartingCardDetailsBatch(
     shouldCancel = () => false
   } = {}
 ) {
-  const list = (Array.isArray(cards) ? cards : []).slice(0, max);
+  let list = (Array.isArray(cards) ? cards : []).slice(0, max);
   if (!list.length) return { ok: 0, fail: 0, skipped: 0, total: 0, cancelled: false };
+
+  // Hit gaps first so a long skip of already-cached cards does not look idle/stuck.
+  if (skipValidCached && list.length > 1) {
+    const missing = [];
+    const cached = [];
+    for (const card of list) {
+      if (readCachedCardDetails(card.setCode, card.cardNo)) cached.push(card);
+      else missing.push(card);
+    }
+    list = missing.concat(cached);
+  }
 
   let cursor = 0;
   let ok = 0;
@@ -474,6 +495,7 @@ async function refreshPriceChartingCardDetailsBatch(
   let skipped = 0;
   let processed = 0;
   let currentCard = null;
+  const notFoundThisRun = new Set();
   const remainingBySet = new Map();
   const completedSets = new Set();
   for (const card of list) {
@@ -528,14 +550,18 @@ async function refreshPriceChartingCardDetailsBatch(
         currentCard = card;
         reportProgress();
         try {
+          const cardKey = cacheKeyForCard(card.setCode, card.cardNo);
           if (skipValidCached && readCachedCardDetails(card.setCode, card.cardNo)) {
             skipped += 1;
+          } else if (cardKey && notFoundThisRun.has(cardKey)) {
+            fail += 1;
           } else {
             const result = await getOrFetchPriceChartingCardDetails(card, { forceRefresh: true });
             if (result?.ok) {
               ok += 1;
             } else {
               fail += 1;
+              if (cardKey) notFoundThisRun.add(cardKey);
               if (typeof onFail === "function") {
                 onFail(card, result?.error || "PriceCharting details fetch failed");
               }
@@ -543,6 +569,8 @@ async function refreshPriceChartingCardDetailsBatch(
           }
         } catch (err) {
           fail += 1;
+          const cardKey = cacheKeyForCard(card?.setCode, card?.cardNo);
+          if (cardKey) notFoundThisRun.add(cardKey);
           if (typeof onFail === "function") {
             onFail(card, err?.message || "PriceCharting details fetch failed");
           }
@@ -565,6 +593,7 @@ async function refreshPriceChartingCardDetailsBatch(
   } finally {
     bulkPersistSuspended = false;
     try {
+      await persistChain.catch(() => {});
       await persistPriceChartingCardDetailsCacheNow();
     } catch (err) {
       console.warn(`[pricing-cache] final PriceCharting details persist failed: ${err?.message || err}`);

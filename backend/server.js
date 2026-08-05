@@ -79,6 +79,10 @@ const {
   averageRecentUngradedSoldPrice
 } = require("./lib/pricecharting-card-details-cache");
 const { loadPersistedPriceChartingMarketHistoryCache } = require("./lib/pricecharting-market-history-cache");
+const {
+  buildCollectionValueHistory,
+  getItemHistoricalPriceOnDate
+} = require("./lib/collection-value-history");
 const { requestPasswordReset, completePasswordReset, isEmailConfigured } = require("./lib/password-reset");
 const { sendPriceAlertEmail } = require("./lib/send-email");
 const {
@@ -3352,14 +3356,22 @@ function normalizePokeViewWatchlistCard(input) {
   if (!cardId) return null;
   const cardName = String(input.cardName || "").trim();
   const cardLabel = String(input.card || "").trim();
+  const kindRaw = String(input.kind || "").trim().toLowerCase();
+  const productId = String(input.productId || "").trim();
+  const kind =
+    kindRaw === "sealed" || cardId.startsWith("sealed:") || Boolean(productId) ? "sealed" : "single";
   return {
     id: cardId,
+    kind,
     card: cardLabel || cardName || cardId,
     cardName: cardName || cardLabel,
     setCode: String(input.setCode || "").trim().toUpperCase(),
-    cardNo: String(input.cardNo || "").trim(),
+    cardNo: kind === "sealed" ? "" : String(input.cardNo || "").trim(),
     setName: String(input.setName || "").trim(),
     language: String(input.language || "english").trim().toLowerCase() || "english",
+    productId: kind === "sealed" ? productId || cardId.replace(/^sealed:/i, "") : "",
+    productUrl: String(input.productUrl || input.priceChartingUrl || "").trim(),
+    imageUrl: String(input.imageUrl || "").trim(),
     last: normalizePokeViewWatchlistMetric(input.last),
     change: normalizePokeViewWatchlistMetric(input.change),
     changePct: normalizePokeViewWatchlistMetric(input.changePct),
@@ -3418,6 +3430,29 @@ async function resolveLiveMarketPriceForAlertCard(card) {
   const setName = String(card?.setName || "").trim();
   const cardNo = String(card?.cardNo || "").trim();
   const cardName = String(card?.cardName || "").trim();
+  const productId = String(card?.productId || "").trim();
+  const productUrl = String(card?.productUrl || card?.priceChartingUrl || "").trim();
+  const isSealed =
+    String(card?.kind || "").toLowerCase() === "sealed" ||
+    String(card?.id || "").startsWith("sealed:") ||
+    Boolean(productId);
+  if (isSealed) {
+    if (!productId && !productUrl) return null;
+    try {
+      const pc = await getOrFetchPriceChartingSealedDetails({
+        setCode,
+        productUrl,
+        productId,
+        productTitle: cardName,
+        setName
+      });
+      const price = Number(pc?.ungradedPrice);
+      if (pc?.ok && Number.isFinite(price) && price > 0) return price;
+    } catch {
+      /* best effort */
+    }
+    return null;
+  }
   if (!setCode && !cardName) return null;
   try {
     const pc = await fetchPriceChartingUngradedPriceForCard({
@@ -7882,6 +7917,12 @@ function normalizeItem(input, existing = null) {
   const conditionType = input.conditionType === "graded" ? "graded" : "raw";
   const quantity = Math.max(0, safeNumber(input.quantity, existing?.quantity || 1));
   const costBasis = Math.max(0, safeNumber(input.costBasis, existing?.costBasis || 0));
+  const costBasisDateRaw =
+    input.costBasisDate !== undefined ? input.costBasisDate : existing?.costBasisDate;
+  const costBasisDateMatch = String(costBasisDateRaw || "")
+    .trim()
+    .match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const costBasisDate = costBasisDateMatch ? costBasisDateMatch[0] : "";
   const manualPrice = input.manualPrice === "" || input.manualPrice === null || input.manualPrice === undefined
     ? null
     : Math.max(0, safeNumber(input.manualPrice, 0));
@@ -7908,6 +7949,7 @@ function normalizeItem(input, existing = null) {
     gradeValue: String(input.gradeValue || existing?.gradeValue || "").trim(),
     quantity,
     costBasis,
+    costBasisDate,
     currency: String(input.currency || existing?.currency || DEFAULT_CURRENCY).trim() || DEFAULT_CURRENCY,
     notes: String(input.notes || existing?.notes || "").trim(),
     marketPrice: safeNumber(
@@ -10887,6 +10929,32 @@ async function route(req, res) {
     return;
   }
 
+  if (pathname === "/api/collection/historical-price" && req.method === "GET") {
+    const sessionUser = requireSignedInUser(req, res);
+    if (!sessionUser) return;
+    try {
+      const itemId = String(parsedUrl.searchParams.get("itemId") || "").trim();
+      const date = String(parsedUrl.searchParams.get("date") || "").trim();
+      if (!itemId) {
+        json(res, 400, { ok: false, error: "itemId is required" });
+        return;
+      }
+      const item = findCollectionItemForUser(itemId, sessionUser.id);
+      if (!item) {
+        notFound(res);
+        return;
+      }
+      const payload = await getItemHistoricalPriceOnDate(item, date);
+      json(res, payload.ok ? 200 : 404, payload);
+    } catch (err) {
+      json(res, 500, {
+        ok: false,
+        error: err?.message || "Failed to load historical price"
+      });
+    }
+    return;
+  }
+
   if (pathname === "/api/card-nicknames" && req.method === "GET") {
     try {
       const nicknames = await getCardNicknamesCached();
@@ -10904,6 +10972,29 @@ async function route(req, res) {
     const sessionUser = requireSignedInUser(req, res);
     if (!sessionUser) return;
     json(res, 200, summarizeDashboard(sessionUser.id));
+    return;
+  }
+
+  if (pathname === "/api/dashboard/value-history" && req.method === "GET") {
+    const sessionUser = requireSignedInUser(req, res);
+    if (!sessionUser) return;
+    try {
+      const rangeKey = String(parsedUrl.searchParams.get("range") || "all").trim();
+      const summary = summarizeDashboard(sessionUser.id);
+      const items = getCollectionItemsForUser(sessionUser.id);
+      const payload = await buildCollectionValueHistory({
+        items,
+        rangeKey,
+        currentMarketValue: summary?.kpis?.marketValue || 0
+      });
+      json(res, 200, payload);
+    } catch (err) {
+      json(res, 500, {
+        ok: false,
+        error: err?.message || "Failed to build collection value history",
+        points: []
+      });
+    }
     return;
   }
 

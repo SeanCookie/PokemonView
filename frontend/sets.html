@@ -227,6 +227,10 @@
       display: none !important;
     }
 
+    .catalog-number-sort-btn[hidden] {
+      display: none !important;
+    }
+
     .catalog-number-sort-btn {
       height: 34px;
       padding: 0 12px;
@@ -762,18 +766,6 @@
       font-size: 13px;
       font-weight: 600;
       line-height: 1.3;
-      text-align: center;
-    }
-
-    .sealed-product-tile .sealed-product-price {
-      font-size: 13px;
-      text-align: center;
-      color: var(--muted);
-    }
-
-    .sealed-product-tile .sealed-product-price.has-price {
-      color: var(--text);
-      font-weight: 600;
     }
 
     @media (max-width: 1080px) {
@@ -2494,6 +2486,8 @@
       setSort: "number",
       /** Hidden Fates only: show #SV Shiny Vault cards only */
       setShinyVaultOnly: false,
+      /** Brilliant Stars only: show #TG Trainer Gallery cards only */
+      setTrainerGalleryOnly: false,
       setArtistFilter: "all",
       setRarityFilter: "all",
       setRarityMenuOpen: false,
@@ -2785,6 +2779,9 @@
 
     function getActiveCatalogResultMatches() {
       const q = String(state.query || "").trim();
+      if (isSealedCatalogMode()) {
+        return q ? collectSealedProductSearchMatches(q) : [];
+      }
       if (q) return getCatalogSearchMatches(q);
       if (state.catalogArtistFilter !== "all") {
         const matches = applyCatalogSearchFilters(collectAllCatalogCards());
@@ -4403,6 +4400,44 @@
       return normalize(value).includes(normalize(query));
     }
 
+    /** Treat hyphens/punctuation like spaces so "3-pack blister" matches "3 pack blister". */
+    function toLooseQueryText(value) {
+      return String(value || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function formatSealedProductTypeLabel(productType = "") {
+      const raw = String(productType || "").trim();
+      if (!raw) return "Sealed";
+      return raw
+        .split("-")
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ");
+    }
+
+    function sealedProductMatchesSearchQuery(product, setEntry, queryRaw) {
+      const query = toLooseQueryText(queryRaw);
+      if (!query) return true;
+      const haystack = toLooseQueryText(
+        [
+          product?.title,
+          product?.productType,
+          formatSealedProductTypeLabel(product?.productType),
+          setEntry?.name,
+          setEntry?.code
+        ]
+          .filter(Boolean)
+          .join(" ")
+      );
+      if (haystack.includes(query)) return true;
+      const tokens = query.split(" ").filter(Boolean);
+      return tokens.length > 1 && tokens.every((token) => haystack.includes(token));
+    }
+
     function normalizeNicknameQuery(text) {
       return String(text || "")
         .toLowerCase()
@@ -4506,6 +4541,7 @@
 
     function applyCatalogSearchSortMode(mode) {
       const next = String(mode || "").trim().toLowerCase();
+      if (next === "number" && isSealedCatalogMode()) return;
       if (next === "set") {
         if (state.globalSearchSortMode === "set") {
           state.globalSearchSetOrder = state.globalSearchSetOrder === "asc" ? "desc" : "asc";
@@ -4526,8 +4562,9 @@
           state.globalSearchSortMode = "price";
           state.globalSearchPriceOrder = "desc";
         }
-        const matches = getActiveCatalogResultMatches();
         renderAll();
+        if (isSealedCatalogMode()) return;
+        const matches = getActiveCatalogResultMatches();
         void ensurePricesForCatalogSearchMatches(matches).then(() => {
           if (state.globalSearchSortMode !== "price" || state.selectedSetCode) return;
           // Prices are ready — re-paint sorted results with inline $ amounts (not "…").
@@ -4546,15 +4583,20 @@
       const numBtn = document.getElementById("catalogNumberSortBtn");
       const priceBtn = document.getElementById("catalogPriceSortBtn");
       if (!bar || !setBtn || !numBtn) return;
+      const sealedSearch = isSealedCatalogMode();
       const q = state.query.trim();
-      const artistOn = state.catalogArtistFilter !== "all";
+      const artistOn = !sealedSearch && state.catalogArtistFilter !== "all";
       if (!q && !artistOn) {
         bar.hidden = true;
         return;
       }
+      if (sealedSearch && state.globalSearchSortMode === "number") {
+        state.globalSearchSortMode = "set";
+      }
       bar.hidden = false;
       setBtn.textContent = getCatalogSearchSortLabel("set");
-      numBtn.textContent = getCatalogSearchSortLabel("number");
+      numBtn.hidden = sealedSearch;
+      if (!sealedSearch) numBtn.textContent = getCatalogSearchSortLabel("number");
       if (priceBtn) {
         priceBtn.hidden = false;
         priceBtn.textContent = getCatalogSearchSortLabel("price");
@@ -4633,6 +4675,26 @@
       return (Array.isArray(cards) ? cards : []).filter((card) => isShinyVaultCardNumber(card.cardNo));
     }
 
+    function isTrainerGalleryCardNumber(cardNo) {
+      const raw = String(cardNo || "")
+        .trim()
+        .replace(/^#/, "");
+      return /^TG\d+$/i.test(raw);
+    }
+
+    function setHasTrainerGalleryFilter(setCode) {
+      return String(setCode || "").toUpperCase() === "BRS";
+    }
+
+    function applySetTrainerGalleryFilter(cards, setCode) {
+      if (!setHasTrainerGalleryFilter(setCode) || !state.setTrainerGalleryOnly) {
+        return Array.isArray(cards) ? cards : [];
+      }
+      return (Array.isArray(cards) ? cards : []).filter(
+        (card) => isTrainerGalleryCardNumber(card.cardNo) || isTrainerGalleryCardNumber(card.label)
+      );
+    }
+
     function mergeSetCardImageMaps(localImages, remoteImages) {
       const out = {};
       const apply = (map) => {
@@ -4678,6 +4740,10 @@
       const shinyVault = stripped.match(/^SV(\d+)$/i);
       if (shinyVault) {
         return 50000 + parseInt(shinyVault[1], 10);
+      }
+      const trainerGallery = stripped.match(/^TG(\d+)$/i);
+      if (trainerGallery) {
+        return 60000 + parseInt(trainerGallery[1], 10);
       }
       const afterLetters = stripped.match(/^[A-Za-z]+[_-]?(.+)$/);
       const numericPart = afterLetters ? afterLetters[1] : stripped;
@@ -4854,6 +4920,151 @@
       if (!key) return [];
       const list = state.sealedProductsByCode[key];
       return Array.isArray(list) ? list : [];
+    }
+
+    function sortSealedProductSearchMatches(list) {
+      const rows = Array.isArray(list) ? list : [];
+      if (state.globalSearchSortMode === "price") {
+        const desc = state.globalSearchPriceOrder === "desc";
+        rows.sort((a, b) => {
+          const pa = getSealedProductPrice(a);
+          const pb = getSealedProductPrice(b);
+          const aMissing = !Number.isFinite(pa) || pa <= 0;
+          const bMissing = !Number.isFinite(pb) || pb <= 0;
+          if (aMissing && bMissing) {
+            const bySet = compareCardsBySetReleaseThenCode(a, b, false);
+            if (bySet !== 0) return bySet;
+            return String(a.title || "").localeCompare(String(b.title || ""), undefined, {
+              sensitivity: "base"
+            });
+          }
+          if (aMissing) return 1;
+          if (bMissing) return -1;
+          const delta = desc ? pb - pa : pa - pb;
+          if (delta !== 0) return delta;
+          return String(a.title || "").localeCompare(String(b.title || ""), undefined, {
+            sensitivity: "base"
+          });
+        });
+        return rows;
+      }
+      const setDesc = state.globalSearchSetOrder === "desc";
+      rows.sort((a, b) => {
+        const bySet = compareCardsBySetReleaseThenCode(a, b, setDesc);
+        if (bySet !== 0) return bySet;
+        return String(a.title || "").localeCompare(String(b.title || ""), undefined, {
+          sensitivity: "base"
+        });
+      });
+      return rows;
+    }
+
+    function collectSealedProductSearchMatches(queryRaw) {
+      const q = String(queryRaw || "").trim();
+      if (!q) return [];
+      const matches = [];
+      const languageSets = setsByEra[getCatalogSetsLanguage()] || {};
+      for (const [era, setList] of Object.entries(languageSets)) {
+        if (state.eraFilter !== "all" && era !== state.eraFilter) continue;
+        if (!Array.isArray(setList)) continue;
+        for (const setEntry of setList) {
+          if (!canOpenSet(setEntry.code)) continue;
+          for (const product of getSealedProductsForSet(setEntry.code)) {
+            if (!sealedProductMatchesSearchQuery(product, setEntry, q)) continue;
+            matches.push({
+              ...product,
+              setCode: String(setEntry.code || "").toUpperCase(),
+              setName: String(setEntry.name || ""),
+              era
+            });
+          }
+        }
+      }
+      return sortSealedProductSearchMatches(matches);
+    }
+
+    function renderSealedProductTileMarkup(product, { setName = "", setCode = "", includeSetAttrs = false } = {}) {
+      const price = formatSealedPrice(product);
+      const primaryImg = product.imageUrl || "";
+      const fallbackImg =
+        product.remoteImageUrl && product.remoteImageUrl !== primaryImg ? product.remoteImageUrl : "";
+      const img = primaryImg
+        ? `<img src="${escapeHtml(primaryImg)}" alt="${escapeHtml(product.title)}" loading="lazy" decoding="async"${
+            fallbackImg ? ` onerror="this.onerror=null;this.src='${escapeHtml(fallbackImg)}'"` : ""
+          } />`
+        : `<div class="sealed-product-placeholder">No image</div>`;
+      const resolvedSetName = String(setName || product.setName || "").trim();
+      const resolvedSetCode = String(setCode || product.setCode || "").trim().toUpperCase();
+      const setLabel = resolvedSetName
+        ? `${resolvedSetName}${resolvedSetCode ? ` (${resolvedSetCode})` : ""}`
+        : resolvedSetCode || formatSealedProductTypeLabel(product.productType);
+      const setAttrs = includeSetAttrs
+        ? ` data-set-code="${escapeHtml(resolvedSetCode)}" data-set-name="${escapeHtml(resolvedSetName)}"`
+        : "";
+      return `<button type="button" class="sealed-product-tile" data-sealed-product-id="${escapeHtml(
+        String(product.productId || "")
+      )}"${setAttrs}>
+        ${img}
+        <div class="sealed-product-title">${escapeHtml(product.title || "Product")}</div>
+        <div class="card-meta card-meta-row">
+          <span class="card-meta-left">${escapeHtml(setLabel)}</span>
+          <span class="card-price-inline">${escapeHtml(price || "—")}</span>
+        </div>
+      </button>`;
+    }
+
+    function paintSealedProductSearchResults(matches, eraSuffix = "") {
+      const content = document.getElementById("content");
+      if (!content) return;
+      const q = state.query.trim();
+      const list = Array.isArray(matches) ? matches : [];
+      const tiles = list
+        .map((product) =>
+          renderSealedProductTileMarkup(product, {
+            setName: product.setName,
+            setCode: product.setCode,
+            includeSetAttrs: true
+          })
+        )
+        .join("");
+      content.innerHTML = `
+        <article class="era-block">
+          <h2 class="era-title">Search Results</h2>
+          <div class="sub" style="margin-bottom:10px;">${escapeHtml(String(list.length))} products for "${escapeHtml(q)}"${eraSuffix}</div>
+          ${
+            list.length
+              ? `<div class="sealed-product-grid">${tiles}</div>`
+              : `<div class="card-meta">No products found.</div>`
+          }
+        </article>
+      `;
+      content.querySelectorAll("[data-sealed-product-id][data-set-code]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const id = btn.getAttribute("data-sealed-product-id") || "";
+          const code = btn.getAttribute("data-set-code") || "";
+          const name = btn.getAttribute("data-set-name") || "";
+          if (!id || !code) return;
+          state.catalogBrowseReturnSnapshot = {
+            scrollY: window.scrollY,
+            query: state.query,
+            catalogArtistFilter: state.catalogArtistFilter,
+            eraFilter: state.eraFilter,
+            globalSearchSortMode: state.globalSearchSortMode,
+            globalSearchSetOrder: state.globalSearchSetOrder,
+            globalSearchCardNumberOrder: state.globalSearchCardNumberOrder,
+            globalSearchPriceOrder: state.globalSearchPriceOrder
+          };
+          state.savedSetGridScrollY = null;
+          state.selectedSetCode = code;
+          state.selectedSetName = name;
+          state.selectedSealedProductId = id;
+          state.selectedCardNumber = null;
+          state.setBoosterPackView = false;
+          scrollToPageTop();
+          renderAll();
+        });
+      });
+      updateCatalogSearchControls();
     }
 
     function isSealedCatalogMode() {
@@ -5106,31 +5317,15 @@
       }
     }
 
-    function renderSealedProductGridMarkup(products) {
+    function renderSealedProductGridMarkup(products, setEntry = null) {
       const list = Array.isArray(products) ? products : [];
       if (!list.length) {
         return `<div class="card-meta" style="padding:12px 0;">No sealed products found for this set on PriceCharting.</div>`;
       }
+      const setName = String((setEntry && setEntry.name) || state.selectedSetName || "").trim();
+      const setCode = String((setEntry && setEntry.code) || state.selectedSetCode || "").trim().toUpperCase();
       const tiles = list
-        .map((product) => {
-          const price = formatSealedPrice(product);
-          const primaryImg = product.imageUrl || "";
-          const fallbackImg = product.remoteImageUrl && product.remoteImageUrl !== primaryImg
-            ? product.remoteImageUrl
-            : "";
-          const img = primaryImg
-            ? `<img src="${escapeHtml(primaryImg)}" alt="${escapeHtml(product.title)}" loading="lazy" decoding="async"${
-                fallbackImg
-                  ? ` onerror="this.onerror=null;this.src='${escapeHtml(fallbackImg)}'"`
-                  : ""
-              } />`
-            : `<div class="sealed-product-placeholder">No image</div>`;
-          return `<button type="button" class="sealed-product-tile" data-sealed-product-id="${escapeHtml(String(product.productId || ""))}">
-            ${img}
-            <div class="sealed-product-title">${escapeHtml(product.title)}</div>
-            <div class="sealed-product-price${price ? " has-price" : ""}">${escapeHtml(price || "—")}</div>
-          </button>`;
-        })
+        .map((product) => renderSealedProductTileMarkup(product, { setName, setCode }))
         .join("");
       return `<div class="sealed-product-grid">${tiles}</div>`;
     }
@@ -5184,7 +5379,7 @@
       const showBoosterPackView = Boolean(state.setBoosterPackView && boosterPacks.length);
       const sealedBodyMarkup = showBoosterPackView
         ? renderBoosterPackGridMarkup(boosterPacks, selectedSet.name)
-        : renderSealedProductGridMarkup(products);
+        : renderSealedProductGridMarkup(products, selectedSet);
       const sealedSub = showBoosterPackView
         ? `${boosterPacks.length} booster pack${boosterPacks.length === 1 ? "" : "s"}`
         : `${products.length} sealed product${products.length === 1 ? "" : "s"} · PriceCharting`;
@@ -5326,6 +5521,11 @@
               </div>
             </div>
             <div class="set-detail-controls">
+              ${
+                state.catalogBrowseReturnSnapshot
+                  ? `<button id="backToCatalogResults" type="button" class="btn" title="Return to search results and scroll position">Back to results</button>`
+                  : ""
+              }
               <button id="backToSealedProducts" type="button" class="btn">Back to ${escapeHtml(selectedSet.name)}</button>
               <button id="prevSealedProduct" type="button" class="btn" ${prevProduct ? "" : "disabled"}>← Prev</button>
               <button id="nextSealedProduct" type="button" class="btn" ${nextProduct ? "" : "disabled"}>Next →</button>
@@ -5378,6 +5578,10 @@
       wireMarketPriceHistoryPanel(content, historyCard);
       wirePriceChartingSoldListingsPanel(content);
       void ensureSealedProductDetailsLoaded(product, selectedSet);
+
+      document.getElementById("backToCatalogResults")?.addEventListener("click", () => {
+        restoreCatalogBrowseFromSnapshot();
+      });
 
       document.getElementById("backToSealedProducts")?.addEventListener("click", () => {
         state.selectedSealedProductId = null;
@@ -8700,6 +8904,7 @@
       state.selectedSetCode = null;
       state.selectedSetName = "";
       state.selectedCardNumber = null;
+      state.selectedSealedProductId = null;
       state.setCardQuery = "";
       state.query = snap.query != null ? String(snap.query) : "";
       state.catalogArtistFilter = snap.catalogArtistFilter || "all";
@@ -8738,6 +8943,7 @@
       state.setRarityFilter = "all";
       state.setRarityMenuOpen = false;
       state.setShinyVaultOnly = false;
+      state.setTrainerGalleryOnly = false;
       state.setBoosterPackView = false;
       state.savedSetGridScrollY = null;
       renderAll();
@@ -9411,8 +9617,12 @@
       if (!setHasShinyVaultFilter(selectedSet.code)) {
         state.setShinyVaultOnly = false;
       }
+      if (!setHasTrainerGalleryFilter(selectedSet.code)) {
+        state.setTrainerGalleryOnly = false;
+      }
       const vaultFilteredCards = applySetShinyVaultFilter(rarityFilteredCards, selectedSet.code);
-      const visibleCards = filterCardsBySetQuery(vaultFilteredCards, state.setCardQuery);
+      const galleryFilteredCards = applySetTrainerGalleryFilter(vaultFilteredCards, selectedSet.code);
+      const visibleCards = filterCardsBySetQuery(galleryFilteredCards, state.setCardQuery);
       const setCodeKey = String(selectedSet.code || "").toUpperCase();
       const pricingMap = state.cardPricingBySetCode[setCodeKey];
       const hasPricing = Boolean(pricingMap && Object.keys(pricingMap).length);
@@ -9422,7 +9632,7 @@
         lastPrimedSetCode = setCodeKey;
         primeActiveSetPrices(selectedSet.code, selectedSet.name);
       }
-      const countLabel = `${visibleCards.length}/${vaultFilteredCards.length} cards`;
+      const countLabel = `${visibleCards.length}/${galleryFilteredCards.length} cards`;
       const cardsSummaryLabel = `${allCards.length} total`;
       const releaseLabel = formatReleaseDate(selectedSet.releaseDate);
       const mostExpensive = getMostExpensiveCardInSet(allCards);
@@ -9501,6 +9711,11 @@
                     ? `<button type="button" id="setShinyVaultFilterBtn" class="set-filter-tab${state.setShinyVaultOnly ? " active" : ""}" aria-pressed="${state.setShinyVaultOnly ? "true" : "false"}">Shiny Vault</button>`
                     : ""
                 }
+                ${
+                  setHasTrainerGalleryFilter(selectedSet.code)
+                    ? `<button type="button" id="setTrainerGalleryFilterBtn" class="set-filter-tab${state.setTrainerGalleryOnly ? " active" : ""}" aria-pressed="${state.setTrainerGalleryOnly ? "true" : "false"}">Trainer Gallery</button>`
+                    : ""
+                }
                 <button type="button" id="setInlineNumberSortBtn" class="set-filter-tab ${numberSortActive ? "active" : ""}">
                   Number ${numberSortActive ? numberSortArrow : ""}
                 </button>
@@ -9538,7 +9753,13 @@
               </div>
             </div>
           </div>
-          <div class="sub">${countLabel}${state.setShinyVaultOnly && setHasShinyVaultFilter(selectedSet.code) ? " · Shiny Vault only" : ""} · sorted by ${
+          <div class="sub">${countLabel}${
+            state.setShinyVaultOnly && setHasShinyVaultFilter(selectedSet.code)
+              ? " · Shiny Vault only"
+              : state.setTrainerGalleryOnly && setHasTrainerGalleryFilter(selectedSet.code)
+                ? " · Trainer Gallery only"
+                : ""
+          } · sorted by ${
             state.setSort === "name"
               ? "name (A-Z)"
               : state.setSort === "name-desc"
@@ -9569,6 +9790,15 @@
       if (setShinyVaultFilterBtn) {
         setShinyVaultFilterBtn.addEventListener("click", () => {
           state.setShinyVaultOnly = !state.setShinyVaultOnly;
+          state.setRarityMenuOpen = false;
+          renderSelectedSetDetail();
+        });
+      }
+
+      const setTrainerGalleryFilterBtn = document.getElementById("setTrainerGalleryFilterBtn");
+      if (setTrainerGalleryFilterBtn) {
+        setTrainerGalleryFilterBtn.addEventListener("click", () => {
+          state.setTrainerGalleryOnly = !state.setTrainerGalleryOnly;
           state.setRarityMenuOpen = false;
           renderSelectedSetDetail();
         });
@@ -9937,14 +10167,16 @@
       const eraSuffix = state.eraFilter !== "all" ? ` · ${escapeHtml(state.eraFilter)}` : "";
 
       if (isSealedCatalogMode()) {
-        // Sealed mode keeps the same set/era catalog; search filters set names only.
+        if (state.query.trim()) {
+          const matches = collectSealedProductSearchMatches(state.query);
+          paintSealedProductSearchResults(matches, eraSuffix);
+          return;
+        }
+
         const eraEntries = Object.entries(setsByEra[getCatalogSetsLanguage()] || {});
         const filteredEras = eraEntries.filter(([era]) => state.eraFilter === "all" || era === state.eraFilter);
         const blocks = filteredEras.map(([era, sets]) => {
-          const filteredSets = sets.filter((setEntry) => {
-            if (!getSealedProductsForSet(setEntry.code).length) return false;
-            return matchesQuery(`${setEntry.name} ${setEntry.code}`, state.query);
-          });
+          const filteredSets = sets.filter((setEntry) => getSealedProductsForSet(setEntry.code).length > 0);
           if (!filteredSets.length) return "";
           return `
             <article class="era-block">
@@ -10276,6 +10508,7 @@
         state.setArtistFilter,
         state.setRarityFilter,
         state.setShinyVaultOnly,
+        state.setTrainerGalleryOnly,
         state.catalogArtistFilter,
         String(state.query || "").trim(),
         String(state.setCardQuery || "").trim()
@@ -10374,11 +10607,11 @@
       if (artistSelect) artistSelect.hidden = isSealedCatalogMode();
       const filterSearch = document.getElementById("filterSearch");
       if (filterSearch) {
-        filterSearch.placeholder = isSealedCatalogMode() ? "Search sets..." : "Search cards...";
+        filterSearch.placeholder = isSealedCatalogMode() ? "Search products..." : "Search cards...";
       }
       const topSearch = document.getElementById("topSearch");
       if (topSearch) {
-        topSearch.placeholder = isSealedCatalogMode() ? "Search sets..." : "Search cards...";
+        topSearch.placeholder = isSealedCatalogMode() ? "Search products..." : "Search cards...";
       }
       renderEraSidebar();
       updateGlobalArtistFilterSelect();
@@ -10571,9 +10804,56 @@
       const cardNoParam = primaryCardNumberToken(
         (params.get("card") || params.get("cardNumber") || "").trim()
       );
+      const productIdParam = String(params.get("product") || params.get("productId") || "").trim();
+      const modeParam = String(params.get("mode") || params.get("catalog") || "")
+        .trim()
+        .toLowerCase();
+      const wantSealed =
+        modeParam === "sealed" || modeParam === "products" || Boolean(productIdParam);
       const langParam = (params.get("lang") || "").toLowerCase();
       const wantJa = langParam === "ja" || langParam === "jp" || langParam === "japanese";
       const showcaseReturn = String(params.get("showcase") || params.get("return") || "").trim();
+
+      if (wantSealed) {
+        state.catalogMode = "sealed";
+        state.language = "english";
+        state.eraFilter = "all";
+        state.catalogArtistFilter = "all";
+        state.selectedCardNumber = null;
+        state.setBoosterPackView = false;
+        if (!state.sealedCatalogLoaded) {
+          await loadSealedProductsCatalog();
+        }
+        const entry = getSetByCode(setCode);
+        if (!entry || !canOpenSet(setCode)) return;
+        const products = getSealedProductsForSet(setCode);
+        const matchedProduct = productIdParam
+          ? products.find((row) => String(row.productId || "") === productIdParam)
+          : null;
+
+        state.catalogBrowseReturnSnapshot = null;
+        state.selectedSetCode = setCode;
+        state.selectedSetName = entry.name || "";
+        state.selectedSealedProductId = matchedProduct
+          ? String(matchedProduct.productId || "")
+          : null;
+        state.setCardQuery = "";
+        state.savedSetsCatalogScrollY = null;
+        state.savedSetGridScrollY = null;
+        state.showcaseReturnUrl = showcaseReturn || null;
+
+        scrollToPageTop();
+        renderAll();
+
+        const urlParams = new URLSearchParams({ set: setCode, mode: "sealed" });
+        if (matchedProduct) urlParams.set("product", String(matchedProduct.productId));
+        if (showcaseReturn) urlParams.set("showcase", showcaseReturn);
+        history.replaceState({}, "", `/sets.html?${urlParams.toString()}`);
+        return;
+      }
+
+      state.catalogMode = "english";
+      state.selectedSealedProductId = null;
 
       if (wantJa && JAPANESE_CATALOG_ENABLED) {
         if (state.language !== "japanese") {
