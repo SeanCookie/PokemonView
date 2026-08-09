@@ -54,6 +54,7 @@ scripts/*
 !scripts/build-catalog-illustrators.js
 !scripts/embed-frontend-overrides.js
 !scripts/download-hif-shiny-vault-images.js
+!scripts/import-swshp-promos.js
 
 # Runtime caches (rebuilt on server)
 backend/data/tcg-link-prices-cache.json

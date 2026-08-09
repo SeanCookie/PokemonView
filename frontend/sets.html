@@ -5071,11 +5071,16 @@
       return state.catalogMode === "sealed";
     }
 
+    function isPromoSetName(name = "") {
+      return /\bpromos\s*$/i.test(String(name || "").trim());
+    }
+
     function switchOpenSetCatalogMode(targetMode) {
       const mode = targetMode === "sealed" ? "sealed" : "english";
       if (state.catalogMode === mode) return;
       const setCode = String(state.selectedSetCode || "").trim().toUpperCase();
       if (!setCode) return;
+      if (mode === "sealed" && isPromoSetName(state.selectedSetName)) return;
       state.catalogMode = mode;
       state.language = "english";
       state.selectedCardNumber = null;
@@ -5710,7 +5715,8 @@
       const loadPromise = (async () => {
         try {
           const response = await fetch(
-            `/api/sets/cards?language=${encodeURIComponent(language)}&setCode=${encodeURIComponent(code)}`
+            `/api/sets/cards?language=${encodeURIComponent(language)}&setCode=${encodeURIComponent(code)}`,
+            { cache: "no-store" }
           );
           if (!response.ok) return;
           const payload = await response.json();
@@ -9575,26 +9581,28 @@
       }
       const content = document.getElementById("content");
       state.setBoosterPackView = false;
-      const allCards = getSetCards(selectedSet, setConfig);
-      if (!allCards.length) {
+      const setCodeKey = String(selectedSet.code || "").trim().toUpperCase();
+      const hasImportedNames = Object.keys(state.cardNamesBySetCode[setCodeKey] || {}).length > 0;
+      const alreadyTriedLoad = state.setCardLoadAttemptedByCode?.[setCodeKey] === true;
+      // setConfig.total can synthesize empty placeholders — still fetch real names/images once.
+      if (!hasImportedNames && !alreadyTriedLoad) {
+        if (!state.setCardLoadAttemptedByCode) state.setCardLoadAttemptedByCode = {};
+        state.setCardLoadAttemptedByCode[setCodeKey] = true;
         content.innerHTML = `<div class="card-meta" style="padding:16px;">Loading ${escapeHtml(selectedSet.name || "set")}…</div>`;
         void ensureSetCardsLoaded(selectedSet.code)
           .then(() => {
-            if (String(state.selectedSetCode || "").toUpperCase() !== String(selectedSet.code || "").toUpperCase()) {
-              return;
-            }
-            if (Object.keys(state.cardNamesBySetCode[selectedSet.code] || {}).length > 0) {
-              renderSelectedSetDetail();
-              return;
-            }
-            content.innerHTML = `<div class="card-meta" style="padding:16px;">Could not load cards for this set.</div>`;
+            if (String(state.selectedSetCode || "").toUpperCase() !== setCodeKey) return;
+            renderSelectedSetDetail();
           })
           .catch(() => {
-            if (String(state.selectedSetCode || "").toUpperCase() !== String(selectedSet.code || "").toUpperCase()) {
-              return;
-            }
-            content.innerHTML = `<div class="card-meta" style="padding:16px;">Could not load cards for this set.</div>`;
+            if (String(state.selectedSetCode || "").toUpperCase() !== setCodeKey) return;
+            renderSelectedSetDetail();
           });
+        return;
+      }
+      const allCards = getSetCards(selectedSet, setConfig);
+      if (!allCards.length) {
+        content.innerHTML = `<div class="card-meta" style="padding:16px;">Could not load cards for this set.</div>`;
         return;
       }
       const illustrators = getSetIllustrators(allCards);
@@ -9623,7 +9631,6 @@
       const vaultFilteredCards = applySetShinyVaultFilter(rarityFilteredCards, selectedSet.code);
       const galleryFilteredCards = applySetTrainerGalleryFilter(vaultFilteredCards, selectedSet.code);
       const visibleCards = filterCardsBySetQuery(galleryFilteredCards, state.setCardQuery);
-      const setCodeKey = String(selectedSet.code || "").toUpperCase();
       const pricingMap = state.cardPricingBySetCode[setCodeKey];
       const hasPricing = Boolean(pricingMap && Object.keys(pricingMap).length);
       const linkHydrated = Boolean(state.setLinkPricesHydratedBySetCode[setCodeKey]);
@@ -9748,7 +9755,11 @@
                   `).join("")}
                 </select>
                 <button type="button" class="set-filter-tab ${priceSortActive ? "active" : ""}" data-sort-mode="price">Price ${priceSortActive ? priceSortArrow : ""}</button>
-                <button type="button" id="switchToProductsBtn" class="set-filter-tab">Switch to Products</button>
+                ${
+                  isPromoSetName(selectedSet.name)
+                    ? ""
+                    : `<button type="button" id="switchToProductsBtn" class="set-filter-tab">Switch to Products</button>`
+                }
                 <button id="backToSets" type="button" class="set-filter-tab">Back to Sets</button>
               </div>
             </div>
