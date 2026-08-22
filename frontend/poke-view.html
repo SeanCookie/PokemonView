@@ -187,6 +187,29 @@
     .chart-symbol-header[hidden] {
       display: none;
     }
+    .chart-acquired-tip {
+      position: absolute;
+      z-index: 8;
+      pointer-events: none;
+      transform: translate(-50%, -100%);
+      min-width: 120px;
+      max-width: 220px;
+      padding: 6px 8px;
+      border: 1px solid rgba(245, 217, 81, 0.45);
+      border-radius: 6px;
+      background: rgba(18, 24, 36, 0.96);
+      color: #f5d951;
+      font: 11px Inter, "Segoe UI", Arial, sans-serif;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+    }
+    .chart-acquired-tip[hidden] {
+      display: none;
+    }
+    .chart-acquired-tip strong {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
     .chart-symbol-title {
       font: 600 12px Inter, "Segoe UI", Arial, sans-serif;
       color: #d1d4dc;
@@ -285,8 +308,114 @@
     .watchlist {
       background: #0a0f18;
       display: grid;
-      grid-template-rows: 38px minmax(0, 1fr) auto;
+      grid-template-rows: 38px auto auto minmax(0, 1fr);
       min-height: 0;
+    }
+    .discovery-tabs {
+      display: flex;
+      gap: 4px;
+      padding: 6px 8px 0;
+      overflow-x: auto;
+      scrollbar-width: thin;
+    }
+    .discovery-tab {
+      flex: 0 0 auto;
+      border: 1px solid #2f3d50;
+      border-radius: 7px;
+      background: #121a27;
+      color: #9ab0d1;
+      padding: 5px 8px;
+      font-size: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      white-space: nowrap;
+      line-height: 1.2;
+    }
+    .discovery-tab:hover {
+      border-color: #4a5f7a;
+      color: #cfe0ff;
+      background: #161f2e;
+    }
+    .discovery-tab.active {
+      border-color: #5a7ab0;
+      background: #18263a;
+      color: #e9f1ff;
+    }
+    .discovery-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 8px;
+      border-bottom: 1px solid #1b2432;
+    }
+    .discovery-toolbar[hidden] {
+      display: none !important;
+    }
+    .discovery-chip {
+      border: 1px solid #2f3d50;
+      border-radius: 999px;
+      background: #121a27;
+      color: #9ab0d1;
+      padding: 3px 8px;
+      font-size: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      line-height: 1.2;
+    }
+    .discovery-chip:hover {
+      border-color: #4a5f7a;
+      color: #cfe0ff;
+    }
+    .discovery-chip.active {
+      border-color: #5a7ab0;
+      background: #18263a;
+      color: #e9f1ff;
+    }
+    .discovery-toolbar-meta {
+      margin-left: auto;
+      font-size: 10px;
+      color: #6f86a8;
+      white-space: nowrap;
+    }
+    .discovery-reason {
+      display: block;
+      font-size: 9px;
+      color: #6f86a8;
+      margin-top: 2px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .discovery-pin-btn {
+      width: 18px;
+      height: 18px;
+      border: 1px solid #2f3d50;
+      border-radius: 5px;
+      background: #121a27;
+      color: #9ab0d1;
+      font-size: 12px;
+      line-height: 1;
+      padding: 0;
+      cursor: pointer;
+    }
+    .discovery-pin-btn:hover {
+      border-color: #5a7ab0;
+      color: #e9f1ff;
+      background: #18263a;
+    }
+    .discovery-pin-btn.pinned {
+      border-color: #3d6b4a;
+      color: #9fd4ad;
+      background: #152319;
+    }
+    .watchlist th:nth-child(5),
+    .watchlist td:nth-child(5) {
+      width: 28px;
+      text-align: center;
+      padding-right: 6px;
     }
     .watchlist-head {
       border-bottom: 1px solid #1f2836;
@@ -332,27 +461,6 @@
     .watchlist-remove-btn:hover {
       border-color: #74424d;
       background: #3a1c24;
-    }
-    .watchlist-reset-btn {
-      height: 20px;
-      padding: 0 7px;
-      border: 1px solid #2f3d50;
-      border-radius: 6px;
-      background: #121a27;
-      color: #9db2d4;
-      font-size: 10px;
-      font-weight: 600;
-      font-family: inherit;
-      line-height: 1;
-      cursor: pointer;
-    }
-    .watchlist-reset-btn.hidden {
-      display: none;
-    }
-    .watchlist-reset-btn:hover {
-      border-color: #4f6584;
-      background: #182334;
-      color: #e9f1ff;
     }
     .watchlist-modal {
       position: fixed;
@@ -505,25 +613,31 @@
     }
     .watchlist-source-tabs {
       display: none;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 6px;
+      flex-wrap: nowrap;
+      gap: 5px;
+      width: 100%;
+      min-width: 0;
     }
     .watchlist-source-tabs.visible {
-      display: grid;
-    }
-    .watchlist-source-tabs.with-collection {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      display: flex;
     }
     .watchlist-source-tab {
+      flex: 1 1 0;
+      min-width: 0;
       border: 1px solid #2f3d50;
-      border-radius: 8px;
+      border-radius: 7px;
       background: #121a27;
       color: #9ab0d1;
-      padding: 7px 10px;
-      font-size: 12px;
+      padding: 6px 6px;
+      font-size: 11px;
       font-weight: 600;
       cursor: pointer;
       font-family: inherit;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-align: center;
+      line-height: 1.2;
     }
     .watchlist-source-tab:hover {
       border-color: #4a5f7a;
@@ -535,6 +649,124 @@
       background: #18263a;
       color: #e9f1ff;
       box-shadow: inset 0 0 0 1px rgba(90, 122, 176, 0.35);
+    }
+    .watchlist-browse-nav {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+    .watchlist-browse-nav[hidden] {
+      display: none !important;
+    }
+    .watchlist-browse-back {
+      border: 1px solid #2f3d50;
+      border-radius: 8px;
+      background: #121a27;
+      color: #cfe0ff;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    .watchlist-browse-back:hover {
+      border-color: #4a5f7a;
+      background: #161f2e;
+    }
+    .watchlist-browse-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #9ab0d1;
+      margin-right: auto;
+    }
+    .watchlist-browse-kind {
+      display: inline-flex;
+      gap: 4px;
+      margin-left: auto;
+    }
+    .watchlist-browse-kind[hidden] {
+      display: none !important;
+    }
+    .watchlist-browse-kind-btn {
+      border: 1px solid #2f3d50;
+      border-radius: 8px;
+      background: #121a27;
+      color: #9ab0d1;
+      padding: 5px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    .watchlist-browse-kind-btn:hover {
+      border-color: #4a5f7a;
+      color: #cfe0ff;
+      background: #161f2e;
+    }
+    .watchlist-browse-kind-btn.active {
+      border-color: #5a7ab0;
+      background: #18263a;
+      color: #e9f1ff;
+      box-shadow: inset 0 0 0 1px rgba(90, 122, 176, 0.35);
+    }
+    .watchlist-set-list {
+      display: grid;
+      gap: 6px;
+      max-height: min(420px, 52vh);
+      overflow: auto;
+      padding: 4px 2px 8px;
+    }
+    .watchlist-set-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      width: 100%;
+      text-align: left;
+      border: 1px solid #2f3d50;
+      border-radius: 10px;
+      background: #121a27;
+      color: inherit;
+      font: inherit;
+      padding: 10px 12px;
+      cursor: pointer;
+    }
+    .watchlist-set-row:hover {
+      border-color: #4a5f7a;
+      background: #161f2e;
+    }
+    .watchlist-set-row-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: #e4eeff;
+    }
+    .watchlist-set-row-meta {
+      font-size: 11px;
+      color: #7f95b7;
+      white-space: nowrap;
+    }
+    .watchlist-set-era {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .watchlist-set-era:last-child {
+      margin-bottom: 0;
+    }
+    .watchlist-set-era-title {
+      margin: 0;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-weight: 700;
+      background: linear-gradient(90deg, rgba(51, 209, 143, 0.35), rgba(51, 209, 143, 0.12));
+      border: 1px solid rgba(51, 209, 143, 0.35);
+      border-radius: 8px;
+      color: #dfffea;
+    }
+    .watchlist-set-era-list {
+      display: grid;
+      gap: 6px;
     }
     .watchlist-modal-actions {
       display: flex;
@@ -665,6 +897,32 @@
       color: #d1d4dc;
       cursor: pointer;
     }
+    .price-alert-compare-list {
+      display: grid;
+      gap: 8px;
+      max-height: 140px;
+      overflow: auto;
+      padding: 8px 10px;
+      border: 1px solid #2a2e39;
+      border-radius: 8px;
+      background: #0f131a;
+    }
+    .price-alert-compare-list label {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 12px;
+      color: #d1d4dc;
+      cursor: pointer;
+      line-height: 1.35;
+    }
+    .price-alert-compare-list .price-alert-compare-all {
+      padding-top: 4px;
+      border-top: 1px solid #2a2e39;
+      margin-top: 2px;
+      font-weight: 600;
+      color: #9ab0d1;
+    }
     .price-alert-hint {
       margin: 0;
       font-size: 12px;
@@ -672,9 +930,51 @@
     }
     .price-alert-actions {
       display: flex;
-      justify-content: flex-end;
+      justify-content: space-between;
+      align-items: center;
       gap: 8px;
       margin-top: 4px;
+    }
+    .price-alert-actions-right {
+      display: flex;
+      gap: 8px;
+      margin-left: auto;
+    }
+    .price-alert-btn.danger {
+      border-color: #6b3340;
+      background: #2a151b;
+      color: #ffd9e0;
+    }
+    .price-alert-btn.danger:hover {
+      border-color: #8f4454;
+      background: #351a22;
+    }
+    .discovery-alert-actions {
+      display: inline-flex;
+      gap: 4px;
+      justify-content: center;
+    }
+    .discovery-alert-btn {
+      width: 18px;
+      height: 18px;
+      border: 1px solid #2f3d50;
+      border-radius: 5px;
+      background: #121a27;
+      color: #9ab0d1;
+      font-size: 10px;
+      line-height: 1;
+      padding: 0;
+      cursor: pointer;
+    }
+    .discovery-alert-btn:hover {
+      border-color: #5a7ab0;
+      color: #e9f1ff;
+      background: #18263a;
+    }
+    .discovery-alert-btn.danger:hover {
+      border-color: #8f4454;
+      color: #ffd9e0;
+      background: #351a22;
     }
     .price-alert-btn {
       border: 1px solid #2f3d50;
@@ -795,9 +1095,11 @@
       box-shadow: inset 2px 0 0 #4f6f98, inset 4px 0 0 #ffab40;
     }
     .chart-symbol-title .chart-compare-vs {
-      color: #ffab40;
       font-weight: 600;
       margin: 0 0.35em;
+    }
+    .chart-symbol-title .chart-compare-name {
+      font-weight: 500;
     }
     .watchlist table {
       table-layout: fixed;
@@ -839,21 +1141,23 @@
     .watchlist .up { color: var(--up); }
     .watchlist .down { color: var(--down); }
     .watchlist .muted { color: #9ab0d1; }
-    .watchlist-footer {
-      border-top: 1px solid #1f2836;
-      padding: 8px 10px;
-    }
     .watchlist-psa10-btn {
-      width: 100%;
       border: 1px solid #2f3d50;
       border-radius: 6px;
       background: #121a27;
       color: #9ab0d1;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 600;
       letter-spacing: 0.02em;
-      padding: 7px 10px;
+      padding: 3px 8px;
+      height: 24px;
+      line-height: 1;
       cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .watchlist-psa10-btn[hidden] {
+      display: none;
     }
     .watchlist-psa10-btn:hover:not(:disabled) {
       border-color: #4f6584;
@@ -1059,6 +1363,7 @@
       <a href="/poke-view.html" class="nav-link active">Poke View</a>
       <a href="/scan-your-cards.html" class="nav-link">Scan Your Cards</a>
       <a href="/restock-tracker.html" class="nav-link">Restock Tracker</a>
+      <a href="/trade-analyzer.html" class="nav-link">Trade Analyzer</a>
     </div>
     <div class="nav-right">
       <div data-account-slot></div>
@@ -1103,7 +1408,8 @@
               </span>
             </div>
             <div id="chartOverlay" class="chart-overlay" hidden></div>
-            </div>
+            <div id="chartAcquiredTip" class="chart-acquired-tip" hidden role="tooltip"></div>
+          </div>
           </section>
           <div class="chart-bottom-bar" aria-label="Chart range and local time">
             <div class="chart-bottom-bar-spacer" aria-hidden="true"></div>
@@ -1133,16 +1439,41 @@
 
         <aside class="watchlist">
           <header class="watchlist-head">
-            <span>Watchlist</span>
+            <span id="asidePanelTitle">Watchlist</span>
             <div style="display:flex; gap:6px; align-items:center;">
-              <button id="resetLayoutBtn" class="watchlist-reset-btn" type="button" title="Reset chart and watchlist panel widths">Reset</button>
+              <button
+                id="watchlistPsa10Btn"
+                class="watchlist-psa10-btn"
+                type="button"
+                aria-pressed="false"
+                disabled
+                hidden
+                title="No PSA 10 price history for this card"
+              >
+                PSA 10
+              </button>
               <button id="watchlistAddBtn" class="watchlist-add-btn" type="button" aria-label="Add card to watchlist">+</button>
               <button id="watchlistRemoveBtn" class="watchlist-remove-btn" type="button" aria-label="Remove selected card from watchlist">-</button>
             </div>
           </header>
+          <div class="discovery-tabs" id="discoveryTabs" role="tablist" aria-label="Market panels">
+            <button type="button" class="discovery-tab active" data-discovery-tab="watchlist" role="tab" aria-selected="true">Watchlist</button>
+            <button type="button" class="discovery-tab" data-discovery-tab="movers" role="tab" aria-selected="false">Movers</button>
+            <button type="button" class="discovery-tab" data-discovery-tab="leaders" role="tab" aria-selected="false">Year</button>
+            <button type="button" class="discovery-tab" data-discovery-tab="undervalued" role="tab" aria-selected="false">Value</button>
+            <button type="button" class="discovery-tab" data-discovery-tab="breakouts" role="tab" aria-selected="false">Breakouts</button>
+            <button type="button" class="discovery-tab" data-discovery-tab="heat" role="tab" aria-selected="false">Heat</button>
+            <button type="button" class="discovery-tab" data-discovery-tab="alerts" role="tab" aria-selected="false">Alerts</button>
+            <button type="button" class="discovery-tab" data-discovery-tab="trending" role="tab" aria-selected="false">Trending</button>
+          </div>
+          <div class="discovery-toolbar" id="discoveryToolbar">
+            <div id="discoveryRangeChips" class="discovery-range-chips" style="display:flex; gap:4px; flex-wrap:wrap;"></div>
+            <div id="discoveryExtraControls" style="display:flex; gap:4px; flex-wrap:wrap;"></div>
+            <span class="discovery-toolbar-meta" id="discoveryToolbarMeta"></span>
+          </div>
           <div style="overflow:auto;">
             <table>
-              <thead>
+              <thead id="discoveryTableHead">
                 <tr>
                   <th>Cards</th>
                   <th>Last</th>
@@ -1152,18 +1483,6 @@
               </thead>
               <tbody id="watchlistBody"></tbody>
             </table>
-          </div>
-          <div class="watchlist-footer">
-            <button
-              id="watchlistPsa10Btn"
-              class="watchlist-psa10-btn"
-              type="button"
-              aria-pressed="false"
-              disabled
-              title="No PSA 10 price history for this card"
-            >
-              PSA 10
-            </button>
           </div>
         </aside>
       </div>
@@ -1195,8 +1514,20 @@
           data-source="catalog"
           role="tab"
           aria-selected="true"
+          title="Sets catalog"
         >
-          Sets catalog
+          Catalog
+        </button>
+        <button
+          type="button"
+          class="watchlist-source-tab"
+          id="watchlistSourceBrowseSetsBtn"
+          data-source="sets"
+          role="tab"
+          aria-selected="false"
+          title="Browse sets"
+        >
+          Browse
         </button>
         <button
           type="button"
@@ -1205,8 +1536,9 @@
           data-source="sealed"
           role="tab"
           aria-selected="false"
+          title="Sealed products"
         >
-          Sealed products
+          Sealed
         </button>
         <button
           type="button"
@@ -1215,9 +1547,18 @@
           data-source="collection"
           role="tab"
           aria-selected="false"
+          title="My collection"
         >
-          My collection
+          Collection
         </button>
+      </div>
+      <div id="watchlistBrowseNav" class="watchlist-browse-nav" hidden>
+        <button type="button" id="watchlistBrowseBackBtn" class="watchlist-browse-back">← Sets</button>
+        <span id="watchlistBrowseSetLabel" class="watchlist-browse-label"></span>
+        <div id="watchlistBrowseKind" class="watchlist-browse-kind" role="group" aria-label="Browse set filter" hidden>
+          <button type="button" class="watchlist-browse-kind-btn active" data-browse-kind="cards" aria-pressed="true">Cards</button>
+          <button type="button" class="watchlist-browse-kind-btn" data-browse-kind="sealed" aria-pressed="false">Sealed</button>
+        </div>
       </div>
       <input id="watchlistSearchInput" class="watchlist-input" placeholder="Search card name, set code, or nickname..." />
       <div id="watchlistCardGrid" class="watchlist-card-grid" role="listbox" aria-label="Choose a card or product"></div>
@@ -1231,7 +1572,7 @@
   <div id="chartContextMenu" class="chart-context-menu" role="menu" aria-hidden="true">
     <button type="button" data-ctx-action="add-alert" role="menuitem">Add price alert…</button>
     <button type="button" data-ctx-action="compare" role="menuitem">Compare another card/product…</button>
-    <button type="button" data-ctx-action="clear-compare" hidden role="menuitem">Clear comparison</button>
+    <button type="button" data-ctx-action="clear-compare" hidden role="menuitem">Clear all comparisons</button>
     <div class="ctx-sep" hidden data-ctx-sep></div>
     <button type="button" class="danger" data-ctx-action="remove-alert" hidden role="menuitem">Remove nearby alert</button>
   </div>
@@ -1239,7 +1580,7 @@
   <div id="priceAlertModal" class="price-alert-modal" aria-hidden="true">
     <section class="price-alert-panel" role="dialog" aria-modal="true" aria-labelledby="priceAlertTitle">
       <div class="price-alert-header">
-        <h3 class="price-alert-title" id="priceAlertTitle">Create alert on <span id="priceAlertSymbol">Card</span></h3>
+        <h3 class="price-alert-title" id="priceAlertTitle"><span id="priceAlertModalVerb">Create</span> alert on <span id="priceAlertSymbol">Card</span></h3>
         <button type="button" class="price-alert-close" id="priceAlertCloseBtn" aria-label="Close">×</button>
       </div>
       <div class="price-alert-field">
@@ -1281,9 +1622,17 @@
         </div>
         <p class="price-alert-hint" id="priceAlertEmailHint" hidden>Email delivery needs SMTP on the server and an email on your account.</p>
       </div>
+      <div class="price-alert-field" id="priceAlertCompareField" hidden>
+        <div class="price-alert-label">Also apply to comparisons</div>
+        <div class="price-alert-compare-list" id="priceAlertCompareList"></div>
+        <p class="price-alert-hint">Creates the same price and condition alert for each selected comparison.</p>
+      </div>
       <div class="price-alert-actions">
-        <button type="button" class="price-alert-btn" id="priceAlertCancelBtn">Cancel</button>
-        <button type="button" class="price-alert-btn primary" id="priceAlertCreateBtn">Create</button>
+        <button type="button" class="price-alert-btn danger" id="priceAlertDeleteBtn" hidden>Delete</button>
+        <div class="price-alert-actions-right">
+          <button type="button" class="price-alert-btn" id="priceAlertCancelBtn">Cancel</button>
+          <button type="button" class="price-alert-btn primary" id="priceAlertCreateBtn">Create</button>
+        </div>
       </div>
     </section>
   </div>
@@ -1295,6 +1644,7 @@
     (function () {
       const chartContainer = document.getElementById("chartContainer");
       const chartOverlay = document.getElementById("chartOverlay");
+      const chartAcquiredTip = document.getElementById("chartAcquiredTip");
       const chartSymbolHeader = document.getElementById("chartSymbolHeader");
       const chartSymbolTitle = document.getElementById("chartSymbolTitle");
       const chartSymbolStats = document.getElementById("chartSymbolStats");
@@ -1304,8 +1654,14 @@
       const chartBottomBar = document.querySelector(".chart-bottom-bar");
       const terminalMain = document.querySelector(".terminal-main");
       const chartResizer = document.getElementById("chartResizer");
-      const resetLayoutBtn = document.getElementById("resetLayoutBtn");
       const watchlistBody = document.getElementById("watchlistBody");
+      const asidePanelTitle = document.getElementById("asidePanelTitle");
+      const discoveryTabs = document.getElementById("discoveryTabs");
+      const discoveryToolbar = document.getElementById("discoveryToolbar");
+      const discoveryRangeChips = document.getElementById("discoveryRangeChips");
+      const discoveryExtraControls = document.getElementById("discoveryExtraControls");
+      const discoveryToolbarMeta = document.getElementById("discoveryToolbarMeta");
+      const discoveryTableHead = document.getElementById("discoveryTableHead");
       const watchlistAddBtn = document.getElementById("watchlistAddBtn");
       const watchlistRemoveBtn = document.getElementById("watchlistRemoveBtn");
       const watchlistModal = document.getElementById("watchlistModal");
@@ -1314,8 +1670,13 @@
       const watchlistCardGrid = document.getElementById("watchlistCardGrid");
       const watchlistSourceTabs = document.getElementById("watchlistSourceTabs");
       const watchlistSourceCatalogBtn = document.getElementById("watchlistSourceCatalogBtn");
+      const watchlistSourceBrowseSetsBtn = document.getElementById("watchlistSourceBrowseSetsBtn");
       const watchlistSourceSealedBtn = document.getElementById("watchlistSourceSealedBtn");
       const watchlistSourceCollectionBtn = document.getElementById("watchlistSourceCollectionBtn");
+      const watchlistBrowseNav = document.getElementById("watchlistBrowseNav");
+      const watchlistBrowseBackBtn = document.getElementById("watchlistBrowseBackBtn");
+      const watchlistBrowseSetLabel = document.getElementById("watchlistBrowseSetLabel");
+      const watchlistBrowseKind = document.getElementById("watchlistBrowseKind");
       const watchlistSealedSetSortBtn = document.getElementById("watchlistSealedSetSortBtn");
       const watchlistModalSub = document.getElementById("watchlistModalSub");
       const watchlistCancelBtn = document.getElementById("watchlistCancelBtn");
@@ -1325,6 +1686,8 @@
       const chartContextMenu = document.getElementById("chartContextMenu");
       const priceAlertModal = document.getElementById("priceAlertModal");
       const priceAlertSymbol = document.getElementById("priceAlertSymbol");
+      const priceAlertModalVerb = document.getElementById("priceAlertModalVerb");
+      const priceAlertDeleteBtn = document.getElementById("priceAlertDeleteBtn");
       const priceAlertValue = document.getElementById("priceAlertValue");
       const priceAlertCondition = document.getElementById("priceAlertCondition");
       const WATCHLIST_EMPTY_CHART_MSG = "Select a card or product from the watchlist";
@@ -1334,6 +1697,8 @@
       const priceAlertNotifyToast = document.getElementById("priceAlertNotifyToast");
       const priceAlertNotifyEmail = document.getElementById("priceAlertNotifyEmail");
       const priceAlertEmailHint = document.getElementById("priceAlertEmailHint");
+      const priceAlertCompareField = document.getElementById("priceAlertCompareField");
+      const priceAlertCompareList = document.getElementById("priceAlertCompareList");
       const priceAlertCreateBtn = document.getElementById("priceAlertCreateBtn");
       const priceAlertCancelBtn = document.getElementById("priceAlertCancelBtn");
       const priceAlertCloseBtn = document.getElementById("priceAlertCloseBtn");
@@ -1401,14 +1766,19 @@
         collectionPickerCards: [],
         collectionPickerById: {},
         collectionPickerLoaded: false,
+        collectionAcquiredByWatchKey: {},
+        collectionAcquiredLoaded: false,
+        acquisitionMarkerHits: [],
         watchlistPickerSource: "catalog",
+        watchlistPickerBrowseSetCode: "",
+        watchlistPickerBrowseKind: "cards",
         watchlistModalMode: "add",
         watchlistWidth: 320,
         activeRequestId: 0,
         livePollTimer: null,
         watchlistPickerSelectedId: null,
-        compareItem: null,
-        historyCandlesCompareFull: [],
+        watchlistPickerSelectedIds: [],
+        comparisons: [],
         compareLoadToken: 0,
         chartTool: "cursor",
         cursorCrosshairEnabled: true,
@@ -1420,6 +1790,8 @@
         priceAlertDraftPrice: null,
         priceAlertEmailConfigured: true,
         priceAlertContext: null,
+        priceAlertEditingId: null,
+        priceAlertEditingAlert: null,
         chartScroll: 0,
         priceExpand: 0.07,
         priceScaleManual: null,
@@ -1432,8 +1804,30 @@
         applyChartViewportOnNextDraw: false,
         applyChartPriceScaleOnNextDraw: false,
         timeScaleOverrideMs: null,
-        placeholderCandles: null
+        placeholderCandles: null,
+        discoveryTab: "watchlist",
+        discoveryRange: "1M",
+        discoveryDirection: "up",
+        discoveryKind: "all",
+        discoveryRows: [],
+        discoveryLoading: false,
+        discoveryBuiltAt: null,
+        discoverySourceEntries: 0,
+        watchlistSort: "default",
+        chartItem: null
       };
+
+      const DISCOVERY_TAB_LABELS = {
+        watchlist: "Watchlist",
+        movers: "Movers",
+        leaders: "Year leaders",
+        undervalued: "Undervalued",
+        breakouts: "Breakouts",
+        heat: "Heat by set",
+        alerts: "Alerts",
+        trending: "Trending"
+      };
+      const DISCOVERY_RANGES = ["1D", "1W", "1M", "3M", "1Y", "YTD"];
 
       let lwChart = null;
       let lwCandleSeries = null;
@@ -1448,6 +1842,46 @@
       let watchlistAuthBooted = false;
       let watchlistEverSignedIn = false;
       let watchlistSaveInFlight = null;
+
+      const MAX_CHART_COMPARISONS = 6;
+      const COMPARE_PALETTE = [
+        {
+          border: "#ffab40",
+          wick: "rgba(255, 171, 64, 0.9)",
+          fillUp: "rgba(255, 171, 64, 0.18)",
+          fillDown: "rgba(255, 171, 64, 0.12)"
+        },
+        {
+          border: "#ab47bc",
+          wick: "rgba(171, 71, 188, 0.9)",
+          fillUp: "rgba(171, 71, 188, 0.18)",
+          fillDown: "rgba(171, 71, 188, 0.12)"
+        },
+        {
+          border: "#26c6da",
+          wick: "rgba(38, 198, 218, 0.9)",
+          fillUp: "rgba(38, 198, 218, 0.18)",
+          fillDown: "rgba(38, 198, 218, 0.12)"
+        },
+        {
+          border: "#ec407a",
+          wick: "rgba(236, 64, 122, 0.9)",
+          fillUp: "rgba(236, 64, 122, 0.18)",
+          fillDown: "rgba(236, 64, 122, 0.12)"
+        },
+        {
+          border: "#9ccc65",
+          wick: "rgba(156, 204, 101, 0.9)",
+          fillUp: "rgba(156, 204, 101, 0.18)",
+          fillDown: "rgba(156, 204, 101, 0.12)"
+        },
+        {
+          border: "#42a5f5",
+          wick: "rgba(66, 165, 245, 0.9)",
+          fillUp: "rgba(66, 165, 245, 0.18)",
+          fillDown: "rgba(66, 165, 245, 0.12)"
+        }
+      ];
 
       function toQueryText(value) {
         return String(value || "").toLowerCase().trim();
@@ -1476,6 +1910,42 @@
           .filter(Boolean)
           .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
           .join(" ");
+      }
+
+      function formatSealedWatchlistCardLabel({ setName = "", setCode = "", title = "", productType = "" } = {}) {
+        const code = String(setCode || "").trim().toUpperCase();
+        const name = String(setName || "").trim() || code;
+        const product =
+          String(title || "").trim() ||
+          formatSealedProductTypeLabel(productType) ||
+          "Sealed";
+        if (name && code) return `${name}(${code}) - ${product}`;
+        if (name) return `${name} - ${product}`;
+        return product;
+      }
+
+      function resolveSealedProductTitle(item) {
+        if (!item) return "Sealed";
+        const catalogTitle = String(state.sealedIndexById?.[item.id]?.card || "").trim();
+        if (catalogTitle) return catalogTitle;
+        const cardName = String(item.cardName || "").trim();
+        if (cardName && !cardName.includes(" · ") && !/\s-\s.+\s-\s/.test(cardName)) {
+          return cardName;
+        }
+        const raw = String(item.card || cardName || "").trim();
+        const parts = raw.split(/\s*[·-]\s*/).map((part) => part.trim()).filter(Boolean);
+        if (parts.length >= 2) return parts[parts.length - 1];
+        return raw || formatSealedProductTypeLabel(item.productType) || "Sealed";
+      }
+
+      function sealedWatchlistCardText(item) {
+        return formatSealedWatchlistCardLabel({
+          setName: item?.setName,
+          setCode: item?.setCode,
+          title: resolveSealedProductTitle(item),
+          productType:
+            item?.productType || state.sealedIndexById?.[item?.id]?.productType || ""
+        });
       }
 
       function sealedProductMatchesQuery(row, queryRaw) {
@@ -1578,12 +2048,6 @@
         terminalMain.style.setProperty("--watchlist-width", `${width}px`);
       }
 
-      function updateResetButtonVisibility() {
-        if (!resetLayoutBtn) return;
-        const isDefault = Math.abs(Number(state.watchlistWidth) - 320) < 0.5;
-        resetLayoutBtn.classList.toggle("hidden", isDefault);
-      }
-
       async function loadCardsFromSetsIndex() {
         if (state.cardIndexLoaded) {
           const total = state.cardIndex.length;
@@ -1626,6 +2090,194 @@
         state.cardIndex = cards;
         state.cardIndexById = byId;
         state.cardIndexLoaded = true;
+      }
+
+      function decodeHtmlEntities(value) {
+        return String(value || "")
+          .replace(/&amp;/g, "&")
+          .replace(/&lt;/g, "<")
+          .replace(/&gt;/g, ">")
+          .replace(/&quot;/g, '"')
+          .replace(/&#39;/g, "'");
+      }
+
+      function getEnglishSetsCatalog() {
+        return window.ENGLISH_SETS_BY_ERA || {};
+      }
+
+      function orderedEnglishEraEntries(catalog) {
+        const order = window.ENGLISH_ERA_ORDER || [];
+        const seen = new Set();
+        const out = [];
+        for (const era of order) {
+          if (!catalog[era] || !catalog[era].length) continue;
+          out.push([era, catalog[era]]);
+          seen.add(era);
+        }
+        for (const [era, list] of Object.entries(catalog || {})) {
+          if (seen.has(era) || !list?.length) continue;
+          out.push([era, list]);
+        }
+        return out;
+      }
+
+      function watchlistCardNumberSortKey(cardNo) {
+        const raw = String(cardNo || "").trim().replace(/^#/, "");
+        const match = raw.match(/^(\d+)/);
+        const n = match ? Number(match[1]) : Number.POSITIVE_INFINITY;
+        return { n: Number.isFinite(n) ? n : Number.POSITIVE_INFINITY, raw: raw.toLowerCase() };
+      }
+
+      function compareWatchlistCardsByNumber(a, b) {
+        const ka = watchlistCardNumberSortKey(a?.cardNo);
+        const kb = watchlistCardNumberSortKey(b?.cardNo);
+        if (ka.n !== kb.n) return ka.n - kb.n;
+        if (ka.raw !== kb.raw) return ka.raw.localeCompare(kb.raw);
+        return String(a?.card || "").localeCompare(String(b?.card || ""));
+      }
+
+      function listWatchlistBrowseSets() {
+        const catalog = getEnglishSetsCatalog();
+        const counts = new Map();
+        for (const row of state.cardIndex) {
+          const code = String(row.setCode || "").toUpperCase();
+          if (!code) continue;
+          counts.set(code, (counts.get(code) || 0) + 1);
+        }
+        for (const row of state.sealedIndex) {
+          const code = String(row.setCode || "").toUpperCase();
+          if (!code) continue;
+          counts.set(code, (counts.get(code) || 0) + 1);
+        }
+        const out = [];
+        for (const [era, list] of orderedEnglishEraEntries(catalog)) {
+          for (const row of list || []) {
+            const code = String(row.code || "").toUpperCase();
+            const count = counts.get(code) || 0;
+            if (!code || count <= 0) continue;
+            out.push({
+              code,
+              name: decodeHtmlEntities(row.name || code).trim() || code,
+              era,
+              count
+            });
+          }
+        }
+        return out;
+      }
+
+      function isPromoSetName(name = "") {
+        return /\bpromos\s*$/i.test(String(name || "").trim());
+      }
+
+      function resolveWatchlistBrowseSetName(setCode = "") {
+        const code = String(setCode || "").trim().toUpperCase();
+        if (!code) return "";
+        const setRow = listWatchlistBrowseSets().find((row) => row.code === code);
+        if (setRow?.name) return setRow.name;
+        const fromCard = state.cardIndex.find((row) => String(row.setCode || "").toUpperCase() === code);
+        return fromCard?.setName || fromCard?.setDisplayName || "";
+      }
+
+      function isPromoWatchlistBrowseSet(setCode = "") {
+        return isPromoSetName(resolveWatchlistBrowseSetName(setCode));
+      }
+
+      function groupBrowseSetsByEra(sets) {
+        const groups = [];
+        const indexByEra = new Map();
+        for (const row of sets || []) {
+          const era = String(row.era || "Other").trim() || "Other";
+          if (!indexByEra.has(era)) {
+            indexByEra.set(era, groups.length);
+            groups.push({ era, sets: [] });
+          }
+          groups[indexByEra.get(era)].sets.push(row);
+        }
+        return groups;
+      }
+
+      function filterSealedWatchlistProductsInSet(setCode, queryRaw) {
+        const code = String(setCode || "").trim().toUpperCase();
+        if (!code) return [];
+        const query = String(queryRaw || "").trim();
+        const matches = state.sealedIndex.filter(
+          (row) => String(row.setCode || "").toUpperCase() === code
+        );
+        const filtered = query
+          ? matches.filter((row) => sealedProductMatchesQuery(row, query))
+          : matches;
+        return filtered.sort((a, b) => {
+          const byType = String(a?.productType || "").localeCompare(String(b?.productType || ""));
+          if (byType !== 0) return byType;
+          return String(a?.card || "").localeCompare(String(b?.card || ""));
+        });
+      }
+
+      function filterWatchlistCardsInSet(setCode, queryRaw) {
+        const code = String(setCode || "").trim().toUpperCase();
+        if (!code) return [];
+        const query = toQueryText(queryRaw);
+        return state.cardIndex
+          .filter((row) => String(row.setCode || "").toUpperCase() === code)
+          .filter((row) => {
+            if (!query) return true;
+            return toQueryText(
+              `${row.card} ${row.setCode} ${row.cardNo} ${row.setName || ""} ${row.label || ""}`
+            ).includes(query);
+          })
+          .sort(compareWatchlistCardsByNumber);
+      }
+
+      /** Cards or sealed for the open set, based on the Browse sets kind filter. */
+      function filterWatchlistBrowseSetItems(setCode, queryRaw) {
+        const code = String(setCode || "").trim().toUpperCase();
+        if (isPromoWatchlistBrowseSet(code)) {
+          state.watchlistPickerBrowseKind = "cards";
+          return filterWatchlistCardsInSet(code, queryRaw);
+        }
+        const kind = String(state.watchlistPickerBrowseKind || "cards").toLowerCase();
+        if (kind === "sealed") return filterSealedWatchlistProductsInSet(code, queryRaw);
+        return filterWatchlistCardsInSet(code, queryRaw);
+      }
+
+      function updateWatchlistBrowseNavUi() {
+        const browsingSets = state.watchlistPickerSource === "sets";
+        const browseCode = String(state.watchlistPickerBrowseSetCode || "").trim().toUpperCase();
+        const inSet = browsingSets && Boolean(browseCode);
+        const promoSet = inSet && isPromoWatchlistBrowseSet(browseCode);
+        if (watchlistBrowseNav) {
+          if (inSet) watchlistBrowseNav.removeAttribute("hidden");
+          else watchlistBrowseNav.setAttribute("hidden", "");
+        }
+        if (watchlistBrowseKind) {
+          if (inSet && !promoSet) watchlistBrowseKind.removeAttribute("hidden");
+          else watchlistBrowseKind.setAttribute("hidden", "");
+          if (promoSet) state.watchlistPickerBrowseKind = "cards";
+          const kind = String(state.watchlistPickerBrowseKind || "cards").toLowerCase() === "sealed"
+            ? "sealed"
+            : "cards";
+          state.watchlistPickerBrowseKind = kind;
+          watchlistBrowseKind.querySelectorAll("[data-browse-kind]").forEach((btn) => {
+            const on = btn.getAttribute("data-browse-kind") === kind;
+            btn.classList.toggle("active", on);
+            btn.setAttribute("aria-pressed", on ? "true" : "false");
+          });
+        }
+        if (watchlistBrowseSetLabel && inSet) {
+          watchlistBrowseSetLabel.textContent =
+            resolveWatchlistBrowseSetName(browseCode) || browseCode || "Set";
+        }
+      }
+
+      function setWatchlistBrowseKind(kind) {
+        const browseCode = String(state.watchlistPickerBrowseSetCode || "").trim().toUpperCase();
+        if (browseCode && isPromoWatchlistBrowseSet(browseCode)) return;
+        const next = String(kind || "cards").toLowerCase() === "sealed" ? "sealed" : "cards";
+        if (state.watchlistPickerBrowseKind === next) return;
+        state.watchlistPickerBrowseKind = next;
+        updateWatchlistBrowseNavUi();
+        renderCardPickerOptions();
       }
 
       async function loadSetReleaseDates() {
@@ -1770,7 +2422,12 @@
                 productUrl: String((product && product.productUrl) || "").trim(),
                 imageUrl,
                 releaseTs,
-                label: `${title} · ${setName} (${code}) · ${formatSealedProductTypeLabel(productType)}`
+                label: formatSealedWatchlistCardLabel({
+                  setName,
+                  setCode: code,
+                  title,
+                  productType
+                })
               });
             }
           }
@@ -1779,6 +2436,10 @@
           const byIdMap = {};
           for (const row of state.sealedIndex) byIdMap[row.id] = row;
           state.sealedIndexById = byIdMap;
+          if (state.watchlist.some((item) => isSealedWatchlistItem(item))) {
+            renderWatchlist();
+            syncChartSymbolHeader();
+          }
         } catch {
           state.sealedIndex = [];
           state.sealedIndexById = {};
@@ -1903,6 +2564,209 @@
         );
       }
 
+      function parseCostBasisDateToTs(dateStr) {
+        const raw = String(dateStr || "").trim();
+        const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!match) return NaN;
+        const year = Number(match[1]);
+        const month = Number(match[2]);
+        const day = Number(match[3]);
+        if (!year || month < 1 || month > 12 || day < 1 || day > 31) return NaN;
+        return new Date(year, month - 1, day, 12, 0, 0, 0).getTime();
+      }
+
+      function formatAcquisitionChartDate(dateStr) {
+        const ts = parseCostBasisDateToTs(dateStr);
+        if (!Number.isFinite(ts)) return String(dateStr || "");
+        const d = new Date(ts);
+        return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+      }
+
+      function watchlistKeysForCollectionItem(item) {
+        const card = collectionItemToPickerCard(item);
+        if (!card?.id) return [];
+        const keys = new Set([String(card.id)]);
+        if (!isSealedWatchlistItem(card)) {
+          const code = String(card.setCode || "").trim().toUpperCase();
+          for (const no of cardNumberLookupKeys(card.cardNo)) {
+            keys.add(`english:${code}:${no}`);
+          }
+        } else {
+          const pid = String(card.productId || String(card.id || "").replace(/^sealed:/i, "")).trim();
+          if (pid) keys.add(`sealed:${pid}`);
+        }
+        return [...keys];
+      }
+
+      function watchlistLookupKeysForItem(item) {
+        if (!item) return [];
+        const keys = new Set([String(item.id || "").trim()].filter(Boolean));
+        if (isSealedWatchlistItem(item)) {
+          const pid = String(item.productId || String(item.id || "").replace(/^sealed:/i, "")).trim();
+          if (pid) keys.add(`sealed:${pid}`);
+        } else {
+          const code = String(item.setCode || "").trim().toUpperCase();
+          for (const no of cardNumberLookupKeys(item.cardNo)) {
+            keys.add(`english:${code}:${no}`);
+          }
+        }
+        return [...keys];
+      }
+
+      function ingestCollectionAcquisitionDates(items) {
+        const map = {};
+        for (const item of Array.isArray(items) ? items : []) {
+          const date = String(item?.costBasisDate || "").trim();
+          const ts = parseCostBasisDateToTs(date);
+          if (!Number.isFinite(ts)) continue;
+          const marker = { date, ts, tSec: Math.floor(ts / 1000) };
+          for (const key of watchlistKeysForCollectionItem(item)) {
+            if (!map[key]) map[key] = [];
+            if (!map[key].some((row) => row.date === date)) map[key].push(marker);
+          }
+        }
+        for (const list of Object.values(map)) {
+          list.sort((a, b) => a.ts - b.ts);
+        }
+        state.collectionAcquiredByWatchKey = map;
+      }
+
+      function acquisitionMarkersForWatchItem(item) {
+        const byDate = new Map();
+        for (const key of watchlistLookupKeysForItem(item)) {
+          const list = state.collectionAcquiredByWatchKey[key];
+          if (!Array.isArray(list)) continue;
+          for (const marker of list) {
+            if (!marker?.date || !Number.isFinite(marker.ts)) continue;
+            if (!byDate.has(marker.date)) byDate.set(marker.date, marker);
+          }
+        }
+        return [...byDate.values()].sort((a, b) => a.ts - b.ts);
+      }
+
+      function snapAcquisitionTsToChart(tsMs) {
+        const candles = getDisplayCandles();
+        if (!candles.length || !Number.isFinite(tsMs)) return null;
+        const first = Number(candles[0].ts);
+        const last = Number(candles[candles.length - 1].ts);
+        if (!Number.isFinite(first) || !Number.isFinite(last)) return null;
+        if (tsMs < first || tsMs > last) return null;
+        let best = candles[0];
+        let bestDist = Math.abs(Number(best.ts) - tsMs);
+        for (const c of candles) {
+          const d = Math.abs(Number(c.ts) - tsMs);
+          if (d < bestDist) {
+            bestDist = d;
+            best = c;
+          }
+        }
+        return toLwTimeSec(best);
+      }
+
+      function hideChartAcquiredTip() {
+        if (!chartAcquiredTip) return;
+        chartAcquiredTip.hidden = true;
+        chartAcquiredTip.innerHTML = "";
+      }
+
+      function updateChartAcquiredTip(clientX, clientY) {
+        if (!chartAcquiredTip || !chartWrap) {
+          hideChartAcquiredTip();
+          return;
+        }
+        const hits = Array.isArray(state.acquisitionMarkerHits) ? state.acquisitionMarkerHits : [];
+        if (!hits.length) {
+          hideChartAcquiredTip();
+          return;
+        }
+        const rect = chartWrap.getBoundingClientRect();
+        const x = clientX - rect.left;
+        let best = null;
+        let bestDist = 10;
+        for (const hit of hits) {
+          const dist = Math.abs(Number(hit.x) - x);
+          if (dist < bestDist) {
+            bestDist = dist;
+            best = hit;
+          }
+        }
+        if (!best) {
+          hideChartAcquiredTip();
+          return;
+        }
+        chartAcquiredTip.innerHTML = `<strong>Acquired</strong>${escapeHtml(
+          formatAcquisitionChartDate(best.date)
+        )}`;
+        chartAcquiredTip.hidden = false;
+        const tipW = chartAcquiredTip.offsetWidth || 140;
+        const left = Math.max(tipW / 2 + 8, Math.min(rect.width - tipW / 2 - 8, best.x));
+        chartAcquiredTip.style.left = `${left}px`;
+        chartAcquiredTip.style.top = `${Math.max(28, Number(best.yTop) || 28)}px`;
+      }
+
+      function drawAcquisitionMarkersOverlay(ctx, width, height) {
+        state.acquisitionMarkerHits = [];
+        if (!ctx || !lwChart) return;
+        const item = getWatchlistItem(state.selectedWatchlistId);
+        const markers = acquisitionMarkersForWatchItem(item);
+        if (!markers.length) return;
+        const yTop = 28;
+        const yBottom = Math.max(yTop + 40, height - 8);
+        ctx.save();
+        for (const marker of markers) {
+          const tSec = snapAcquisitionTsToChart(marker.ts);
+          if (tSec == null) continue;
+          const x = lwTimeToX(tSec);
+          if (x == null || x < -20 || x > width + 20) continue;
+          state.acquisitionMarkerHits.push({
+            x,
+            yTop,
+            date: marker.date
+          });
+          ctx.strokeStyle = "rgba(245, 217, 81, 0.9)";
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([5, 4]);
+          ctx.beginPath();
+          ctx.moveTo(x + 0.5, yTop);
+          ctx.lineTo(x + 0.5, yBottom);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = "rgba(245, 217, 81, 0.95)";
+          ctx.font = "10px Inter, Segoe UI, Arial, sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "bottom";
+          ctx.fillText("Acquired", x, yTop - 2);
+        }
+        ctx.restore();
+      }
+
+      async function loadCollectionAcquisitionDates({ force = false } = {}) {
+        if (!isWatchlistAccountSignedIn()) {
+          state.collectionAcquiredByWatchKey = {};
+          state.collectionAcquiredLoaded = false;
+          return;
+        }
+        if (!force && state.collectionAcquiredLoaded) return;
+        try {
+          await loadSealedProductsIndex();
+          const response = await fetch("/api/items?syncPrices=0", {
+            credentials: "same-origin",
+            cache: "no-store"
+          });
+          if (!response.ok) {
+            state.collectionAcquiredByWatchKey = {};
+            state.collectionAcquiredLoaded = true;
+            return;
+          }
+          const payload = await response.json().catch(() => ({}));
+          ingestCollectionAcquisitionDates(Array.isArray(payload?.items) ? payload.items : []);
+          state.collectionAcquiredLoaded = true;
+        } catch {
+          state.collectionAcquiredByWatchKey = {};
+          state.collectionAcquiredLoaded = false;
+        }
+      }
+
       function collectionItemToPickerCard(item) {
         if (!item) return null;
         const type = String(item.type || "").toLowerCase();
@@ -1933,7 +2797,11 @@
             language: "english",
             productUrl: productUrlMatch ? productUrlMatch[0].replace(/[.,;)]+$/, "") : "",
             imageUrl: String(item.imageUrl || "").trim(),
-            label: `${title}${setName ? ` · ${setName}` : ""}${setCode ? ` (${setCode})` : ""} · Sealed`
+            label: formatSealedWatchlistCardLabel({
+              setName,
+              setCode,
+              title
+            })
           };
         }
         if (type !== "single") return null;
@@ -1979,6 +2847,8 @@
           state.collectionPickerCards = [];
           state.collectionPickerById = {};
           state.collectionPickerLoaded = true;
+          state.collectionAcquiredByWatchKey = {};
+          state.collectionAcquiredLoaded = false;
           return;
         }
         if (state.collectionPickerLoaded && !force) return;
@@ -1991,10 +2861,13 @@
           if (!response.ok) {
             state.collectionPickerCards = [];
             state.collectionPickerById = {};
+            state.collectionAcquiredByWatchKey = {};
+            state.collectionAcquiredLoaded = true;
             return;
           }
           const payload = await response.json().catch(() => ({}));
           const items = Array.isArray(payload?.items) ? payload.items : [];
+          ingestCollectionAcquisitionDates(items);
           const byId = {};
           const cards = [];
           for (const item of items) {
@@ -2011,9 +2884,12 @@
           );
           state.collectionPickerCards = cards;
           state.collectionPickerById = byId;
+          state.collectionAcquiredLoaded = true;
         } catch {
           state.collectionPickerCards = [];
           state.collectionPickerById = {};
+          state.collectionAcquiredByWatchKey = {};
+          state.collectionAcquiredLoaded = false;
         } finally {
           state.collectionPickerLoaded = true;
         }
@@ -2057,15 +2933,17 @@
       }
 
       function renderPickerTilesHtml(cards) {
+        const selectedIds = new Set(getPickerSelectedIds());
         return cards
           .map((item) => {
-            const sel = item.id === state.watchlistPickerSelectedId ? " selected" : "";
+            const on = selectedIds.has(item.id);
+            const sel = on ? " selected" : "";
             const imgUrl = String(item.imageUrl || "").trim();
             const shortName = `${item.card.slice(0, 18)}${item.card.length > 18 ? "…" : ""}`;
             const visual = imgUrl
               ? `<img src="${escapeHtml(imgUrl)}" alt="" loading="eager" decoding="async" />`
               : `<div class="watchlist-card-tile-ph">${escapeHtml(shortName)}</div>`;
-            return `<button type="button" class="watchlist-card-tile${sel}" data-id="${escapeHtml(item.id)}" role="option" aria-selected="${item.id === state.watchlistPickerSelectedId ? "true" : "false"}">
+            return `<button type="button" class="watchlist-card-tile${sel}" data-id="${escapeHtml(item.id)}" role="option" aria-selected="${on ? "true" : "false"}">
               <div class="watchlist-card-tile-visual">${visual}</div>
               <div class="watchlist-card-tile-label">${escapeHtml(item.label)}</div>
             </button>`;
@@ -2073,27 +2951,88 @@
           .join("");
       }
 
+      function isComparePickerMode() {
+        return state.watchlistModalMode === "compare";
+      }
+
+      function getPickerSelectedIds() {
+        if (isComparePickerMode()) {
+          return Array.isArray(state.watchlistPickerSelectedIds)
+            ? state.watchlistPickerSelectedIds.slice()
+            : [];
+        }
+        return state.watchlistPickerSelectedId ? [state.watchlistPickerSelectedId] : [];
+      }
+
+      function comparePickerSlotsRemaining() {
+        return Math.max(0, MAX_CHART_COMPARISONS - state.comparisons.length);
+      }
+
       function syncPickerSelectionUi() {
-        const selectedId = state.watchlistPickerSelectedId;
+        const selectedIds = new Set(getPickerSelectedIds());
         if (!watchlistCardGrid) return;
         watchlistCardGrid.querySelectorAll(".watchlist-card-tile").forEach((node) => {
-          const on = node.getAttribute("data-id") === selectedId;
+          const id = node.getAttribute("data-id");
+          const on = Boolean(id && selectedIds.has(id));
           node.classList.toggle("selected", on);
           node.setAttribute("aria-selected", on ? "true" : "false");
         });
+        if (watchlistCardGrid) {
+          watchlistCardGrid.setAttribute(
+            "aria-multiselectable",
+            isComparePickerMode() ? "true" : "false"
+          );
+        }
       }
 
-      function selectPickerCard(id) {
+      function selectPickerCard(id, { forceAdd = false } = {}) {
         if (!id || !getPickerCardById(id)) return;
-        state.watchlistPickerSelectedId = id;
+        if (isComparePickerMode()) {
+          const ids = Array.isArray(state.watchlistPickerSelectedIds)
+            ? state.watchlistPickerSelectedIds.slice()
+            : [];
+          const idx = ids.indexOf(id);
+          if (idx >= 0) {
+            if (!forceAdd) ids.splice(idx, 1);
+          } else {
+            if (id === state.selectedWatchlistId) {
+              window.alert("Pick a different card or product to compare.");
+              return;
+            }
+            if (isComparingId(id)) {
+              window.alert("That card or product is already on the comparison chart.");
+              return;
+            }
+            if (ids.length >= comparePickerSlotsRemaining()) {
+              window.alert(
+                `You can compare up to ${MAX_CHART_COMPARISONS} cards or products at once (${comparePickerSlotsRemaining()} slot(s) left).`
+              );
+              return;
+            }
+            ids.push(id);
+          }
+          state.watchlistPickerSelectedIds = ids;
+          state.watchlistPickerSelectedId = ids.length ? ids[ids.length - 1] : null;
+        } else {
+          state.watchlistPickerSelectedId = id;
+          state.watchlistPickerSelectedIds = id ? [id] : [];
+        }
         syncPickerSelectionUi();
+        syncWatchlistModalChrome();
       }
 
       function syncWatchlistSourceTabsUi() {
         const signedIn = isWatchlistAccountSignedIn();
         let source = String(state.watchlistPickerSource || "catalog");
         if (source === "collection" && !signedIn) source = "catalog";
-        if (source !== "catalog" && source !== "sealed" && source !== "collection") source = "catalog";
+        if (
+          source !== "catalog" &&
+          source !== "sets" &&
+          source !== "sealed" &&
+          source !== "collection"
+        ) {
+          source = "catalog";
+        }
         state.watchlistPickerSource = source;
         if (watchlistSourceTabs) {
           watchlistSourceTabs.classList.add("visible");
@@ -2102,42 +3041,81 @@
         if (watchlistSourceCollectionBtn) {
           watchlistSourceCollectionBtn.hidden = !signedIn;
         }
-        [watchlistSourceCatalogBtn, watchlistSourceSealedBtn, watchlistSourceCollectionBtn].forEach((btn) => {
+        [
+          watchlistSourceCatalogBtn,
+          watchlistSourceBrowseSetsBtn,
+          watchlistSourceSealedBtn,
+          watchlistSourceCollectionBtn
+        ].forEach((btn) => {
           if (!btn || btn.hidden) return;
           const on = btn.getAttribute("data-source") === source;
           btn.classList.toggle("active", on);
           btn.setAttribute("aria-selected", on ? "true" : "false");
         });
         if (watchlistModalSub) {
-          const compareMode = state.watchlistModalMode === "compare";
+          const compareMode = isComparePickerMode();
           const actionWord = compareMode ? "Compare" : "Add";
-          watchlistModalSub.textContent =
-            source === "collection"
-              ? compareMode
-                ? "Choose a collection card or product to overlay on the chart"
-                : "Browse cards and sealed products from your collection"
-              : source === "sealed"
-                ? `Click a product to select, double-click or use ${actionWord}`
-                : `Click a card to select, double-click or use ${actionWord}`;
+          const browseCode = String(state.watchlistPickerBrowseSetCode || "").trim();
+          if (source === "sets" && !browseCode) {
+            watchlistModalSub.textContent = compareMode
+              ? "Pick a set, then select one or more cards to compare"
+              : "Pick a set, then choose a card to add";
+          } else if (source === "sets" && browseCode) {
+            watchlistModalSub.textContent = compareMode
+              ? "Click to select multiple cards in this set, then Compare"
+              : `Click a card to select, double-click or use ${actionWord}`;
+          } else if (source === "collection") {
+            watchlistModalSub.textContent = compareMode
+              ? "Click to select multiple collection items, then Compare"
+              : "Browse cards and sealed products from your collection";
+          } else if (source === "sealed") {
+            watchlistModalSub.textContent = compareMode
+              ? "Click to select multiple products, then Compare"
+              : `Click a product to select, double-click or use ${actionWord}`;
+          } else {
+            watchlistModalSub.textContent = compareMode
+              ? "Click to select multiple cards, then Compare"
+              : `Click a card to select, double-click or use ${actionWord}`;
+          }
         }
         if (watchlistSearchInput) {
-          watchlistSearchInput.placeholder =
-            source === "collection"
-              ? "Search your collection..."
-              : source === "sealed"
-                ? "Search product name, set, or type..."
-                : "Search card name, set code, or nickname...";
+          const browseCode = String(state.watchlistPickerBrowseSetCode || "").trim();
+          if (source === "sets" && !browseCode) {
+            watchlistSearchInput.placeholder = "Filter sets…";
+          } else if (source === "sets" && browseCode) {
+            const kind = String(state.watchlistPickerBrowseKind || "cards").toLowerCase();
+            watchlistSearchInput.placeholder =
+              kind === "sealed" ? "Filter sealed products in this set…" : "Filter cards in this set…";
+          } else if (source === "collection") {
+            watchlistSearchInput.placeholder = "Search your collection...";
+          } else if (source === "sealed") {
+            watchlistSearchInput.placeholder = "Search product name, set, or type...";
+          } else {
+            watchlistSearchInput.placeholder = "Search card name, set code, or nickname...";
+          }
         }
         if (watchlistCardGrid) {
+          const browseCode = String(state.watchlistPickerBrowseSetCode || "").trim();
           watchlistCardGrid.setAttribute(
             "aria-label",
-            source === "collection"
-              ? "Choose a card or product from your collection"
-              : source === "sealed"
-                ? "Choose a sealed product"
-                : "Choose a card from Sets"
+            source === "sets" && !browseCode
+              ? "Choose a set to browse"
+              : source === "sets" && browseCode
+                ? String(state.watchlistPickerBrowseKind || "cards").toLowerCase() === "sealed"
+                  ? "Choose a sealed product from this set"
+                  : "Choose a card from this set"
+                : source === "collection"
+                  ? "Choose a card or product from your collection"
+                  : source === "sealed"
+                    ? "Choose a sealed product"
+                    : "Choose a card from Sets"
+          );
+          watchlistCardGrid.setAttribute(
+            "aria-multiselectable",
+            isComparePickerMode() ? "true" : "false"
           );
         }
+        updateWatchlistBrowseNavUi();
         syncSealedSetSortButton();
       }
 
@@ -2145,12 +3123,63 @@
         const raw = String(source || "catalog");
         let next = "catalog";
         if (raw === "sealed") next = "sealed";
+        else if (raw === "sets") next = "sets";
         else if (raw === "collection" && isWatchlistAccountSignedIn()) next = "collection";
         state.watchlistPickerSource = next;
-        state.watchlistPickerSelectedId = null;
+        if (next !== "sets") {
+          state.watchlistPickerBrowseSetCode = "";
+          state.watchlistPickerBrowseKind = "cards";
+        }
+        if (!isComparePickerMode()) {
+          state.watchlistPickerSelectedId = null;
+          state.watchlistPickerSelectedIds = [];
+        }
         if (next === "sealed" && state.sealedIndexLoaded) sortSealedProductsIndex();
+        if (watchlistSearchInput) watchlistSearchInput.value = "";
         syncWatchlistSourceTabsUi();
         renderCardPickerOptions();
+      }
+
+      function renderWatchlistBrowseSetList(queryRaw) {
+        if (!watchlistCardGrid) return;
+        const query = toLooseQueryText(queryRaw);
+        const sets = listWatchlistBrowseSets().filter((row) => {
+          if (!query) return true;
+          return toLooseQueryText(`${row.name} ${row.code} ${row.era}`).includes(query);
+        });
+        watchlistCardGrid.classList.remove("watchlist-card-grid");
+        watchlistCardGrid.classList.add("watchlist-set-list");
+        if (!sets.length) {
+          watchlistCardGrid.innerHTML = `<div class="watchlist-card-grid-empty" role="option">${
+            query ? "No sets match that filter." : "No sets available yet."
+          }</div>`;
+          return;
+        }
+        const eraGroups = groupBrowseSetsByEra(sets);
+        watchlistCardGrid.innerHTML = eraGroups
+          .map((group) => {
+            const rows = group.sets
+              .map(
+                (row) => `<button type="button" class="watchlist-set-row" data-browse-set-code="${escapeHtml(row.code)}">
+                  <span class="watchlist-set-row-name">${escapeHtml(row.name)}</span>
+                  <span class="watchlist-set-row-meta">${escapeHtml(row.code)} · ${row.count} items</span>
+                </button>`
+              )
+              .join("");
+            return `<section class="watchlist-set-era">
+              <h3 class="watchlist-set-era-title">${escapeHtml(group.era)}</h3>
+              <div class="watchlist-set-era-list">${rows}</div>
+            </section>`;
+          })
+          .join("");
+        watchlistCardGrid.querySelectorAll("[data-browse-set-code]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            state.watchlistPickerBrowseSetCode = btn.getAttribute("data-browse-set-code") || "";
+            state.watchlistPickerBrowseKind = "cards";
+            if (watchlistSearchInput) watchlistSearchInput.value = "";
+            renderCardPickerOptions();
+          });
+        });
       }
 
       function renderCardPickerOptions() {
@@ -2160,14 +3189,68 @@
         const source = state.watchlistPickerSource;
         const usingCollection = source === "collection" && isWatchlistAccountSignedIn();
         const usingSealed = source === "sealed";
+        const usingSets = source === "sets";
+        const browseCode = String(state.watchlistPickerBrowseSetCode || "").trim().toUpperCase();
+
+        if (usingSets && !browseCode) {
+          if (!state.cardIndexLoaded || !state.sealedIndexLoaded) {
+            watchlistCardGrid.classList.add("watchlist-card-grid");
+            watchlistCardGrid.classList.remove("watchlist-set-list");
+            watchlistCardGrid.innerHTML =
+              `<div class="watchlist-card-grid-empty" role="option">Loading sets…</div>`;
+            void Promise.all([loadCardsFromSetsIndex(), loadSealedProductsIndex()])
+              .then(() => {
+                if (state.watchlistPickerSource === "sets" && !state.watchlistPickerBrowseSetCode) {
+                  renderCardPickerOptions();
+                }
+              })
+              .catch(() => {
+                watchlistCardGrid.innerHTML =
+                  `<div class="watchlist-card-grid-empty" role="option">Could not load the Sets catalog.</div>`;
+              });
+            syncWatchlistModalChrome();
+            return;
+          }
+          renderWatchlistBrowseSetList(query);
+          syncWatchlistModalChrome();
+          return;
+        }
+
+        if (usingSets && browseCode && !state.sealedIndexLoaded) {
+          watchlistCardGrid.classList.add("watchlist-card-grid");
+          watchlistCardGrid.classList.remove("watchlist-set-list");
+          watchlistCardGrid.innerHTML =
+            `<div class="watchlist-card-grid-empty" role="option">Loading products…</div>`;
+          void loadSealedProductsIndex()
+            .then(() => {
+              if (
+                state.watchlistPickerSource === "sets" &&
+                String(state.watchlistPickerBrowseSetCode || "").toUpperCase() === browseCode
+              ) {
+                renderCardPickerOptions();
+              }
+            })
+            .catch(() => {
+              /* still show cards even if sealed fails */
+              renderCardPickerOptions();
+            });
+          syncWatchlistModalChrome();
+          return;
+        }
+
+        watchlistCardGrid.classList.add("watchlist-card-grid");
+        watchlistCardGrid.classList.remove("watchlist-set-list");
+
         const filtered = usingCollection
           ? filterCollectionPickerCards(query)
           : usingSealed
             ? filterSealedWatchlistProducts(query)
-            : filterWatchlistCards(query);
+            : usingSets && browseCode
+              ? filterWatchlistBrowseSetItems(browseCode, query)
+              : filterWatchlistCards(query);
 
         if (!filtered.length) {
-          state.watchlistPickerSelectedId = null;
+          if (!isComparePickerMode()) state.watchlistPickerSelectedId = null;
           const emptyMsg = usingCollection
             ? state.collectionPickerCards.length
               ? "No matching collection items."
@@ -2176,33 +3259,69 @@
               ? state.sealedIndex.length
                 ? "No matching sealed products."
                 : "No sealed products loaded."
-              : "No matching cards.";
+              : usingSets && browseCode
+                ? (() => {
+                    const kind = String(state.watchlistPickerBrowseKind || "cards").toLowerCase();
+                    if (kind === "sealed") {
+                      return query
+                        ? "No sealed products in this set match that filter."
+                        : "No sealed products found for this set.";
+                    }
+                    return query
+                      ? "No cards in this set match that filter."
+                      : "No cards found for this set.";
+                  })()
+                : "No matching cards.";
           watchlistCardGrid.innerHTML = `<div class="watchlist-card-grid-empty" role="option">${emptyMsg}</div>`;
+          syncWatchlistModalChrome();
           return;
         }
 
-        if (!filtered.some((item) => item.id === state.watchlistPickerSelectedId)) {
+        if (isComparePickerMode()) {
+          // Keep multi-selection across search/filter; only drop ids that no longer resolve.
+          state.watchlistPickerSelectedIds = (state.watchlistPickerSelectedIds || []).filter((id) =>
+            Boolean(getPickerCardById(id))
+          );
+          state.watchlistPickerSelectedId = state.watchlistPickerSelectedIds.length
+            ? state.watchlistPickerSelectedIds[state.watchlistPickerSelectedIds.length - 1]
+            : null;
+        } else if (!filtered.some((item) => item.id === state.watchlistPickerSelectedId)) {
           state.watchlistPickerSelectedId = filtered[0].id;
+          state.watchlistPickerSelectedIds = state.watchlistPickerSelectedId
+            ? [state.watchlistPickerSelectedId]
+            : [];
         }
 
         watchlistCardGrid.innerHTML = renderPickerTilesHtml(filtered);
         bindPickerTileImageFallback(watchlistCardGrid);
         syncPickerSelectionUi();
+        syncWatchlistModalChrome();
       }
 
       function syncWatchlistModalChrome() {
-        const compareMode = state.watchlistModalMode === "compare";
+        const compareMode = isComparePickerMode();
         if (watchlistModalTitle) {
-          watchlistModalTitle.textContent = compareMode ? "Compare on Chart" : "Add to Watchlist";
+          watchlistModalTitle.textContent = compareMode ? "Add comparison" : "Add to Watchlist";
         }
         if (watchlistAddConfirmBtn) {
-          watchlistAddConfirmBtn.textContent = compareMode ? "Compare" : "Add";
+          if (compareMode) {
+            const n = getPickerSelectedIds().length;
+            watchlistAddConfirmBtn.textContent = n > 1 ? `Compare (${n})` : "Compare";
+            watchlistAddConfirmBtn.disabled = n < 1;
+          } else {
+            watchlistAddConfirmBtn.textContent = "Add";
+            watchlistAddConfirmBtn.disabled = false;
+          }
         }
       }
 
       function openWatchlistModal({ mode = "add" } = {}) {
         if (!watchlistModal) return;
         state.watchlistModalMode = mode === "compare" ? "compare" : "add";
+        state.watchlistPickerSelectedId = null;
+        state.watchlistPickerSelectedIds = [];
+        state.watchlistPickerBrowseSetCode = "";
+        state.watchlistPickerBrowseKind = "cards";
         state.sealedSetSortOrder = "desc";
         if (!isWatchlistAccountSignedIn() && state.watchlistPickerSource === "collection") {
           state.watchlistPickerSource = "catalog";
@@ -2213,7 +3332,7 @@
         watchlistModal.classList.add("open");
         watchlistModal.setAttribute("aria-hidden", "false");
         if (watchlistSearchInput) watchlistSearchInput.focus();
-        if (state.watchlistPickerSource === "sealed") renderCardPickerOptions();
+        renderCardPickerOptions();
       }
 
       function closeWatchlistModal() {
@@ -2221,6 +3340,9 @@
         watchlistModal.classList.remove("open");
         watchlistModal.setAttribute("aria-hidden", "true");
         state.watchlistPickerSelectedId = null;
+        state.watchlistPickerSelectedIds = [];
+        state.watchlistPickerBrowseSetCode = "";
+        state.watchlistPickerBrowseKind = "cards";
         state.watchlistPickerSource = "catalog";
         state.watchlistModalMode = "add";
         syncWatchlistModalChrome();
@@ -2247,19 +3369,32 @@
       }
 
       function renderWatchlist() {
+        if (state.discoveryTab !== "watchlist") {
+          renderDiscoveryTable();
+          return;
+        }
+        renderWatchlistCore();
+      }
+
+      function renderWatchlistCore() {
         if (!watchlistBody) return;
+        syncDiscoveryToolbarUi();
+        setDiscoveryTableHead(["Cards", "Last", "Chg", "Chg%"]);
         if (!state.watchlist.length) {
           watchlistBody.innerHTML = `<tr><td colspan="4" class="muted" style="text-align:center; padding:12px;">No cards or products yet. Click + to add one.</td></tr>`;
           return;
         }
         const showPsa = state.showPsa10Overlay;
-        watchlistBody.innerHTML = state.watchlist.map((item) => {
+        watchlistBody.innerHTML = sortedWatchlistForDisplay().map((item) => {
+          if (isSealedWatchlistItem(item)) {
+            item.cardName = resolveSealedProductTitle(item);
+            item.card = sealedWatchlistCardText(item);
+          }
           const hasChange = Number.isFinite(item.change);
           const moveClass = formatWatchlistMoveClass(item.change);
           const sign = hasChange && item.change >= 0 ? "+" : "";
           const activeClass = item.id === state.selectedWatchlistId ? "active" : "";
-          const compareClass =
-            state.compareItem && item.id === state.compareItem.id ? " compare" : "";
+          const compareClass = isComparingId(item.id) ? " compare" : "";
           const lastCell = showPsa
             ? `<div class="watch-metrics-stack">
                 <div class="watch-metric-line">${Number.isFinite(item.last) ? formatNumber(item.last, 2) : "--"}</div>
@@ -2308,17 +3443,29 @@
         const id = String(selected.id || "").trim();
         if (!id) return null;
         const sealed = isSealedWatchlistItem(selected);
+        const productTitle = sealed
+          ? String(selected.card || selected.cardName || "").trim()
+          : "";
+        const cardLabel = sealed
+          ? formatSealedWatchlistCardLabel({
+              setName: selected.setName || selected.setDisplayName || "",
+              setCode: selected.setCode || "",
+              title: productTitle,
+              productType: selected.productType || ""
+            })
+          : selected.label || selected.card || id;
         return {
           id,
           kind: sealed ? "sealed" : "single",
-          card: selected.label || selected.card || id,
-          cardName: selected.card || selected.label || "",
+          card: cardLabel,
+          cardName: sealed ? productTitle || cardLabel : selected.card || selected.label || "",
           setCode: selected.setCode || "",
           cardNo: sealed ? "" : selected.cardNo || "",
           setName: selected.setName || selected.setDisplayName || "",
           language: selected.language || "english",
           productId: sealed ? String(selected.productId || id.replace(/^sealed:/i, "")).trim() : "",
           productUrl: sealed ? String(selected.productUrl || "").trim() : "",
+          productType: sealed ? String(selected.productType || "").trim() : "",
           imageUrl: String(selected.imageUrl || "").trim(),
           last: null,
           change: null,
@@ -2353,74 +3500,349 @@
       }
 
       async function confirmComparePickerSelection() {
-        const selectedId = state.watchlistPickerSelectedId;
-        const selected = selectedId ? getPickerCardById(selectedId) : null;
-        const entry = pickerSelectionToWatchItem(selected);
-        if (!entry) return;
-        if (entry.id === state.selectedWatchlistId) {
-          window.alert("Pick a different card or product to compare.");
+        const ids = getPickerSelectedIds();
+        if (!ids.length) {
+          window.alert("Select one or more cards or products to compare.");
           return;
         }
+        const entries = [];
+        for (const id of ids) {
+          const selected = getPickerCardById(id);
+          const entry = pickerSelectionToWatchItem(selected);
+          if (!entry) continue;
+          if (entry.id === state.selectedWatchlistId) continue;
+          if (isComparingId(entry.id)) continue;
+          entries.push(entry);
+        }
+        if (!entries.length) {
+          window.alert("Pick different cards or products that are not already on the chart.");
+          return;
+        }
+        const slots = comparePickerSlotsRemaining();
+        if (slots <= 0) {
+          window.alert(`You can compare up to ${MAX_CHART_COMPARISONS} cards or products at once.`);
+          return;
+        }
+        const toAdd = entries.slice(0, slots);
         closeWatchlistModal();
-        await setCompareItem(entry);
+        for (const entry of toAdd) {
+          await addCompareItem(entry, { quiet: true });
+        }
+        if (entries.length > toAdd.length) {
+          window.alert(
+            `Added ${toAdd.length}. You can compare up to ${MAX_CHART_COMPARISONS} at once.`
+          );
+        }
+      }
+
+      function comparePaletteAt(colorIndex) {
+        const i = Number.isFinite(colorIndex) ? Math.abs(Math.floor(colorIndex)) : 0;
+        return COMPARE_PALETTE[i % COMPARE_PALETTE.length];
+      }
+
+      function nextCompareColorIndex() {
+        const used = new Set(state.comparisons.map((c) => c.colorIndex));
+        for (let i = 0; i < COMPARE_PALETTE.length; i += 1) {
+          if (!used.has(i)) return i;
+        }
+        return state.comparisons.length % COMPARE_PALETTE.length;
+      }
+
+      function findComparison(id) {
+        const key = String(id || "");
+        if (!key) return null;
+        return state.comparisons.find((c) => c && c.id === key) || null;
+      }
+
+      function isComparingId(id) {
+        return Boolean(findComparison(id));
+      }
+
+      function comparisonsWithData() {
+        return state.comparisons.filter(
+          (c) => c && Array.isArray(c.candles) && c.candles.length > 0
+        );
+      }
+
+      function compareEntryDisplayName(entry) {
+        return chartItemDisplayName(entry?.item || entry);
       }
 
       function clearCompareOverlay({ redraw = true } = {}) {
-        state.compareItem = null;
-        state.historyCandlesCompareFull = [];
+        state.comparisons = [];
         state.compareLoadToken += 1;
-        if (lwChart) destroyCompareCandleSeries(lwChart);
+        hideCompareCandleSeries();
         syncChartSymbolHeader();
         renderWatchlist();
         if (redraw) drawChart();
       }
 
-      async function setCompareItem(item) {
+      function removeCompareItem(id, { redraw = true, silent = false } = {}) {
+        const key = String(id || "");
+        const before = state.comparisons.length;
+        state.comparisons = state.comparisons.filter((c) => c && c.id !== key);
+        if (state.comparisons.length === before) return false;
+        syncChartSymbolHeader();
+        renderWatchlist();
+        if (redraw) {
+          state.applyChartPriceScaleOnNextDraw = true;
+          drawChart();
+        }
+        if (!silent && !state.comparisons.length) hideCompareCandleSeries();
+        return true;
+      }
+
+      async function addCompareItem(item, { quiet = false } = {}) {
         if (!item || !item.id) return;
         if (item.id === state.selectedWatchlistId) {
-          clearCompareOverlay();
+          if (!quiet) window.alert("Pick a different card or product to compare.");
           return;
         }
-        const chartBefore = ensureLightweightChart();
-        const lockedViewport = captureLwViewport(chartBefore);
-        state.compareItem = item;
-        state.historyCandlesCompareFull = [];
+        if (isComparingId(item.id)) {
+          if (!quiet) window.alert("That card or product is already on the comparison chart.");
+          return;
+        }
+        if (state.comparisons.length >= MAX_CHART_COMPARISONS) {
+          if (!quiet) {
+            window.alert(`You can compare up to ${MAX_CHART_COMPARISONS} cards or products at once.`);
+          }
+          return;
+        }
+        ensureLightweightChart();
         const token = ++state.compareLoadToken;
+        const entry = {
+          id: item.id,
+          item,
+          candles: [],
+          colorIndex: nextCompareColorIndex(),
+          loadToken: token
+        };
+        state.comparisons.push(entry);
         syncChartSymbolHeader();
         renderWatchlist();
         drawChart();
         try {
           const loaded = await loadMarketHistoryCandles(item);
-          if (token !== state.compareLoadToken) return;
-          state.historyCandlesCompareFull = Array.isArray(loaded?.raw) ? loaded.raw.slice() : [];
-          if (!state.historyCandlesCompareFull.length) {
-            window.alert("No PriceCharting history available for that comparison.");
-            clearCompareOverlay();
+          const current = findComparison(item.id);
+          if (!current || current.loadToken !== token) return;
+          const candles = Array.isArray(loaded?.raw) ? loaded.raw.slice() : [];
+          if (!candles.length) {
+            removeCompareItem(item.id, { silent: true });
+            if (!quiet) {
+              window.alert("No PriceCharting history available for that comparison.");
+            }
             return;
           }
-          // Autoscale price for both series; pin the time window so a longer
-          // compare series cannot shove the primary chart off-screen.
+          current.candles = candles;
+          // Refit to the active bottom range so older compare history before the
+          // main product's start date can appear (via whitespace extensions).
           state.applyChartPriceScaleOnNextDraw = true;
-          state.applyChartViewportOnNextDraw = false;
+          state.applyChartViewportOnNextDraw = true;
           syncChartSymbolHeader();
           drawChart();
-          const chart = lwChart || ensureLightweightChart();
-          const primaryBars = getDisplayCandles();
-          restoreLwViewport(chart, lockedViewport, { bars: primaryBars });
           requestAnimationFrame(() => {
-            if (token !== state.compareLoadToken || !lwChart) return;
-            restoreLwViewport(lwChart, lockedViewport, { bars: getDisplayCandles() });
+            const still = findComparison(item.id);
+            if (!still || still.loadToken !== token || !lwChart) return;
+            applyChartTimeScaleForPreset(lwChart, state.activeRangePreset, getDisplayCandles());
             resetLightweightPriceScale(lwChart);
-            requestAnimationFrame(() => {
-              if (token !== state.compareLoadToken || !lwChart) return;
-              restoreLwViewport(lwChart, lockedViewport, { bars: getDisplayCandles() });
-            });
+            renderChartDrawingsOverlay();
           });
         } catch (err) {
-          if (token !== state.compareLoadToken) return;
-          window.alert(err?.message || "Could not load comparison chart data.");
-          clearCompareOverlay();
+          const current = findComparison(item.id);
+          if (!current || current.loadToken !== token) return;
+          removeCompareItem(item.id, { silent: true });
+          if (!quiet) {
+            window.alert(err?.message || "Could not load comparison chart data.");
+          }
         }
+      }
+
+      function cloneWatchlistItem(item) {
+        if (!item) return null;
+        return {
+          id: item.id,
+          kind: item.kind,
+          card: item.card,
+          cardName: item.cardName,
+          setCode: item.setCode,
+          cardNo: item.cardNo,
+          setName: item.setName,
+          language: item.language,
+          productId: item.productId,
+          productUrl: item.productUrl,
+          priceChartingUrl: item.priceChartingUrl,
+          imageUrl: item.imageUrl,
+          last: item.last,
+          change: item.change,
+          changePct: item.changePct,
+          psaLast: item.psaLast,
+          psaChange: item.psaChange,
+          psaChangePct: item.psaChangePct,
+          historyLabel: item.historyLabel
+        };
+      }
+
+      function ensureItemOnWatchlist(item) {
+        if (!item?.id) return null;
+        const existing = getWatchlistItem(item.id);
+        if (existing) return existing;
+        const entry = cloneWatchlistItem(item);
+        if (!entry) return null;
+        state.watchlist.push(entry);
+        scheduleSaveWatchlist({ immediate: true });
+        return entry;
+      }
+
+      function hitTestComparisonAtClientPoint(clientX, clientY) {
+        const rect = chartInteractionRect();
+        if (!rect) return null;
+        return hitTestComparisonAtChartPoint(clientX - rect.left, clientY - rect.top);
+      }
+
+      function hitTestComparisonAtChartPoint(x, y) {
+        if (!lwChart || !lwCandleSeries || !Number.isFinite(x) || !Number.isFinite(y)) return null;
+        const cmps = comparisonsWithData();
+        if (!cmps.length) return null;
+        const primary = getDisplayCandles();
+        if (!primary.length) return null;
+
+        let barSpacing = 6;
+        try {
+          barSpacing = Number(lwChart.timeScale().options()?.barSpacing) || 6;
+        } catch {
+          /* ignore */
+        }
+        const hitHalfW = Math.max(5, barSpacing * 0.6);
+
+        let best = null;
+        let bestScore = Infinity;
+        for (const entry of cmps) {
+          const toDraw = candlesToDrawForCompareEntry(entry, primary);
+          let candle = null;
+          let bestXd = Infinity;
+          for (const c of toDraw) {
+            const cx = lwTimeToX(toLwTimeSec(c));
+            if (cx == null) continue;
+            const xd = Math.abs(cx - x);
+            if (xd < bestXd) {
+              bestXd = xd;
+              candle = c;
+            }
+          }
+          if (!candle || bestXd > hitHalfW) continue;
+          const yHigh = lwPriceToY(candle.high);
+          const yLow = lwPriceToY(candle.low);
+          if (yHigh == null || yLow == null) continue;
+          const top = Math.min(yHigh, yLow) - 6;
+          const bot = Math.max(yHigh, yLow) + 6;
+          if (y < top || y > bot) continue;
+          const score = bestXd + Math.abs(y - (top + bot) / 2) * 0.2;
+          if (score < bestScore) {
+            bestScore = score;
+            best = entry;
+          }
+        }
+        return best;
+      }
+
+      async function promoteComparisonToMain(entryId) {
+        const entry = findComparison(entryId);
+        if (!entry?.item || !Array.isArray(entry.candles) || !entry.candles.length) return false;
+        if (entry.id === state.selectedWatchlistId) return false;
+
+        ensureLightweightChart();
+        const prevItem = getWatchlistItem(state.selectedWatchlistId);
+        const prevCandles = state.historyCandlesFull.slice();
+        const demoteColor = entry.colorIndex;
+        const promotedCandles = entry.candles.slice();
+        const promotedItem = ensureItemOnWatchlist(entry.item);
+        if (!promotedItem) return false;
+
+        state.comparisons = state.comparisons.filter((c) => c && c.id !== entry.id);
+
+        stopLivePolling();
+        state.selectedWatchlistId = promotedItem.id;
+        applyHistoryToChart(promotedCandles, []);
+        // Fit time + price to the new main using the active bottom range filter.
+        state.applyChartViewportOnNextDraw = true;
+        state.applyChartPriceScaleOnNextDraw = true;
+        state.chartMessage = "";
+
+        if (prevItem && prevItem.id !== promotedItem.id && prevCandles.length) {
+          state.comparisons = state.comparisons.filter((c) => c && c.id !== prevItem.id);
+          if (state.comparisons.length < MAX_CHART_COMPARISONS) {
+            state.comparisons.push({
+              id: prevItem.id,
+              item: cloneWatchlistItem(prevItem),
+              candles: prevCandles,
+              colorIndex: demoteColor,
+              loadToken: ++state.compareLoadToken
+            });
+          }
+        }
+
+        state.activeRequestId += 1;
+        const requestId = state.activeRequestId;
+        syncChartSymbolHeader();
+        renderWatchlist();
+        drawChart();
+        requestAnimationFrame(() => {
+          if (state.selectedWatchlistId !== promotedItem.id || !lwChart) return;
+          applyChartTimeScaleForPreset(lwChart, state.activeRangePreset, getDisplayCandles());
+          resetLightweightPriceScale(lwChart);
+          renderChartDrawingsOverlay();
+          requestAnimationFrame(() => {
+            if (state.selectedWatchlistId !== promotedItem.id || !lwChart) return;
+            applyChartTimeScaleForPreset(lwChart, state.activeRangePreset, getDisplayCandles());
+            resetLightweightPriceScale(lwChart);
+            renderChartDrawingsOverlay();
+          });
+        });
+
+        void loadPriceAlertsForSelectedCard();
+        if (!USE_FAKE_CHART_DATA) {
+          state.livePollTimer = setInterval(() => {
+            if (state.selectedWatchlistId !== promotedItem.id) return;
+            refreshLivePriceOnly();
+          }, 30000);
+        }
+
+        try {
+          const loaded = await loadMarketHistoryCandles(promotedItem);
+          if (requestId !== state.activeRequestId) return true;
+          applyHistoryToChart(loaded.raw, loaded.psa10);
+          state.applyChartViewportOnNextDraw = true;
+          state.applyChartPriceScaleOnNextDraw = true;
+          syncChartSymbolHeader();
+          drawChart();
+          requestAnimationFrame(() => {
+            if (state.selectedWatchlistId !== promotedItem.id || !lwChart) return;
+            applyChartTimeScaleForPreset(lwChart, state.activeRangePreset, getDisplayCandles());
+            resetLightweightPriceScale(lwChart);
+            renderChartDrawingsOverlay();
+          });
+        } catch {
+          /* keep instant-swapped compare candles */
+        }
+
+        void refreshSelectedCardLiveData({ requestId, showLoading: false });
+        scheduleSaveWatchlist({ immediate: true });
+        return true;
+      }
+
+      function bindChartComparePromoteDoubleClick() {
+        if (!chartContainer || chartContainer.dataset.comparePromoteBound === "1") return;
+        chartContainer.dataset.comparePromoteBound = "1";
+        chartContainer.addEventListener("dblclick", (ev) => {
+          if (state.chartTool !== "cursor") return;
+          if (!comparisonsWithData().length) return;
+          const hit = hitTestComparisonAtClientPoint(ev.clientX, ev.clientY);
+          if (!hit) return;
+          ev.preventDefault();
+          ev.stopPropagation();
+          void promoteComparisonToMain(hit.id);
+        });
+        chartContainer.title = "Double-click a comparison candle to make it the main chart";
       }
 
       async function openComparePickerModal() {
@@ -2435,7 +3857,6 @@
             loadCardNicknames(),
             loadCollectionPickerCards({ force: true })
           ]);
-          renderCardPickerOptions();
           openWatchlistModal({ mode: "compare" });
         } catch {
           window.alert("Could not load cards or sealed products.");
@@ -2485,7 +3906,415 @@
       }
 
       function getWatchlistItem(id) {
-        return state.watchlist.find((item) => item.id === id) || null;
+        const fromList = state.watchlist.find((item) => item.id === id);
+        if (fromList) return fromList;
+        if (state.chartItem && String(state.chartItem.id) === String(id)) return state.chartItem;
+        return null;
+      }
+
+      function isPinnedWatchlistId(id) {
+        return state.watchlist.some((item) => item.id === id);
+      }
+
+      function discoveryEntryToWatchItem(entry) {
+        if (!entry) return null;
+        const sealed = String(entry.kind || "").toLowerCase() === "sealed";
+        const id = String(
+          entry.id || (sealed ? `sealed:${entry.productId}` : `${entry.setCode}:${entry.cardNo}`)
+        ).trim();
+        if (!id) return null;
+        const cardLabel = String(entry.label || entry.cardName || id).trim();
+        return {
+          id,
+          kind: sealed ? "sealed" : "single",
+          card: cardLabel,
+          cardName: String(entry.cardName || cardLabel).trim(),
+          setCode: String(entry.setCode || "").trim().toUpperCase(),
+          cardNo: sealed ? "" : String(entry.cardNo || "").trim(),
+          setName: String(entry.setName || "").trim(),
+          productId: sealed ? String(entry.productId || id.replace(/^sealed:/i, "")).trim() : "",
+          productUrl: String(entry.productUrl || "").trim(),
+          productType: String(entry.productType || "").trim(),
+          imageUrl: "",
+          last: toWatchlistMetric(entry.last),
+          change: toWatchlistMetric(entry.change),
+          changePct: toWatchlistMetric(entry.changePct),
+          psaLast: null,
+          psaChange: null,
+          psaChangePct: null
+        };
+      }
+
+      async function reportDiscoveryView(entry) {
+        if (!entry) return;
+        try {
+          await fetch("/api/poke-view/discovery/view", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              kind: entry.kind || "single",
+              setCode: entry.setCode || "",
+              cardNo: entry.cardNo || "",
+              cardName: entry.cardName || "",
+              setName: entry.setName || "",
+              productId: entry.productId || "",
+              label: entry.label || entry.cardName || ""
+            })
+          });
+        } catch {
+          /* optional telemetry */
+        }
+      }
+
+      function pinDiscoveryEntry(entry) {
+        const item = discoveryEntryToWatchItem(entry);
+        if (!item) return;
+        if (!state.watchlist.some((row) => row.id === item.id)) {
+          state.watchlist.push(item);
+          scheduleSaveWatchlist({ immediate: true });
+        }
+        if (state.chartItem && state.chartItem.id === item.id) {
+          state.chartItem = null;
+        }
+        renderWatchlist();
+      }
+
+      function selectDiscoveryEntry(entry) {
+        const item = discoveryEntryToWatchItem(entry);
+        if (!item) return;
+        const existing = state.watchlist.find((row) => row.id === item.id);
+        if (existing) {
+          state.chartItem = null;
+          selectWatchlistCard(existing.id);
+        } else {
+          state.chartItem = item;
+          selectWatchlistCard(item.id);
+        }
+      }
+
+      function sortedWatchlistForDisplay() {
+        const rows = state.watchlist.slice();
+        if (state.watchlistSort === "gainers") {
+          rows.sort(
+            (a, b) => (Number(b.changePct) || -Infinity) - (Number(a.changePct) || -Infinity)
+          );
+        } else if (state.watchlistSort === "losers") {
+          rows.sort(
+            (a, b) => (Number(a.changePct) || Infinity) - (Number(b.changePct) || Infinity)
+          );
+        }
+        return rows;
+      }
+
+      function syncDiscoveryToolbarUi() {
+        const tab = state.discoveryTab;
+        if (asidePanelTitle) {
+          asidePanelTitle.textContent = DISCOVERY_TAB_LABELS[tab] || "Watchlist";
+        }
+        if (watchlistAddBtn) watchlistAddBtn.hidden = tab !== "watchlist";
+        if (watchlistRemoveBtn) watchlistRemoveBtn.hidden = tab !== "watchlist";
+        if (discoveryToolbar) discoveryToolbar.hidden = tab === "alerts";
+
+        if (discoveryRangeChips) {
+          const showRanges = ["movers", "leaders", "undervalued", "breakouts", "heat"].includes(tab);
+          discoveryRangeChips.innerHTML = showRanges
+            ? DISCOVERY_RANGES.map(
+                (range) =>
+                  `<button type="button" class="discovery-chip${state.discoveryRange === range ? " active" : ""}" data-discovery-range="${range}">${range}</button>`
+              ).join("")
+            : "";
+        }
+
+        if (discoveryExtraControls) {
+          let html = "";
+          if (tab === "movers" || tab === "leaders") {
+            html += `<button type="button" class="discovery-chip${state.discoveryDirection === "up" ? " active" : ""}" data-discovery-direction="up">Gainers</button>`;
+            html += `<button type="button" class="discovery-chip${state.discoveryDirection === "down" ? " active" : ""}" data-discovery-direction="down">Losers</button>`;
+          }
+          if (tab !== "heat" && tab !== "watchlist" && tab !== "alerts") {
+            html += `<button type="button" class="discovery-chip${state.discoveryKind === "all" ? " active" : ""}" data-discovery-kind="all">All</button>`;
+            html += `<button type="button" class="discovery-chip${state.discoveryKind === "cards" ? " active" : ""}" data-discovery-kind="cards">Cards</button>`;
+            html += `<button type="button" class="discovery-chip${state.discoveryKind === "sealed" ? " active" : ""}" data-discovery-kind="sealed">Sealed</button>`;
+          }
+          if (tab === "watchlist") {
+            html += `<button type="button" class="discovery-chip${state.watchlistSort === "default" ? " active" : ""}" data-watchlist-sort="default">Default</button>`;
+            html += `<button type="button" class="discovery-chip${state.watchlistSort === "gainers" ? " active" : ""}" data-watchlist-sort="gainers">Gainers</button>`;
+            html += `<button type="button" class="discovery-chip${state.watchlistSort === "losers" ? " active" : ""}" data-watchlist-sort="losers">Losers</button>`;
+          }
+          discoveryExtraControls.innerHTML = html;
+        }
+
+        if (discoveryToolbarMeta) {
+          if (state.discoveryLoading) {
+            discoveryToolbarMeta.textContent = "Loading…";
+          } else if (tab === "watchlist") {
+            discoveryToolbarMeta.textContent = `${state.watchlist.length} item${state.watchlist.length === 1 ? "" : "s"}`;
+          } else if (state.discoveryBuiltAt) {
+            const count =
+              tab === "heat"
+                ? `${state.discoveryRows.length} sets`
+                : `${state.discoveryRows.length} rows`;
+            discoveryToolbarMeta.textContent = `${count} · ${new Date(state.discoveryBuiltAt).toLocaleString()}`;
+          } else if (state.discoverySourceEntries != null) {
+            discoveryToolbarMeta.textContent = `${state.discoverySourceEntries} cached charts`;
+          } else {
+            discoveryToolbarMeta.textContent = "";
+          }
+        }
+
+        if (discoveryTabs) {
+          discoveryTabs.querySelectorAll("[data-discovery-tab]").forEach((btn) => {
+            const active = btn.getAttribute("data-discovery-tab") === tab;
+            btn.classList.toggle("active", active);
+            btn.setAttribute("aria-selected", active ? "true" : "false");
+          });
+        }
+      }
+
+      function setDiscoveryTableHead(cols) {
+        if (!discoveryTableHead) return;
+        discoveryTableHead.innerHTML = `<tr>${cols.map((c) => `<th>${escapeHtml(c)}</th>`).join("")}</tr>`;
+      }
+
+      function renderDiscoveryTable() {
+        if (!watchlistBody) return;
+        syncDiscoveryToolbarUi();
+        const tab = state.discoveryTab;
+
+        if (tab === "alerts") {
+          setDiscoveryTableHead(["Card", "Target", "Status", "Actions"]);
+          const alerts = state.discoveryRows;
+          if (!alerts.length) {
+            watchlistBody.innerHTML =
+              `<tr><td colspan="4" class="muted" style="text-align:center; padding:12px;">No price alerts yet. Right-click a chart to create one.</td></tr>`;
+            return;
+          }
+          watchlistBody.innerHTML = alerts
+            .map((alert) => {
+              const label = alert.cardLabel || alert.cardName || `${alert.setCode} ${alert.cardNo}`.trim();
+              const price = Number(alert.price);
+              const status = String(alert.status || "active");
+              const isActive = status === "active";
+              const condition = String(alert.condition || "crossing");
+              const conditionText =
+                condition === "above" ? "Crossing up" : condition === "below" ? "Crossing down" : "Crossing";
+              const activeClass =
+                alert.watchlistCardId && alert.watchlistCardId === state.selectedWatchlistId
+                  ? " active"
+                  : "";
+              const actions = isActive
+                ? `<div class="discovery-alert-actions">
+                    <button type="button" class="discovery-alert-btn" data-alert-edit="${escapeHtml(alert.id)}" title="Edit alert">✎</button>
+                    <button type="button" class="discovery-alert-btn danger" data-alert-delete="${escapeHtml(alert.id)}" title="Delete alert">×</button>
+                  </div>`
+                : `<div class="discovery-alert-actions">
+                    <button type="button" class="discovery-alert-btn danger" data-alert-delete="${escapeHtml(alert.id)}" title="Delete alert">×</button>
+                  </div>`;
+              return `
+                <tr class="${activeClass}" data-alert-id="${escapeHtml(alert.id)}" data-watch-id="${escapeHtml(alert.watchlistCardId || "")}">
+                  <td title="${escapeHtml(label)}">
+                    <span class="watch-card">${escapeHtml(label)}</span>
+                    <span class="discovery-reason">${escapeHtml(conditionText)}${alert.recurrence === "recurring" ? " · Every time" : ""}</span>
+                  </td>
+                  <td>${Number.isFinite(price) ? formatNumber(price, 2) : "--"}</td>
+                  <td>${escapeHtml(status)}</td>
+                  <td>${actions}</td>
+                </tr>
+              `;
+            })
+            .join("");
+          watchlistBody.querySelectorAll("tr[data-watch-id]").forEach((row) => {
+            row.addEventListener("click", (event) => {
+              if (event.target.closest(".discovery-alert-actions")) return;
+              const id = row.getAttribute("data-watch-id");
+              if (id) selectWatchlistCard(id);
+            });
+          });
+          watchlistBody.querySelectorAll("[data-alert-edit]").forEach((btn) => {
+            btn.addEventListener("click", (event) => {
+              event.stopPropagation();
+              const id = btn.getAttribute("data-alert-edit");
+              const alert = state.discoveryRows.find((row) => row.id === id);
+              if (alert) openPriceAlertModalForEdit(alert);
+            });
+          });
+          watchlistBody.querySelectorAll("[data-alert-delete]").forEach((btn) => {
+            btn.addEventListener("click", (event) => {
+              event.stopPropagation();
+              const id = btn.getAttribute("data-alert-delete");
+              if (id) void confirmDeletePriceAlert(id);
+            });
+          });
+          return;
+        }
+
+        if (tab === "heat") {
+          setDiscoveryTableHead(["Set", "Median %", "Cards", ""]);
+          if (!state.discoveryRows.length) {
+            watchlistBody.innerHTML =
+              `<tr><td colspan="4" class="muted" style="text-align:center; padding:12px;">No set heat data yet. Market history cache needs more cards.</td></tr>`;
+            return;
+          }
+          watchlistBody.innerHTML = state.discoveryRows
+            .map((row) => {
+              const moveClass = formatWatchlistMoveClass(row.medianChangePct);
+              return `
+                <tr>
+                  <td title="${escapeHtml(row.reason || row.setName || row.setCode)}">
+                    <span class="watch-card">${escapeHtml(row.setName || row.setCode)}</span>
+                    <span class="discovery-reason">${escapeHtml(row.reason || "")}</span>
+                  </td>
+                  <td class="${moveClass}">${Number.isFinite(row.medianChangePct) ? `${row.medianChangePct >= 0 ? "+" : ""}${formatNumber(row.medianChangePct, 1)}%` : "--"}</td>
+                  <td>${row.cardCount || "--"}</td>
+                  <td></td>
+                </tr>
+              `;
+            })
+            .join("");
+          return;
+        }
+
+        if (tab === "trending") {
+          setDiscoveryTableHead(["Item", "Views", "Last", ""]);
+          if (!state.discoveryRows.length) {
+            watchlistBody.innerHTML =
+              `<tr><td colspan="4" class="muted" style="text-align:center; padding:12px;">Open charts to populate trending.</td></tr>`;
+            return;
+          }
+          watchlistBody.innerHTML = state.discoveryRows
+            .map((row) => {
+              const pinned = isPinnedWatchlistId(row.id);
+              const activeClass = row.id === state.selectedWatchlistId ? " active" : "";
+              return `
+                <tr class="${activeClass}" data-discovery-id="${escapeHtml(row.id)}">
+                  <td title="${escapeHtml(row.label || row.id)}">
+                    <span class="watch-card">${escapeHtml(row.label || row.id)}</span>
+                    <span class="discovery-reason">${escapeHtml(row.reason || "")}</span>
+                  </td>
+                  <td>${row.views || 0}</td>
+                  <td class="muted">${row.lastAt ? new Date(row.lastAt).toLocaleDateString() : "--"}</td>
+                  <td><button type="button" class="discovery-pin-btn${pinned ? " pinned" : ""}" data-pin-id="${escapeHtml(row.id)}" title="${pinned ? "On watchlist" : "Add to watchlist"}">${pinned ? "✓" : "+"}</button></td>
+                </tr>
+              `;
+            })
+            .join("");
+        } else {
+          setDiscoveryTableHead(["Cards", "Last", "Chg", "Chg%", ""]);
+          if (!state.discoveryRows.length) {
+            watchlistBody.innerHTML =
+              `<tr><td colspan="5" class="muted" style="text-align:center; padding:12px;">No discovery rows yet. PriceCharting market history cache builds as cards are viewed.</td></tr>`;
+            return;
+          }
+          watchlistBody.innerHTML = state.discoveryRows
+            .map((row) => {
+              const hasChange = Number.isFinite(row.changePct);
+              const moveClass = formatWatchlistMoveClass(row.changePct);
+              const sign = hasChange && row.changePct >= 0 ? "+" : "";
+              const pinned = isPinnedWatchlistId(row.id);
+              const activeClass = row.id === state.selectedWatchlistId ? " active" : "";
+              return `
+                <tr class="${activeClass}" data-discovery-id="${escapeHtml(row.id)}">
+                  <td title="${escapeHtml(row.label || row.id)}">
+                    <span class="watch-card">${escapeHtml(row.label || row.id)}</span>
+                    <span class="discovery-reason">${escapeHtml(row.reason || "")}</span>
+                  </td>
+                  <td>${Number.isFinite(row.last) ? formatNumber(row.last, 2) : "--"}</td>
+                  <td class="${moveClass}">${hasChange ? `${sign}${formatNumber(row.change, 2)}` : "--"}</td>
+                  <td class="${moveClass}">${hasChange ? `${sign}${formatNumber(row.changePct, 2)}%` : "--"}</td>
+                  <td><button type="button" class="discovery-pin-btn${pinned ? " pinned" : ""}" data-pin-id="${escapeHtml(row.id)}" title="${pinned ? "On watchlist" : "Add to watchlist"}">${pinned ? "✓" : "+"}</button></td>
+                </tr>
+              `;
+            })
+            .join("");
+        }
+
+        watchlistBody.querySelectorAll("tr[data-discovery-id]").forEach((row) => {
+          row.addEventListener("click", (event) => {
+            if (event.target.closest(".discovery-pin-btn")) return;
+            const id = row.getAttribute("data-discovery-id");
+            const entry = state.discoveryRows.find((r) => r.id === id);
+            if (entry) selectDiscoveryEntry(entry);
+          });
+        });
+        watchlistBody.querySelectorAll(".discovery-pin-btn[data-pin-id]").forEach((btn) => {
+          btn.addEventListener("click", (event) => {
+            event.stopPropagation();
+            const id = btn.getAttribute("data-pin-id");
+            const entry = state.discoveryRows.find((r) => r.id === id);
+            if (entry) pinDiscoveryEntry(entry);
+          });
+        });
+      }
+
+      async function loadDiscoveryAlertsTab() {
+        state.discoveryLoading = true;
+        syncDiscoveryToolbarUi();
+        if (!isWatchlistAccountSignedIn()) {
+          state.discoveryRows = [];
+          state.discoveryLoading = false;
+          renderDiscoveryTable();
+          return;
+        }
+        try {
+          const response = await fetch("/api/poke-view/price-alerts?includeInactive=1");
+          const payload = response.ok ? await response.json() : null;
+          state.discoveryRows = Array.isArray(payload?.alerts) ? payload.alerts : [];
+        } catch {
+          state.discoveryRows = [];
+        }
+        state.discoveryLoading = false;
+        renderDiscoveryTable();
+      }
+
+      async function loadDiscoveryTab(options = {}) {
+        const tab = options.tab || state.discoveryTab;
+        state.discoveryTab = tab;
+        if (tab === "watchlist") {
+          syncDiscoveryToolbarUi();
+          renderWatchlistCore();
+          return;
+        }
+        if (tab === "alerts") {
+          await loadDiscoveryAlertsTab();
+          return;
+        }
+
+        state.discoveryLoading = true;
+        syncDiscoveryToolbarUi();
+        try {
+          const params = new URLSearchParams({
+            tab: tab === "leaders" ? "leaders" : tab,
+            range: tab === "leaders" ? "1Y" : state.discoveryRange,
+            direction: state.discoveryDirection,
+            kind: state.discoveryKind,
+            limit: "50"
+          });
+          if (tab === "trending") {
+            params.set("tab", "trending");
+          }
+          if (tab === "leaders") {
+            params.set("range", "1Y");
+          }
+          const response = await fetch(`/api/poke-view/discovery?${params.toString()}`);
+          const payload = response.ok ? await response.json() : null;
+          state.discoveryRows = Array.isArray(payload?.rows) ? payload.rows : [];
+          state.discoveryBuiltAt = payload?.builtAt || null;
+          state.discoverySourceEntries = Number(payload?.sourceEntries) || 0;
+        } catch {
+          state.discoveryRows = [];
+        }
+        state.discoveryLoading = false;
+        renderDiscoveryTable();
+      }
+
+      function setDiscoveryTab(tab) {
+        const next = String(tab || "watchlist").trim().toLowerCase();
+        if (state.discoveryTab === next) {
+          if (next !== "watchlist") void loadDiscoveryTab({ tab: next });
+          return;
+        }
+        state.discoveryTab = next;
+        void loadDiscoveryTab({ tab: next });
       }
 
       function isWatchlistAccountSignedIn() {
@@ -2503,11 +4332,22 @@
         const productId = sealed
           ? String(item?.productId || String(item?.id || "").replace(/^sealed:/i, "")).trim()
           : "";
+        const cardName = sealed
+          ? resolveSealedProductTitle(item)
+          : String(item?.cardName || "").trim();
+        const card = sealed
+          ? formatSealedWatchlistCardLabel({
+              setName: item?.setName,
+              setCode: item?.setCode,
+              title: cardName,
+              productType: item?.productType
+            })
+          : String(item?.card || "").trim();
         return {
           id: String(item?.id || "").trim(),
           kind: sealed ? "sealed" : "single",
-          card: String(item?.card || "").trim(),
-          cardName: String(item?.cardName || "").trim(),
+          card,
+          cardName,
           setCode: String(item?.setCode || "").trim().toUpperCase(),
           cardNo: sealed ? "" : String(item?.cardNo || "").trim(),
           setName: String(item?.setName || "").trim(),
@@ -2516,6 +4356,7 @@
           productUrl: sealed
             ? String(item?.productUrl || item?.priceChartingUrl || "").trim()
             : "",
+          productType: sealed ? String(item?.productType || "").trim() : "",
           imageUrl: String(item?.imageUrl || "").trim(),
           last: toWatchlistMetric(item?.last),
           change: toWatchlistMetric(item?.change),
@@ -2527,7 +4368,12 @@
       }
 
       function hydrateWatchlistEntry(saved) {
-        return serializeWatchlistEntry(saved);
+        const row = serializeWatchlistEntry(saved);
+        if (isSealedWatchlistItem(row)) {
+          row.card = sealedWatchlistCardText(row);
+          row.cardName = resolveSealedProductTitle(row);
+        }
+        return row;
       }
 
       function scheduleSaveWatchlist({ immediate = false } = {}) {
@@ -2652,6 +4498,8 @@
           state.collectionPickerLoaded = false;
           const hadLocalCards = state.watchlist.length > 0;
           await loadSavedWatchlist({ mergeLocal: hadLocalCards });
+          await loadCollectionAcquisitionDates({ force: true });
+          renderChartDrawingsOverlay();
           return;
         }
         if (!watchlistEverSignedIn) return;
@@ -2668,6 +4516,10 @@
         state.collectionPickerCards = [];
         state.collectionPickerById = {};
         state.collectionPickerLoaded = false;
+        state.collectionAcquiredByWatchKey = {};
+        state.collectionAcquiredLoaded = false;
+        state.acquisitionMarkerHits = [];
+        hideChartAcquiredTip();
         state.watchlistPickerSource = "catalog";
         state.priceAlerts = [];
         clearPriceAlertLines();
@@ -3003,22 +4855,23 @@
         if (!watchlistPsa10Btn) return;
         const selected = getWatchlistItem(state.selectedWatchlistId);
         const sealed = isSealedWatchlistItem(selected);
-        const available = !sealed && state.hasPsa10History;
-        if (sealed && state.showPsa10Overlay) state.showPsa10Overlay = false;
+        const showBtn = Boolean(selected) && !sealed;
+        const available = showBtn && state.hasPsa10History;
+        if ((!showBtn || !available) && state.showPsa10Overlay) state.showPsa10Overlay = false;
+        watchlistPsa10Btn.hidden = !showBtn;
         watchlistPsa10Btn.disabled = !available;
         watchlistPsa10Btn.setAttribute("aria-pressed", state.showPsa10Overlay ? "true" : "false");
         watchlistPsa10Btn.classList.toggle("active", state.showPsa10Overlay);
-        watchlistPsa10Btn.title = sealed
-          ? "PSA 10 overlay is not available for sealed products"
-          : available
-            ? state.showPsa10Overlay
-              ? "Hide PSA 10 prices on chart"
-              : "Show PSA 10 prices on chart"
-            : "No PSA 10 price history for this card";
+        watchlistPsa10Btn.title = available
+          ? state.showPsa10Overlay
+            ? "Hide PSA 10 prices on chart"
+            : "Show PSA 10 prices on chart"
+          : "No PSA 10 price history for this card";
       }
 
       function togglePsa10Overlay() {
-        if (!state.hasPsa10History) return;
+        const selected = getWatchlistItem(state.selectedWatchlistId);
+        if (!selected || isSealedWatchlistItem(selected) || !state.hasPsa10History) return;
         state.showPsa10Overlay = !state.showPsa10Overlay;
         if (state.showPsa10Overlay) {
           state.applyChartPriceScaleOnNextDraw = true;
@@ -4076,7 +5929,7 @@
           state.chartMessage = "";
           renderWatchlist();
           drawChart();
-          if (state.compareItem) {
+          if (state.comparisons.length) {
             void reloadCompareHistory();
           }
         } catch (err) {
@@ -4088,28 +5941,38 @@
       }
 
       async function reloadCompareHistory() {
-        const item = state.compareItem;
-        if (!item) return;
-        const token = ++state.compareLoadToken;
-        try {
-          const loaded = await loadMarketHistoryCandles(item);
-          if (token !== state.compareLoadToken) return;
-          state.historyCandlesCompareFull = Array.isArray(loaded?.raw) ? loaded.raw.slice() : [];
-          state.applyChartViewportOnNextDraw = false;
-          syncChartSymbolHeader();
-          drawChart();
-        } catch {
-          if (token !== state.compareLoadToken) return;
-          /* keep previous compare candles if reload fails */
-        }
+        const entries = state.comparisons.slice();
+        if (!entries.length) return;
+        await Promise.all(
+          entries.map(async (entry) => {
+            if (!entry?.item) return;
+            const token = ++state.compareLoadToken;
+            entry.loadToken = token;
+            try {
+              const loaded = await loadMarketHistoryCandles(entry.item);
+              const current = findComparison(entry.id);
+              if (!current || current.loadToken !== token) return;
+              const candles = Array.isArray(loaded?.raw) ? loaded.raw.slice() : [];
+              if (candles.length) current.candles = candles;
+            } catch {
+              /* keep previous compare candles if reload fails */
+            }
+          })
+        );
+        state.applyChartViewportOnNextDraw = false;
+        syncChartSymbolHeader();
+        drawChart();
       }
 
       function selectWatchlistCard(id) {
         stopLivePolling();
         resetChartView();
+        if (state.watchlist.some((item) => item.id === id)) {
+          state.chartItem = null;
+        }
         state.selectedWatchlistId = id;
-        if (state.compareItem && state.compareItem.id === id) {
-          clearCompareOverlay({ redraw: false });
+        if (isComparingId(id)) {
+          removeCompareItem(id, { redraw: false });
         }
         state.activeRequestId += 1;
         const requestId = state.activeRequestId;
@@ -4120,7 +5983,23 @@
         renderWatchlist();
         drawChart();
         void loadPriceAlertsForSelectedCard();
+        void (async () => {
+          await loadCollectionAcquisitionDates();
+          if (state.selectedWatchlistId === id) renderChartDrawingsOverlay();
+        })();
         refreshSelectedCardLiveData({ requestId, showLoading: true });
+        const viewedItem = getWatchlistItem(id);
+        if (viewedItem) {
+          void reportDiscoveryView({
+            kind: isSealedWatchlistItem(viewedItem) ? "sealed" : "single",
+            setCode: viewedItem.setCode,
+            cardNo: viewedItem.cardNo,
+            cardName: viewedItem.cardName,
+            setName: viewedItem.setName,
+            productId: viewedItem.productId,
+            label: viewedItem.card
+          });
+        }
         if (!USE_FAKE_CHART_DATA) {
           state.livePollTimer = setInterval(() => {
             if (state.selectedWatchlistId !== id) return;
@@ -4146,6 +6025,41 @@
       }
       if (watchlistRemoveBtn) {
         watchlistRemoveBtn.addEventListener("click", removeSelectedWatchlistCard);
+      }
+      if (discoveryTabs) {
+        discoveryTabs.addEventListener("click", (event) => {
+          const btn = event.target.closest("[data-discovery-tab]");
+          if (!btn || !discoveryTabs.contains(btn)) return;
+          setDiscoveryTab(btn.getAttribute("data-discovery-tab"));
+        });
+      }
+      if (discoveryToolbar) {
+        discoveryToolbar.addEventListener("click", (event) => {
+          const rangeBtn = event.target.closest("[data-discovery-range]");
+          if (rangeBtn) {
+            state.discoveryRange = rangeBtn.getAttribute("data-discovery-range") || "1M";
+            if (state.discoveryTab !== "watchlist") void loadDiscoveryTab();
+            else syncDiscoveryToolbarUi();
+            return;
+          }
+          const dirBtn = event.target.closest("[data-discovery-direction]");
+          if (dirBtn) {
+            state.discoveryDirection = dirBtn.getAttribute("data-discovery-direction") || "up";
+            void loadDiscoveryTab();
+            return;
+          }
+          const kindBtn = event.target.closest("[data-discovery-kind]");
+          if (kindBtn) {
+            state.discoveryKind = kindBtn.getAttribute("data-discovery-kind") || "all";
+            void loadDiscoveryTab();
+            return;
+          }
+          const sortBtn = event.target.closest("[data-watchlist-sort]");
+          if (sortBtn) {
+            state.watchlistSort = sortBtn.getAttribute("data-watchlist-sort") || "default";
+            renderWatchlist();
+          }
+        });
       }
       if (watchlistPsa10Btn) {
         watchlistPsa10Btn.addEventListener("click", togglePsa10Overlay);
@@ -4173,7 +6087,11 @@
           if (!tile || !root.contains(tile)) return;
           const id = tile.getAttribute("data-id");
           if (!id) return;
-          selectPickerCard(id);
+          if (isComparePickerMode()) {
+            selectPickerCard(id, { forceAdd: true });
+          } else {
+            selectPickerCard(id);
+          }
           confirmWatchlistPickerSelection();
         });
       }
@@ -4181,11 +6099,30 @@
       if (watchlistSourceCatalogBtn) {
         watchlistSourceCatalogBtn.addEventListener("click", () => setWatchlistPickerSource("catalog"));
       }
+      if (watchlistSourceBrowseSetsBtn) {
+        watchlistSourceBrowseSetsBtn.addEventListener("click", () => setWatchlistPickerSource("sets"));
+      }
       if (watchlistSourceSealedBtn) {
         watchlistSourceSealedBtn.addEventListener("click", () => setWatchlistPickerSource("sealed"));
       }
       if (watchlistSourceCollectionBtn) {
         watchlistSourceCollectionBtn.addEventListener("click", () => setWatchlistPickerSource("collection"));
+      }
+      if (watchlistBrowseBackBtn) {
+        watchlistBrowseBackBtn.addEventListener("click", () => {
+          state.watchlistPickerBrowseSetCode = "";
+          state.watchlistPickerBrowseKind = "cards";
+          if (watchlistSearchInput) watchlistSearchInput.value = "";
+          syncWatchlistSourceTabsUi();
+          renderCardPickerOptions();
+        });
+      }
+      if (watchlistBrowseKind) {
+        watchlistBrowseKind.addEventListener("click", (event) => {
+          const btn = event.target.closest("[data-browse-kind]");
+          if (!btn || !watchlistBrowseKind.contains(btn)) return;
+          setWatchlistBrowseKind(btn.getAttribute("data-browse-kind"));
+        });
       }
       if (watchlistSealedSetSortBtn) {
         watchlistSealedSetSortBtn.addEventListener("click", toggleSealedSetSortOrder);
@@ -4209,7 +6146,6 @@
             const deltaX = moveEvent.clientX - startX;
             state.watchlistWidth = startWidth - deltaX;
             applyPanelWidths();
-            updateResetButtonVisibility();
             if (typeof requestAnimationFrame === "function") {
               requestAnimationFrame(() => {
                 syncLightweightChartSize();
@@ -4260,17 +6196,32 @@
         return nearestCandleAtLwTime(state.historyCandlesPsa10Full, tSec);
       }
 
-      function compareCandleAtLwTime(time) {
+      function compareCandlesAtLwTime(time) {
         const tSec = normalizeLwTime(time);
-        if (
-          tSec == null ||
-          !state.compareItem ||
-          !Array.isArray(state.historyCandlesCompareFull) ||
-          !state.historyCandlesCompareFull.length
-        ) {
-          return null;
+        if (tSec == null) return [];
+        const out = [];
+        for (const entry of comparisonsWithData()) {
+          const candle = nearestCandleAtLwTime(entry.candles, tSec);
+          if (candle) out.push({ entry, candle });
         }
-        return nearestCandleAtLwTime(state.historyCandlesCompareFull, tSec);
+        return out;
+      }
+
+      function compareRangeAtLwTime(time) {
+        const hits = compareCandlesAtLwTime(time);
+        if (!hits.length) return { high: null, low: null };
+        let high = -Infinity;
+        let low = Infinity;
+        for (const { candle } of hits) {
+          const hi = Number(candle.high);
+          const lo = Number(candle.low);
+          if (Number.isFinite(hi)) high = Math.max(high, hi);
+          if (Number.isFinite(lo)) low = Math.min(low, lo);
+        }
+        return {
+          high: Number.isFinite(high) ? high : null,
+          low: Number.isFinite(low) ? low : null
+        };
       }
 
       function nearestCandleAtLwTime(candles, tSec) {
@@ -4288,16 +6239,14 @@
         return best;
       }
 
-      function selectedChartDisplayName() {
-        const item = getWatchlistItem(state.selectedWatchlistId);
+      function chartItemDisplayName(item) {
         if (!item) return "";
+        // Prefer `card` (full watchlist/label text) over short `cardName`.
         return String(item.card || item.cardName || "").trim();
       }
 
-      function compareChartDisplayName() {
-        const item = state.compareItem;
-        if (!item) return "";
-        return String(item.cardName || item.card || "").trim();
+      function selectedChartDisplayName() {
+        return chartItemDisplayName(getWatchlistItem(state.selectedWatchlistId));
       }
 
       function syncChartSymbolHeader() {
@@ -4310,9 +6259,14 @@
           if (chartSymbolStats) chartSymbolStats.hidden = true;
           return;
         }
-        const compareName = compareChartDisplayName();
-        if (compareName && state.historyCandlesCompareFull.length) {
-          chartSymbolTitle.innerHTML = `${escapeHtml(name)}<span class="chart-compare-vs">vs</span>${escapeHtml(compareName)}`;
+        const cmps = comparisonsWithData();
+        if (cmps.length) {
+          const parts = cmps.map((entry) => {
+            const label = escapeHtml(compareEntryDisplayName(entry));
+            const color = comparePaletteAt(entry.colorIndex).border;
+            return `<span class="chart-compare-vs" style="color:${color}">vs</span><span class="chart-compare-name" style="color:${color}">${label}</span>`;
+          });
+          chartSymbolTitle.innerHTML = `${escapeHtml(name)}${parts.join("")}`;
         } else {
           chartSymbolTitle.textContent = name;
         }
@@ -4341,7 +6295,7 @@
           psaHigh >= 0 &&
           psaLow >= 0;
         const showCompare =
-          Boolean(state.compareItem) &&
+          comparisonsWithData().length > 0 &&
           Number.isFinite(compareHigh) &&
           Number.isFinite(compareLow) &&
           compareHigh >= 0 &&
@@ -4461,21 +6415,28 @@
         const processChartHover = (x, y, time) => {
           if (state.chartTool !== "cursor") {
             hideChartHoverLegend();
+            hideChartAcquiredTip();
             return;
           }
           const tSec = normalizeLwTime(time);
           if (tSec == null) {
             hideChartHoverLegend();
+            hideChartAcquiredTip();
             return;
           }
           applyCrosshairAtPoint({ x, y, t: tSec }, time);
           renderChartDrawingsOverlay();
+          if (chartWrap) {
+            const rect = chartWrap.getBoundingClientRect();
+            updateChartAcquiredTip(rect.left + x, rect.top + y);
+          }
         };
 
         chart.subscribeCrosshairMove((param) => {
           if (state.chartTool !== "cursor" || !state.cursorCrosshairEnabled) return;
           if (!param?.time || param.point == null) {
             hideChartHoverLegend();
+            hideChartAcquiredTip();
             renderChartDrawingsOverlay();
             return;
           }
@@ -4491,12 +6452,16 @@
             const t = xToLwTime(x);
             if (t == null) {
               hideChartHoverLegend();
+              hideChartAcquiredTip();
               return;
             }
             processChartHover(x, y, t);
           });
           chartContainer.addEventListener("mouseleave", () => {
-            if (state.chartTool === "cursor") hideChartHoverLegend();
+            if (state.chartTool === "cursor") {
+              hideChartHoverLegend();
+              hideChartAcquiredTip();
+            }
           });
         }
 
@@ -4582,9 +6547,9 @@
         const psaState = psa10CandleAtLwTime(tSec);
         const psaHigh = psaState ? Number(psaState.high) : null;
         const psaLow = psaState ? Number(psaState.low) : null;
-        const cmpState = compareCandleAtLwTime(tSec);
-        const compareHigh = cmpState ? Number(cmpState.high) : null;
-        const compareLow = cmpState ? Number(cmpState.low) : null;
+        const cmpRange = compareRangeAtLwTime(tSec);
+        const compareHigh = cmpRange.high;
+        const compareLow = cmpRange.low;
         state.hoverPrice = { price, y: pt.y, x: pt.x, high, low };
         updateChartSymbolHover({
           high,
@@ -4728,6 +6693,11 @@
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         ctx.clearRect(0, 0, width, height);
         if (!lwChart || !lwCandleSeries || !state.candles.length) return;
+
+        // Compare first so user drawings stay above it; main LW candles stay
+        // on their own layer and keep sole ownership of the time scale.
+        drawCompareCandlesOverlay(ctx, width);
+        drawAcquisitionMarkersOverlay(ctx, width, height);
 
         const T = CHART_THEME;
         ctx.lineWidth = 1.25;
@@ -4954,7 +6924,7 @@
         const clearCompareBtn = chartContextMenu.querySelector('[data-ctx-action="clear-compare"]');
         const removeBtn = chartContextMenu.querySelector('[data-ctx-action="remove-alert"]');
         const sep = chartContextMenu.querySelector("[data-ctx-sep]");
-        const hasCompare = Boolean(state.compareItem);
+        const hasCompare = state.comparisons.length > 0;
         if (alertBtn) alertBtn.hidden = false;
         if (compareBtn) compareBtn.hidden = false;
         if (clearCompareBtn) clearCompareBtn.hidden = !hasCompare;
@@ -4977,11 +6947,33 @@
         return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
       }
 
+      function alertExpiryToLocalInput(iso) {
+        if (!iso) return defaultAlertExpiryLocalValue();
+        const d = new Date(iso);
+        if (!Number.isFinite(d.getTime())) return defaultAlertExpiryLocalValue();
+        const pad = (n) => String(n).padStart(2, "0");
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      }
+
+      function setPriceAlertModalMode(mode) {
+        const isEdit = mode === "edit";
+        if (priceAlertModalVerb) priceAlertModalVerb.textContent = isEdit ? "Edit" : "Create";
+        if (priceAlertCreateBtn) priceAlertCreateBtn.textContent = isEdit ? "Save" : "Create";
+        if (priceAlertDeleteBtn) priceAlertDeleteBtn.hidden = !isEdit;
+        if (priceAlertCompareField) priceAlertCompareField.hidden = isEdit;
+        if (!isEdit && priceAlertCompareList) priceAlertCompareList.innerHTML = "";
+      }
+
       function closePriceAlertModal() {
         if (!priceAlertModal) return;
         priceAlertModal.classList.remove("open");
         priceAlertModal.setAttribute("aria-hidden", "true");
         state.priceAlertDraftPrice = null;
+        state.priceAlertEditingId = null;
+        state.priceAlertEditingAlert = null;
+        setPriceAlertModalMode("create");
+        if (priceAlertCompareField) priceAlertCompareField.hidden = true;
+        if (priceAlertCompareList) priceAlertCompareList.innerHTML = "";
       }
 
       function selectedCardAlertLabel(item) {
@@ -4995,17 +6987,87 @@
         return "Card";
       }
 
+      function buildPriceAlertMessageForItem(item, price, condition) {
+        const label = selectedCardAlertLabel(item);
+        const priceText = Number.isFinite(Number(price)) ? formatPriceAxisLabel(Number(price)) : "";
+        const cond = String(condition || "crossing");
+        if (cond === "above") return `${label} Crossing up ${priceText}`;
+        if (cond === "below") return `${label} Crossing down ${priceText}`;
+        return `${label} Crossing ${priceText}`;
+      }
+
+      function getPriceAlertMessageContextItem() {
+        const item = getWatchlistItem(state.selectedWatchlistId);
+        if (item) return item;
+        const alert = state.priceAlertEditingAlert;
+        if (!alert) return null;
+        return {
+          cardName: alert.cardName || alert.cardLabel || "",
+          card: alert.cardLabel || alert.cardName || "",
+          setCode: alert.setCode || "",
+          cardNo: alert.cardNo || ""
+        };
+      }
+
       function syncPriceAlertMessagePreview() {
         if (!priceAlertMessage || priceAlertMessage.dataset.userEdited === "1") return;
-        const item = getWatchlistItem(state.selectedWatchlistId);
-        const label = selectedCardAlertLabel(item);
+        const item = getPriceAlertMessageContextItem();
         const price = Number(priceAlertValue?.value);
         const condition = priceAlertCondition?.value || "crossing";
-        const priceText = Number.isFinite(price) ? formatPriceAxisLabel(price) : "";
-        let msg = `${label} Crossing ${priceText}`;
-        if (condition === "above") msg = `${label} Crossing up ${priceText}`;
-        if (condition === "below") msg = `${label} Crossing down ${priceText}`;
-        priceAlertMessage.value = msg;
+        priceAlertMessage.value = buildPriceAlertMessageForItem(item, price, condition);
+      }
+
+      function syncPriceAlertCompareOptions() {
+        if (!priceAlertCompareField || !priceAlertCompareList) return;
+        const entries = Array.isArray(state.comparisons)
+          ? state.comparisons.filter((c) => c && c.item && c.id)
+          : [];
+        if (!entries.length) {
+          priceAlertCompareField.hidden = true;
+          priceAlertCompareList.innerHTML = "";
+          return;
+        }
+        priceAlertCompareField.hidden = false;
+        const rows = entries
+          .map((entry) => {
+            const label = escapeHtml(selectedCardAlertLabel(entry.item));
+            const color = comparePaletteAt(entry.colorIndex).border;
+            return `<label><input type="checkbox" class="price-alert-compare-item" value="${escapeHtml(entry.id)}" checked /><span style="color:${color}">${label}</span></label>`;
+          })
+          .join("");
+        priceAlertCompareList.innerHTML =
+          rows +
+          `<label class="price-alert-compare-all"><input type="checkbox" id="priceAlertCompareSelectAll" checked /> Select all</label>`;
+        const selectAll = document.getElementById("priceAlertCompareSelectAll");
+        const itemChecks = () =>
+          Array.from(priceAlertCompareList.querySelectorAll("input.price-alert-compare-item"));
+        selectAll?.addEventListener("change", () => {
+          const on = Boolean(selectAll.checked);
+          itemChecks().forEach((el) => {
+            el.checked = on;
+          });
+        });
+        itemChecks().forEach((el) => {
+          el.addEventListener("change", () => {
+            if (!selectAll) return;
+            const all = itemChecks();
+            selectAll.checked = all.length > 0 && all.every((c) => c.checked);
+          });
+        });
+      }
+
+      function selectedCompareItemsForAlert() {
+        if (!priceAlertCompareList || priceAlertCompareField?.hidden) return [];
+        const ids = Array.from(
+          priceAlertCompareList.querySelectorAll("input.price-alert-compare-item:checked")
+        ).map((el) => String(el.value || "").trim());
+        if (!ids.length) return [];
+        const byId = new Map(
+          (state.comparisons || [])
+            .filter((c) => c && c.item && c.id)
+            .map((c) => [String(c.id), c.item])
+        );
+        return ids.map((id) => byId.get(id)).filter(Boolean);
       }
 
       function openPriceAlertModal(price) {
@@ -5019,6 +7081,9 @@
           window.alert("Select a watchlist card first.");
           return;
         }
+        state.priceAlertEditingId = null;
+        state.priceAlertEditingAlert = null;
+        setPriceAlertModalMode("create");
         const p = Number(price);
         state.priceAlertDraftPrice = Number.isFinite(p) && p > 0 ? p : null;
         if (priceAlertSymbol) priceAlertSymbol.textContent = selectedCardAlertLabel(item);
@@ -5034,6 +7099,49 @@
         }
         if (priceAlertEmailHint) {
           priceAlertEmailHint.hidden = Boolean(state.priceAlertEmailConfigured);
+        }
+        syncPriceAlertCompareOptions();
+        priceAlertModal.classList.add("open");
+        priceAlertModal.setAttribute("aria-hidden", "false");
+        priceAlertValue?.focus();
+      }
+
+      function openPriceAlertModalForEdit(alert) {
+        if (!priceAlertModal || !alert) return;
+        if (!isWatchlistAccountSignedIn()) {
+          window.alert("Sign in to edit price alerts.");
+          return;
+        }
+        if (String(alert.status || "") !== "active") {
+          window.alert("Only active alerts can be edited.");
+          return;
+        }
+        state.priceAlertEditingId = String(alert.id || "").trim();
+        state.priceAlertEditingAlert = alert;
+        setPriceAlertModalMode("edit");
+        const label = String(alert.cardLabel || alert.cardName || "Card").trim();
+        if (priceAlertSymbol) priceAlertSymbol.textContent = label;
+        if (priceAlertValue) {
+          const price = Number(alert.price);
+          priceAlertValue.value = Number.isFinite(price) ? String(Number(price.toFixed(4))) : "";
+        }
+        if (priceAlertCondition) priceAlertCondition.value = alert.condition || "crossing";
+        if (priceAlertRecurrence) {
+          priceAlertRecurrence.value = alert.recurrence === "recurring" ? "recurring" : "once";
+        }
+        if (priceAlertExpires) priceAlertExpires.value = alertExpiryToLocalInput(alert.expiresAt);
+        if (priceAlertNotifyToast) priceAlertNotifyToast.checked = alert.notifyToast !== false;
+        if (priceAlertNotifyEmail) priceAlertNotifyEmail.checked = alert.notifyEmail !== false;
+        if (priceAlertMessage) {
+          priceAlertMessage.dataset.userEdited = "1";
+          priceAlertMessage.value = String(alert.message || "").trim();
+        }
+        if (priceAlertEmailHint) {
+          priceAlertEmailHint.hidden = Boolean(state.priceAlertEmailConfigured);
+        }
+        const watchId = String(alert.watchlistCardId || "").trim();
+        if (watchId && getWatchlistItem(watchId)) {
+          if (state.selectedWatchlistId !== watchId) selectWatchlistCard(watchId);
         }
         priceAlertModal.classList.add("open");
         priceAlertModal.setAttribute("aria-hidden", "false");
@@ -5066,6 +7174,51 @@
         }
       }
 
+      async function postPriceAlertForItem(item, {
+        price,
+        condition,
+        recurrence,
+        notifyToast,
+        notifyEmail,
+        message,
+        expiresAt
+      } = {}) {
+        if (!item) return { ok: false, error: "Missing card." };
+        const sealed = isSealedWatchlistItem(item);
+        const res = await fetch("/api/poke-view/price-alerts", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            watchlistCardId: item.id,
+            kind: sealed ? "sealed" : "single",
+            setCode: item.setCode || "",
+            cardNo: sealed ? "" : item.cardNo || "",
+            cardName: item.cardName || item.card || "",
+            setName: item.setName || "",
+            productId: sealed
+              ? String(item.productId || String(item.id || "").replace(/^sealed:/i, "")).trim()
+              : "",
+            productUrl: sealed
+              ? String(item.productUrl || item.priceChartingUrl || "").trim()
+              : "",
+            cardLabel: selectedCardAlertLabel(item),
+            price,
+            condition,
+            recurrence,
+            notifyToast,
+            notifyEmail,
+            message: String(message || "").trim(),
+            expiresAt
+          })
+        });
+        const payload = await res.json().catch(() => null);
+        if (!res.ok || !payload?.ok) {
+          return { ok: false, error: payload?.error || "Could not create alert." };
+        }
+        return { ok: true, alert: payload.alert || null };
+      }
+
       async function createPriceAlertFromModal() {
         if (!isWatchlistAccountSignedIn()) {
           window.alert("Sign in to create price alerts.");
@@ -5092,52 +7245,161 @@
           const ts = Date.parse(priceAlertExpires.value);
           if (Number.isFinite(ts)) expiresAt = new Date(ts).toISOString();
         }
+        const condition = priceAlertCondition?.value || "crossing";
+        const recurrence = priceAlertRecurrence?.value || "once";
+        const userEditedMessage = priceAlertMessage?.dataset.userEdited === "1";
+        const mainMessage = String(priceAlertMessage?.value || "").trim();
+        const compareItems = selectedCompareItemsForAlert();
+        const targets = [item, ...compareItems];
         if (priceAlertCreateBtn) priceAlertCreateBtn.disabled = true;
         try {
-          const sealed = isSealedWatchlistItem(item);
-          const res = await fetch("/api/poke-view/price-alerts", {
-            method: "POST",
-            credentials: "same-origin",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              watchlistCardId: item.id,
-              kind: sealed ? "sealed" : "single",
-              setCode: item.setCode || "",
-              cardNo: sealed ? "" : item.cardNo || "",
-              cardName: item.cardName || item.card || "",
-              setName: item.setName || "",
-              productId: sealed
-                ? String(item.productId || String(item.id || "").replace(/^sealed:/i, "")).trim()
-                : "",
-              productUrl: sealed
-                ? String(item.productUrl || item.priceChartingUrl || "").trim()
-                : "",
-              cardLabel: selectedCardAlertLabel(item),
+          let created = 0;
+          let firstAlert = null;
+          let firstError = "";
+          for (let i = 0; i < targets.length; i += 1) {
+            const target = targets[i];
+            const message =
+              i === 0 && userEditedMessage && mainMessage
+                ? mainMessage
+                : buildPriceAlertMessageForItem(target, price, condition);
+            const result = await postPriceAlertForItem(target, {
               price,
-              condition: priceAlertCondition?.value || "crossing",
-              recurrence: priceAlertRecurrence?.value || "once",
+              condition,
+              recurrence,
               notifyToast,
               notifyEmail,
-              message: String(priceAlertMessage?.value || "").trim(),
+              message,
               expiresAt
-            })
-          });
-          const payload = await res.json().catch(() => null);
-          if (!res.ok || !payload?.ok) {
-            window.alert(payload?.error || "Could not create alert.");
+            });
+            if (result.ok) {
+              created += 1;
+              if (!firstAlert) firstAlert = result.alert;
+            } else if (!firstError) {
+              firstError = result.error || "Could not create alert.";
+            }
+          }
+          if (!created) {
+            window.alert(firstError || "Could not create alert.");
             return;
           }
           closePriceAlertModal();
-          await loadPriceAlertsForSelectedCard();
-          pushLocalPriceAlertToast({
-            title: "Alert created",
-            message: payload.alert?.message || `Watching ${formatPriceAxisLabel(price)}`
-          });
+          await refreshPriceAlertViews();
+          const priceText = formatPriceAxisLabel(price);
+          if (created === 1) {
+            pushLocalPriceAlertToast({
+              title: "Alert created",
+              message: firstAlert?.message || `Watching ${priceText}`
+            });
+          } else {
+            pushLocalPriceAlertToast({
+              title: "Alerts created",
+              message: `${created} alerts at ${priceText}`
+            });
+          }
+          if (created < targets.length && firstError) {
+            window.alert(`Created ${created} of ${targets.length} alerts. ${firstError}`);
+          }
         } catch {
           window.alert("Network error while creating alert.");
         } finally {
           if (priceAlertCreateBtn) priceAlertCreateBtn.disabled = false;
         }
+      }
+
+      async function refreshPriceAlertViews() {
+        await loadPriceAlertsForSelectedCard();
+        if (state.discoveryTab === "alerts") {
+          await loadDiscoveryAlertsTab();
+        }
+      }
+
+      async function patchPriceAlertById(alertId, patch = {}) {
+        const id = String(alertId || "").trim();
+        if (!id || !isWatchlistAccountSignedIn()) {
+          return { ok: false, error: "Sign in required." };
+        }
+        const res = await fetch(`/api/poke-view/price-alerts/${encodeURIComponent(id)}`, {
+          method: "PATCH",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(patch || {})
+        });
+        const payload = await res.json().catch(() => null);
+        if (!res.ok || !payload?.ok) {
+          return { ok: false, error: payload?.error || "Could not update alert." };
+        }
+        return { ok: true, alert: payload.alert || null };
+      }
+
+      async function updatePriceAlertFromModal() {
+        const alertId = String(state.priceAlertEditingId || "").trim();
+        if (!alertId) return;
+        const price = Number(priceAlertValue?.value);
+        if (!Number.isFinite(price) || price <= 0) {
+          window.alert("Enter a valid alert price.");
+          return;
+        }
+        const notifyToast = Boolean(priceAlertNotifyToast?.checked);
+        const notifyEmail = Boolean(priceAlertNotifyEmail?.checked);
+        if (!notifyToast && !notifyEmail) {
+          window.alert("Choose toast and/or email notification.");
+          return;
+        }
+        let expiresAt = null;
+        if (priceAlertExpires?.value) {
+          const ts = Date.parse(priceAlertExpires.value);
+          if (Number.isFinite(ts)) expiresAt = new Date(ts).toISOString();
+        }
+        const condition = priceAlertCondition?.value || "crossing";
+        const recurrence = priceAlertRecurrence?.value || "once";
+        const message = String(priceAlertMessage?.value || "").trim();
+        if (priceAlertCreateBtn) priceAlertCreateBtn.disabled = true;
+        try {
+          const result = await patchPriceAlertById(alertId, {
+            price,
+            condition,
+            recurrence,
+            notifyToast,
+            notifyEmail,
+            message,
+            expiresAt,
+            status: "active"
+          });
+          if (!result.ok) {
+            window.alert(result.error || "Could not update alert.");
+            return;
+          }
+          closePriceAlertModal();
+          await refreshPriceAlertViews();
+          pushLocalPriceAlertToast({
+            title: "Alert updated",
+            message: result.alert?.message || `Watching ${formatPriceAxisLabel(price)}`
+          });
+        } catch {
+          window.alert("Network error while updating alert.");
+        } finally {
+          if (priceAlertCreateBtn) priceAlertCreateBtn.disabled = false;
+        }
+      }
+
+      async function savePriceAlertFromModal() {
+        if (state.priceAlertEditingId) {
+          await updatePriceAlertFromModal();
+          return;
+        }
+        await createPriceAlertFromModal();
+      }
+
+      async function confirmDeletePriceAlert(alertId) {
+        const id = String(alertId || "").trim();
+        if (!id) return;
+        const alert =
+          state.discoveryRows.find((row) => row.id === id) ||
+          state.priceAlerts.find((row) => row.id === id) ||
+          (state.priceAlertEditingId === id ? state.priceAlertEditingAlert : null);
+        const label = String(alert?.cardLabel || alert?.cardName || "this alert").trim();
+        if (!window.confirm(`Delete price alert for ${label}?`)) return;
+        await removePriceAlertById(id);
       }
 
       async function removePriceAlertById(alertId) {
@@ -5153,7 +7415,12 @@
             window.alert(payload?.error || "Could not remove alert.");
             return;
           }
-          await loadPriceAlertsForSelectedCard();
+          if (state.priceAlertEditingId === id) closePriceAlertModal();
+          await refreshPriceAlertViews();
+          pushLocalPriceAlertToast({
+            title: "Alert deleted",
+            message: "Price alert removed."
+          });
         } catch {
           window.alert("Network error while removing alert.");
         }
@@ -5342,7 +7609,10 @@
         priceAlertCancelBtn?.addEventListener("click", closePriceAlertModal);
         priceAlertCloseBtn?.addEventListener("click", closePriceAlertModal);
         priceAlertCreateBtn?.addEventListener("click", () => {
-          void createPriceAlertFromModal();
+          void savePriceAlertFromModal();
+        });
+        priceAlertDeleteBtn?.addEventListener("click", () => {
+          if (state.priceAlertEditingId) void confirmDeletePriceAlert(state.priceAlertEditingId);
         });
         priceAlertModal?.addEventListener("click", (ev) => {
           if (ev.target === priceAlertModal) closePriceAlertModal();
@@ -5595,6 +7865,11 @@
           autoscaleInfoProvider: lwCandleAutoscaleInfoProvider
         };
 
+        // PSA 10 under primary. Compare is drawn on the overlay canvas so it
+        // cannot insert timestamps into the shared Lightweight Charts time scale.
+        ensurePsa10CandleSeries(lwChart);
+        hidePsa10CandleSeries();
+
         // v4/v5 compatibility for Lightweight Charts series API.
         if (typeof lwChart.addCandlestickSeries === "function") {
           lwCandleSeries = lwChart.addCandlestickSeries(candleOpts);
@@ -5603,6 +7878,7 @@
         } else {
           return null;
         }
+        ensureMainCandleSeriesOnTop();
 
         try {
           lwChart.priceScale("right").applyOptions({
@@ -5640,6 +7916,7 @@
           lwResizeObserver.observe(chartContainer);
         }
         syncCursorCrosshairMode();
+        bindChartComparePromoteDoubleClick();
         return lwChart;
       }
 
@@ -5647,8 +7924,26 @@
         const info = typeof original === "function" ? original() : null;
         const rawMin = Number(info?.priceRange?.minValue);
         const rawMax = Number(info?.priceRange?.maxValue);
-        const minValue = Math.max(0, Number.isFinite(rawMin) ? rawMin : 0);
-        const maxValue = Math.max(minValue + 1e-6, Number.isFinite(rawMax) ? rawMax : minValue + 1);
+        let minValue = Math.max(0, Number.isFinite(rawMin) ? rawMin : 0);
+        let maxValue = Math.max(minValue + 1e-6, Number.isFinite(rawMax) ? rawMax : minValue + 1);
+        // Fold compare prices into the primary scale without adding a second series
+        // (a second series would mutate the shared time scale / viewport).
+        const cmps = comparisonsWithData();
+        if (cmps.length) {
+          const primary = getDisplayCandles();
+          const visible = getLwVisibleTimeRange(lwChart);
+          for (const entry of cmps) {
+            for (const c of candlesToDrawForCompareEntry(entry, primary)) {
+              const t = toLwTimeSec(c);
+              if (visible && (t < visible.from || t > visible.to)) continue;
+              const hi = Number(c.high);
+              const lo = Number(c.low);
+              if (Number.isFinite(lo)) minValue = Math.min(minValue, Math.max(0, lo));
+              if (Number.isFinite(hi)) maxValue = Math.max(maxValue, hi);
+            }
+          }
+          if (maxValue <= minValue) maxValue = minValue + 1e-6;
+        }
         return {
           priceRange: { minValue, maxValue },
           margins: info?.margins
@@ -5686,13 +7981,23 @@
       }
 
       function hideCompareCandleSeries() {
-        if (!lwCompareCandleSeries) return false;
-        try {
-          lwCompareCandleSeries.applyOptions({ visible: false });
-        } catch {
-          /* ignore */
-        }
+        destroyCompareCandleSeries(lwChart);
         return true;
+      }
+
+      /** Keep the primary card/product candles above PSA 10 overlay. */
+      function ensureMainCandleSeriesOnTop() {
+        if (!lwCandleSeries || typeof lwCandleSeries.setSeriesOrder !== "function") return;
+        try {
+          let order = 0;
+          if (lwPsa10CandleSeries && typeof lwPsa10CandleSeries.setSeriesOrder === "function") {
+            lwPsa10CandleSeries.setSeriesOrder(order);
+            order += 1;
+          }
+          lwCandleSeries.setSeriesOrder(order);
+        } catch {
+          /* ignore older chart builds */
+        }
       }
 
       function ensurePsa10CandleSeries(chart) {
@@ -5717,26 +8022,9 @@
       }
 
       function ensureCompareCandleSeries(chart) {
-        if (lwCompareCandleSeries) return lwCompareCandleSeries;
-        if (!chart) return null;
-        const compareOpts = {
-          upColor: "rgba(8, 153, 129, 0.25)",
-          downColor: "rgba(242, 54, 69, 0.25)",
-          borderUpColor: "#ffab40",
-          borderDownColor: "#ffab40",
-          wickUpColor: "rgba(255, 171, 64, 0.85)",
-          wickDownColor: "rgba(255, 171, 64, 0.85)",
-          borderVisible: true,
-          priceLineVisible: false,
-          lastValueVisible: true,
-          autoscaleInfoProvider: lwCandleAutoscaleInfoProvider
-        };
-        if (typeof chart.addCandlestickSeries === "function") {
-          lwCompareCandleSeries = chart.addCandlestickSeries(compareOpts);
-        } else if (typeof chart.addSeries === "function" && window.LightweightCharts.CandlestickSeries) {
-          lwCompareCandleSeries = chart.addSeries(window.LightweightCharts.CandlestickSeries, compareOpts);
-        }
-        return lwCompareCandleSeries;
+        // Intentionally unused: compare candles are painted on the drawing canvas
+        // so they never participate in the Lightweight Charts time scale.
+        return null;
       }
 
       function syncPsa10Overlay(chart) {
@@ -5751,31 +8039,59 @@
         const psa10Data = candlesToLwData(state.historyCandlesPsa10Full);
         psa10Series.applyOptions({ visible: true });
         psa10Series.setData(psa10Data);
+        ensureMainCandleSeriesOnTop();
       }
 
       function syncCompareOverlay(chart) {
-        if (!chart) return;
-        const shouldShow =
-          Boolean(state.compareItem) && Array.isArray(state.historyCandlesCompareFull) &&
-          state.historyCandlesCompareFull.length > 0;
-        if (!shouldShow) {
-          hideCompareCandleSeries();
-          return;
+        // Drop any legacy LW compare series; paint happens in renderChartDrawingsOverlay.
+        destroyCompareCandleSeries(chart || lwChart);
+        renderChartDrawingsOverlay();
+      }
+
+      function drawCompareCandlesOverlay(ctx, width) {
+        if (!ctx || !lwChart || !lwCandleSeries) return;
+        const cmps = comparisonsWithData();
+        if (!cmps.length) return;
+        const primary = getDisplayCandles();
+        if (!primary.length) return;
+
+        let barSpacing = 6;
+        try {
+          barSpacing = Number(lwChart.timeScale().options()?.barSpacing) || 6;
+        } catch {
+          /* ignore */
         }
-        const compareSeries = ensureCompareCandleSeries(chart);
-        if (!compareSeries) return;
-        const compareData = candlesToLwData(state.historyCandlesCompareFull);
-        compareSeries.applyOptions({
-          visible: true,
-          upColor: "rgba(8, 153, 129, 0.25)",
-          downColor: "rgba(242, 54, 69, 0.25)",
-          borderUpColor: "#ffab40",
-          borderDownColor: "#ffab40",
-          wickUpColor: "rgba(255, 171, 64, 0.85)",
-          wickDownColor: "rgba(255, 171, 64, 0.85)",
-          borderVisible: true
-        });
-        compareSeries.setData(compareData);
+        const candleWidth = Math.max(2, barSpacing * 0.62);
+
+        ctx.save();
+        for (const entry of cmps) {
+          const toDraw = candlesToDrawForCompareEntry(entry, primary);
+          if (!toDraw.length) continue;
+          const palette = comparePaletteAt(entry.colorIndex);
+          for (const c of toDraw) {
+            const t = toLwTimeSec(c);
+            const x = lwTimeToX(t);
+            if (x == null || x < -40 || x > width + 40) continue;
+            const yOpen = lwPriceToY(c.open);
+            const yClose = lwPriceToY(c.close);
+            const yHigh = lwPriceToY(c.high);
+            const yLow = lwPriceToY(c.low);
+            if (yHigh == null || yLow == null || yOpen == null || yClose == null) continue;
+
+            ctx.strokeStyle = palette.wick;
+            ctx.beginPath();
+            ctx.moveTo(x, yHigh);
+            ctx.lineTo(x, yLow);
+            ctx.stroke();
+
+            const bodyTop = Math.min(yOpen, yClose);
+            const bodyH = Math.max(1, Math.abs(yClose - yOpen));
+            // Outline-only so green/red fills stay exclusive to the main series.
+            ctx.strokeStyle = palette.border;
+            ctx.strokeRect(x - candleWidth / 2, bodyTop, candleWidth, bodyH);
+          }
+        }
+        ctx.restore();
       }
 
       function getLwVisibleTimeRange(chart) {
@@ -5841,10 +8157,19 @@
         };
       }
 
-      function restoreLwViewport(chart, captured, { bars = null } = {}) {
+      function restoreLwViewport(chart, captured, { bars = null, preferTime = false } = {}) {
         if (!chart) return;
-        if (captured?.logical && setLwVisibleLogicalRange(chart, captured.logical)) return;
-        if (captured?.time && setLwVisibleTimeRange(chart, captured.time)) return;
+        // Prefer calendar time when overlay series may have inserted/removed timestamps;
+        // logical bar indices from before that merge map to the wrong historical dates.
+        const tryTime = () => captured?.time && setLwVisibleTimeRange(chart, captured.time);
+        const tryLogical = () => captured?.logical && setLwVisibleLogicalRange(chart, captured.logical);
+        if (preferTime) {
+          if (tryTime()) return;
+          if (tryLogical()) return;
+        } else {
+          if (tryLogical()) return;
+          if (tryTime()) return;
+        }
         if (bars && bars.length) {
           applyChartTimeScaleForPreset(chart, state.activeRangePreset, bars);
         }
@@ -5852,12 +8177,16 @@
 
       function refreshChartSeriesData(chart, candleData) {
         if (!chart || !lwCandleSeries) return;
+        const hasPsa10Overlay =
+          state.showPsa10Overlay &&
+          Array.isArray(state.historyCandlesPsa10Full) &&
+          state.historyCandlesPsa10Full.length > 0;
         const captured =
           !state.applyChartViewportOnNextDraw ? captureLwViewport(chart) : null;
         lwCandleSeries.setData(candleData);
         syncPsa10Overlay(chart);
         syncCompareOverlay(chart);
-        if (captured) restoreLwViewport(chart, captured);
+        if (captured) restoreLwViewport(chart, captured, { preferTime: hasPsa10Overlay });
       }
 
       function candlesToLwData(bars) {
@@ -5868,6 +8197,107 @@
           low: clampChartPrice(c.low),
           close: clampChartPrice(c.close)
         }));
+      }
+
+      function primaryTimeBoundsMs(primaryCandles) {
+        const times = (Array.isArray(primaryCandles) ? primaryCandles : [])
+          .map((c) => Number(c?.ts))
+          .filter((ts) => Number.isFinite(ts));
+        if (!times.length) return null;
+        let startMs = times[0];
+        let endMs = times[0];
+        for (let i = 1; i < times.length; i += 1) {
+          if (times[i] < startMs) startMs = times[i];
+          if (times[i] > endMs) endMs = times[i];
+        }
+        return { startMs, endMs };
+      }
+
+      /**
+       * Whitespace timestamps for compare history outside the primary span so
+       * older/newer compare candles can render without densifying the main range.
+       */
+      function collectCompareExtensionTimeSecs(primaryBars) {
+        const bounds = primaryTimeBoundsMs(primaryBars);
+        if (!bounds) return [];
+        const primarySecs = new Set(
+          (Array.isArray(primaryBars) ? primaryBars : []).map((c) => toLwTimeSec(c))
+        );
+        const extra = new Set();
+        for (const entry of comparisonsWithData()) {
+          for (const c of entry.candles || []) {
+            const ts = Number(c?.ts);
+            if (!Number.isFinite(ts)) continue;
+            if (ts >= bounds.startMs && ts <= bounds.endMs) continue;
+            const tSec = Math.floor(ts / 1000);
+            if (!primarySecs.has(tSec)) extra.add(tSec);
+          }
+        }
+        return [...extra].sort((a, b) => a - b);
+      }
+
+      function candlesToLwDataWithCompareExtensions(bars) {
+        const candleData = candlesToLwData(bars);
+        const extensions = collectCompareExtensionTimeSecs(bars);
+        if (!extensions.length) return candleData;
+        const merged = candleData.concat(extensions.map((time) => ({ time })));
+        merged.sort((a, b) => Number(a.time) - Number(b.time));
+        return merged;
+      }
+
+      /**
+       * Within the primary span, map compare onto primary dates. Outside that
+       * span, keep compare's own timestamps so older history can still show.
+       */
+      function candlesToDrawForCompareEntry(entry, primaryCandles) {
+        const primary = Array.isArray(primaryCandles) ? primaryCandles : [];
+        const overlay = Array.isArray(entry?.candles) ? entry.candles : [];
+        if (!overlay.length) return [];
+        const aligned = alignOverlayCandlesToPrimaryTimeline(overlay, primary);
+        const bounds = primaryTimeBoundsMs(primary);
+        if (!bounds) return aligned;
+        const extras = [];
+        for (const c of overlay) {
+          const ts = Number(c?.ts);
+          if (!Number.isFinite(ts)) continue;
+          if (ts >= bounds.startMs && ts <= bounds.endMs) continue;
+          extras.push(c);
+        }
+        if (!extras.length) return aligned;
+        return aligned.concat(extras);
+      }
+
+      /**
+       * Map overlay OHLC onto the primary series timestamps only.
+       * Prevents Lightweight Charts from inserting compare-only dates into the
+       * shared time scale (which shoves the main chart along the timeline).
+       */
+      function alignOverlayCandlesToPrimaryTimeline(overlayCandles, primaryCandles) {
+        const primary = Array.isArray(primaryCandles) ? primaryCandles : [];
+        const overlay = (Array.isArray(overlayCandles) ? overlayCandles : [])
+          .filter((c) => Number.isFinite(Number(c?.ts)))
+          .slice()
+          .sort((a, b) => Number(a.ts) - Number(b.ts));
+        if (!primary.length || !overlay.length) return [];
+
+        let j = 0;
+        const aligned = [];
+        for (const p of primary) {
+          const pts = Number(p.ts);
+          if (!Number.isFinite(pts)) continue;
+          while (j + 1 < overlay.length && Number(overlay[j + 1].ts) <= pts) j += 1;
+          const cand = overlay[j];
+          if (!cand || Number(cand.ts) > pts) continue;
+          aligned.push({
+            open: cand.open,
+            high: cand.high,
+            low: cand.low,
+            close: cand.close,
+            volume: cand.volume,
+            ts: pts
+          });
+        }
+        return aligned;
       }
 
       function syncLightweightChartSize() {
@@ -6030,8 +8460,8 @@
             return;
           }
           lwCandleSeries.setData([]);
-          destroyPsa10CandleSeries(chart);
-          destroyCompareCandleSeries(chart);
+          hidePsa10CandleSeries();
+          hideCompareCandleSeries();
           hideChartHoverLegend();
           syncChartSymbolHeader();
           updateChartOverlay();
@@ -6040,7 +8470,7 @@
           return;
         }
 
-        const candleData = candlesToLwData(bars);
+        const candleData = candlesToLwDataWithCompareExtensions(bars);
         const needsScaleReset = state.applyChartPriceScaleOnNextDraw;
         const needsViewport = state.applyChartViewportOnNextDraw;
         const capturedViewport = !needsViewport ? captureLwViewport(chart) : null;
@@ -6072,24 +8502,17 @@
             });
           });
         } else if (capturedViewport) {
-          restoreLwViewport(chart, capturedViewport, { bars });
+          const preferTime =
+            state.showPsa10Overlay &&
+            Array.isArray(state.historyCandlesPsa10Full) &&
+            state.historyCandlesPsa10Full.length > 0;
+          restoreLwViewport(chart, capturedViewport, { bars, preferTime });
         }
         updateChartOverlay();
         renderChartDrawingsOverlay();
         syncPriceAlertLines();
       }
 
-      if (resetLayoutBtn) {
-        resetLayoutBtn.addEventListener("click", () => {
-          state.watchlistWidth = 320;
-          resetChartView();
-          state.applyChartViewportOnNextDraw = true;
-          state.applyChartPriceScaleOnNextDraw = true;
-          applyPanelWidths();
-          updateResetButtonVisibility();
-          drawChart();
-        });
-      }
       window.addEventListener("keydown", (event) => {
         if (event.key === "Escape") {
           hideChartContextMenu();
@@ -6106,7 +8529,6 @@
         drawChart();
       });
       applyPanelWidths();
-      updateResetButtonVisibility();
       document.querySelectorAll(".chart-range-btn").forEach((btn) => {
         btn.addEventListener("click", () => {
           const r = btn.getAttribute("data-range");
@@ -6115,6 +8537,7 @@
       });
       updateRangeTabButtons();
       updatePsa10ToggleUi();
+      syncDiscoveryToolbarUi();
       renderWatchlist();
       initChartDrawingLayer();
       initPriceAlertUi();

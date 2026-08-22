@@ -168,11 +168,27 @@ function getPriceChartingMarketHistoryCacheMeta() {
   };
 }
 
+function forEachCachedChartEntry(callback) {
+  if (typeof callback !== "function") return 0;
+  const now = Date.now();
+  let count = 0;
+  for (const [key, row] of memCache.entries()) {
+    if (!row || row.expiresAt <= now || !cacheValueValid(row.value)) {
+      if (row) memCache.delete(key);
+      continue;
+    }
+    callback(key, row.value);
+    count += 1;
+  }
+  return count;
+}
+
 module.exports = {
   loadPersistedPriceChartingMarketHistoryCache,
   persistMarketHistoryCacheNow,
   enqueuePersistMarketHistoryCacheNow,
   getPriceChartingMarketHistoryCacheMeta,
+  forEachCachedChartEntry,
   readCachedChartEntry,
   writeCachedChartEntry
 };

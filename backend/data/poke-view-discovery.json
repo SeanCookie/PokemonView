@@ -1,0 +1,1317 @@
+{
+  "version": 1,
+  "builtAt": "2026-08-22T05:24:10.562Z",
+  "sourceEntries": 20,
+  "items": [
+    {
+      "id": "SVI:13",
+      "kind": "single",
+      "setCode": "SVI",
+      "cardNo": "13",
+      "setName": "Scarlet & Violet",
+      "cardName": "",
+      "label": "SVI #13",
+      "productId": "5165643",
+      "productUrl": "https://www.pricecharting.com/game/pokemon-scarlet-%26-violet/sprigatito-holo-13",
+      "last": 1.99,
+      "metrics": {
+        "1D": {
+          "last": 1.99,
+          "change": 0,
+          "changePct": 0,
+          "startPrice": 1.99
+        },
+        "1W": {
+          "last": 1.99,
+          "change": 0,
+          "changePct": 0,
+          "startPrice": 1.99
+        },
+        "1M": {
+          "last": 1.99,
+          "change": 0,
+          "changePct": 0,
+          "startPrice": 1.99
+        },
+        "3M": {
+          "last": 1.99,
+          "change": -0.18,
+          "changePct": -8.29,
+          "startPrice": 2.17
+        },
+        "90D": {
+          "last": 1.99,
+          "change": -0.18,
+          "changePct": -8.29,
+          "startPrice": 2.17
+        },
+        "1Y": {
+          "last": 1.99,
+          "change": -0.29,
+          "changePct": -12.72,
+          "startPrice": 2.28
+        },
+        "YTD": {
+          "last": 1.99,
+          "change": -0.4,
+          "changePct": -16.74,
+          "startPrice": 2.39
+        }
+      },
+      "undervaluedScore": 0.0293,
+      "undervaluedReason": "",
+      "breakoutScore": null,
+      "breakoutReason": "",
+      "pointCount": 40
+    },
+    {
+      "id": "SWSHP:005",
+      "kind": "single",
+      "setCode": "SWSHP",
+      "cardNo": "005",
+      "setName": "Sword & Shield Promos",
+      "cardName": "",
+      "label": "SWSHP #005",
+      "productId": "643519",
+      "productUrl": "https://www.pricecharting.com/game/pokemon-promo/dragonite-5",
+      "last": 28.5,
+      "metrics": {
+        "1D": {
+          "last": 28.5,
+          "change": -4,
+          "changePct": -12.31,
+          "startPrice": 32.5
+        },
+        "1W": {
+          "last": 28.5,
+          "change": -4,
+          "changePct": -12.31,
+          "startPrice": 32.5
+        },
+        "1M": {
+          "last": 28.5,
+          "change": -4,
+          "changePct": -12.31,
+          "startPrice": 32.5
+        },
+        "3M": {
+          "last": 28.5,
+          "change": -6.37,
+          "changePct": -18.27,
+          "startPrice": 34.87
+        },
+        "90D": {
+          "last": 28.5,
+          "change": -6.37,
+          "changePct": -18.27,
+          "startPrice": 34.87
+        },
+        "1Y": {
+          "last": 28.5,
+          "change": 11,
+          "changePct": 62.86,
+          "startPrice": 17.5
+        },
+        "YTD": {
+          "last": 28.5,
+          "change": 8.51,
+          "changePct": 42.57,
+          "startPrice": 19.99
+        }
+      },
+      "undervaluedScore": 0.1083,
+      "undervaluedReason": "",
+      "breakoutScore": null,
+      "breakoutReason": "",
+      "pointCount": 68
+    },
+    {
+      "id": "SWSHP:SWSH177",
+      "kind": "single",
+      "setCode": "SWSHP",
+      "cardNo": "SWSH177",
+      "setName": "Sword & Shield Promos",
+      "cardName": "Special Delivery Bidoof",
+      "label": "Special Delivery Bidoof (Sword & Shield Promos #SWSH177)",
+      "productId": "2748082",
+      "productUrl": "https://www.pricecharting.com/game/pokemon-promo/special-delivery-bidoof-SWSH177",
+      "last": 710,
+      "metrics": {
+        "1D": {
+          "last": 710,
+          "change": 0,
+          "changePct": 0,
+          "startPrice": 710
+        },
+        "1W": {
+          "last": 710,
+          "change": 0,
+          "changePct": 0,
+          "startPrice": 710
+        },
+        "1M": {
+          "last": 710,
+          "change": 0,
+          "changePct": 0,
+          "startPrice": 710
+        },
+        "3M": {
+          "last": 710,
+          "change": -35,
+          "changePct": -4.7,
+          "startPrice": 745
+        },
+        "90D": {
+          "last": 710,
+          "change": -35,
+          "changePct": -4.7,
+          "startPrice": 745
+        },
+        "1Y": {
+          "last": 710,
+          "change": 248.05,
+          "changePct": 53.7,
+          "startPrice": 461.95
+        },
+        "YTD": {
+          "last": 710,
+          "change": 221.61,
+          "changePct": 45.38,
+          "startPrice": 488.39
+        }
+      },
+      "undervaluedScore": 0.0162,
+      "undervaluedReason": "",
+      "breakoutScore": null,
+      "breakoutReason": "",
+      "pointCount": 58
+    },
+    {
+      "id": "MEP:003",
+      "kind": "single",
+      "setCode": "MEP",
+      "cardNo": "003",
+      "setName": "Mega Evolution Promos",
+      "cardName": "Alakazam",
+      "label": "Alakazam (Mega Evolution Promos #003)",
+      "productId": "643534",
+      "productUrl": "https://www.pricecharting.com/game/pokemon-promo/mewtwo-3",
+      "last": 19.38,
+      "metrics": {
+        "1D": {
+          "last": 19.38,
+          "change": -0.87,
+          "changePct": -4.3,
+          "startPrice": 20.25
+        },
+        "1W": {
+          "last": 19.38,
+          "change": -0.87,
+          "changePct": -4.3,
+          "startPrice": 20.25
+        },
+        "1M": {
+          "last": 19.38,
+          "change": -0.87,
+          "changePct": -4.3,
+          "startPrice": 20.25
+        },
+        "3M": {
+          "last": 19.38,
+          "change": -2.46,
+          "changePct": -11.26,
+          "startPrice": 21.84
+        },
+        "90D": {
+          "last": 19.38,
+          "change": -2.46,
+          "changePct": -11.26,
+          "startPrice": 21.84
+        },
+        "1Y": {
+          "last": 19.38,
+          "change": 8.42,
+          "changePct": 76.82,
+          "startPrice": 10.96
+        },
+        "YTD": {
+          "last": 19.38,
+          "change": 2.88,
+          "changePct": 17.45,
+          "startPrice": 16.5
+        }
+      },
+      "undervaluedScore": 0.0542,
+      "undervaluedReason": "",
+      "breakoutScore": null,
+      "breakoutReason": "",
+      "pointCount": 68
+    },
+    {
+      "id": "PBL:004",
+      "kind": "single",
+      "setCode": "PBL",
+      "cardNo": "004",
+      "setName": "Pitch Black",
+      "cardName": "Lurantis ex",
+      "label": "Lurantis ex (Pitch Black #004)",
+      "productId": "13644030",
+      "productUrl": "https://www.pricecharting.com/game/pokemon-pitch-black/lurantis-ex-4",
+      "last": 1.38,
+      "metrics": {
+        "1D": {
+          "last": 1.38,
+          "change": 0.49,
+          "changePct": 55.06,
+          "startPrice": 0.89
+        },
+        "1W": {
+          "last": 1.38,
+          "change": 0.49,
+          "changePct": 55.06,
+          "startPrice": 0.89
+        },
+        "1M": {
+          "last": 1.38,
+          "change": 0.49,
+          "changePct": 55.06,
+          "startPrice": 0.89
+        },
+        "3M": {
+          "last": 1.38,
+          "change": 0.49,
+          "changePct": 55.06,
+          "startPrice": 0.89
+        },
+        "90D": {
+          "last": 1.38,
+          "change": 0.49,
+          "changePct": 55.06,
+          "startPrice": 0.89
+        },
+        "1Y": {
+          "last": 1.38,
+          "change": 0.49,
+          "changePct": 55.06,
+          "startPrice": 0.89
+        },
+        "YTD": {
+          "last": 1.38,
+          "change": 0.49,
+          "changePct": 55.06,
+          "startPrice": 0.89
+        }
+      },
+      "undervaluedScore": -0.2105,
+      "undervaluedReason": "",
+      "breakoutScore": 55.06,
+      "breakoutReason": "Near 52w high, up 55.06% (1M)",
+      "pointCount": 2
+    },
+    {
+      "id": "PAF:232",
+      "kind": "single",
+      "setCode": "PAF",
+      "cardNo": "232",
+      "setName": "Paldean Fates",
+      "cardName": "Mew ex",
+      "label": "Mew ex (Paldean Fates #232)",
+      "productId": "6277151",
+      "productUrl": "https://www.pricecharting.com/game/pokemon-paldean-fates/mew-ex-232",
+      "last": 963.57,
+      "metrics": {
+        "1D": {
+          "last": 963.57,
+          "change": -35.16,
+          "changePct": -3.52,
+          "startPrice": 998.73
+        },
+        "1W": {
+          "last": 963.57,
+          "change": -35.16,
+          "changePct": -3.52,
+          "startPrice": 998.73
+        },
+        "1M": {
+          "last": 963.57,
+          "change": -35.16,
+          "changePct": -3.52,
+          "startPrice": 998.73
+        },
+        "3M": {
+          "last": 963.57,
+          "change": 41.33,
+          "changePct": 4.48,
+          "startPrice": 922.24
+        },
+        "90D": {
+          "last": 963.57,
+          "change": 41.33,
+          "changePct": 4.48,
+          "startPrice": 922.24
+        },
+        "1Y": {
+          "last": 963.57,
+          "change": 338.57,
+          "changePct": 54.17,
+          "startPrice": 625
+        },
+        "YTD": {
+          "last": 963.57,
+          "change": 443.04,
+          "changePct": 85.11,
+          "startPrice": 520.53
+        }
+      },
+      "undervaluedScore": -0.0021,
+      "undervaluedReason": "",
+      "breakoutScore": null,
+      "breakoutReason": "",
+      "pointCount": 32
+    },
+    {
+      "id": "MEP:001",
+      "kind": "single",
+      "setCode": "MEP",
+      "cardNo": "001",
+      "setName": "Mega Evolution Promos",
+      "cardName": "Meganium",
+      "label": "Meganium (Mega Evolution Promos #001)",
+      "productId": "1341320",
+      "productUrl": "https://www.pricecharting.com/game/pokemon-promo/pikachu-1",
+      "last": 30.74,
+      "metrics": {
+        "1D": {
+          "last": 30.74,
+          "change": 2.47,
+          "changePct": 8.74,
+          "startPrice": 28.27
+        },
+        "1W": {
+          "last": 30.74,
+          "change": 2.47,
+          "changePct": 8.74,
+          "startPrice": 28.27
+        },
+        "1M": {
+          "last": 30.74,
+          "change": 2.47,
+          "changePct": 8.74,
+          "startPrice": 28.27
+        },
+        "3M": {
+          "last": 30.74,
+          "change": 10.74,
+          "changePct": 53.7,
+          "startPrice": 20
+        },
+        "90D": {
+          "last": 30.74,
+          "change": 10.74,
+          "changePct": 53.7,
+          "startPrice": 20
+        },
+        "1Y": {
+          "last": 30.74,
+          "change": 19.74,
+          "changePct": 179.45,
+          "startPrice": 11
+        },
+        "YTD": {
+          "last": 30.74,
+          "change": 15.49,
+          "changePct": 101.57,
+          "startPrice": 15.25
+        }
+      },
+      "undervaluedScore": -0.167,
+      "undervaluedReason": "",
+      "breakoutScore": 8.74,
+      "breakoutReason": "Near 52w high, up 8.74% (1M)",
+      "pointCount": 67
+    },
+    {
+      "id": "MEP:002",
+      "kind": "single",
+      "setCode": "MEP",
+      "cardNo": "002",
+      "setName": "Mega Evolution Promos",
+      "cardName": "Inteleon",
+      "label": "Inteleon (Mega Evolution Promos #002)",
+      "productId": "643521",
+      "productUrl": "https://www.pricecharting.com/game/pokemon-promo/electabuzz-2",
+      "last": 8.25,
+      "metrics": {
+        "1D": {
+          "last": 8.25,
+          "change": -1.75,
+          "changePct": -17.5,
+          "startPrice": 10
+        },
+        "1W": {
+          "last": 8.25,
+          "change": -1.75,
+          "changePct": -17.5,
+          "startPrice": 10
+        },
+        "1M": {
+          "last": 8.25,
+          "change": -1.75,
+          "changePct": -17.5,
+          "startPrice": 10
+        },
+        "3M": {
+          "last": 8.25,
+          "change": -0.93,
+          "changePct": -10.13,
+          "startPrice": 9.18
+        },
+        "90D": {
+          "last": 8.25,
+          "change": -0.93,
+          "changePct": -10.13,
+          "startPrice": 9.18
+        },
+        "1Y": {
+          "last": 8.25,
+          "change": 3.58,
+          "changePct": 76.66,
+          "startPrice": 4.67
+        },
+        "YTD": {
+          "last": 8.25,
+          "change": 2.94,
+          "changePct": 55.37,
+          "startPrice": 5.31
+        }
+      },
+      "undervaluedScore": 0.0974,
+      "undervaluedReason": "",
+      "breakoutScore": null,
+      "breakoutReason": "",
+      "pointCount": 68
+    },
+    {
+      "id": "MEP:065",
+      "kind": "single",
+      "setCode": "MEP",
+      "cardNo": "065",
+      "setName": "Mega Evolution Promos",
+      "cardName": "Barbaracle",
+      "label": "Barbaracle (Mega Evolution Promos #065)",
+      "productId": "12390069",
+      "productUrl": "https://www.pricecharting.com/game/pokemon-promo/barbaracle-65",
+      "last": 8.52,
+      "metrics": {
+        "1D": {
+          "last": 8.52,
+          "change": -2.13,
+          "changePct": -20,
+          "startPrice": 10.65
+        },
+        "1W": {
+          "last": 8.52,
+          "change": -2.13,
+          "changePct": -20,
+          "startPrice": 10.65
+        },
+        "1M": {
+          "last": 8.52,
+          "change": -2.13,
+          "changePct": -20,
+          "startPrice": 10.65
+        },
+        "3M": {
+          "last": 8.52,
+          "change": -3.48,
+          "changePct": -29,
+          "startPrice": 12
+        },
+        "90D": {
+          "last": 8.52,
+          "change": -3.48,
+          "changePct": -29,
+          "startPrice": 12
+        },
+        "1Y": {
+          "last": 8.52,
+          "change": -1.98,
+          "changePct": -18.86,
+          "startPrice": 10.5
+        },
+        "YTD": {
+          "last": 8.52,
+          "change": -1.98,
+          "changePct": -18.86,
+          "startPrice": 10.5
+        }
+      },
+      "undervaluedScore": 0.18,
+      "undervaluedReason": "18% below 90-day avg",
+      "breakoutScore": null,
+      "breakoutReason": "",
+      "pointCount": 6
+    },
+    {
+      "id": "MEP:005",
+      "kind": "single",
+      "setCode": "MEP",
+      "cardNo": "005",
+      "setName": "Mega Evolution Promos",
+      "cardName": "Drifloon",
+      "label": "Drifloon (Mega Evolution Promos #005)",
+      "productId": "643519",
+      "productUrl": "https://www.pricecharting.com/game/pokemon-promo/dragonite-5",
+      "last": 33.65,
+      "metrics": {
+        "1D": {
+          "last": 33.65,
+          "change": 1.15,
+          "changePct": 3.54,
+          "startPrice": 32.5
+        },
+        "1W": {
+          "last": 33.65,
+          "change": 1.15,
+          "changePct": 3.54,
+          "startPrice": 32.5
+        },
+        "1M": {
+          "last": 33.65,
+          "change": 1.15,
+          "changePct": 3.54,
+          "startPrice": 32.5
+        },
+        "3M": {
+          "last": 33.65,
+          "change": -1.22,
+          "changePct": -3.5,
+          "startPrice": 34.87
+        },
+        "90D": {
+          "last": 33.65,
+          "change": -1.22,
+          "changePct": -3.5,
+          "startPrice": 34.87
+        },
+        "1Y": {
+          "last": 33.65,
+          "change": 16.15,
+          "changePct": 92.29,
+          "startPrice": 17.5
+        },
+        "YTD": {
+          "last": 33.65,
+          "change": 13.66,
+          "changePct": 68.33,
+          "startPrice": 19.99
+        }
+      },
+      "undervaluedScore": 0.0006,
+      "undervaluedReason": "",
+      "breakoutScore": null,
+      "breakoutReason": "",
+      "pointCount": 68
+    },
+    {
+      "id": "PBL:001",
+      "kind": "single",
+      "setCode": "PBL",
+      "cardNo": "001",
+      "setName": "Pitch Black",
+      "cardName": "Tropius",
+      "label": "Tropius (Pitch Black #001)",
+      "productId": "13644027",
+      "productUrl": "https://www.pricecharting.com/game/pokemon-pitch-black/tropius-1",
+      "last": 0.09,
+      "metrics": {
+        "1D": {
+          "last": 0.09,
+          "change": -0.09,
+          "changePct": -50,
+          "startPrice": 0.18
+        },
+        "1W": {
+          "last": 0.09,
+          "change": -0.09,
+          "changePct": -50,
+          "startPrice": 0.18
+        },
+        "1M": {
+          "last": 0.09,
+          "change": -0.09,
+          "changePct": -50,
+          "startPrice": 0.18
+        },
+        "3M": {
+          "last": 0.09,
+          "change": -0.09,
+          "changePct": -50,
+          "startPrice": 0.18
+        },
+        "90D": {
+          "last": 0.09,
+          "change": -0.09,
+          "changePct": -50,
+          "startPrice": 0.18
+        },
+        "1Y": {
+          "last": 0.09,
+          "change": -0.09,
+          "changePct": -50,
+          "startPrice": 0.18
+        },
+        "YTD": {
+          "last": 0.09,
+          "change": -0.09,
+          "changePct": -50,
+          "startPrice": 0.18
+        }
+      },
+      "undervaluedScore": 0.3571,
+      "undervaluedReason": "36% below 90-day avg",
+      "breakoutScore": null,
+      "breakoutReason": "",
+      "pointCount": 2
+    },
+    {
+      "id": "MEP:004",
+      "kind": "single",
+      "setCode": "MEP",
+      "cardNo": "004",
+      "setName": "Mega Evolution Promos",
+      "cardName": "Lunatone",
+      "label": "Lunatone (Mega Evolution Promos #004)",
+      "productId": "1656640",
+      "productUrl": "https://www.pricecharting.com/game/pokemon-promo/pikachu-4",
+      "last": 26.99,
+      "metrics": {
+        "1D": {
+          "last": 26.99,
+          "change": 3.43,
+          "changePct": 14.56,
+          "startPrice": 23.56
+        },
+        "1W": {
+          "last": 26.99,
+          "change": 3.43,
+          "changePct": 14.56,
+          "startPrice": 23.56
+        },
+        "1M": {
+          "last": 26.99,
+          "change": 3.43,
+          "changePct": 14.56,
+          "startPrice": 23.56
+        },
+        "3M": {
+          "last": 26.99,
+          "change": 4.01,
+          "changePct": 17.45,
+          "startPrice": 22.98
+        },
+        "90D": {
+          "last": 26.99,
+          "change": 4.01,
+          "changePct": 17.45,
+          "startPrice": 22.98
+        },
+        "1Y": {
+          "last": 26.99,
+          "change": 12.53,
+          "changePct": 86.65,
+          "startPrice": 14.46
+        },
+        "YTD": {
+          "last": 26.99,
+          "change": 9.27,
+          "changePct": 52.31,
+          "startPrice": 17.72
+        }
+      },
+      "undervaluedScore": -0.1012,
+      "undervaluedReason": "",
+      "breakoutScore": 14.56,
+      "breakoutReason": "Near 52w high, up 14.56% (1M)",
+      "pointCount": 66
+    },
+    {
+      "id": "SWSHP:SWSH074",
+      "kind": "single",
+      "setCode": "SWSHP",
+      "cardNo": "SWSH074",
+      "setName": "Sword & Shield Promos",
+      "cardName": "Special Delivery Pikachu",
+      "label": "Special Delivery Pikachu (Sword & Shield Promos #SWSH074)",
+      "productId": "1656603",
+      "productUrl": "https://www.pricecharting.com/game/pokemon-promo/special-delivery-pikachu-swsh074",
+      "last": 475,
+      "metrics": {
+        "1D": {
+          "last": 475,
+          "change": 10.07,
+          "changePct": 2.17,
+          "startPrice": 464.93
+        },
+        "1W": {
+          "last": 475,
+          "change": 10.07,
+          "changePct": 2.17,
+          "startPrice": 464.93
+        },
+        "1M": {
+          "last": 475,
+          "change": 10.07,
+          "changePct": 2.17,
+          "startPrice": 464.93
+        },
+        "3M": {
+          "last": 475,
+          "change": -10.17,
+          "changePct": -2.1,
+          "startPrice": 485.17
+        },
+        "90D": {
+          "last": 475,
+          "change": -10.17,
+          "changePct": -2.1,
+          "startPrice": 485.17
+        },
+        "1Y": {
+          "last": 475,
+          "change": 209,
+          "changePct": 78.57,
+          "startPrice": 266
+        },
+        "YTD": {
+          "last": 475,
+          "change": 125.01,
+          "changePct": 35.72,
+          "startPrice": 349.99
+        }
+      },
+      "undervaluedScore": 0.0001,
+      "undervaluedReason": "",
+      "breakoutScore": null,
+      "breakoutReason": "",
+      "pointCount": 63
+    },
+    {
+      "id": "SWSHP:SWSH075",
+      "kind": "single",
+      "setCode": "SWSHP",
+      "cardNo": "SWSH075",
+      "setName": "Sword & Shield Promos",
+      "cardName": "Special Delivery Charizard",
+      "label": "Special Delivery Charizard (Sword & Shield Promos #SWSH075)",
+      "productId": "1656604",
+      "productUrl": "https://www.pricecharting.com/game/pokemon-promo/special-delivery-charizard-swsh075",
+      "last": 221.07,
+      "metrics": {
+        "1D": {
+          "last": 221.07,
+          "change": 23.66,
+          "changePct": 11.99,
+          "startPrice": 197.41
+        },
+        "1W": {
+          "last": 221.07,
+          "change": 23.66,
+          "changePct": 11.99,
+          "startPrice": 197.41
+        },
+        "1M": {
+          "last": 221.07,
+          "change": 23.66,
+          "changePct": 11.99,
+          "startPrice": 197.41
+        },
+        "3M": {
+          "last": 221.07,
+          "change": 1.85,
+          "changePct": 0.84,
+          "startPrice": 219.22
+        },
+        "90D": {
+          "last": 221.07,
+          "change": 1.85,
+          "changePct": 0.84,
+          "startPrice": 219.22
+        },
+        "1Y": {
+          "last": 221.07,
+          "change": 62.32,
+          "changePct": 39.26,
+          "startPrice": 158.75
+        },
+        "YTD": {
+          "last": 221.07,
+          "change": 88.62,
+          "changePct": 66.91,
+          "startPrice": 132.45
+        }
+      },
+      "undervaluedScore": -0.04,
+      "undervaluedReason": "",
+      "breakoutScore": 11.99,
+      "breakoutReason": "Near 52w high, up 11.99% (1M)",
+      "pointCount": 63
+    },
+    {
+      "id": "SWSHP:SWSH145",
+      "kind": "single",
+      "setCode": "SWSHP",
+      "cardNo": "SWSH145",
+      "setName": "Sword & Shield Promos",
+      "cardName": "Pikachu V",
+      "label": "Pikachu V (Sword & Shield Promos #SWSH145)",
+      "productId": "2618210",
+      "productUrl": "https://www.pricecharting.com/game/pokemon-promo/pikachu-v-SWSH145",
+      "last": 117.05,
+      "metrics": {
+        "1D": {
+          "last": 117.05,
+          "change": 0,
+          "changePct": 0,
+          "startPrice": 117.05
+        },
+        "1W": {
+          "last": 117.05,
+          "change": 0,
+          "changePct": 0,
+          "startPrice": 117.05
+        },
+        "1M": {
+          "last": 117.05,
+          "change": 0,
+          "changePct": 0,
+          "startPrice": 117.05
+        },
+        "3M": {
+          "last": 117.05,
+          "change": 0.55,
+          "changePct": 0.47,
+          "startPrice": 116.5
+        },
+        "90D": {
+          "last": 117.05,
+          "change": 0.55,
+          "changePct": 0.47,
+          "startPrice": 116.5
+        },
+        "1Y": {
+          "last": 117.05,
+          "change": 22.05,
+          "changePct": 23.21,
+          "startPrice": 95
+        },
+        "YTD": {
+          "last": 117.05,
+          "change": 46.94,
+          "changePct": 66.95,
+          "startPrice": 70.11
+        }
+      },
+      "undervaluedScore": -0.0015,
+      "undervaluedReason": "",
+      "breakoutScore": null,
+      "breakoutReason": "",
+      "pointCount": 59
+    },
+    {
+      "id": "SWSHP:SWSH020",
+      "kind": "single",
+      "setCode": "SWSHP",
+      "cardNo": "SWSH020",
+      "setName": "Sword & Shield Promos",
+      "cardName": "Pikachu",
+      "label": "Pikachu (Sword & Shield Promos #SWSH020)",
+      "productId": "1098357",
+      "productUrl": "https://www.pricecharting.com/game/pokemon-promo/pikachu-swsh020",
+      "last": 89.99,
+      "metrics": {
+        "1D": {
+          "last": 89.99,
+          "change": -4.33,
+          "changePct": -4.59,
+          "startPrice": 94.32
+        },
+        "1W": {
+          "last": 89.99,
+          "change": -4.33,
+          "changePct": -4.59,
+          "startPrice": 94.32
+        },
+        "1M": {
+          "last": 89.99,
+          "change": -4.33,
+          "changePct": -4.59,
+          "startPrice": 94.32
+        },
+        "3M": {
+          "last": 89.99,
+          "change": 6.42,
+          "changePct": 7.68,
+          "startPrice": 83.57
+        },
+        "90D": {
+          "last": 89.99,
+          "change": 6.42,
+          "changePct": 7.68,
+          "startPrice": 83.57
+        },
+        "1Y": {
+          "last": 89.99,
+          "change": 36.99,
+          "changePct": 69.79,
+          "startPrice": 53
+        },
+        "YTD": {
+          "last": 89.99,
+          "change": 23.64,
+          "changePct": 35.63,
+          "startPrice": 66.35
+        }
+      },
+      "undervaluedScore": -0.0078,
+      "undervaluedReason": "",
+      "breakoutScore": null,
+      "breakoutReason": "",
+      "pointCount": 68
+    },
+    {
+      "id": "SWSHP:SWSH182",
+      "kind": "single",
+      "setCode": "SWSHP",
+      "cardNo": "SWSH182",
+      "setName": "Sword & Shield Promos",
+      "cardName": "Vaporeon VMAX",
+      "label": "Vaporeon VMAX (Sword & Shield Promos #SWSH182)",
+      "productId": "2989146",
+      "productUrl": "https://www.pricecharting.com/game/pokemon-promo/vaporeon-vmax-swsh182",
+      "last": 83,
+      "metrics": {
+        "1D": {
+          "last": 83,
+          "change": -7,
+          "changePct": -7.78,
+          "startPrice": 90
+        },
+        "1W": {
+          "last": 83,
+          "change": -7,
+          "changePct": -7.78,
+          "startPrice": 90
+        },
+        "1M": {
+          "last": 83,
+          "change": -7,
+          "changePct": -7.78,
+          "startPrice": 90
+        },
+        "3M": {
+          "last": 83,
+          "change": -2,
+          "changePct": -2.35,
+          "startPrice": 85
+        },
+        "90D": {
+          "last": 83,
+          "change": -2,
+          "changePct": -2.35,
+          "startPrice": 85
+        },
+        "1Y": {
+          "last": 83,
+          "change": -9.17,
+          "changePct": -9.95,
+          "startPrice": 92.17
+        },
+        "YTD": {
+          "last": 83,
+          "change": 3.12,
+          "changePct": 3.91,
+          "startPrice": 79.88
+        }
+      },
+      "undervaluedScore": 0.0349,
+      "undervaluedReason": "",
+      "breakoutScore": null,
+      "breakoutReason": "",
+      "pointCount": 57
+    },
+    {
+      "id": "SWSHP:SWSH181",
+      "kind": "single",
+      "setCode": "SWSHP",
+      "cardNo": "SWSH181",
+      "setName": "Sword & Shield Promos",
+      "cardName": "Vaporeon V",
+      "label": "Vaporeon V (Sword & Shield Promos #SWSH181)",
+      "productId": "2989144",
+      "productUrl": "https://www.pricecharting.com/game/pokemon-promo/vaporeon-v-SWSH181",
+      "last": 81.9,
+      "metrics": {
+        "1D": {
+          "last": 81.9,
+          "change": 3.4,
+          "changePct": 4.33,
+          "startPrice": 78.5
+        },
+        "1W": {
+          "last": 81.9,
+          "change": 3.4,
+          "changePct": 4.33,
+          "startPrice": 78.5
+        },
+        "1M": {
+          "last": 81.9,
+          "change": 3.4,
+          "changePct": 4.33,
+          "startPrice": 78.5
+        },
+        "3M": {
+          "last": 81.9,
+          "change": 5.4,
+          "changePct": 7.06,
+          "startPrice": 76.5
+        },
+        "90D": {
+          "last": 81.9,
+          "change": 5.4,
+          "changePct": 7.06,
+          "startPrice": 76.5
+        },
+        "1Y": {
+          "last": 81.9,
+          "change": 6.9,
+          "changePct": 9.2,
+          "startPrice": 75
+        },
+        "YTD": {
+          "last": 81.9,
+          "change": 22.9,
+          "changePct": 38.81,
+          "startPrice": 59
+        }
+      },
+      "undervaluedScore": -0.0371,
+      "undervaluedReason": "",
+      "breakoutScore": null,
+      "breakoutReason": "",
+      "pointCount": 57
+    },
+    {
+      "id": "PAF:004",
+      "kind": "single",
+      "setCode": "PAF",
+      "cardNo": "004",
+      "setName": "Paldean Fates",
+      "cardName": "Toedscool",
+      "label": "Toedscool (Paldean Fates #004)",
+      "productId": "6276923",
+      "productUrl": "https://www.pricecharting.com/game/pokemon-paldean-fates/toedscool-4",
+      "last": 0.03,
+      "metrics": {
+        "1D": {
+          "last": 0.03,
+          "change": -0.01,
+          "changePct": -25,
+          "startPrice": 0.04
+        },
+        "1W": {
+          "last": 0.03,
+          "change": -0.01,
+          "changePct": -25,
+          "startPrice": 0.04
+        },
+        "1M": {
+          "last": 0.03,
+          "change": -0.01,
+          "changePct": -25,
+          "startPrice": 0.04
+        },
+        "3M": {
+          "last": 0.03,
+          "change": 0,
+          "changePct": 0,
+          "startPrice": 0.03
+        },
+        "90D": {
+          "last": 0.03,
+          "change": 0,
+          "changePct": 0,
+          "startPrice": 0.03
+        },
+        "1Y": {
+          "last": 0.03,
+          "change": -0.96,
+          "changePct": -96.97,
+          "startPrice": 0.99
+        },
+        "YTD": {
+          "last": 0.03,
+          "change": -0.06,
+          "changePct": -66.67,
+          "startPrice": 0.09
+        }
+      },
+      "undervaluedScore": 0,
+      "undervaluedReason": "",
+      "breakoutScore": null,
+      "breakoutReason": "",
+      "pointCount": 32
+    },
+    {
+      "id": "CRI:003",
+      "kind": "single",
+      "setCode": "CRI",
+      "cardNo": "003",
+      "setName": "Chaos Rising",
+      "cardName": "Beedrill ex",
+      "label": "Beedrill ex (Chaos Rising #003)",
+      "productId": "13025623",
+      "productUrl": "https://www.pricecharting.com/game/pokemon-chaos-rising/beedrill-ex-3",
+      "last": 1.59,
+      "metrics": {
+        "1D": {
+          "last": 1.59,
+          "change": -0.15,
+          "changePct": -8.62,
+          "startPrice": 1.74
+        },
+        "1W": {
+          "last": 1.59,
+          "change": -0.15,
+          "changePct": -8.62,
+          "startPrice": 1.74
+        },
+        "1M": {
+          "last": 1.59,
+          "change": -0.15,
+          "changePct": -8.62,
+          "startPrice": 1.74
+        },
+        "3M": {
+          "last": 1.59,
+          "change": 0.26,
+          "changePct": 19.55,
+          "startPrice": 1.33
+        },
+        "90D": {
+          "last": 1.59,
+          "change": 0.26,
+          "changePct": 19.55,
+          "startPrice": 1.33
+        },
+        "1Y": {
+          "last": 1.59,
+          "change": -0.56,
+          "changePct": -26.05,
+          "startPrice": 2.15
+        },
+        "YTD": {
+          "last": 1.59,
+          "change": -0.56,
+          "changePct": -26.05,
+          "startPrice": 2.15
+        }
+      },
+      "undervaluedScore": -0.0258,
+      "undervaluedReason": "",
+      "breakoutScore": null,
+      "breakoutReason": "",
+      "pointCount": 4
+    }
+  ],
+  "heatBySet": {
+    "1M": [
+      {
+        "setCode": "PBL",
+        "setName": "Pitch Black",
+        "medianChangePct": 2.53,
+        "cardCount": 2,
+        "reason": "Median +2.5% (1M) across 2 tracked cards"
+      },
+      {
+        "setCode": "SVI",
+        "setName": "Scarlet & Violet",
+        "medianChangePct": 0,
+        "cardCount": 1,
+        "reason": "Median +0.0% (1M) across 1 tracked cards"
+      },
+      {
+        "setCode": "SWSHP",
+        "setName": "Sword & Shield Promos",
+        "medianChangePct": 0,
+        "cardCount": 8,
+        "reason": "Median +0.0% (1M) across 8 tracked cards"
+      },
+      {
+        "setCode": "MEP",
+        "setName": "Mega Evolution Promos",
+        "medianChangePct": -0.38,
+        "cardCount": 6,
+        "reason": "Median -0.4% (1M) across 6 tracked cards"
+      },
+      {
+        "setCode": "CRI",
+        "setName": "Chaos Rising",
+        "medianChangePct": -8.62,
+        "cardCount": 1,
+        "reason": "Median -8.6% (1M) across 1 tracked cards"
+      },
+      {
+        "setCode": "PAF",
+        "setName": "Paldean Fates",
+        "medianChangePct": -14.26,
+        "cardCount": 2,
+        "reason": "Median -14.3% (1M) across 2 tracked cards"
+      }
+    ],
+    "1Y": [
+      {
+        "setCode": "MEP",
+        "setName": "Mega Evolution Promos",
+        "medianChangePct": 81.73,
+        "cardCount": 6,
+        "reason": "Median +81.7% (1Y) across 6 tracked cards"
+      },
+      {
+        "setCode": "SWSHP",
+        "setName": "Sword & Shield Promos",
+        "medianChangePct": 46.48,
+        "cardCount": 8,
+        "reason": "Median +46.5% (1Y) across 8 tracked cards"
+      },
+      {
+        "setCode": "PBL",
+        "setName": "Pitch Black",
+        "medianChangePct": 2.53,
+        "cardCount": 2,
+        "reason": "Median +2.5% (1Y) across 2 tracked cards"
+      },
+      {
+        "setCode": "SVI",
+        "setName": "Scarlet & Violet",
+        "medianChangePct": -12.72,
+        "cardCount": 1,
+        "reason": "Median -12.7% (1Y) across 1 tracked cards"
+      },
+      {
+        "setCode": "PAF",
+        "setName": "Paldean Fates",
+        "medianChangePct": -21.4,
+        "cardCount": 2,
+        "reason": "Median -21.4% (1Y) across 2 tracked cards"
+      },
+      {
+        "setCode": "CRI",
+        "setName": "Chaos Rising",
+        "medianChangePct": -26.05,
+        "cardCount": 1,
+        "reason": "Median -26.1% (1Y) across 1 tracked cards"
+      }
+    ]
+  }
+}

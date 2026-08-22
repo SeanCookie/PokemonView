@@ -27,6 +27,8 @@ const { fetchPokesymbolBytes, hydratePokesymbolsFromCdnIfNeeded } = require("./l
 const {
   readSealedCatalog,
   getSealedProductsForSetCode,
+  syncPriceChartingSealedCatalog,
+  downloadSealedProductImages,
   SEALED_IMAGE_DIR
 } = require("./lib/pricecharting-sealed");
 const { isSelfHosted } = require("./lib/self-hosted");
@@ -49,10 +51,13 @@ const {
 const {
   loadCardNicknames,
   addCardNickname,
+  bulkAddCardNicknames,
   removeCardNickname,
   findNicknamesForQuery,
   publicNicknamePayload
 } = require("./lib/card-nicknames");
+const adminOps = require("./lib/admin-ops");
+const { tryHandleAdminOpsRoutes } = require("./lib/admin-ops-routes");
 const {
   fetchPriceChartingMarketHistoryForCard,
   fetchPriceChartingUngradedPriceForCard,
@@ -100,6 +105,14 @@ const {
   publicAlert,
   cardIdentityKey
 } = require("./lib/poke-view-price-alerts");
+const {
+  ensureDiscoverySnapshot,
+  buildDiscoverySnapshot,
+  getDiscoveryResults,
+  getTrendingResults,
+  recordDiscoveryView,
+  getDiscoveryMeta
+} = require("./lib/poke-view-discovery");
 const { pullStoreFromR2, pushStoreToR2 } = require("./lib/store-r2-sync");
 const {
   pullPricingCacheFromR2,
@@ -1615,6 +1628,9 @@ async function runPriceChartingDetailsPrewarmBackground(triggeredBy = "", option
 }
 
 async function refreshTcgLinkPricesHourlyTick(options = {}) {
+  if (!(await adminOps.getFeatureFlag("tcgHourlyRefresh"))) {
+    return { skipped: true, reason: "feature_flag_off" };
+  }
   if (tcgBulkPriceCheckJob || tcgLinkPricePrewarmInFlight) {
     return { skipped: true, reason: tcgBulkPriceCheckJob ? "admin_in_flight" : "in_flight" };
   }
@@ -8615,7 +8631,7 @@ function sendStatic(req, res, pathname) {
 
   const baseName = path.basename(filePath).toLowerCase();
   const isAdminHtml = baseName === "admin.html";
-  const isAdminJs = baseName === "admin.js";
+  const isAdminJs = baseName === "admin.js" || baseName === "admin-ops-panel.js";
   const isAdminDenied = baseName === "admin-denied.html";
   if (isAdminHtml || isAdminJs || isAdminDenied) {
     if (!isRequestAdmin(req)) {
@@ -8636,7 +8652,7 @@ function sendStatic(req, res, pathname) {
       sendPrivateAdminFile(res, "admin.html", "text/html; charset=utf-8");
       return;
     }
-    sendPrivateAdminFile(res, "admin.js", "application/javascript; charset=utf-8");
+    sendPrivateAdminFile(res, baseName, "application/javascript; charset=utf-8");
     return;
   }
 
@@ -8720,7 +8736,7 @@ function isAdminScriptPath(pathname) {
     // keep raw
   }
   const normalized = decoded.replace(/\\/g, "/").toLowerCase();
-  return normalized === "/admin.js";
+  return normalized === "/admin.js" || normalized === "/admin-ops-panel.js";
 }
 
 function isAdminDeniedPath(pathname) {
@@ -9193,6 +9209,10 @@ async function route(req, res) {
         json(res, 401, { ok: false, error: "Invalid username or password" });
         return;
       }
+      if (user.disabledAt) {
+        json(res, 403, { ok: false, error: "This account has been disabled" });
+        return;
+      }
       if (user.googleSub && (user.passwordHash == null || user.passwordHash === "")) {
         json(res, 401, {
           ok: false,
@@ -9468,6 +9488,11 @@ async function route(req, res) {
 
       if (ensureDefaultAdminRoles(store, adminUsernames)) {
         /* role may update for ADMIN_USERNAMES matches */
+      }
+
+      if (user.disabledAt) {
+        json(res, 403, { ok: false, error: "This account has been disabled" });
+        return;
       }
 
       await persistStore();
@@ -10263,6 +10288,62 @@ async function route(req, res) {
     return;
   }
 
+  if (pathname === "/api/poke-view/discovery/meta" && req.method === "GET") {
+    json(res, 200, { ok: true, ...getDiscoveryMeta() });
+    return;
+  }
+
+  if (pathname === "/api/poke-view/discovery" && req.method === "GET") {
+    const tab = String(parsedUrl.searchParams.get("tab") || "movers").trim().toLowerCase();
+    if (tab === "trending") {
+      void getTrendingResults({
+        limit: parsedUrl.searchParams.get("limit"),
+        kind: parsedUrl.searchParams.get("kind")
+      })
+        .then((payload) => json(res, 200, { ok: true, ...payload }))
+        .catch((err) => json(res, 500, { ok: false, error: err.message || "Discovery failed" }));
+      return;
+    }
+    void getDiscoveryResults({
+      tab,
+      range: parsedUrl.searchParams.get("range"),
+      direction: parsedUrl.searchParams.get("direction"),
+      kind: parsedUrl.searchParams.get("kind"),
+      limit: parsedUrl.searchParams.get("limit")
+    })
+      .then((payload) => json(res, 200, { ok: true, ...payload }))
+      .catch((err) => json(res, 500, { ok: false, error: err.message || "Discovery failed" }));
+    return;
+  }
+
+  if (pathname === "/api/poke-view/discovery/rebuild" && req.method === "POST") {
+    void buildDiscoverySnapshot({ force: true })
+      .then((snapshot) =>
+        json(res, 200, {
+          ok: true,
+          builtAt: snapshot.builtAt,
+          sourceEntries: snapshot.sourceEntries
+        })
+      )
+      .catch((err) => json(res, 500, { ok: false, error: err.message || "Rebuild failed" }));
+    return;
+  }
+
+  if (pathname === "/api/poke-view/discovery/view" && req.method === "POST") {
+    try {
+      const body = await readBody(req);
+      const result = await recordDiscoveryView(body || {});
+      if (!result.ok) {
+        json(res, 400, result);
+        return;
+      }
+      json(res, 200, result);
+    } catch (err) {
+      json(res, 400, { ok: false, error: err.message || "Could not record view" });
+    }
+    return;
+  }
+
   const priceAlertIdMatch = pathname.match(/^\/api\/poke-view\/price-alerts\/([^/]+)$/);
   if (priceAlertIdMatch && req.method === "PATCH") {
     try {
@@ -10458,6 +10539,7 @@ async function route(req, res) {
 
   if (pathname === "/api/sets/sealed" && req.method === "GET") {
     try {
+      adminOps.recordMetricAndPersist("api.sets.sealed");
       const catalog = await readSealedCatalog();
       const setCode = String(
         parsedUrl.searchParams.get("setCode") || parsedUrl.searchParams.get("code") || ""
@@ -10520,12 +10602,15 @@ async function route(req, res) {
     try {
       const setCode = parsedUrl.searchParams.get("setCode") || parsedUrl.searchParams.get("code") || "";
       const manifest = await getSetCardDetailsManifest(setCode);
+      const codeKey = String(setCode || "").trim().toUpperCase();
+      const entry = codeKey && manifest?.byCode ? manifest.byCode[codeKey] : null;
+      const hasCards =
+        Boolean(entry && entry.cards && typeof entry.cards === "object" && Object.keys(entry.cards).length > 0);
+      // Never long-cache empty set payloads — a miss before import would stick for an hour.
       const cacheHeader =
-        setCode && manifest.ok
+        codeKey && manifest.ok && hasCards
           ? { "Cache-Control": API_CATALOG_CACHE_CONTROL }
-          : setCode
-            ? {}
-            : { "Cache-Control": "no-store" };
+          : { "Cache-Control": "no-store" };
       json(res, manifest.ok ? 200 : 500, manifest, cacheHeader);
     } catch (err) {
       json(res, 500, { ok: false, error: err.message || "Failed to load set card details" });
@@ -10556,6 +10641,7 @@ async function route(req, res) {
 
   if (pathname === "/api/sets/pricing" && req.method === "GET") {
     try {
+      adminOps.recordMetricAndPersist("api.sets.pricing");
       const setCode = parsedUrl.searchParams.get("setCode") || parsedUrl.searchParams.get("code") || "";
       const setName = parsedUrl.searchParams.get("setName") || parsedUrl.searchParams.get("name") || "";
       if (!setCode) {
@@ -10618,6 +10704,7 @@ async function route(req, res) {
 
   if (pathname === "/api/sets/pricecharting-card-details" && req.method === "GET") {
     try {
+      adminOps.recordMetricAndPersist("api.sets.pricechartingCardDetails");
       const setCode = parsedUrl.searchParams.get("setCode") || parsedUrl.searchParams.get("code") || "";
       const setName = parsedUrl.searchParams.get("setName") || parsedUrl.searchParams.get("name") || "";
       const cardNo = parsedUrl.searchParams.get("cardNo") || parsedUrl.searchParams.get("number") || "";
@@ -10632,9 +10719,12 @@ async function route(req, res) {
         return;
       }
       const forceRefresh = String(parsedUrl.searchParams.get("refresh") || "").trim() === "1";
-      const cacheOnly = forceRefresh
+      let cacheOnly = forceRefresh
         ? false
         : String(parsedUrl.searchParams.get("cacheOnly") || "1").trim() !== "0";
+      if (!cacheOnly && !(await adminOps.getFeatureFlag("priceChartingLiveFetch"))) {
+        cacheOnly = true;
+      }
       const payload = await getOrFetchPriceChartingCardDetails(
         { setCode, setName, cardNo, cardName },
         { forceRefresh, cacheOnly }
@@ -10706,6 +10796,7 @@ async function route(req, res) {
 
   if (pathname === "/api/sets/link-prices" && req.method === "GET") {
     try {
+      adminOps.recordMetricAndPersist("api.sets.linkPrices");
       const setCode = parsedUrl.searchParams.get("setCode") || parsedUrl.searchParams.get("code") || "";
       const setName = parsedUrl.searchParams.get("setName") || parsedUrl.searchParams.get("name") || "";
       if (!setCode) {
@@ -10814,12 +10905,15 @@ async function route(req, res) {
         );
         await persistStore();
         json(res, 200, { item: existing, merged: true, quantityAdded: addQty });
+        scheduleCollectionSoldPriceWarm(sessionUser.id, { maxFetches: 2 });
         return;
       }
       const lookup = await getShowcaseSetLookup();
       const manifestCache = new Map();
+      // Cache-only pricing so Sets "+" stays snappy — live PriceCharting/TCG fetches
+      // hang the request. Warm sold averages in the background after respond.
       const priced = await applySetsCatalogPricingToItem(item, lookup, manifestCache, {
-        cacheOnly: false
+        cacheOnly: true
       });
       item = normalizeItem({ ...priced, userId: sessionUser.id, quantity: addQty }, item);
       item.userId = sessionUser.id;
@@ -10827,6 +10921,7 @@ async function route(req, res) {
       addActivity("created", item.id, `${item.name} added`, sessionUser.id);
       await persistStore();
       json(res, 201, { item, merged: false });
+      scheduleCollectionSoldPriceWarm(sessionUser.id, { maxFetches: 2 });
     } catch (err) {
       json(res, 400, { error: err.message || "Bad request" });
     }
@@ -11009,6 +11104,10 @@ async function route(req, res) {
   }
 
   if (pathname === "/api/scan/match" && req.method === "POST") {
+    if (!(await adminOps.getFeatureFlag("scanYourCards"))) {
+      json(res, 403, { ok: false, error: "Scan Your Cards is disabled by feature flag" });
+      return;
+    }
     try {
       const body = await readBody(req);
       const limit = Math.min(24, Math.max(1, Number(body.limit) || 8));
@@ -11847,6 +11946,10 @@ async function route(req, res) {
   if (pathname === "/api/admin/restock/refresh" && req.method === "POST") {
     const admin = requireAdmin(req, res);
     if (!admin) return;
+    if (!(await adminOps.getFeatureFlag("restockLiveFetch"))) {
+      json(res, 403, { ok: false, error: "Restock live fetch is disabled by feature flag" });
+      return;
+    }
     if (restockRefreshInFlight) {
       json(res, 409, {
         ok: false,
@@ -11931,7 +12034,10 @@ async function route(req, res) {
             role: user.role || "",
             hasPassword: Boolean(user.passwordHash),
             createdAt: user.createdAt || null,
-            lastLoginAt: user.lastLoginAt || null
+            lastLoginAt: user.lastLoginAt || null,
+            disabledAt: user.disabledAt || null,
+            itemCount: store.items.filter((item) => String(item.userId) === String(user.id)).length,
+            showcasePublic: user.showcase ? user.showcase.isPublic !== false : true
           },
           adminUsernames
         )
@@ -12038,6 +12144,53 @@ async function route(req, res) {
     } catch (err) {
       json(res, 400, { ok: false, error: err.message || "Failed to update role" });
     }
+    return;
+  }
+
+  if (pathname.startsWith("/api/admin/") && (await tryHandleAdminOpsRoutes(req, res, {
+    pathname,
+    method: req.method,
+    requireAdmin,
+    readBody,
+    json,
+    adminOps,
+    listEnglishSetPricingTargets,
+    getAdminSetRefreshTimestampsSnapshot,
+    getSetCardManifest,
+    loadSetCardDetailsEntryForCode,
+    readSealedCatalog,
+    syncPriceChartingSealedCatalog,
+    downloadSealedProductImages,
+    runAdminTcgPriceCheckForSet,
+    runPriceChartingDetailsPrewarmBackground,
+    persistTcgLinkPriceCacheNow,
+    persistPriceChartingCardDetailsCacheNow,
+    persistAdminSetRefreshTimestampsNow,
+    spawnSplitSetCardDetails: () =>
+      new Promise((resolve) => {
+        const script = path.join(__dirname, "..", "scripts", "split-set-card-details.js");
+        const child = spawn(process.execPath, [script], { stdio: "ignore", windowsHide: true });
+        child.on("exit", (code) => resolve({ exitCode: code }));
+        child.on("error", (err) => resolve({ error: err.message }));
+      }),
+    CARD_IMAGE_DIR,
+    CARD_NICKNAMES_FILE,
+    bulkAddCardNicknames,
+    getCardNicknamesCached,
+    invalidateNicknamesCache: invalidateCardNicknamesCache,
+    store,
+    persistStore,
+    adminUsernames,
+    withAdminFlag,
+    publicUserPayload,
+    ensureUserShowcase,
+    defaultShowcaseSettings,
+    syncTcgBulkPriceCheckCacheCount,
+    getPriceChartingAdminMeta,
+    isTcgBulkPriceCheckInFlight,
+    isPriceChartingDetailsPrewarmInFlight,
+    restockRefreshInFlight
+  }))) {
     return;
   }
 
@@ -12191,7 +12344,10 @@ async function route(req, res) {
       notFound(res);
       return;
     }
-    sendPrivateAdminFile(res, "admin.js", "application/javascript; charset=utf-8");
+    const scriptName = pathname.toLowerCase().endsWith("admin-ops-panel.js")
+      ? "admin-ops-panel.js"
+      : "admin.js";
+    sendPrivateAdminFile(res, scriptName, "application/javascript; charset=utf-8");
     return;
   }
 
@@ -12209,6 +12365,41 @@ async function startDeferredBackgroundWork() {
   startRestockHourlyRefreshLoop();
   startTcgLinkPriceHourlyRefreshLoop();
   startPriceAlertPollLoop();
+  adminOps.initAdminOps({
+    runRestockRefresh: async () => {
+      if (!(await adminOps.getFeatureFlag("restockLiveFetch"))) return;
+      if (restockRefreshInFlight) return;
+      await refreshRestockTrackerHourlyTick({});
+    },
+    runGapRefresh: async (opts) => {
+      const sets = await listEnglishSetPricingTargets();
+      const stamps = getAdminSetRefreshTimestampsSnapshot();
+      const coverageRows = sets.map((row) => ({
+        setCode: row.setCode,
+        setName: row.setName,
+        tcgLastRefreshAt: stamps.tcg?.[row.setCode] || null,
+        priceChartingLastRefreshAt: stamps.pricecharting?.[row.setCode] || null,
+        tcgStale: true,
+        pcStale: true
+      }));
+      const actor = opts.actor || "schedule";
+      await adminOps.runGapRefreshJob({
+        kind: opts.kind,
+        mode: opts.mode || "stale",
+        staleDays: opts.staleDays,
+        limit: opts.limit,
+        actor,
+        coverageRows,
+        runSet: async (setCode, setName) => {
+          if (opts.kind === "pricecharting") {
+            await runPriceChartingDetailsPrewarmBackground(actor, { setCode, setName });
+          } else {
+            await runAdminTcgPriceCheckForSet(setCode, setName, actor);
+          }
+        }
+      });
+    }
+  });
   setTimeout(() => {
     maybeKickoffEnglishSetCardsImport();
     maybeKickoffEnglishSetDetailsImport();
@@ -12232,7 +12423,9 @@ async function bootstrapServer({ hosted = false } = {}) {
       });
       ensureTcgLinkPriceCacheLoaded();
       loadPersistedPriceChartingCardDetailsCache().catch(() => {});
-      loadPersistedPriceChartingMarketHistoryCache().catch(() => {});
+      loadPersistedPriceChartingMarketHistoryCache()
+        .then(() => ensureDiscoverySnapshot().catch(() => {}))
+        .catch(() => {});
       loadPersistedTcgLinkPriceFailLinks()
         .then(() => pruneNonPokemonTcgFailLinks({ concurrency: 4, max: 300 }))
         .then((result) => {
@@ -12265,6 +12458,7 @@ async function bootstrapServer({ hosted = false } = {}) {
   await ensureTcgLinkPriceCacheLoaded();
   await loadPersistedPriceChartingCardDetailsCache().catch(() => {});
   await loadPersistedPriceChartingMarketHistoryCache().catch(() => {});
+  ensureDiscoverySnapshot().catch(() => {});
   await loadPersistedTcgLinkPriceFailLinks().catch(() => {});
   loadPersistedPriceChartingFailLinks().catch(() => {});
   loadPersistedAdminSetRefreshTimestamps().catch(() => {});

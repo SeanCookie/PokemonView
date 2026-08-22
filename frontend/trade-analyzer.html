@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/favicon.png" type="image/png" sizes="32x32" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Trade Analyzer — PokemonView</title>
+  <meta name="description" content="Compare both sides of a Pokémon TCG trade with cards, sealed products, and cash" />
+  <link rel="stylesheet" href="/trade-analyzer.css" />
+  <link rel="stylesheet" href="/site-nav.css?v=12" />
+</head>
+<body>
+  <nav class="top-nav">
+    <div class="nav-left">
+      <a href="/" class="brand" aria-label="Go to homepage">
+        <span class="pokeball-logo" aria-hidden="true"></span>
+      </a>
+      <a href="/" class="nav-link">Home</a>
+      <a href="/sets.html" class="nav-link">Sets</a>
+      <a href="/dashboard.html" class="nav-link">Collection</a>
+      <a href="/showcase" class="nav-link">Showcase</a>
+      <a href="/poke-view.html" class="nav-link">Poke View</a>
+      <a href="/scan-your-cards.html" class="nav-link">Scan Your Cards</a>
+      <a href="/restock-tracker.html" class="nav-link">Restock Tracker</a>
+      <a href="/trade-analyzer.html" class="nav-link active">Trade Analyzer</a>
+    </div>
+    <div class="nav-right">
+      <div data-account-slot></div>
+    </div>
+  </nav>
+
+  <main class="page">
+    <header class="hero panel">
+      <div>
+        <h1 class="title">Trade Analyzer</h1>
+        <p class="sub">Build both sides of a trade with cards or sealed products, add cash, and see who comes out ahead.</p>
+      </div>
+      <button type="button" class="btn ghost" id="clearTradeBtn">Clear trade</button>
+    </header>
+
+    <section class="summary panel" id="tradeSummary" aria-live="polite"></section>
+
+    <section class="sides">
+      <article class="side panel" data-side="you">
+        <header class="side-head">
+          <h2>You offer</h2>
+          <button type="button" class="btn primary" data-add-side="you">+ Add</button>
+        </header>
+        <div class="cash-row">
+          <label for="cashYou">Cash</label>
+          <div class="cash-input-wrap">
+            <span class="cash-prefix">$</span>
+            <input id="cashYou" type="number" min="0" step="0.01" inputmode="decimal" value="0" data-cash-side="you" />
+          </div>
+        </div>
+        <div class="picker-slot" data-picker-slot="you"></div>
+        <ul class="item-list" id="listYou"></ul>
+        <footer class="side-foot">
+          <span class="side-total-label">Your total</span>
+          <strong class="side-total" id="totalYou">$0.00</strong>
+        </footer>
+      </article>
+
+      <article class="side panel" data-side="them">
+        <header class="side-head">
+          <h2>They offer</h2>
+          <button type="button" class="btn primary" data-add-side="them">+ Add</button>
+        </header>
+        <div class="cash-row">
+          <label for="cashThem">Cash</label>
+          <div class="cash-input-wrap">
+            <span class="cash-prefix">$</span>
+            <input id="cashThem" type="number" min="0" step="0.01" inputmode="decimal" value="0" data-cash-side="them" />
+          </div>
+        </div>
+        <div class="picker-slot" data-picker-slot="them"></div>
+        <ul class="item-list" id="listThem"></ul>
+        <footer class="side-foot">
+          <span class="side-total-label">Their total</span>
+          <strong class="side-total" id="totalThem">$0.00</strong>
+        </footer>
+      </article>
+    </section>
+  </main>
+
+  <section id="pickerPanel" class="picker-panel" aria-labelledby="pickerTitle" hidden>
+    <header class="picker-head">
+      <div>
+        <h2 id="pickerTitle">Add to trade</h2>
+        <p class="picker-sub" id="pickerSub">Search cards or sealed products</p>
+      </div>
+      <button type="button" class="btn ghost" id="pickerCloseBtn" aria-label="Close">✕</button>
+    </header>
+    <div class="picker-tabs" role="tablist" aria-label="Item type">
+      <button type="button" class="picker-tab active" data-picker-kind="all" role="tab" aria-selected="true">All</button>
+      <button type="button" class="picker-tab" data-picker-kind="card" role="tab" aria-selected="false">Cards</button>
+      <button type="button" class="picker-tab" data-picker-kind="sealed" role="tab" aria-selected="false">Sealed</button>
+    </div>
+    <input
+      id="pickerSearch"
+      class="picker-search"
+      type="search"
+      autocomplete="off"
+      placeholder="Search by name, set, or number…"
+    />
+    <div id="pickerGrid" class="picker-grid" role="listbox" aria-label="Search results"></div>
+    <p class="picker-status" id="pickerStatus">Type to search the catalog…</p>
+  </section>
+
+  <script src="/site-nav.js?v=12" defer></script>
+  <script src="/account-ui.js?v=9"></script>
+  <script src="/trade-analyzer.js"></script>
+</body>
+</html>

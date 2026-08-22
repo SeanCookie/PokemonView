@@ -9,7 +9,7 @@
   <meta name="robots" content="noindex, nofollow" />
   <title>Admin — PokemonView</title>
   <link rel="stylesheet" href="/site-nav.css" />
-  <link rel="stylesheet" href="/admin.css?v=4" />
+  <link rel="stylesheet" href="/admin.css?v=5" />
   <style>
     :root {
       color-scheme: dark;
@@ -43,6 +43,7 @@
       <a href="/poke-view.html" class="nav-link">Poke View</a>
       <a href="/scan-your-cards.html" class="nav-link">Scan Your Cards</a>
       <a href="/restock-tracker.html" class="nav-link">Restock Tracker</a>
+      <a href="/trade-analyzer.html" class="nav-link">Trade Analyzer</a>
       <a href="/admin.html" class="nav-link active">Admin</a>
     </div>
     <div class="nav-right">
@@ -359,9 +360,220 @@
       <p class="admin-status" id="siteStatusMsg"></p>
     </section>
 
+    <section class="admin-hero admin-ops-divider">
+      <h1>Ops tools</h1>
+      <p>Health, coverage, gap refresh, sealed catalog, jobs, schedules, flags, images, metrics, showcase, and nickname bulk import.</p>
+    </section>
+
+    <section class="admin-grid admin-grid--ops">
+      <article class="admin-card" id="opsHealthCard">
+        <h2>1. Ops / health</h2>
+        <p class="admin-hint">Memory, uptime, and key cache file sizes on disk.</p>
+        <div class="admin-overview-stats" id="opsHealthStats"></div>
+        <div class="admin-actions">
+          <button type="button" class="admin-btn" id="btnOpsHealthRefresh">Refresh health</button>
+        </div>
+        <p class="admin-status" id="opsHealthMsg"></p>
+      </article>
+
+      <article class="admin-card" id="opsMetricsCard">
+        <h2>10. API metrics</h2>
+        <p class="admin-hint">Request counters for hot pricing / catalog endpoints since process start (persisted lightly).</p>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead><tr><th>Endpoint</th><th>Hits</th><th>Last hit</th></tr></thead>
+            <tbody id="opsMetricsBody"></tbody>
+          </table>
+        </div>
+        <div class="admin-actions">
+          <button type="button" class="admin-btn" id="btnOpsMetricsRefresh">Refresh metrics</button>
+        </div>
+      </article>
+    </section>
+
+    <section class="admin-card" id="opsCoverageCard">
+      <h2>2. Coverage heatmap</h2>
+      <p class="admin-hint">Per-set freshness for TCG / PriceCharting, details, and local images. Filter or sort to find gaps.</p>
+      <div class="admin-users-toolbar">
+        <input id="opsCoverageSearch" class="admin-input admin-users-search" type="search" placeholder="Filter set name or code…" />
+        <select id="opsCoverageFilter" class="admin-input">
+          <option value="all">All sets</option>
+          <option value="staleTcg">Stale TCG</option>
+          <option value="stalePc">Stale PriceCharting</option>
+          <option value="missingDetails">Missing details</option>
+          <option value="missingImages">Missing images</option>
+        </select>
+        <button type="button" class="admin-btn" id="btnOpsCoverageRefresh">Load coverage</button>
+      </div>
+      <p class="admin-status" id="opsCoverageMsg"></p>
+      <div class="admin-table-wrap admin-coverage-wrap">
+        <table class="admin-table admin-coverage-table">
+          <thead>
+            <tr>
+              <th>Set</th>
+              <th>Cards</th>
+              <th>Details</th>
+              <th>Images</th>
+              <th>TCG</th>
+              <th>PC</th>
+              <th>Sealed</th>
+            </tr>
+          </thead>
+          <tbody id="opsCoverageBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="admin-grid admin-grid--ops">
+      <article class="admin-card" id="opsGapCard">
+        <h2>3. Gap / stale refresh</h2>
+        <p class="admin-hint">Refresh only missing, stale, or newest sets instead of a full scrape.</p>
+        <label>Kind
+          <select id="opsGapKind" class="admin-input">
+            <option value="tcg">TCG prices</option>
+            <option value="pricecharting">PriceCharting details</option>
+          </select>
+        </label>
+        <label>Mode
+          <select id="opsGapMode" class="admin-input">
+            <option value="stale">Stale / never</option>
+            <option value="missing">Never refreshed</option>
+            <option value="newest">Newest codes</option>
+          </select>
+        </label>
+        <label>Limit
+          <input id="opsGapLimit" class="admin-input" type="number" min="1" max="50" value="10" />
+        </label>
+        <label>Stale days
+          <input id="opsGapStaleDays" class="admin-input" type="number" min="1" max="90" value="14" />
+        </label>
+        <div class="admin-actions">
+          <button type="button" class="admin-btn primary" id="btnOpsGapStart">Start gap refresh</button>
+          <button type="button" class="admin-btn danger" id="btnOpsGapStop" hidden>Stop</button>
+        </div>
+        <p class="admin-status" id="opsGapMsg"></p>
+      </article>
+
+      <article class="admin-card" id="opsSealedCard">
+        <h2>4. Sealed catalog</h2>
+        <p class="admin-hint">PriceCharting sealed products used by Sets / Trade Analyzer.</p>
+        <div class="admin-overview-stats" id="opsSealedStats"></div>
+        <label class="admin-check">
+          <input type="checkbox" id="opsSealedDownloadImages" checked />
+          Download sealed images after sync
+        </label>
+        <div class="admin-actions">
+          <button type="button" class="admin-btn" id="btnOpsSealedRefreshStats">Refresh stats</button>
+          <button type="button" class="admin-btn primary" id="btnOpsSealedSync">Sync sealed catalog</button>
+        </div>
+        <p class="admin-status" id="opsSealedMsg"></p>
+      </article>
+    </section>
+
+    <section class="admin-card" id="opsIntegrityCard">
+      <h2>5. Catalog integrity</h2>
+      <p class="admin-hint">Scan for empty details, missing images, stale pricing, and sealed price gaps.</p>
+      <div class="admin-actions">
+        <button type="button" class="admin-btn primary" id="btnOpsIntegrityScan">Run integrity scan</button>
+      </div>
+      <p class="admin-status" id="opsIntegrityMsg"></p>
+      <pre class="admin-pre" id="opsIntegrityOut"></pre>
+    </section>
+
+    <section class="admin-grid admin-grid--ops">
+      <article class="admin-card" id="opsJobsCard">
+        <h2>6. Job history</h2>
+        <div class="admin-actions">
+          <button type="button" class="admin-btn" id="btnOpsJobsRefresh">Refresh jobs</button>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead><tr><th>When</th><th>Kind</th><th>Status</th><th>Detail</th></tr></thead>
+            <tbody id="opsJobsBody"></tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="admin-card" id="opsSchedulesCard">
+        <h2>7. Scheduled jobs</h2>
+        <p class="admin-hint">UTC hour triggers (checked every minute). Last run stamped per day.</p>
+        <div id="opsSchedulesForm" class="admin-form admin-schedules-form"></div>
+        <div class="admin-actions">
+          <button type="button" class="admin-btn primary" id="btnOpsSchedulesSave">Save schedules</button>
+        </div>
+        <p class="admin-status" id="opsSchedulesMsg"></p>
+      </article>
+    </section>
+
+    <section class="admin-grid admin-grid--ops">
+      <article class="admin-card" id="opsPersistCard">
+        <h2>8. Persist / rebuild</h2>
+        <p class="admin-hint">Force-save caches to disk/R2 and optionally rebuild set-card-details by-code splits.</p>
+        <label class="admin-check"><input type="checkbox" id="opsPersistTcg" checked /> TCG link price cache</label>
+        <label class="admin-check"><input type="checkbox" id="opsPersistPc" checked /> PriceCharting details cache</label>
+        <label class="admin-check"><input type="checkbox" id="opsPersistStamps" checked /> Set refresh timestamps</label>
+        <label class="admin-check"><input type="checkbox" id="opsPersistSplit" /> Split set-card-details by-code</label>
+        <div class="admin-actions">
+          <button type="button" class="admin-btn primary" id="btnOpsPersist">Run persist</button>
+        </div>
+        <p class="admin-status" id="opsPersistMsg"></p>
+      </article>
+
+      <article class="admin-card" id="opsImagesCard">
+        <h2>9. Image / R2 helpers</h2>
+        <p class="admin-hint">Local disk gaps vs catalog card counts. Upload to R2 with <code>npm run upload:card-images</code>.</p>
+        <div class="admin-actions">
+          <button type="button" class="admin-btn" id="btnOpsImagesReport">Scan missing images</button>
+        </div>
+        <p class="admin-status" id="opsImagesMsg"></p>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead><tr><th>Set</th><th>Expected</th><th>On disk</th><th>Missing</th><th>%</th></tr></thead>
+            <tbody id="opsImagesBody"></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <section class="admin-grid admin-grid--ops">
+      <article class="admin-card" id="opsFlagsCard">
+        <h2>12. Feature flags</h2>
+        <div id="opsFlagsForm" class="admin-form admin-flags-form"></div>
+        <div class="admin-actions">
+          <button type="button" class="admin-btn primary" id="btnOpsFlagsSave">Save flags</button>
+        </div>
+        <p class="admin-status" id="opsFlagsMsg"></p>
+      </article>
+
+      <article class="admin-card" id="opsShowcaseCard">
+        <h2>11. Showcase moderation</h2>
+        <p class="admin-hint">Force profiles private or clear custom avatars.</p>
+        <div class="admin-actions">
+          <button type="button" class="admin-btn" id="btnOpsShowcaseRefresh">Load showcases</button>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead><tr><th>User</th><th>Public</th><th>Items</th><th></th></tr></thead>
+            <tbody id="opsShowcaseBody"></tbody>
+          </table>
+        </div>
+        <p class="admin-status" id="opsShowcaseMsg"></p>
+      </article>
+    </section>
+
+    <section class="admin-card" id="opsNicknamesBulkCard">
+      <h2>14. Nickname bulk import</h2>
+      <p class="admin-hint">CSV columns: <code>nickname,setCode,cardNumber,setName,language</code> (header optional).</p>
+      <textarea id="opsNicknameCsv" class="admin-textarea" rows="6" placeholder="Bubble Mew,SVI,25,Scarlet & Violet,english"></textarea>
+      <div class="admin-actions">
+        <button type="button" class="admin-btn primary" id="btnOpsNicknameBulk">Import nicknames</button>
+      </div>
+      <p class="admin-status" id="opsNicknameBulkMsg"></p>
+    </section>
+
     <section class="admin-card">
       <h2>Users</h2>
-      <p class="admin-hint">Search all accounts, or browse recent signups below. Edit username/name/email, then Save.</p>
+      <p class="admin-hint">Search all accounts, or browse recent signups below. Edit username/name/email, then Save. Use Disable / Reset collection / Delete carefully. Role toggle is 13. User tools.</p>
       <div class="admin-users-toolbar">
         <input
           id="usersSearch"
@@ -383,6 +595,7 @@
               <th>Name</th>
               <th>Email</th>
               <th>Role</th>
+              <th>Items</th>
               <th>Signed up</th>
               <th>Last login</th>
               <th></th>
@@ -395,6 +608,7 @@
   </main>
 
   <script src="/account-ui.js?v=5"></script>
-  <script src="/admin.js?v=5"></script>
+  <script src="/admin.js?v=6"></script>
+  <script src="/admin-ops-panel.js?v=1"></script>
 </body>
 </html>

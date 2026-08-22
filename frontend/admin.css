@@ -703,3 +703,93 @@
   color: #ff7f93;
   border-color: #8f3a4f;
 }
+
+.admin-ops-divider {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.admin-grid--ops {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 900px) {
+  .admin-grid--ops {
+    grid-template-columns: 1fr;
+  }
+}
+
+.admin-coverage-wrap {
+  max-height: 420px;
+  overflow: auto;
+}
+
+.admin-coverage-table td.tone-ok {
+  color: #7ddea0;
+}
+
+.admin-coverage-table td.tone-bad {
+  color: #ff9aab;
+}
+
+.admin-pre {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--muted);
+  font-size: 12px;
+  overflow: auto;
+  max-height: 240px;
+}
+
+.admin-textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #0e1623;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  padding: 10px 12px;
+  resize: vertical;
+}
+
+.admin-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.admin-flags-form,
+.admin-schedules-form {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-schedule-row {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.admin-user-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.admin-user-disabled {
+  opacity: 0.72;
+}
+
+.mono {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 12px;
+}

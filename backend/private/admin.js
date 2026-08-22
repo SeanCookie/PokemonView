@@ -1016,7 +1016,7 @@
     }
     if (!usersBody) return;
     if (!list.length) {
-      usersBody.innerHTML = `<tr><td colspan="7" style="color:var(--muted)">${
+      usersBody.innerHTML = `<tr><td colspan="8" style="color:var(--muted)">${
         allUsersCache.length ? "No users match your search." : "No users yet."
       }</td></tr>`;
       return;
@@ -1024,14 +1024,23 @@
     usersBody.innerHTML = list
       .map((row) => {
         const id = escapeHtml(row.id || "");
-        return `<tr data-user-id="${id}">
+        const disabled = Boolean(row.disabledAt);
+        const roleLabel = row.isAdmin ? "admin" : escapeHtml(row.role || "user");
+        return `<tr data-user-id="${id}" class="${disabled ? "admin-user-disabled" : ""}">
           <td><input class="admin-input" data-field="username" value="${escapeHtml(row.username || "")}" autocomplete="off" spellcheck="false" /></td>
           <td><input class="admin-input" data-field="name" value="${escapeHtml(row.name || "")}" autocomplete="off" /></td>
           <td><input class="admin-input" data-field="email" type="email" value="${escapeHtml(row.email || "")}" autocomplete="off" /></td>
-          <td>${row.isAdmin ? "admin" : escapeHtml(row.role || "user")}</td>
+          <td>${roleLabel}${disabled ? " · disabled" : ""}</td>
+          <td>${Number(row.itemCount || 0).toLocaleString()}</td>
           <td>${escapeHtml(formatDateTime(row.createdAt))}</td>
           <td>${escapeHtml(formatDateTime(row.lastLoginAt))}</td>
-          <td><button type="button" class="admin-btn primary" data-save-user>Save</button></td>
+          <td class="admin-user-actions">
+            <button type="button" class="admin-btn primary" data-save-user>Save</button>
+            <button type="button" class="admin-btn" data-user-role="${row.isAdmin ? "user" : "admin"}">${row.isAdmin ? "Revoke admin" : "Make admin"}</button>
+            <button type="button" class="admin-btn" data-user-action="${disabled ? "enable" : "disable"}">${disabled ? "Enable" : "Disable"}</button>
+            <button type="button" class="admin-btn" data-user-action="reset-collection">Reset collection</button>
+            <button type="button" class="admin-btn danger" data-user-action="delete">Delete</button>
+          </td>
         </tr>`;
       })
       .join("");
@@ -1064,6 +1073,65 @@
           }
         } finally {
           btn.disabled = false;
+        }
+      });
+    });
+
+    usersBody.querySelectorAll("[data-user-role]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const rowEl = btn.closest("tr");
+        const userId = rowEl?.getAttribute("data-user-id");
+        const role = btn.getAttribute("data-user-role") || "user";
+        if (!userId) return;
+        const msg = document.getElementById("usersStatusMsg");
+        try {
+          await api(`/api/admin/users/${encodeURIComponent(userId)}/role`, {
+            method: "POST",
+            body: JSON.stringify({ role })
+          });
+          if (msg) {
+            msg.textContent = `Role updated to ${role || "user"}.`;
+            msg.className = "admin-status ok";
+          }
+          renderUsers((await api("/api/admin/users")).users);
+        } catch (err) {
+          if (msg) {
+            msg.textContent = err.message || "Role update failed.";
+            msg.className = "admin-status error";
+          }
+        }
+      });
+    });
+
+    usersBody.querySelectorAll("[data-user-action]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const rowEl = btn.closest("tr");
+        const userId = rowEl?.getAttribute("data-user-id");
+        const action = btn.getAttribute("data-user-action");
+        if (!userId || !action) return;
+        const msg = document.getElementById("usersStatusMsg");
+        const confirmText =
+          action === "delete"
+            ? "Permanently delete this user and their collection?"
+            : action === "reset-collection"
+              ? "Remove all collection items for this user?"
+              : "";
+        if (confirmText && !window.confirm(confirmText)) return;
+        try {
+          await api(`/api/admin/users/${encodeURIComponent(userId)}/${action}`, {
+            method: "POST",
+            body: "{}"
+          });
+          if (msg) {
+            msg.textContent = `User ${action} complete.`;
+            msg.className = "admin-status ok";
+          }
+          renderUsers((await api("/api/admin/users")).users);
+        } catch (err) {
+          if (msg) {
+            msg.textContent = err.message || "Action failed.";
+            msg.className = "admin-status error";
+          }
         }
       });
     });

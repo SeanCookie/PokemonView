@@ -293,13 +293,16 @@
 
     .layout {
       display: grid;
-      grid-template-columns: 250px 1fr;
+      grid-template-columns: 250px minmax(0, 1fr);
       gap: 14px;
       align-items: start;
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
     }
 
     .layout.focused {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
     }
 
     .layout.focused .sidebar {
@@ -349,6 +352,8 @@
     .content {
       display: grid;
       gap: 12px;
+      min-width: 0;
+      max-width: 100%;
     }
 
     .era-block {
@@ -416,10 +421,11 @@
     }
 
     .set-symbol-row {
-      margin-top: 2px;
-      min-height: 22px;
+      margin-top: 4px;
+      min-height: 24px;
       display: flex;
       align-items: center;
+      gap: 10px;
     }
 
     .set-symbol-image {
@@ -427,6 +433,52 @@
       height: 24px;
       object-fit: contain;
       image-rendering: -webkit-optimize-contrast;
+      flex-shrink: 0;
+    }
+
+    .set-progress {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .set-progress-bar {
+      flex: 1;
+      min-width: 0;
+      height: 7px;
+      border-radius: 999px;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .set-progress-fill {
+      height: 100%;
+      min-width: 0;
+      border-radius: inherit;
+      transition: width 0.2s ease;
+    }
+
+    .set-progress-fill.tone-complete,
+    .set-progress-fill.tone-good,
+    .set-progress-fill.tone-low {
+      background: linear-gradient(90deg, #4cd964, #2db84a);
+    }
+
+    .set-progress-label {
+      flex: 0 0 auto;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--muted);
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .set-progress-label .need,
+    .set-progress-label .done {
+      color: #4cd964;
     }
 
     .set-symbol-badge {
@@ -450,6 +502,8 @@
       padding: 12px;
       display: grid;
       gap: 12px;
+      min-width: 0;
+      max-width: 100%;
     }
 
     .set-banner {
@@ -682,6 +736,9 @@
       display: grid;
       grid-template-columns: repeat(5, minmax(0, 1fr));
       gap: 10px;
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
     }
 
     .booster-pack-grid {
@@ -784,6 +841,14 @@
     .card-tile-shell {
       position: relative;
       display: block;
+      min-width: 0;
+      max-width: 100%;
+      overflow: hidden;
+    }
+
+    .cards-grid > .card-tile-shell {
+      min-width: 0;
+      max-width: 100%;
     }
 
     .card-tile {
@@ -798,8 +863,14 @@
       cursor: pointer;
       position: relative;
       width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      overflow: hidden;
       font: inherit;
       text-align: left;
+      box-sizing: border-box;
+      appearance: none;
+      -webkit-appearance: none;
     }
 
     .card-tile-shell--owned .card-tile {
@@ -881,7 +952,6 @@
     }
 
     .card-owned-chip {
-      display: none;
       position: absolute;
       top: 6px;
       left: 6px;
@@ -896,10 +966,14 @@
       font-weight: 700;
       text-align: center;
       pointer-events: none;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.12s ease;
     }
 
     .card-tile-shell--owned:hover .card-owned-chip {
-      display: block;
+      opacity: 1;
+      visibility: visible;
     }
 
     .card-owned-remove {
@@ -939,9 +1013,13 @@
      * Card art frame: fill the pocket (cover). Older EX/WOTC scans are ~400×550
      * (wider than 63/88), so contain left empty bands; cover fills with a tiny side crop.
      * Rounded clip removes square white scan corners.
+     * Absolutely positioned thumbs so intrinsic image size never blows out CSS grid.
      */
     .card-thumb-frame {
+      position: relative;
       width: 100%;
+      max-width: 100%;
+      min-width: 0;
       aspect-ratio: 63 / 88;
       border-radius: 5.2% / 3.7%;
       overflow: hidden;
@@ -949,11 +1027,15 @@
       background: var(--thumb-bg);
       line-height: 0;
       isolation: isolate;
+      contain: inline-size;
     }
 
     .card-thumb-frame .card-thumb {
+      position: absolute;
+      inset: 0;
       width: 100%;
       height: 100%;
+      max-width: none;
       aspect-ratio: unset;
       object-fit: cover;
       object-position: center;
@@ -965,6 +1047,8 @@
 
     .card-thumb {
       width: 100%;
+      max-width: 100%;
+      height: auto;
       aspect-ratio: 63 / 88;
       object-fit: cover;
       object-position: center;
@@ -984,6 +1068,11 @@
       background: var(--thumb-bg);
       height: 100%;
       min-height: 0;
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      max-width: none;
+      aspect-ratio: unset;
     }
 
     .card-meta {
@@ -2184,6 +2273,7 @@
       <a href="/poke-view.html" class="nav-link">Poke View</a>
       <a href="/scan-your-cards.html" class="nav-link">Scan Your Cards</a>
       <a href="/restock-tracker.html" class="nav-link">Restock Tracker</a>
+      <a href="/trade-analyzer.html" class="nav-link">Trade Analyzer</a>
     </div>
     <div class="nav-right">
       <div class="nav-search-wrap">
@@ -5801,7 +5891,9 @@
       }
       const loadPromise = (async () => {
         try {
-          const response = await fetch(`/api/sets/card-details?setCode=${encodeURIComponent(code)}`);
+          const response = await fetch(`/api/sets/card-details?setCode=${encodeURIComponent(code)}`, {
+            cache: "no-store"
+          });
           if (!response.ok) return;
           const payload = await response.json();
           if (!payload || !payload.ok || !payload.byCode || typeof payload.byCode !== "object") return;
@@ -6912,7 +7004,8 @@
 
     function getCardDetailForCard(card) {
       if (!card) return null;
-      const setDetails = state.cardDetailsBySetCode[card.setCode];
+      const setCode = String(card.setCode || "").trim().toUpperCase();
+      const setDetails = state.cardDetailsBySetCode[setCode] || state.cardDetailsBySetCode[card.setCode];
       const cardsByNumber = setDetails && setDetails.cards && typeof setDetails.cards === "object"
         ? setDetails.cards
         : {};
@@ -6920,6 +7013,9 @@
         const detail = cardsByNumber[key];
         if (detail) return detail;
       }
+      // Promo numbers like SWSH182 — also try exact uppercase key.
+      const exact = String(card.cardNo || "").trim().toUpperCase();
+      if (exact && cardsByNumber[exact]) return cardsByNumber[exact];
       return null;
     }
 
@@ -8415,6 +8511,25 @@
       return `<div class="card-thumb-frame"><img class="card-thumb" src="${escapeHtml(url)}" alt="${alt}" loading="${escapeHtml(loading)}"${priorityAttr} /></div>`;
     }
 
+    function buildCollectionOwnedBannerMarkup(setCode, allCards) {
+      const code = String(setCode || "").toUpperCase();
+      const cards = Array.isArray(allCards) ? allCards : [];
+      if (!code || !isCollectionSignedIn() || state.collectionUserItemsAvailable === false) return "";
+      if (!state.collectionOwnedCheckedBySetCode[code] && !state.collectionOwnedKeysBySetCode[code]) {
+        return "";
+      }
+      const ownedKeys = state.collectionOwnedKeysBySetCode[code] || new Set();
+      const ownedInSet = cards.filter((card) => isCardOwnedInCollection(card, ownedKeys)).length;
+      const needInSet = Math.max(0, cards.length - ownedInSet);
+      return `<div id="collectionOwnedBanner" class="collection-owned-banner" role="status">You own <strong>${ownedInSet.toLocaleString()}</strong> of <strong>${cards.length.toLocaleString()}</strong> cards in this set${
+        needInSet > 0
+          ? ` and need <strong>${needInSet.toLocaleString()}</strong> more`
+          : ownedInSet > 0
+            ? " — complete set!"
+            : ""
+      }. <span class="hint"> Green border = in your collection. Use <strong>+</strong> to add cards you are missing, or <strong style="color:#ff8a8a;">−</strong> on owned cards to remove.</span></div>`;
+    }
+
     function renderSetCardTileMarkup(card) {
       const code = String(card?.setCode || state.selectedSetCode || "")
         .trim()
@@ -8424,25 +8539,30 @@
       const inlinePrice = formatCardPriceInline(card);
       const priceLabel = inlinePrice || (linkHydrated ? "—" : "");
       const ownedQty = getOwnedQuantityForCard(code, card.cardNo);
-      const leftMeta =
-        ownedQty > 0
-          ? `<span class="card-qty-inline">Qty: <button type="button" class="card-qty-value" data-card-qty="${escapeHtml(card.cardNo)}" title="Click to edit quantity (0 removes)" aria-label="Quantity ${ownedQty}. Click to edit">${ownedQty}</button></span>`
-          : escapeHtml(card.label);
+      const owned = isCollectionSignedIn() && ownedQty > 0;
+      const leftMeta = owned
+        ? `<span class="card-qty-inline">Qty: <button type="button" class="card-qty-value" data-card-qty="${escapeHtml(card.cardNo)}" title="Click to edit quantity (0 removes)" aria-label="Quantity ${ownedQty}. Click to edit">${ownedQty}</button></span>`
+        : escapeHtml(card.label);
+      const actionBtn = !isCollectionSignedIn()
+        ? ""
+        : owned
+          ? `<button type="button" class="card-owned-remove" data-remove-from-collection aria-label="Remove from collection" title="Remove from collection"><span class="card-btn-icon card-btn-icon--minus" aria-hidden="true"></span></button>`
+          : `<button type="button" class="card-add-btn" data-add-to-collection aria-label="Add to collection" title="Add to collection"><span class="card-btn-icon card-btn-icon--plus" aria-hidden="true"></span></button>`;
+      const ownedChip = owned ? `<span class="card-owned-chip">In your collection</span>` : "";
+      // Use a div (not <button>) for the tile: owned qty is also a <button>, and nested
+      // buttons make the HTML parser close the tile early — every following card blows out.
       return `
-              <div class="card-tile-shell" data-card-number="${escapeHtml(card.cardNo)}">
-                ${
-                  isCollectionSignedIn()
-                    ? `<button type="button" class="card-add-btn" data-add-to-collection aria-label="Add to collection" title="Add to collection"><span class="card-btn-icon card-btn-icon--plus" aria-hidden="true"></span></button>`
-                    : ""
-                }
-                <button type="button" class="card-tile">
+              <div class="card-tile-shell${owned ? " card-tile-shell--owned" : ""}" data-card-number="${escapeHtml(card.cardNo)}">
+                ${actionBtn}
+                ${ownedChip}
+                <div class="card-tile" role="button" tabindex="0"${owned ? ' title="In your collection"' : ""}>
                 ${renderCardThumbMarkup(card)}
                 <div>${renderCardName(card)}</div>
                 <div class="card-meta card-meta-row">
                   <span class="card-meta-left">${leftMeta}</span>
                   <span class="card-price-inline">${escapeHtml(priceLabel)}</span>
                 </div>
-                </button>
+                </div>
               </div>`;
     }
 
@@ -8645,6 +8765,21 @@
         return;
       }
       scheduleDeferredSetPricing(selectedSet.code, selectedSet.name);
+
+      // Load imported PkmnCards details if missing, then re-render once ready.
+      if (!setCardDetailsReady(selectedSet.code)) {
+        const pendingCode = String(selectedSet.code || "").toUpperCase();
+        void ensureSetCardDetailsLoaded(pendingCode).then(() => {
+          if (
+            String(state.selectedSetCode || "").toUpperCase() !== pendingCode ||
+            !state.selectedCardNumber ||
+            !setCardDetailsReady(pendingCode)
+          ) {
+            return;
+          }
+          renderCardPageDetail();
+        });
+      }
 
       const cards = getSortedCards(getSetCards(selectedSet, setConfig));
       const card = findCardInSet(cards, state.selectedCardNumber);
@@ -8996,12 +9131,114 @@
       return Boolean(window.InfinityAccount && window.InfinityAccount.isSignedIn());
     }
 
+    function getSetCatalogCardTotal(setCode) {
+      const code = String(setCode || "").trim().toUpperCase();
+      if (!code) return 0;
+      const names = state.cardNamesBySetCode[code] || {};
+      const fromNames = Object.keys(names).length;
+      if (fromNames > 0) return fromNames;
+      // Catalog grid often hasn't loaded per-set card lists yet — fall back to config total.
+      const fromConfig = Number(detailedSetConfigs[code]?.total) || 0;
+      return fromConfig > 0 ? fromConfig : 0;
+    }
+
+    function countOwnedUniqueCardsInSet(setCode, items) {
+      const code = String(setCode || "").trim().toUpperCase();
+      if (!code || !Array.isArray(items)) return 0;
+      const seen = new Set();
+      for (const item of items) {
+        if (!item || item.type !== "single") continue;
+        if (resolveCollectionItemSetCode(item) !== code) continue;
+        const keys = cardNumberLookupKeys(item.cardNumber || "");
+        const fingerprint = keys.length
+          ? keys
+              .map((key) => String(key).toUpperCase())
+              .sort()
+              .join("|")
+          : item.id
+            ? `item:${item.id}`
+            : "";
+        if (!fingerprint || seen.has(fingerprint)) continue;
+        seen.add(fingerprint);
+      }
+      return seen.size;
+    }
+
+    function getSetCatalogCollectionProgress(setCode) {
+      const code = String(setCode || "").trim().toUpperCase();
+      if (!code) return null;
+      if (!isCollectionSignedIn() || state.collectionUserItemsAvailable === false) return null;
+      if (!Array.isArray(state.collectionItemsCache)) return null;
+
+      const total = getSetCatalogCardTotal(code);
+      const names = state.cardNamesBySetCode[code] || {};
+      const nameKeys = Object.keys(names);
+      let owned = 0;
+      if (nameKeys.length > 0) {
+        const ownedKeys = buildOwnedKeysForSetFromItems(code, state.collectionItemsCache);
+        for (const cardNo of nameKeys) {
+          if (isCardOwnedInCollection({ cardNo, label: `#${cardNo}` }, ownedKeys)) owned += 1;
+        }
+      } else {
+        // Without a loaded card list, count unique owned numbers from the collection.
+        owned = countOwnedUniqueCardsInSet(code, state.collectionItemsCache);
+      }
+      if (owned <= 0) return null;
+      const effectiveTotal = Math.max(total, owned);
+      const need = Math.max(0, effectiveTotal - owned);
+      const percent = owned >= effectiveTotal ? 100 : Math.floor((owned / effectiveTotal) * 100);
+      return { owned, total: effectiveTotal, need, percent };
+    }
+
+    function buildSetCatalogProgressHtml(setCode) {
+      const progress = getSetCatalogCollectionProgress(setCode);
+      // Only show once the user owns at least one card from this set.
+      if (!progress || progress.owned <= 0) return "";
+      const tone =
+        progress.percent >= 100 ? "complete" : progress.percent >= 40 ? "good" : "low";
+      const label =
+        progress.need <= 0
+          ? `<span class="done">Complete</span>`
+          : `<span class="need">${progress.need.toLocaleString()} left</span>`;
+      const title = `${progress.owned.toLocaleString()} of ${progress.total.toLocaleString()} owned`;
+      return `<div class="set-progress" title="${escapeHtml(title)}">
+        <div class="set-progress-bar" role="progressbar" aria-valuenow="${progress.percent}" aria-valuemin="0" aria-valuemax="100" aria-label="${escapeHtml(title)}">
+          <div class="set-progress-fill tone-${tone}" style="width:${Math.max(0, Math.min(100, progress.percent))}%"></div>
+        </div>
+        <div class="set-progress-label">${label}</div>
+      </div>`;
+    }
+
+    function buildSetSymbolRowHtml(setEntry, { symbolUrl = "", symbolLoad = "", progress = true } = {}) {
+      const code = String(setEntry?.code || "").trim().toUpperCase();
+      const name = String(setEntry?.name || code).trim();
+      const symbol = symbolUrl
+        ? `<img class="set-symbol-image" src="${escapeHtml(symbolUrl)}" alt="${escapeHtml(`${name} set symbol`)}" decoding="async" width="24" height="24"${symbolLoad} />`
+        : "";
+      const progressHtml = progress ? buildSetCatalogProgressHtml(code) : "";
+      if (!symbol && !progressHtml) return `<div class="set-symbol-row"></div>`;
+      return `<div class="set-symbol-row">${symbol}${progressHtml}</div>`;
+    }
+
+    function prefetchCatalogCollectionProgress() {
+      if (!isCollectionSignedIn()) return;
+      if (Array.isArray(state.collectionItemsCache)) return;
+      if (state._catalogCollectionProgressPrefetch) return;
+      state._catalogCollectionProgressPrefetch = true;
+      void ensureCollectionItems().then(() => {
+        state._catalogCollectionProgressPrefetch = false;
+        if (state.selectedSetCode || isSealedCatalogMode()) return;
+        renderContent();
+      });
+    }
+
     function resetCollectionOwnershipState() {
       state.collectionItemsCache = null;
       state.collectionItemsFetch = null;
       state.collectionUserItemsAvailable = false;
       state.collectionOwnedKeysBySetCode = {};
       state.collectionOwnedCheckedBySetCode = {};
+      state._catalogCollectionProgressPrefetch = false;
     }
 
     function appendCardToCollectionCache(item) {
@@ -9023,6 +9260,7 @@
       }
       const keys = state.collectionOwnedKeysBySetCode[code];
       for (const key of cardNumberLookupKeys(item.cardNumber || "")) keys.add(key);
+      state.collectionOwnedCheckedBySetCode[code] = true;
     }
 
     function findCollectionItemForCard(setCode, cardNo) {
@@ -9147,30 +9385,13 @@
         });
     }
 
-    function ensureCardAddButton(shell) {
-      if (!shell || shell.querySelector(".card-add-btn")) return;
-      shell.querySelector(".card-owned-remove")?.remove();
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "card-add-btn";
-      btn.setAttribute("data-add-to-collection", "");
-      btn.setAttribute("aria-label", "Add to collection");
-      btn.setAttribute("title", "Add to collection");
-      btn.innerHTML = `<span class="card-btn-icon card-btn-icon--plus" aria-hidden="true"></span>`;
-      shell.appendChild(btn);
-    }
-
-    function ensureCardRemoveButton(shell) {
-      if (!shell || shell.querySelector(".card-owned-remove")) return;
-      shell.querySelector(".card-add-btn")?.remove();
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "card-owned-remove";
-      btn.setAttribute("data-remove-from-collection", "");
-      btn.setAttribute("aria-label", "Remove from collection");
-      btn.setAttribute("title", "Remove from collection");
-      btn.innerHTML = `<span class="card-btn-icon card-btn-icon--minus" aria-hidden="true"></span>`;
-      shell.appendChild(btn);
+    function refreshSelectedSetDetailPreservingScroll() {
+      const scrollY = window.scrollY;
+      renderSelectedSetDetail();
+      requestAnimationFrame(() => {
+        window.scrollTo(0, scrollY);
+        requestAnimationFrame(() => window.scrollTo(0, scrollY));
+      });
     }
 
     async function handleAddCardToCollection(addBtn, setCode, cardNo, allCards) {
@@ -9188,36 +9409,47 @@
       state.collectionAddInFlight = flightKey;
       addBtn.disabled = true;
       try {
+        const pricingInfo = getCardPricingInfo(card);
+        const knownPrice = getEffectiveTcgplayerPrice(pricingInfo, card, {
+          seedFallback: shouldUseManifestPriceSeed()
+        });
+        const body = {
+          type: "single",
+          name: getCardDisplayName(card),
+          setName: card.setName || "",
+          cardNumber: card.cardNo,
+          quantity: 1,
+          setCode: code,
+          setLanguage: state.language === "japanese" ? "japanese" : "english",
+          imageUrl: card.imageUrl || ""
+        };
+        if (Number.isFinite(knownPrice) && knownPrice > 0) {
+          body.marketPrice = Number(knownPrice);
+        }
         const res = await fetch("/api/items", {
           method: "POST",
           credentials: "same-origin",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            type: "single",
-            name: getCardDisplayName(card),
-            setName: card.setName || "",
-            cardNumber: card.cardNo,
-            quantity: 1,
-            setCode: code,
-            setLanguage: state.language === "japanese" ? "japanese" : "english",
-            imageUrl: card.imageUrl || ""
-          })
+          body: JSON.stringify(body)
         });
         const payload = res.ok ? await res.json().catch(() => ({})) : null;
         if (!res.ok) {
           window.alert(payload && payload.error ? String(payload.error) : `Could not add card (${res.status})`);
+          addBtn.disabled = false;
           return;
         }
         if (payload && payload.item) {
           state.collectionUserItemsAvailable = true;
           appendCardToCollectionCache(payload.item);
         }
-        patchCollectionOwnedUI(code, allCards);
+        // Full re-render keeps card-grid sizing stable (in-place DOM patches can
+        // reflow after images have intrinsic sizes and blow out the layout).
+        refreshSelectedSetDetailPreservingScroll();
       } catch {
         window.alert("Network error while adding the card.");
+        addBtn.disabled = false;
       } finally {
         state.collectionAddInFlight = "";
-        addBtn.disabled = false;
       }
     }
 
@@ -9249,15 +9481,16 @@
         if (!res.ok) {
           const payload = await res.json().catch(() => ({}));
           window.alert(payload && payload.error ? String(payload.error) : `Could not remove card (${res.status})`);
+          if (removeBtn) removeBtn.disabled = false;
           return;
         }
         removeCardFromCollectionCache(item.id, code);
-        patchCollectionOwnedUI(code, allCards);
+        refreshSelectedSetDetailPreservingScroll();
       } catch {
         window.alert("Network error while removing the card.");
+        if (removeBtn) removeBtn.disabled = false;
       } finally {
         state.collectionRemoveInFlight = "";
-        if (removeBtn) removeBtn.disabled = false;
       }
     }
 
@@ -9283,19 +9516,19 @@
       }
       const parsed = Math.floor(Number(rawValue));
       if (!Number.isFinite(parsed)) {
-        patchCollectionOwnedUI(code, allCards);
+        refreshSelectedSetDetailPreservingScroll();
         return;
       }
       const matches = listCollectionItemsForCard(code, number);
       if (!matches.length) {
-        patchCollectionOwnedUI(code, allCards);
+        refreshSelectedSetDetailPreservingScroll();
         return;
       }
       const cardName = String(matches[0].name || number);
 
       if (parsed <= 0) {
         if (!window.confirm(`Remove "${cardName}" from your collection?`)) {
-          patchCollectionOwnedUI(code, allCards);
+          refreshSelectedSetDetailPreservingScroll();
           return;
         }
         for (const item of matches) {
@@ -9309,7 +9542,7 @@
             /* continue */
           }
         }
-        patchCollectionOwnedUI(code, allCards);
+        refreshSelectedSetDetailPreservingScroll();
         return;
       }
 
@@ -9325,7 +9558,7 @@
         const payload = await res.json().catch(() => ({}));
         if (!res.ok) {
           window.alert(payload.error || `Could not save quantity (${res.status})`);
-          patchCollectionOwnedUI(code, allCards);
+          refreshSelectedSetDetailPreservingScroll();
           return;
         }
         if (payload.item && Array.isArray(state.collectionItemsCache)) {
@@ -9350,10 +9583,10 @@
           code,
           state.collectionItemsCache || []
         );
-        patchCollectionOwnedUI(code, allCards);
+        refreshSelectedSetDetailPreservingScroll();
       } catch (err) {
         window.alert(err.message || "Could not save quantity.");
-        patchCollectionOwnedUI(code, allCards);
+        refreshSelectedSetDetailPreservingScroll();
       }
     }
 
@@ -9380,7 +9613,7 @@
         if (finished) return;
         finished = true;
         if (save) void saveOwnedQuantityForCard(code, cardNo, input.value, allCards);
-        else patchCollectionOwnedUI(code, allCards);
+        else refreshSelectedSetDetailPreservingScroll();
       };
       input.addEventListener("keydown", (e) => {
         e.stopPropagation();
@@ -9390,7 +9623,7 @@
         } else if (e.key === "Escape") {
           e.preventDefault();
           finished = true;
-          patchCollectionOwnedUI(code, allCards);
+          refreshSelectedSetDetailPreservingScroll();
         }
       });
       input.addEventListener("click", (e) => {
@@ -9455,95 +9688,18 @@
       });
     }
 
-    function patchCollectionOwnedUI(setCode, allCards) {
-      const code = String(setCode || "").toUpperCase();
-      const cards = Array.isArray(allCards) ? allCards : [];
-      if (!code) return;
-
-      const signedIn = isCollectionSignedIn() && state.collectionUserItemsAvailable !== false;
-      const ownedKeys = state.collectionOwnedKeysBySetCode[code] || new Set();
-      const ownershipReady = Boolean(state.collectionOwnedCheckedBySetCode[code]);
-
-      if (signedIn && ownershipReady) {
-        const ownedInSet = cards.filter((card) => isCardOwnedInCollection(card, ownedKeys)).length;
-        const needInSet = Math.max(0, cards.length - ownedInSet);
-        let banner = document.getElementById("collectionOwnedBanner");
-        if (!banner) {
-          const anchor = document.querySelector(".set-detail .sub");
-          if (anchor) {
-            banner = document.createElement("div");
-            banner.id = "collectionOwnedBanner";
-            banner.className = "collection-owned-banner";
-            banner.setAttribute("role", "status");
-            anchor.insertAdjacentElement("afterend", banner);
-          }
-        }
-        if (banner) {
-          banner.innerHTML = `You own <strong>${ownedInSet.toLocaleString()}</strong> of <strong>${cards.length.toLocaleString()}</strong> cards in this set${
-            needInSet > 0
-              ? ` and need <strong>${needInSet.toLocaleString()}</strong> more`
-              : ownedInSet > 0
-                ? " — complete set!"
-                : ""
-          }. <span class="hint"> Green border = in your collection. Use <strong>+</strong> to add cards you are missing, or <strong style="color:#ff8a8a;">−</strong> on owned cards to remove.</span>`;
-        }
-      } else {
-        document.getElementById("collectionOwnedBanner")?.remove();
-      }
-
-      document.querySelectorAll(".set-detail .card-tile-shell[data-card-number]").forEach((shell) => {
-        const cardNo = shell.getAttribute("data-card-number") || "";
-        const tile = shell.querySelector(".card-tile");
-        if (!signedIn) {
-          shell.classList.remove("card-tile-shell--owned");
-          tile?.removeAttribute("title");
-          shell.querySelector(".card-owned-chip")?.remove();
-          shell.querySelector(".card-add-btn")?.remove();
-          shell.querySelector(".card-owned-remove")?.remove();
-          return;
-        }
-
-        const owned = ownershipReady && isCardOwnedInCollection({ cardNo, label: `#${cardNo}` }, ownedKeys);
-        shell.classList.toggle("card-tile-shell--owned", owned);
-        const metaLeft = shell.querySelector(".card-meta-left");
-        const cardLabel =
-          cards.find((c) => String(c.cardNo || "") === String(cardNo))?.label || `#${cardNo}`;
-        if (owned) {
-          tile?.setAttribute("title", "In your collection");
-          shell.querySelector(".card-add-btn")?.remove();
-          ensureCardRemoveButton(shell);
-          let chip = shell.querySelector(".card-owned-chip");
-          if (!chip) {
-            chip = document.createElement("span");
-            chip.className = "card-owned-chip";
-            chip.textContent = "In your collection";
-            if (tile) tile.insertBefore(chip, tile.firstChild);
-            else shell.insertBefore(chip, shell.firstChild);
-          } else {
-            chip.textContent = "In your collection";
-          }
-          const qty = Math.max(1, getOwnedQuantityForCard(code, cardNo));
-          if (metaLeft) {
-            metaLeft.innerHTML = `<span class="card-qty-inline">Qty: <button type="button" class="card-qty-value" data-card-qty="${escapeHtml(cardNo)}" title="Click to edit quantity (0 removes)" aria-label="Quantity ${qty}. Click to edit">${qty}</button></span>`;
-          }
-        } else {
-          tile?.removeAttribute("title");
-          shell.querySelector(".card-owned-chip")?.remove();
-          shell.querySelector(".card-owned-remove")?.remove();
-          ensureCardAddButton(shell);
-          if (metaLeft) metaLeft.textContent = cardLabel;
-        }
-      });
-    }
-
     function queueCollectionOwnedPatch(setCode, allCards) {
       const code = String(setCode || "").toUpperCase();
       if (!code) return;
+      const alreadyReady = Boolean(state.collectionOwnedCheckedBySetCode[code]);
       const token = ++state.collectionOwnedPatchToken;
       void syncCollectionOwnedForSet(code).then(() => {
         if (token !== state.collectionOwnedPatchToken) return;
         if (state.selectedSetCode !== code || state.selectedCardNumber) return;
-        patchCollectionOwnedUI(code, allCards);
+        // Avoid mutating the live grid after images have sized — re-render once
+        // when ownership data first arrives.
+        if (alreadyReady) return;
+        refreshSelectedSetDetailPreservingScroll();
       });
     }
 
@@ -9781,15 +9937,12 @@
                     ? "price (high-low)"
                     : "number"
           }</div>
+          ${buildCollectionOwnedBannerMarkup(selectedSet.code, allCards)}
           ${cardsMarkup}
         </article>
       `;
 
       state.collectionOwnedPatchToken += 1;
-      document.getElementById("collectionOwnedBanner")?.remove();
-      if (isCollectionSignedIn()) {
-        patchCollectionOwnedUI(selectedSet.code, allCards);
-      }
       queueCollectionOwnedPatch(selectedSet.code, allCards);
 
       document.getElementById("backToSets").addEventListener("click", () => {
@@ -9887,13 +10040,25 @@
       }
 
       content.querySelectorAll(".set-detail .card-tile-shell[data-card-number] .card-tile").forEach((node) => {
-        node.addEventListener("click", () => {
+        const openCard = () => {
           const shell = node.closest(".card-tile-shell[data-card-number]");
           state.catalogBrowseReturnSnapshot = null;
           state.savedSetGridScrollY = window.scrollY;
           state.selectedCardNumber = shell?.getAttribute("data-card-number") || null;
           scrollToPageTop();
           renderAll();
+        };
+        node.addEventListener("click", (event) => {
+          if (event.target.closest(".card-qty-value, .card-qty-input, [data-add-to-collection], [data-remove-from-collection]")) {
+            return;
+          }
+          openCard();
+        });
+        node.addEventListener("keydown", (event) => {
+          if (event.key !== "Enter" && event.key !== " ") return;
+          if (event.target !== node) return;
+          event.preventDefault();
+          openCard();
         });
       });
 
@@ -10348,9 +10513,11 @@
                   } />`
                   : `<div class="set-image placeholder">No image</div>`;
                 const symbolLoad = setIndex < 24 ? ' loading="eager" fetchpriority="high"' : ' loading="lazy"';
-                const symbolBadge = symbolUrl
-                  ? `<div class="set-symbol-row"><img class="set-symbol-image" src="${escapeHtml(symbolUrl)}" alt="${escapeHtml(`${setEntry.name} set symbol`)}" decoding="async" width="24" height="24"${symbolLoad} /></div>`
-                  : `<div class="set-symbol-row"></div>`;
+                const symbolBadge = buildSetSymbolRowHtml(setEntry, {
+                  symbolUrl,
+                  symbolLoad,
+                  progress: true
+                });
                 return `
                 <a href="#" class="set-card" data-set-code="${escapeHtml(setEntry.code)}" data-set-name="${escapeHtml(setEntry.name)}">
                   ${visual}
@@ -10366,6 +10533,7 @@
       }).join("");
 
       content.innerHTML = blocks || `<article class="era-block"><h2 class="era-title">No sets found</h2></article>`;
+      prefetchCatalogCollectionProgress();
 
       content.querySelectorAll(".set-card[data-set-code]").forEach((node) => {
         node.addEventListener("click", (event) => {
@@ -10947,18 +11115,24 @@
 
     function applySetsCollectionAuth({ signedIn }) {
       state.collectionSignedIn = Boolean(signedIn);
-      if (!signedIn) resetCollectionOwnershipState();
+      if (!signedIn) {
+        resetCollectionOwnershipState();
+        if (!state.selectedSetCode && !isSealedCatalogMode()) renderContent();
+        return;
+      }
       if (state.selectedSetCode && !state.selectedCardNumber) {
         const setEntry = getSetByCode(state.selectedSetCode);
         if (!setEntry) return;
         const setConfig = detailedSetConfigs[setEntry.code];
         const allCards = getSetCards(setEntry, setConfig);
-        if (signedIn) {
-          delete state.collectionOwnedCheckedBySetCode[setEntry.code];
-          queueCollectionOwnedPatch(setEntry.code, allCards);
-        } else {
-          patchCollectionOwnedUI(setEntry.code, allCards);
-        }
+        delete state.collectionOwnedCheckedBySetCode[setEntry.code];
+        queueCollectionOwnedPatch(setEntry.code, allCards);
+        return;
+      }
+      if (!state.selectedSetCode && !isSealedCatalogMode()) {
+        state._catalogCollectionProgressPrefetch = false;
+        prefetchCatalogCollectionProgress();
+        if (Array.isArray(state.collectionItemsCache)) renderContent();
       }
     }
 

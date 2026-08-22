@@ -79,6 +79,31 @@ async function addCardNickname(filePath, input = {}) {
   return entry;
 }
 
+async function bulkAddCardNicknames(filePath, rows = []) {
+  const nicknames = await loadCardNicknames(filePath);
+  const existing = new Set(nicknames.map((row) => nicknameCardIdentityKey(row)));
+  const added = [];
+  const skipped = [];
+  const errors = [];
+  for (const raw of Array.isArray(rows) ? rows : []) {
+    try {
+      const entry = normalizeCardNicknameEntry(raw);
+      const identity = nicknameCardIdentityKey(entry);
+      if (existing.has(identity)) {
+        skipped.push({ nickname: entry.nickname, setCode: entry.setCode, cardNumber: entry.cardNumber, reason: "duplicate" });
+        continue;
+      }
+      nicknames.unshift(entry);
+      existing.add(identity);
+      added.push(entry);
+    } catch (err) {
+      errors.push({ row: raw, error: err.message || "invalid row" });
+    }
+  }
+  if (added.length) await saveCardNicknames(filePath, nicknames);
+  return { added: added.length, skipped: skipped.length, errors, entries: added };
+}
+
 async function removeCardNickname(filePath, id) {
   const targetId = String(id || "").trim();
   if (!targetId) throw new Error("Nickname id is required");
@@ -127,6 +152,7 @@ module.exports = {
   loadCardNicknames,
   saveCardNicknames,
   addCardNickname,
+  bulkAddCardNicknames,
   removeCardNickname,
   findNicknamesForQuery,
   publicNicknamePayload,

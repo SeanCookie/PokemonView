@@ -1312,6 +1312,144 @@
       font-size: 13px;
       font-weight: 600;
       color: var(--muted);
+      margin-right: auto;
+    }
+
+    .binder-pick-browse-kind,
+    .add-card-browse-kind {
+      display: inline-flex;
+      gap: 4px;
+      margin-left: auto;
+    }
+
+    .binder-pick-browse-kind[hidden],
+    .add-card-browse-kind[hidden] {
+      display: none !important;
+    }
+
+    .add-card-browse-kind-btn {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #0f1726;
+      color: var(--muted);
+      padding: 5px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    .add-card-browse-kind-btn:hover {
+      border-color: #3a4b63;
+      color: var(--text);
+      background: #152033;
+    }
+
+    .add-card-browse-kind-btn.active {
+      border-color: #5a7ab0;
+      background: #18263a;
+      color: #e9f1ff;
+      box-shadow: inset 0 0 0 1px rgba(90, 122, 176, 0.35);
+    }
+
+    .add-card-browse-nav {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .add-card-browse-nav[hidden] {
+      display: none !important;
+    }
+
+    .add-card-browse-back {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #0f1726;
+      color: var(--text);
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    .add-card-browse-back:hover {
+      border-color: #3a4b63;
+      background: #152033;
+    }
+
+    .add-card-browse-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      margin-right: auto;
+    }
+
+    .add-card-wl-grid.add-card-set-list {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 6px;
+      align-content: start;
+    }
+
+    .add-card-set-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      width: 100%;
+      text-align: left;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #0f1726;
+      color: var(--text);
+      padding: 10px 12px;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .add-card-set-row:hover {
+      border-color: #3a4b63;
+      background: #152033;
+    }
+
+    .add-card-set-row-name {
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .add-card-set-row-meta {
+      font-size: 11px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .add-card-set-era {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .add-card-set-era:last-child {
+      margin-bottom: 0;
+    }
+
+    .add-card-set-era-title {
+      margin: 0;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-weight: 700;
+      background: linear-gradient(90deg, rgba(51, 209, 143, 0.35), rgba(51, 209, 143, 0.12));
+      border: 1px solid rgba(51, 209, 143, 0.35);
+      border-radius: 8px;
+      color: #dfffea;
+    }
+
+    .add-card-set-era-list {
+      display: grid;
+      gap: 6px;
     }
 
     .binder-set-list {
@@ -1466,25 +1604,34 @@
     }
 
     .add-card-source-tabs {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 6px;
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 5px;
+      width: 100%;
+      min-width: 0;
     }
 
     .add-card-source-tabs.single-tab {
-      grid-template-columns: 1fr;
+      display: flex;
     }
 
     .add-card-source-tab {
+      flex: 1 1 0;
+      min-width: 0;
       border: 1px solid #2f3d50;
-      border-radius: 8px;
+      border-radius: 7px;
       background: #121a27;
       color: #9ab0d1;
-      padding: 7px 10px;
-      font-size: 12px;
+      padding: 6px 6px;
+      font-size: 11px;
       font-weight: 600;
       cursor: pointer;
       font-family: inherit;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-align: center;
+      line-height: 1.2;
     }
 
     .add-card-source-tab:hover {
@@ -1922,6 +2069,7 @@
       <a href="/poke-view.html" class="nav-link">Poke View</a>
       <a href="/scan-your-cards.html" class="nav-link">Scan Your Cards</a>
       <a href="/restock-tracker.html" class="nav-link">Restock Tracker</a>
+      <a href="/trade-analyzer.html" class="nav-link">Trade Analyzer</a>
     </div>
     <div class="nav-right">
       <input id="topSearch" class="search" placeholder="Search your collection…" />
@@ -1953,14 +2101,14 @@
           <button type="button" class="cvh-filter" data-cvh-range="180">6 Months</button>
           <button type="button" class="cvh-filter" data-cvh-range="ytd">YTD</button>
           <button type="button" class="cvh-filter" data-cvh-range="365">1 Year</button>
-        </div>
-      </div>
+          </div>
+          </div>
       <div class="kpis" id="kpis"></div>
       <div class="cvh-chart-wrap" id="collectionValueChartWrap" hidden>
         <canvas id="collectionValueChart" class="cvh-chart" aria-label="Collection market value history"></canvas>
         <div id="collectionValueChartTip" class="cvh-chart-tip" hidden role="tooltip"></div>
         <p class="cvh-chart-msg" id="collectionValueChartMsg">Loading collection history…</p>
-      </div>
+        </div>
       <p class="cvh-coverage" id="collectionValueCoverage" hidden></p>
     </section>
 
@@ -2017,7 +2165,7 @@
         <div class="add-card-wl-head-text">
           <h2 id="addCardTitle" class="add-card-wl-title">Add card/product to collection</h2>
           <p id="addCardSubtitle" class="add-card-wl-sub">Click a card or product to select, double-click or use Add</p>
-        </div>
+      </div>
         <button
           type="button"
           id="addCardSealedSetSortBtn"
@@ -2036,8 +2184,19 @@
           data-add-card-source="catalog"
           role="tab"
           aria-selected="true"
+          title="Sets catalog"
         >
-          Sets catalog
+          Catalog
+        </button>
+        <button
+          type="button"
+          class="add-card-source-tab"
+          data-add-card-source="sets"
+          role="tab"
+          aria-selected="false"
+          title="Browse sets"
+        >
+          Browse
         </button>
         <button
           type="button"
@@ -2045,9 +2204,18 @@
           data-add-card-source="sealed"
           role="tab"
           aria-selected="false"
+          title="Sealed products"
         >
-          Sealed products
+          Sealed
         </button>
+      </div>
+      <div id="addCardBrowseNav" class="add-card-browse-nav" hidden>
+        <button type="button" id="addCardBrowseBackBtn" class="add-card-browse-back">← Sets</button>
+        <span id="addCardBrowseSetLabel" class="add-card-browse-label"></span>
+        <div id="addCardBrowseKind" class="add-card-browse-kind" role="group" aria-label="Browse set filter" hidden>
+          <button type="button" class="add-card-browse-kind-btn active" data-add-browse-kind="cards" aria-pressed="true">Cards</button>
+          <button type="button" class="add-card-browse-kind-btn" data-add-browse-kind="sealed" aria-pressed="false">Sealed</button>
+        </div>
       </div>
       <input
         id="addCardSearch"
@@ -2059,8 +2227,8 @@
       <div id="addCardGrid" class="add-card-wl-grid" role="listbox" aria-label="Matching cards and products"></div>
       <div class="add-card-wl-qty">
         <label for="addCardQty">Quantity</label>
-        <input id="addCardQty" type="number" min="1" step="1" value="1" />
-      </div>
+          <input id="addCardQty" type="number" min="1" step="1" value="1" />
+        </div>
       <div class="add-card-wl-actions">
         <button type="button" class="add-card-wl-btn" id="addCardCancelBtn">Cancel</button>
         <button type="button" class="add-card-wl-btn primary" id="addCardConfirmBtn">Add</button>
@@ -2136,6 +2304,8 @@
       cardNicknamesLoaded: false,
       addCardSelectedId: "",
       addCardSource: "catalog",
+      addCardBrowseSetCode: "",
+      addCardBrowseKind: "cards",
       sealedSetSortOrder: "desc",
       setReleaseTsByCode: {},
       setRecencyRankByCode: {},
@@ -2542,10 +2712,13 @@
       const mode = getAddCollectionMode();
       const tabs = byId("addCardSourceTabs");
       const catalogBtn = document.querySelector('[data-add-card-source="catalog"]');
+      const setsBtn = document.querySelector('[data-add-card-source="sets"]');
       const sealedBtn = document.querySelector('[data-add-card-source="sealed"]');
       if (catalogBtn) catalogBtn.hidden = mode === "sealed";
+      if (setsBtn) setsBtn.hidden = false;
       if (sealedBtn) sealedBtn.hidden = mode === "single";
-      if (tabs) tabs.classList.toggle("single-tab", mode === "sealed" || mode === "single");
+      const visibleTabs = [catalogBtn, setsBtn, sealedBtn].filter((btn) => btn && !btn.hidden);
+      if (tabs) tabs.classList.toggle("single-tab", visibleTabs.length <= 1);
       document.querySelectorAll("[data-add-card-source]").forEach((btn) => {
         if (btn.hidden) return;
         const source = btn.getAttribute("data-add-card-source") || "catalog";
@@ -2553,7 +2726,89 @@
         btn.classList.toggle("active", on);
         btn.setAttribute("aria-selected", on ? "true" : "false");
       });
+      syncAddCardBrowseNavUi();
       syncAddCardSealedSetSortButton();
+    }
+
+    function defaultAddCardBrowseKind() {
+      const mode = getAddCollectionMode();
+      if (mode === "sealed") return "sealed";
+      return "cards";
+    }
+
+    function isPromoSetName(name = "") {
+      return /\bpromos\s*$/i.test(String(name || "").trim());
+    }
+
+    function resolveAddCardBrowseSetName(setCode = "") {
+      const code = String(setCode || "").trim().toUpperCase();
+      if (!code) return "";
+      const setRow = listAddCardBrowseSets().find((row) => row.code === code);
+      if (setRow?.name) return setRow.name;
+      const fromCard = state.cardIndex.find((row) => String(row.setCode || "").toUpperCase() === code);
+      if (fromCard?.setDisplayName) return fromCard.setDisplayName;
+      const fromSealed = state.sealedIndex.find((row) => String(row.setCode || "").toUpperCase() === code);
+      return fromSealed?.setDisplayName || "";
+    }
+
+    function isPromoAddCardBrowseSet(setCode = "") {
+      return isPromoSetName(resolveAddCardBrowseSetName(setCode));
+    }
+
+    function groupBrowseSetsByEra(sets) {
+      const groups = [];
+      const indexByEra = new Map();
+      for (const row of sets || []) {
+        const era = String(row.era || "Other").trim() || "Other";
+        if (!indexByEra.has(era)) {
+          indexByEra.set(era, groups.length);
+          groups.push({ era, sets: [] });
+        }
+        groups[indexByEra.get(era)].sets.push(row);
+      }
+      return groups;
+    }
+
+    function syncAddCardBrowseNavUi() {
+      const nav = byId("addCardBrowseNav");
+      const kindEl = byId("addCardBrowseKind");
+      const label = byId("addCardBrowseSetLabel");
+      const browsingSets = state.addCardSource === "sets";
+      const browseCode = String(state.addCardBrowseSetCode || "").trim().toUpperCase();
+      const inSet = browsingSets && Boolean(browseCode);
+      const promoSet = inSet && isPromoAddCardBrowseSet(browseCode);
+      if (nav) {
+        if (inSet) nav.removeAttribute("hidden");
+        else nav.setAttribute("hidden", "");
+      }
+      if (kindEl) {
+        // Cards / Sealed while inside a set — hidden for promo sets (cards only).
+        if (inSet && !promoSet) kindEl.removeAttribute("hidden");
+        else kindEl.setAttribute("hidden", "");
+        if (promoSet) state.addCardBrowseKind = "cards";
+        const kind =
+          String(state.addCardBrowseKind || "cards").toLowerCase() === "sealed" ? "sealed" : "cards";
+        state.addCardBrowseKind = kind;
+        kindEl.querySelectorAll("[data-add-browse-kind]").forEach((btn) => {
+          const on = btn.getAttribute("data-add-browse-kind") === kind;
+          btn.classList.toggle("active", on);
+          btn.setAttribute("aria-pressed", on ? "true" : "false");
+        });
+      }
+      if (label && inSet) {
+        label.textContent = resolveAddCardBrowseSetName(browseCode) || browseCode || "Set";
+      }
+    }
+
+    function setAddCardBrowseKind(kind) {
+      const browseCode = String(state.addCardBrowseSetCode || "").trim().toUpperCase();
+      if (browseCode && isPromoAddCardBrowseSet(browseCode)) return;
+      const next = String(kind || "cards").toLowerCase() === "sealed" ? "sealed" : "cards";
+      if (state.addCardBrowseKind === next) return;
+      state.addCardBrowseKind = next;
+      state.addCardSelectedId = "";
+      syncAddCardBrowseNavUi();
+      void renderAddCardGrid().then(() => resetAddCardScroll());
     }
 
     function resetAddCardScroll() {
@@ -2620,7 +2875,11 @@
     function syncAddCardSealedSetSortButton() {
       const btn = byId("addCardSealedSetSortBtn");
       if (!btn) return;
-      const sealedActive = state.addCardSource === "sealed";
+      const sealedActive =
+        state.addCardSource === "sealed" ||
+        (state.addCardSource === "sets" &&
+          String(state.addCardBrowseKind || "").toLowerCase() === "sealed" &&
+          Boolean(String(state.addCardBrowseSetCode || "").trim()));
       btn.hidden = !sealedActive;
       const desc = state.sealedSetSortOrder !== "asc";
       btn.textContent = desc ? "Sets ▼" : "Sets ▲";
@@ -2633,7 +2892,13 @@
       state.sealedSetSortOrder = state.sealedSetSortOrder === "asc" ? "desc" : "asc";
       sortSealedProductsIndex();
       syncAddCardSealedSetSortButton();
-      if (state.addCardSource === "sealed") void renderAddCardGrid();
+      if (
+        state.addCardSource === "sealed" ||
+        (state.addCardSource === "sets" &&
+          String(state.addCardBrowseKind || "").toLowerCase() === "sealed")
+      ) {
+        void renderAddCardGrid();
+      }
     }
 
     function buildLocalCardImageUrl(setCode, cardNo) {
@@ -2761,17 +3026,30 @@
 
     function syncAddCollectionUi() {
       const mode = getAddCollectionMode();
-      if (mode === "sealed") state.addCardSource = "sealed";
-      else if (mode === "single") state.addCardSource = "catalog";
-      else if (state.addCardSource !== "catalog" && state.addCardSource !== "sealed") {
+      if (mode === "sealed") {
+        if (state.addCardSource !== "sets") state.addCardSource = "sealed";
+      } else if (mode === "single") {
+        if (state.addCardSource === "sealed") state.addCardSource = "catalog";
+      } else if (
+        state.addCardSource !== "catalog" &&
+        state.addCardSource !== "sealed" &&
+        state.addCardSource !== "sets"
+      ) {
         state.addCardSource = "catalog";
       }
+      if (mode === "sealed") state.addCardBrowseKind = "sealed";
+      else if (mode === "single") state.addCardBrowseKind = "cards";
       const openBtn = byId("openAddCardBtn");
       const title = byId("addCardTitle");
       const subtitle = byId("addCardSubtitle");
       const search = byId("addCardSearch");
       const grid = byId("addCardGrid");
       const confirmBtn = byId("addCardConfirmBtn");
+      const browseCode = String(state.addCardBrowseSetCode || "").trim().toUpperCase();
+      const browsingSets = state.addCardSource === "sets";
+      const inSet = browsingSets && Boolean(browseCode);
+      const browseKind =
+        String(state.addCardBrowseKind || "cards").toLowerCase() === "sealed" ? "sealed" : "cards";
       if (openBtn) {
         openBtn.textContent =
           mode === "sealed" ? "Add product…" : mode === "single" ? "Add card…" : "Add card/product…";
@@ -2785,19 +3063,39 @@
               : "Add card/product to collection";
       }
       if (subtitle) {
-        subtitle.textContent = "Click a card or product to select, double-click or use Add";
+        subtitle.textContent = browsingSets
+          ? inSet
+            ? "Click a card or product to select, double-click or use Add"
+            : "Pick a set, then select a card or sealed product"
+          : "Click a card or product to select, double-click or use Add";
       }
       if (confirmBtn) confirmBtn.textContent = "Add";
       if (search) {
-        search.placeholder =
-          state.addCardSource === "sealed"
-            ? "Search product name, set, or type..."
-            : "Search card name, set code, or nickname...";
+        if (browsingSets && !inSet) {
+          search.placeholder = "Filter sets by name or code…";
+        } else if (
+          state.addCardSource === "sealed" ||
+          (inSet && browseKind === "sealed")
+        ) {
+          search.placeholder = "Search product name, set, or type...";
+        } else if (inSet) {
+          search.placeholder = "Filter cards in this set…";
+        } else {
+          search.placeholder = "Search card name, set code, or nickname...";
+        }
       }
       if (grid) {
         grid.setAttribute(
           "aria-label",
-          state.addCardSource === "sealed" ? "Choose a sealed product" : "Choose a card from Sets"
+          browsingSets && !inSet
+            ? "Choose a set to browse"
+            : inSet && browseKind === "sealed"
+              ? "Choose a sealed product from this set"
+              : inSet
+                ? "Choose a card from this set"
+                : state.addCardSource === "sealed"
+                  ? "Choose a sealed product"
+                  : "Choose a card from Sets"
         );
       }
       syncAddCardSourceTabs();
@@ -2905,10 +3203,59 @@
       return matches.slice(0, limit);
     }
 
+    function filterAddCardCardsInSet(setCode, queryRaw, { limit = 300 } = {}) {
+      const code = String(setCode || "").trim().toUpperCase();
+      if (!code) return [];
+      const query = toQueryText(queryRaw);
+      return state.cardIndex
+        .filter((row) => String(row.setCode || "").toUpperCase() === code)
+        .filter((row) => {
+          if (!query) return true;
+          return toQueryText(
+            `${row.card} ${row.setCode} ${row.cardNo} ${row.setDisplayName || ""} ${row.label || ""}`
+          ).includes(query);
+        })
+        .sort(compareBinderCardsByNumber)
+        .slice(0, limit)
+        .map((row) => ({
+          ...row,
+          kind: "single",
+          label:
+            row.label ||
+            `${row.card} · ${row.setDisplayName || row.setCode} (${row.setCode} #${row.cardNo})`
+        }));
+    }
+
+    function filterAddCardSealedInSet(setCode, queryRaw, { limit = 300 } = {}) {
+      const code = String(setCode || "").trim().toUpperCase();
+      if (!code) return [];
+      const desc = state.sealedSetSortOrder !== "asc";
+      const query = String(queryRaw || "").trim();
+      const matches = state.sealedIndex.filter((row) => {
+        if (String(row.setCode || "").toUpperCase() !== code) return false;
+        if (!query) return true;
+        return sealedProductMatchesQuery(row, query);
+      });
+      matches.sort((a, b) => compareSealedBySetRelease(a, b, desc));
+      return matches.slice(0, limit);
+    }
+
     function filterAddPickerRows(queryRaw, { limit = 300 } = {}) {
-      const source = state.addCardSource === "sealed" ? "sealed" : "catalog";
+      const source = String(state.addCardSource || "catalog");
       if (source === "sealed") {
         return filterSealedIndexByQuery(queryRaw, { requireQuery: false, limit });
+      }
+      if (source === "sets") {
+        const browseCode = String(state.addCardBrowseSetCode || "").trim().toUpperCase();
+        if (!browseCode) return [];
+        if (isPromoAddCardBrowseSet(browseCode)) {
+          state.addCardBrowseKind = "cards";
+          return filterAddCardCardsInSet(browseCode, queryRaw, { limit });
+        }
+        const kind =
+          String(state.addCardBrowseKind || "cards").toLowerCase() === "sealed" ? "sealed" : "cards";
+        if (kind === "sealed") return filterAddCardSealedInSet(browseCode, queryRaw, { limit });
+        return filterAddCardCardsInSet(browseCode, queryRaw, { limit });
       }
       return filterCardIndexByQuery(queryRaw, { requireQuery: false, limit }).map((row) => ({
         ...row,
@@ -2917,6 +3264,51 @@
           row.label ||
           `${row.card} · ${row.setDisplayName || row.setCode} (${row.setCode} #${row.cardNo})`
       }));
+    }
+
+    function renderAddCardBrowseSetList(grid, queryRaw) {
+      const mode = getAddCollectionMode();
+      const query = toQueryText(queryRaw);
+      const sets = listAddCardBrowseSets().filter((row) => {
+        if (!query) return true;
+        return toQueryText(`${row.name} ${row.code} ${row.era}`).includes(query);
+      });
+      grid.classList.add("add-card-wl-grid", "add-card-set-list");
+      state.addCardSelectedId = "";
+      if (!sets.length) {
+        grid.innerHTML = `<div class="add-card-wl-grid-empty">${
+          query ? "No sets match that filter." : "No sets available yet."
+        }</div>`;
+        return;
+      }
+      const eraGroups = groupBrowseSetsByEra(sets);
+      grid.innerHTML = eraGroups
+        .map((group) => {
+          const rows = group.sets
+            .map(
+              (row) => `<button type="button" class="add-card-set-row" data-add-browse-set-code="${escapeAttr(row.code)}">
+                <span class="add-card-set-row-name">${escapeHtml(row.name)}</span>
+                <span class="add-card-set-row-meta">${escapeHtml(formatAddBrowseSetMeta(row, mode))}</span>
+              </button>`
+            )
+            .join("");
+          return `<section class="add-card-set-era">
+            <h3 class="add-card-set-era-title">${escapeHtml(group.era)}</h3>
+            <div class="add-card-set-era-list">${rows}</div>
+          </section>`;
+        })
+        .join("");
+      grid.querySelectorAll("[data-add-browse-set-code]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const code = btn.getAttribute("data-add-browse-set-code") || "";
+          state.addCardBrowseSetCode = code;
+          state.addCardBrowseKind = "cards";
+          state.addCardSelectedId = "";
+          const search = byId("addCardSearch");
+          if (search) search.value = "";
+          void renderAddCardGrid().then(() => resetAddCardScroll());
+        });
+      });
     }
 
     async function loadCardsFromSetsIndex() {
@@ -3056,32 +3448,56 @@
       const searchInput = byId("addCardSearch");
       if (!grid || !searchInput) return;
       syncAddCollectionUi();
-      const source = state.addCardSource === "sealed" ? "sealed" : "catalog";
+      const source = String(state.addCardSource || "catalog");
+      const browseCode = String(state.addCardBrowseSetCode || "").trim().toUpperCase();
+      const browsingSets = source === "sets";
+      const inSet = browsingSets && Boolean(browseCode);
+      const browseKind =
+        String(state.addCardBrowseKind || "cards").toLowerCase() === "sealed" ? "sealed" : "cards";
+
       try {
-        if (source === "sealed") {
+        if (source === "sealed" || (inSet && browseKind === "sealed") || (browsingSets && !inSet)) {
           await loadSealedProductsIndex();
-        } else {
+        }
+        if (source === "catalog" || browsingSets) {
           await Promise.all([loadCardsFromSetsIndex(), loadCardNicknames()]);
         }
       } catch {
+        grid.classList.add("add-card-wl-grid");
+        grid.classList.remove("add-card-set-list");
         showAddCardGridEmpty(
           grid,
-          source === "sealed" ? "Could not load sealed products." : "Could not load the Sets catalog."
+          source === "sealed" || browseKind === "sealed"
+            ? "Could not load sealed products."
+            : "Could not load the Sets catalog."
         );
         return;
       }
 
       const query = String(searchInput.value || "").trim();
+
+      if (browsingSets && !inSet) {
+        renderAddCardBrowseSetList(grid, query);
+        return;
+      }
+
+      grid.classList.add("add-card-wl-grid");
+      grid.classList.remove("add-card-set-list");
+
       const filtered = filterAddPickerRows(query, { limit: 300 });
       if (!filtered.length) {
         const emptyHint =
-          source === "sealed"
+          source === "sealed" || (inSet && browseKind === "sealed")
             ? state.sealedIndex.length
-              ? "No matching sealed products."
+              ? inSet
+                ? "No sealed products in this set."
+                : "No matching sealed products."
               : "No sealed products loaded."
-            : state.cardIndex.length
-              ? "No matching cards."
-              : "No cards loaded.";
+            : inSet
+              ? "No cards found for this set."
+              : state.cardIndex.length
+                ? "No matching cards."
+                : "No cards loaded.";
         showAddCardGridEmpty(grid, emptyHint);
         return;
       }
@@ -3093,6 +3509,8 @@
       if (!modal) return;
       const mode = getAddCollectionMode();
       state.addCardSelectedId = "";
+      state.addCardBrowseSetCode = "";
+      state.addCardBrowseKind = defaultAddCardBrowseKind();
       state.addCardSource = mode === "sealed" ? "sealed" : "catalog";
       state.sealedSetSortOrder = "desc";
       if (state.sealedIndexLoaded) sortSealedProductsIndex();
@@ -3114,11 +3532,19 @@
       modal.setAttribute("aria-hidden", "true");
       state.addCardSelectedId = "";
       state.addCardSource = "catalog";
+      state.addCardBrowseSetCode = "";
+      state.addCardBrowseKind = "cards";
       resetAddCardScroll();
       const s = byId("addCardSearch");
       if (s) s.value = "";
       const grid = byId("addCardGrid");
-      if (grid) grid.innerHTML = "";
+      if (grid) {
+        grid.classList.add("add-card-wl-grid");
+        grid.classList.remove("add-card-set-list");
+        grid.innerHTML = "";
+      }
+      const nav = byId("addCardBrowseNav");
+      if (nav) nav.setAttribute("hidden", "");
     }
 
     async function confirmAddCard() {
@@ -5118,13 +5544,21 @@
           }</div>`;
           return;
         }
-        grid.innerHTML = sets
-          .map(
-            (row) => `<button type="button" class="binder-set-row" data-binder-set-code="${escapeAttr(row.code)}">
-              <span class="binder-set-row-name">${escapeHtml(row.name)}</span>
-              <span class="binder-set-row-meta">${escapeHtml(row.code)} · ${row.count} cards</span>
-            </button>`
-          )
+        grid.innerHTML = groupBrowseSetsByEra(sets)
+          .map((group) => {
+            const rows = group.sets
+              .map(
+                (row) => `<button type="button" class="binder-set-row" data-binder-set-code="${escapeAttr(row.code)}">
+                  <span class="binder-set-row-name">${escapeHtml(row.name)}</span>
+                  <span class="binder-set-row-meta">${escapeHtml(row.code)} · ${row.count} cards</span>
+                </button>`
+              )
+              .join("");
+            return `<section class="add-card-set-era">
+              <h3 class="add-card-set-era-title">${escapeHtml(group.era)}</h3>
+              <div class="add-card-set-era-list">${rows}</div>
+            </section>`;
+          })
           .join("");
         grid.querySelectorAll("[data-binder-set-code]").forEach((btn) => {
           btn.addEventListener("click", () => {
@@ -5367,7 +5801,7 @@
           return `<article class="collection-card showcase-card showcase-card--static${
             isSealed ? " collection-card--sealed" : ""
           }">
-            ${removeBtn}
+              ${removeBtn}
             ${linkedMain}
             ${footer}
           </article>`;
@@ -5536,13 +5970,31 @@
     document.querySelectorAll("[data-add-card-source]").forEach((btn) => {
       btn.addEventListener("click", () => {
         const next = btn.getAttribute("data-add-card-source") || "catalog";
-        state.addCardSource = next === "sealed" ? "sealed" : "catalog";
+        let source = "catalog";
+        if (next === "sealed") source = "sealed";
+        else if (next === "sets") source = "sets";
+        state.addCardSource = source;
+        state.addCardBrowseSetCode = "";
+        state.addCardBrowseKind = defaultAddCardBrowseKind();
         state.addCardSelectedId = "";
         const search = byId("addCardSearch");
         if (search) search.value = "";
         syncAddCollectionUi();
         void renderAddCardGrid().then(() => resetAddCardScroll());
       });
+    });
+    byId("addCardBrowseBackBtn")?.addEventListener("click", () => {
+      state.addCardBrowseSetCode = "";
+      state.addCardBrowseKind = defaultAddCardBrowseKind();
+      state.addCardSelectedId = "";
+      const search = byId("addCardSearch");
+      if (search) search.value = "";
+      void renderAddCardGrid().then(() => resetAddCardScroll());
+    });
+    byId("addCardBrowseKind")?.addEventListener("click", (event) => {
+      const btn = event.target.closest("[data-add-browse-kind]");
+      if (!btn || !byId("addCardBrowseKind")?.contains(btn)) return;
+      setAddCardBrowseKind(btn.getAttribute("data-add-browse-kind"));
     });
     byId("addCardSealedSetSortBtn")?.addEventListener("click", toggleAddCardSealedSetSortOrder);
     byId("addCardSearch").addEventListener("input", () => {
@@ -5772,8 +6224,8 @@
         if (!res.ok || !payload?.ok || !(Number(payload.price) > 0)) {
           window.alert(payload?.error || "No historical price for that date");
           renderItems();
-          return;
-        }
+        return;
+      }
         await persistCollectionCostFields(item, {
           costBasis: Number(payload.price),
           costBasisDate: date
@@ -5797,8 +6249,8 @@
       if (parsed <= 0) {
         if (!window.confirm(`Remove "${displayName || item.name || "this item"}" from your collection?`)) {
           renderItems();
-          return;
-        }
+        return;
+      }
         try {
           const res = await fetch(`/api/items/${encodeURIComponent(id)}`, {
             method: "DELETE",
@@ -5807,10 +6259,10 @@
           if (!res.ok) {
             const msg = await res.json().catch(() => ({}));
             window.alert(msg && msg.error ? String(msg.error) : `Remove failed (${res.status})`);
-            return;
-          }
-          await loadData();
-          renderAll();
+          return;
+        }
+        await loadData();
+        renderAll();
         } catch {
           window.alert("Network error while removing the item.");
         }
