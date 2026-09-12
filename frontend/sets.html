@@ -1271,10 +1271,28 @@
 
     .card-page-pricing {
       margin-top: 12px;
+      display: grid;
+      gap: 18px;
     }
 
     .card-page-pricing .card-price-panel {
       margin-top: 0;
+    }
+
+    #cardPagePricingTcg,
+    #cardPagePricingExtra {
+      display: grid;
+      gap: 18px;
+    }
+
+    .card-page-pricing .market-price-history {
+      margin-top: 0;
+    }
+
+    .card-page-pricing .pc-sold-listings,
+    .card-page-pricing .pc-graded-guide {
+      margin-top: 0;
+      padding-top: 10px;
     }
 
     .card-price-panel {
@@ -5621,6 +5639,8 @@
                   ? `<button id="backToCatalogResults" type="button" class="btn" title="Return to search results and scroll position">Back to results</button>`
                   : ""
               }
+              <button id="openInPokeViewBtn" type="button" class="btn">Open in Poke View</button>
+              <button id="addToPokeViewWatchlistBtn" type="button" class="btn">Add to Watchlist</button>
               <button id="backToSealedProducts" type="button" class="btn">Back to ${escapeHtml(selectedSet.name)}</button>
               <button id="prevSealedProduct" type="button" class="btn" ${prevProduct ? "" : "disabled"}>← Prev</button>
               <button id="nextSealedProduct" type="button" class="btn" ${nextProduct ? "" : "disabled"}>Next →</button>
@@ -5673,6 +5693,7 @@
       wireMarketPriceHistoryPanel(content, historyCard);
       wirePriceChartingSoldListingsPanel(content);
       void ensureSealedProductDetailsLoaded(product, selectedSet);
+      wirePokeViewDetailActions(buildPokeViewWatchItemFromSealed(product, selectedSet));
 
       document.getElementById("backToCatalogResults")?.addEventListener("click", () => {
         restoreCatalogBrowseFromSnapshot();
@@ -8865,6 +8886,8 @@
                   ? `<button id="backToCatalogResults" type="button" class="btn" title="Return to search or artist results and scroll position">Back to results</button>`
                   : ""
               }
+              <button id="openInPokeViewBtn" type="button" class="btn">Open in Poke View</button>
+              <button id="addToPokeViewWatchlistBtn" type="button" class="btn">Add to Watchlist</button>
               <button id="backToSetCards" type="button" class="btn">Back to ${escapeHtml(card.setName)}</button>
               <button id="prevSetCard" type="button" class="btn" ${prevCard ? "" : "disabled"}>← Prev</button>
               <button id="nextSetCard" type="button" class="btn" ${nextCard ? "" : "disabled"}>Next →</button>
@@ -8903,6 +8926,7 @@
       wireCardDetailNumberInputs(content, cards);
       wireMarketPriceHistoryPanel(content, card);
       wirePriceChartingSoldListingsPanel(content);
+      wirePokeViewDetailActions(buildPokeViewWatchItemFromCard(card));
       if (state.language === "english") {
         ensureMarketHistoryLoaded(card);
         ensurePriceChartingDetailsLoaded(card);
@@ -9129,6 +9153,147 @@
     function isCollectionSignedIn() {
       if (state.collectionSignedIn) return true;
       return Boolean(window.InfinityAccount && window.InfinityAccount.isSignedIn());
+    }
+
+    function buildPokeViewWatchItemFromCard(card) {
+      if (!card) return null;
+      const setCode = String(card.setCode || "").trim().toUpperCase();
+      const cardNo = String(card.cardNo || "").trim();
+      if (!setCode || !cardNo) return null;
+      const cardName = String(getCardDisplayName(card) || card.name || "").trim();
+      const setName = String(card.setName || "").trim();
+      const label = cardName
+        ? `${cardName} (${setCode} #${cardNo})`
+        : `${setCode} #${cardNo}`;
+      return {
+        id: `english:${setCode}:${cardNo}`,
+        kind: "single",
+        card: label,
+        cardName: cardName || label,
+        setCode,
+        cardNo,
+        setName,
+        language: "english",
+        productId: "",
+        productUrl: "",
+        productType: "",
+        imageUrl: String(card.imageUrl || "").trim()
+      };
+    }
+
+    function buildPokeViewWatchItemFromSealed(product, setEntry) {
+      if (!product) return null;
+      const productId = String(product.productId || "").trim();
+      if (!productId) return null;
+      const setCode = String(setEntry?.code || product.setCode || "").trim().toUpperCase();
+      const setName = String(setEntry?.name || product.setName || "").trim();
+      const title = String(product.title || product.name || "Sealed product").trim();
+      const productType = String(product.productType || "").trim();
+      const label = setName ? `${title} (${setName})` : title;
+      return {
+        id: `sealed:${productId}`,
+        kind: "sealed",
+        card: label,
+        cardName: title,
+        setCode,
+        cardNo: "",
+        setName,
+        language: "english",
+        productId,
+        productUrl: String(product.productUrl || product.priceChartingUrl || "").trim(),
+        productType,
+        imageUrl: String(product.imageUrl || product.remoteImageUrl || "").trim()
+      };
+    }
+
+    function buildPokeViewOpenUrl(item, { add = false } = {}) {
+      if (!item?.id) return "/poke-view.html";
+      const params = new URLSearchParams();
+      params.set("id", item.id);
+      params.set("kind", item.kind === "sealed" ? "sealed" : "single");
+      if (item.setCode) params.set("setCode", item.setCode);
+      if (item.cardNo) params.set("cardNo", item.cardNo);
+      if (item.setName) params.set("setName", item.setName);
+      if (item.cardName) params.set("cardName", item.cardName);
+      if (item.card) params.set("card", item.card);
+      if (item.productId) params.set("productId", item.productId);
+      if (item.productUrl) params.set("productUrl", item.productUrl);
+      if (item.productType) params.set("productType", item.productType);
+      // Keep URL short; image is optional for chart open.
+      if (add) params.set("add", "1");
+      return `/poke-view.html?${params.toString()}`;
+    }
+
+    function setPokeViewActionButtonState(btn, { text, disabled = false } = {}) {
+      if (!btn) return;
+      if (text != null) btn.textContent = text;
+      btn.disabled = Boolean(disabled);
+    }
+
+    async function addItemToPokeViewWatchlist(item, btn) {
+      if (!item?.id) return;
+      if (!isCollectionSignedIn()) {
+        window.alert("Sign in to add items to your Poke View watchlist.");
+        if (window.InfinityAccount?.openSignIn) {
+          try {
+            window.InfinityAccount.openSignIn();
+          } catch {
+            /* optional */
+          }
+        }
+        return;
+      }
+      const original = btn?.textContent || "Add to Watchlist";
+      setPokeViewActionButtonState(btn, { text: "Adding…", disabled: true });
+      try {
+        const response = await fetch("/api/poke-view/watchlist/add", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ card: item })
+        });
+        const payload = response.ok ? await response.json().catch(() => null) : null;
+        if (!response.ok || !payload?.ok) {
+          if (response.status === 401) {
+            window.alert("Sign in to add items to your Poke View watchlist.");
+          } else {
+            window.alert(payload?.error || "Could not add to watchlist.");
+          }
+          setPokeViewActionButtonState(btn, { text: original, disabled: false });
+          return;
+        }
+        setPokeViewActionButtonState(btn, {
+          text: payload.alreadyHad ? "On Watchlist" : "Added",
+          disabled: false
+        });
+      } catch {
+        window.alert("Could not add to watchlist.");
+        setPokeViewActionButtonState(btn, { text: original, disabled: false });
+      }
+    }
+
+    function wirePokeViewDetailActions(item) {
+      if (!item) return;
+      const openBtn = document.getElementById("openInPokeViewBtn");
+      const addBtn = document.getElementById("addToPokeViewWatchlistBtn");
+      if (openBtn) {
+        openBtn.addEventListener("click", () => {
+          try {
+            sessionStorage.setItem(
+              "poke-view-open-item",
+              JSON.stringify({ item, add: false, ts: Date.now() })
+            );
+          } catch {
+            /* private mode */
+          }
+          window.location.href = buildPokeViewOpenUrl(item, { add: false });
+        });
+      }
+      if (addBtn) {
+        addBtn.addEventListener("click", () => {
+          void addItemToPokeViewWatchlist(item, addBtn);
+        });
+      }
     }
 
     function getSetCatalogCardTotal(setCode) {

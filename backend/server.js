@@ -3436,6 +3436,21 @@ function setPokeViewWatchlistForUser(userId, cards) {
   return normalized;
 }
 
+function addPokeViewWatchlistCardForUser(userId, cardInput) {
+  const card = normalizePokeViewWatchlistCard(cardInput);
+  if (!card) {
+    const err = new Error("Card or product is required");
+    err.code = "INVALID_CARD";
+    throw err;
+  }
+  const existing = getPokeViewWatchlistForUser(userId);
+  if (existing.some((row) => row.id === card.id)) {
+    return { cards: existing, added: false, alreadyHad: true, card };
+  }
+  const cards = setPokeViewWatchlistForUser(userId, existing.concat([card]));
+  return { cards, added: true, alreadyHad: false, card };
+}
+
 const PRICE_ALERT_POLL_MS = 90_000;
 let priceAlertPollTimer = null;
 let priceAlertPollKickoffTimer = null;
@@ -10195,6 +10210,26 @@ async function route(req, res) {
     return;
   }
 
+  if (pathname === "/api/poke-view/watchlist/add" && req.method === "POST") {
+    try {
+      const sessionUser = requireSignedInUser(req, res);
+      if (!sessionUser) return;
+      const body = await readBody(req);
+      const result = addPokeViewWatchlistCardForUser(sessionUser.id, body?.card || body);
+      await persistStore();
+      json(res, 200, {
+        ok: true,
+        added: result.added,
+        alreadyHad: result.alreadyHad,
+        card: result.card,
+        cards: result.cards
+      });
+    } catch (err) {
+      json(res, 400, { ok: false, error: err.message || "Could not add to watchlist" });
+    }
+    return;
+  }
+
   if (pathname === "/api/poke-view/price-alerts" && req.method === "GET") {
     const sessionUser = requireSignedInUser(req, res);
     if (!sessionUser) return;
@@ -12422,10 +12457,10 @@ async function bootstrapServer({ hosted = false } = {}) {
         console.warn(`[startup] Deferred card details warm failed: ${err.message}`);
       });
       ensureTcgLinkPriceCacheLoaded();
-      loadPersistedPriceChartingCardDetailsCache().catch(() => {});
-      loadPersistedPriceChartingMarketHistoryCache()
-        .then(() => ensureDiscoverySnapshot().catch(() => {}))
-        .catch(() => {});
+      loadPersistedPriceChartingCardDetailsCache()
+        .catch(() => {})
+        .then(() => loadPersistedPriceChartingMarketHistoryCache().catch(() => {}))
+        .then(() => ensureDiscoverySnapshot().catch(() => {}));
       loadPersistedTcgLinkPriceFailLinks()
         .then(() => pruneNonPokemonTcgFailLinks({ concurrency: 4, max: 300 }))
         .then((result) => {

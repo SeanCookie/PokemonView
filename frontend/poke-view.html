@@ -178,7 +178,7 @@
       z-index: 5;
       pointer-events: none;
       display: flex;
-      align-items: baseline;
+      align-items: center;
       flex-wrap: wrap;
       gap: 10px;
       max-width: calc(100% - 96px);
@@ -217,6 +217,36 @@
       overflow: hidden;
       text-overflow: ellipsis;
       max-width: 100%;
+      pointer-events: auto;
+      cursor: pointer;
+      border-radius: 4px;
+      padding: 1px 4px;
+      margin: -1px -4px;
+    }
+    .chart-symbol-title:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.06);
+    }
+    .chart-add-watchlist-btn {
+      pointer-events: auto;
+      flex-shrink: 0;
+      border: 1px solid rgba(71, 104, 150, 0.65);
+      border-radius: 5px;
+      background: rgba(32, 53, 87, 0.72);
+      color: #d6e4fc;
+      font: 600 11px Inter, "Segoe UI", Arial, sans-serif;
+      padding: 2px 8px;
+      cursor: pointer;
+      line-height: 1.35;
+      white-space: nowrap;
+    }
+    .chart-add-watchlist-btn:hover {
+      background: rgba(47, 74, 118, 0.9);
+      border-color: #5a7fb3;
+      color: #ffffff;
+    }
+    .chart-add-watchlist-btn[hidden] {
+      display: none;
     }
     .chart-symbol-stats {
       display: inline-flex;
@@ -1079,7 +1109,35 @@
       text-overflow: ellipsis;
     }
     .watchlist tbody tr {
-      cursor: pointer;
+      cursor: default;
+    }
+    .watchlist tbody tr.is-dragging {
+      opacity: 0.4;
+      cursor: default;
+    }
+    .watchlist tbody tr.drag-over-before {
+      box-shadow: inset 0 2px 0 #6b8fc4;
+    }
+    .watchlist tbody tr.drag-over-after {
+      box-shadow: inset 0 -2px 0 #6b8fc4;
+    }
+    .watchlist tbody tr.active.drag-over-before {
+      box-shadow: inset 2px 0 0 #4f6f98, inset 0 2px 0 #6b8fc4;
+    }
+    .watchlist tbody tr.active.drag-over-after {
+      box-shadow: inset 2px 0 0 #4f6f98, inset 0 -2px 0 #6b8fc4;
+    }
+    .watchlist tbody tr.compare.drag-over-before {
+      box-shadow: inset 2px 0 0 #ffab40, inset 0 2px 0 #6b8fc4;
+    }
+    .watchlist tbody tr.compare.drag-over-after {
+      box-shadow: inset 2px 0 0 #ffab40, inset 0 -2px 0 #6b8fc4;
+    }
+    .watchlist tbody tr.active.compare.drag-over-before {
+      box-shadow: inset 2px 0 0 #4f6f98, inset 4px 0 0 #ffab40, inset 0 2px 0 #6b8fc4;
+    }
+    .watchlist tbody tr.active.compare.drag-over-after {
+      box-shadow: inset 2px 0 0 #4f6f98, inset 4px 0 0 #ffab40, inset 0 -2px 0 #6b8fc4;
     }
     .watchlist tbody tr:hover {
       background: #121a27;
@@ -1121,6 +1179,44 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+    .watchlist-hover-preview {
+      position: fixed;
+      z-index: 80;
+      pointer-events: none;
+      width: 168px;
+      padding: 8px;
+      border: 1px solid #2f3d50;
+      border-radius: 10px;
+      background: rgba(12, 18, 28, 0.97);
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+      transform: translate(0, -50%);
+    }
+    .watchlist-hover-preview[hidden] {
+      display: none;
+    }
+    .watchlist-hover-preview img {
+      display: block;
+      width: 100%;
+      height: auto;
+      max-height: 240px;
+      object-fit: contain;
+      border-radius: 6px;
+      background: #0a0f18;
+    }
+    .watchlist-hover-preview img[hidden] {
+      display: none;
+    }
+    .watchlist-hover-preview-label {
+      margin-top: 7px;
+      font-size: 11px;
+      line-height: 1.3;
+      color: #cfe0ff;
+      text-align: center;
+      word-break: break-word;
+    }
+    .watchlist-hover-preview.is-empty .watchlist-hover-preview-label {
+      margin-top: 0;
     }
     .watch-metrics-stack {
       display: flex;
@@ -1396,7 +1492,17 @@
             <div id="chartContainer" aria-label="Poke View chart"></div>
             <canvas id="chartDrawCanvas" aria-hidden="true"></canvas>
             <div id="chartSymbolHeader" class="chart-symbol-header" hidden aria-live="polite">
-              <span id="chartSymbolTitle" class="chart-symbol-title"></span>
+              <span
+                id="chartSymbolTitle"
+                class="chart-symbol-title"
+                title="Double-click to change card or product"
+              ></span>
+              <button
+                id="chartAddToWatchlistBtn"
+                class="chart-add-watchlist-btn"
+                type="button"
+                hidden
+              >Add to Watchlist</button>
               <span id="chartSymbolStats" class="chart-symbol-stats" hidden>
                 <span class="chart-stat chart-stat-h" data-stat-side="primary">H<span class="chart-stat-v">--</span><span class="chart-stat-psa" hidden><span class="chart-stat-psa-sep">/</span><span class="chart-stat-psa-v">--</span></span></span>
                 <span class="chart-stat chart-stat-l" data-stat-side="primary">L<span class="chart-stat-v">--</span><span class="chart-stat-psa" hidden><span class="chart-stat-psa-sep">/</span><span class="chart-stat-psa-v">--</span></span></span>
@@ -1422,6 +1528,8 @@
                 <button type="button" class="chart-range-btn" data-range="6M" aria-pressed="false">6M</button>
                 <button type="button" class="chart-range-btn" data-range="YTD" aria-pressed="false">YTD</button>
                 <button type="button" class="chart-range-btn" data-range="1Y" aria-pressed="false">1Y</button>
+                <button type="button" class="chart-range-btn" data-range="18M" aria-pressed="false">18M</button>
+                <button type="button" class="chart-range-btn" data-range="3Y" aria-pressed="false">3Y</button>
                 <button type="button" class="chart-range-btn" data-range="ALL" aria-pressed="false">All</button>
               </div>
             </div>
@@ -1488,6 +1596,10 @@
       </div>
     </section>
   </main>
+  <div id="watchlistHoverPreview" class="watchlist-hover-preview" hidden role="tooltip">
+    <img id="watchlistHoverPreviewImg" alt="" />
+    <div id="watchlistHoverPreviewLabel" class="watchlist-hover-preview-label"></div>
+  </div>
   <div id="watchlistModal" class="watchlist-modal" aria-hidden="true">
     <section class="watchlist-modal-panel">
       <div class="watchlist-modal-head">
@@ -1510,13 +1622,13 @@
         <button
           type="button"
           class="watchlist-source-tab active"
-          id="watchlistSourceCatalogBtn"
-          data-source="catalog"
+          id="watchlistSourceCollectionBtn"
+          data-source="collection"
           role="tab"
           aria-selected="true"
-          title="Sets catalog"
+          title="My collection"
         >
-          Catalog
+          Collection
         </button>
         <button
           type="button"
@@ -1532,6 +1644,17 @@
         <button
           type="button"
           class="watchlist-source-tab"
+          id="watchlistSourceCatalogBtn"
+          data-source="catalog"
+          role="tab"
+          aria-selected="false"
+          title="Cards catalog"
+        >
+          Cards
+        </button>
+        <button
+          type="button"
+          class="watchlist-source-tab"
           id="watchlistSourceSealedBtn"
           data-source="sealed"
           role="tab"
@@ -1539,17 +1662,6 @@
           title="Sealed products"
         >
           Sealed
-        </button>
-        <button
-          type="button"
-          class="watchlist-source-tab"
-          id="watchlistSourceCollectionBtn"
-          data-source="collection"
-          role="tab"
-          aria-selected="false"
-          title="My collection"
-        >
-          Collection
         </button>
       </div>
       <div id="watchlistBrowseNav" class="watchlist-browse-nav" hidden>
@@ -1573,6 +1685,7 @@
     <button type="button" data-ctx-action="add-alert" role="menuitem">Add price alert…</button>
     <button type="button" data-ctx-action="compare" role="menuitem">Compare another card/product…</button>
     <button type="button" data-ctx-action="clear-compare" hidden role="menuitem">Clear all comparisons</button>
+    <button type="button" data-ctx-action="open-sets-details" role="menuitem">Card details…</button>
     <div class="ctx-sep" hidden data-ctx-sep></div>
     <button type="button" class="danger" data-ctx-action="remove-alert" hidden role="menuitem">Remove nearby alert</button>
   </div>
@@ -1647,6 +1760,7 @@
       const chartAcquiredTip = document.getElementById("chartAcquiredTip");
       const chartSymbolHeader = document.getElementById("chartSymbolHeader");
       const chartSymbolTitle = document.getElementById("chartSymbolTitle");
+      const chartAddToWatchlistBtn = document.getElementById("chartAddToWatchlistBtn");
       const chartSymbolStats = document.getElementById("chartSymbolStats");
       const chartHoverDate = document.getElementById("chartHoverDate");
       const drawCanvas = document.getElementById("chartDrawCanvas");
@@ -1655,7 +1769,12 @@
       const terminalMain = document.querySelector(".terminal-main");
       const chartResizer = document.getElementById("chartResizer");
       const watchlistBody = document.getElementById("watchlistBody");
+      const watchlistHoverPreview = document.getElementById("watchlistHoverPreview");
+      const watchlistHoverPreviewImg = document.getElementById("watchlistHoverPreviewImg");
+      const watchlistHoverPreviewLabel = document.getElementById("watchlistHoverPreviewLabel");
       const asidePanelTitle = document.getElementById("asidePanelTitle");
+      let watchlistDragId = null;
+      let watchlistDragSuppressClick = false;
       const discoveryTabs = document.getElementById("discoveryTabs");
       const discoveryToolbar = document.getElementById("discoveryToolbar");
       const discoveryRangeChips = document.getElementById("discoveryRangeChips");
@@ -1740,6 +1859,29 @@
         "4h": { count: 110, seed: 240, volatility: 0.017, drift: 0.0011 }
       };
       const USE_FAKE_CHART_DATA = false;
+      const WATCHLIST_WIDTH_STORAGE_KEY = "poke-view-watchlist-width";
+      const WATCHLIST_WIDTH_DEFAULT = 320;
+      const WATCHLIST_WIDTH_MIN = 220;
+
+      function loadSavedWatchlistWidth() {
+        try {
+          const n = Number(localStorage.getItem(WATCHLIST_WIDTH_STORAGE_KEY));
+          if (Number.isFinite(n) && n >= WATCHLIST_WIDTH_MIN) return Math.round(n);
+        } catch {
+          /* private mode */
+        }
+        return WATCHLIST_WIDTH_DEFAULT;
+      }
+
+      function saveWatchlistWidth(width) {
+        const n = Math.round(Number(width));
+        if (!Number.isFinite(n) || n < WATCHLIST_WIDTH_MIN) return;
+        try {
+          localStorage.setItem(WATCHLIST_WIDTH_STORAGE_KEY, String(n));
+        } catch {
+          /* private mode */
+        }
+      }
 
       const state = {
         timeframe: "3m",
@@ -1769,11 +1911,11 @@
         collectionAcquiredByWatchKey: {},
         collectionAcquiredLoaded: false,
         acquisitionMarkerHits: [],
-        watchlistPickerSource: "catalog",
+        watchlistPickerSource: "collection",
         watchlistPickerBrowseSetCode: "",
         watchlistPickerBrowseKind: "cards",
         watchlistModalMode: "add",
-        watchlistWidth: 320,
+        watchlistWidth: loadSavedWatchlistWidth(),
         activeRequestId: 0,
         livePollTimer: null,
         watchlistPickerSelectedId: null,
@@ -1842,6 +1984,11 @@
       let watchlistAuthBooted = false;
       let watchlistEverSignedIn = false;
       let watchlistSaveInFlight = null;
+      let pendingPokeViewDeepLink = null;
+      let offWatchlistFocusItem = null;
+      let watchlistLoadCompleted = false;
+      let watchlistLoadInFlight = false;
+      const POKE_VIEW_OPEN_STORAGE_KEY = "poke-view-open-item";
 
       const MAX_CHART_COMPARISONS = 6;
       const COMPARE_PALETTE = [
@@ -2043,8 +2190,9 @@
       function applyPanelWidths() {
         if (!terminalMain) return;
         const hostWidth = terminalMain.clientWidth || 0;
-        const maxWidth = Math.max(240, Math.floor(hostWidth * 0.55));
-        const width = Math.min(maxWidth, Math.max(220, state.watchlistWidth));
+        const maxWidth = Math.max(WATCHLIST_WIDTH_MIN + 20, Math.floor(hostWidth * 0.55));
+        const width = Math.min(maxWidth, Math.max(WATCHLIST_WIDTH_MIN, state.watchlistWidth));
+        state.watchlistWidth = width;
         terminalMain.style.setProperty("--watchlist-width", `${width}px`);
       }
 
@@ -2955,6 +3103,10 @@
         return state.watchlistModalMode === "compare";
       }
 
+      function isChangeSymbolPickerMode() {
+        return state.watchlistModalMode === "change";
+      }
+
       function getPickerSelectedIds() {
         if (isComparePickerMode()) {
           return Array.isArray(state.watchlistPickerSelectedIds)
@@ -2985,8 +3137,13 @@
         }
       }
 
+      function resetWatchlistPickerScroll() {
+        if (watchlistCardGrid) watchlistCardGrid.scrollTop = 0;
+      }
+
       function selectPickerCard(id, { forceAdd = false } = {}) {
         if (!id || !getPickerCardById(id)) return;
+        const scrollTop = watchlistCardGrid ? watchlistCardGrid.scrollTop : 0;
         if (isComparePickerMode()) {
           const ids = Array.isArray(state.watchlistPickerSelectedIds)
             ? state.watchlistPickerSelectedIds.slice()
@@ -3019,6 +3176,7 @@
         }
         syncPickerSelectionUi();
         syncWatchlistModalChrome();
+        if (watchlistCardGrid) watchlistCardGrid.scrollTop = scrollTop;
       }
 
       function syncWatchlistSourceTabsUi() {
@@ -3054,12 +3212,15 @@
         });
         if (watchlistModalSub) {
           const compareMode = isComparePickerMode();
-          const actionWord = compareMode ? "Compare" : "Add";
+          const changeMode = isChangeSymbolPickerMode();
+          const actionWord = compareMode ? "Compare" : changeMode ? "Change" : "Add";
           const browseCode = String(state.watchlistPickerBrowseSetCode || "").trim();
           if (source === "sets" && !browseCode) {
             watchlistModalSub.textContent = compareMode
               ? "Pick a set, then select one or more cards to compare"
-              : "Pick a set, then choose a card to add";
+              : changeMode
+                ? "Pick a set, then choose a card to chart"
+                : "Pick a set, then choose a card to add";
           } else if (source === "sets" && browseCode) {
             watchlistModalSub.textContent = compareMode
               ? "Click to select multiple cards in this set, then Compare"
@@ -3067,7 +3228,9 @@
           } else if (source === "collection") {
             watchlistModalSub.textContent = compareMode
               ? "Click to select multiple collection items, then Compare"
-              : "Browse cards and sealed products from your collection";
+              : changeMode
+                ? "Browse your collection and pick one to chart"
+                : "Browse cards and sealed products from your collection";
           } else if (source === "sealed") {
             watchlistModalSub.textContent = compareMode
               ? "Click to select multiple products, then Compare"
@@ -3138,6 +3301,7 @@
         if (watchlistSearchInput) watchlistSearchInput.value = "";
         syncWatchlistSourceTabsUi();
         renderCardPickerOptions();
+        resetWatchlistPickerScroll();
       }
 
       function renderWatchlistBrowseSetList(queryRaw) {
@@ -3178,6 +3342,7 @@
             state.watchlistPickerBrowseKind = "cards";
             if (watchlistSearchInput) watchlistSearchInput.value = "";
             renderCardPickerOptions();
+            resetWatchlistPickerScroll();
           });
         });
       }
@@ -3300,14 +3465,22 @@
 
       function syncWatchlistModalChrome() {
         const compareMode = isComparePickerMode();
+        const changeMode = isChangeSymbolPickerMode();
         if (watchlistModalTitle) {
-          watchlistModalTitle.textContent = compareMode ? "Add comparison" : "Add to Watchlist";
+          watchlistModalTitle.textContent = compareMode
+            ? "Add comparison"
+            : changeMode
+              ? "Change chart symbol"
+              : "Add to Watchlist";
         }
         if (watchlistAddConfirmBtn) {
           if (compareMode) {
             const n = getPickerSelectedIds().length;
             watchlistAddConfirmBtn.textContent = n > 1 ? `Compare (${n})` : "Compare";
             watchlistAddConfirmBtn.disabled = n < 1;
+          } else if (changeMode) {
+            watchlistAddConfirmBtn.textContent = "Change";
+            watchlistAddConfirmBtn.disabled = !state.watchlistPickerSelectedId;
           } else {
             watchlistAddConfirmBtn.textContent = "Add";
             watchlistAddConfirmBtn.disabled = false;
@@ -3317,15 +3490,15 @@
 
       function openWatchlistModal({ mode = "add" } = {}) {
         if (!watchlistModal) return;
-        state.watchlistModalMode = mode === "compare" ? "compare" : "add";
+        const nextMode =
+          mode === "compare" ? "compare" : mode === "change" ? "change" : "add";
+        state.watchlistModalMode = nextMode;
         state.watchlistPickerSelectedId = null;
         state.watchlistPickerSelectedIds = [];
         state.watchlistPickerBrowseSetCode = "";
         state.watchlistPickerBrowseKind = "cards";
         state.sealedSetSortOrder = "desc";
-        if (!isWatchlistAccountSignedIn() && state.watchlistPickerSource === "collection") {
-          state.watchlistPickerSource = "catalog";
-        }
+        state.watchlistPickerSource = isWatchlistAccountSignedIn() ? "collection" : "catalog";
         if (state.sealedIndexLoaded) sortSealedProductsIndex();
         syncWatchlistModalChrome();
         syncWatchlistSourceTabsUi();
@@ -3333,6 +3506,7 @@
         watchlistModal.setAttribute("aria-hidden", "false");
         if (watchlistSearchInput) watchlistSearchInput.focus();
         renderCardPickerOptions();
+        resetWatchlistPickerScroll();
       }
 
       function closeWatchlistModal() {
@@ -3343,7 +3517,7 @@
         state.watchlistPickerSelectedIds = [];
         state.watchlistPickerBrowseSetCode = "";
         state.watchlistPickerBrowseKind = "cards";
-        state.watchlistPickerSource = "catalog";
+        state.watchlistPickerSource = isWatchlistAccountSignedIn() ? "collection" : "catalog";
         state.watchlistModalMode = "add";
         syncWatchlistModalChrome();
         if (watchlistSearchInput) watchlistSearchInput.value = "";
@@ -3368,8 +3542,187 @@
         return `${sign}${formatNumber(changePct, 2)}%`;
       }
 
+      function resolveWatchlistItemImageUrl(item) {
+        if (!item) return "";
+        const direct = String(item.imageUrl || "").trim();
+        if (direct) return direct;
+        const id = String(item.id || "").trim();
+        if (id) {
+          const fromPicker =
+            state.cardIndexById?.[id] ||
+            state.sealedIndexById?.[id] ||
+            state.collectionPickerById?.[id] ||
+            null;
+          const fromPickerUrl = String(fromPicker?.imageUrl || "").trim();
+          if (fromPickerUrl) return fromPickerUrl;
+        }
+        if (isSealedWatchlistItem(item)) {
+          const productId = String(item.productId || id.replace(/^sealed:/i, "")).trim();
+          const sealed =
+            state.sealedIndexById?.[`sealed:${productId}`] ||
+            state.sealedIndexById?.[id] ||
+            null;
+          return String(sealed?.imageUrl || "").trim();
+        }
+        const setCode = String(item.setCode || "").trim().toUpperCase();
+        const cardNo = String(item.cardNo || "").trim();
+        if (setCode && cardNo) {
+          const catalogId = `english:${setCode}:${cardNo}`;
+          const fromCatalog = state.cardIndexById?.[catalogId];
+          const catalogUrl = String(fromCatalog?.imageUrl || "").trim();
+          if (catalogUrl) return catalogUrl;
+          return buildLocalCardImageUrl(setCode, cardNo);
+        }
+        return "";
+      }
+
+      function hideWatchlistHoverPreview() {
+        if (!watchlistHoverPreview) return;
+        watchlistHoverPreview.hidden = true;
+        if (watchlistHoverPreviewImg) {
+          watchlistHoverPreviewImg.removeAttribute("src");
+          watchlistHoverPreviewImg.hidden = true;
+        }
+        if (watchlistHoverPreviewLabel) watchlistHoverPreviewLabel.textContent = "";
+        watchlistHoverPreview.classList.remove("is-empty");
+      }
+
+      function positionWatchlistHoverPreview(clientX, clientY) {
+        if (!watchlistHoverPreview || watchlistHoverPreview.hidden) return;
+        const pad = 12;
+        const tipW = watchlistHoverPreview.offsetWidth || 168;
+        const tipH = watchlistHoverPreview.offsetHeight || 220;
+        let left = clientX + 18;
+        let top = clientY;
+        if (left + tipW > window.innerWidth - pad) left = clientX - tipW - 18;
+        if (left < pad) left = pad;
+        if (top - tipH / 2 < pad) top = pad + tipH / 2;
+        if (top + tipH / 2 > window.innerHeight - pad) {
+          top = window.innerHeight - pad - tipH / 2;
+        }
+        watchlistHoverPreview.style.left = `${Math.round(left)}px`;
+        watchlistHoverPreview.style.top = `${Math.round(top)}px`;
+      }
+
+      function showWatchlistHoverPreview(item, clientX, clientY) {
+        if (!watchlistHoverPreview || !item) return;
+        const label = String(item.card || item.cardName || item.label || "").trim() || "Card";
+        const imageUrl = resolveWatchlistItemImageUrl(item);
+        if (watchlistHoverPreviewLabel) watchlistHoverPreviewLabel.textContent = label;
+        if (watchlistHoverPreviewImg) {
+          if (imageUrl) {
+            watchlistHoverPreviewImg.hidden = false;
+            watchlistHoverPreview.classList.remove("is-empty");
+            if (watchlistHoverPreviewImg.getAttribute("src") !== imageUrl) {
+              watchlistHoverPreviewImg.onload = () => positionWatchlistHoverPreview(clientX, clientY);
+              watchlistHoverPreviewImg.onerror = () => {
+                watchlistHoverPreviewImg.hidden = true;
+                watchlistHoverPreview.classList.add("is-empty");
+                positionWatchlistHoverPreview(clientX, clientY);
+              };
+              watchlistHoverPreviewImg.src = imageUrl;
+            }
+          } else {
+            watchlistHoverPreviewImg.hidden = true;
+            watchlistHoverPreviewImg.removeAttribute("src");
+            watchlistHoverPreview.classList.add("is-empty");
+          }
+        }
+        watchlistHoverPreview.hidden = false;
+        positionWatchlistHoverPreview(clientX, clientY);
+      }
+
+      function bindAsideRowHoverPreview(row, resolveItem) {
+        if (!row || typeof resolveItem !== "function") return;
+        row.addEventListener("mouseenter", (event) => {
+          if (watchlistDragId) return;
+          const item = resolveItem();
+          if (item) showWatchlistHoverPreview(item, event.clientX, event.clientY);
+        });
+        row.addEventListener("mousemove", (event) => {
+          if (watchlistDragId) return;
+          if (!watchlistHoverPreview || watchlistHoverPreview.hidden) return;
+          positionWatchlistHoverPreview(event.clientX, event.clientY);
+        });
+        row.addEventListener("mouseleave", () => {
+          hideWatchlistHoverPreview();
+        });
+      }
+
+      function alertRowToHoverItem(alert) {
+        if (!alert) return null;
+        const sealed =
+          String(alert.kind || "").toLowerCase() === "sealed" ||
+          String(alert.watchlistCardId || "").toLowerCase().startsWith("sealed:");
+        const id = String(
+          alert.watchlistCardId ||
+            (sealed ? `sealed:${alert.productId || ""}` : "") ||
+            (alert.setCode && alert.cardNo ? `english:${alert.setCode}:${alert.cardNo}` : "") ||
+            alert.id ||
+            ""
+        ).trim();
+        if (!id) return null;
+        const label = String(alert.cardLabel || alert.cardName || alert.label || id).trim();
+        return {
+          id,
+          kind: sealed ? "sealed" : "single",
+          card: label,
+          cardName: String(alert.cardName || label).trim(),
+          setCode: String(alert.setCode || "").trim().toUpperCase(),
+          cardNo: sealed ? "" : String(alert.cardNo || "").trim(),
+          productId: sealed
+            ? String(alert.productId || id.replace(/^sealed:/i, "")).trim()
+            : "",
+          imageUrl: String(alert.imageUrl || "").trim()
+        };
+      }
+
+      function clearWatchlistDragIndicators() {
+        if (!watchlistBody) return;
+        watchlistBody.querySelectorAll("tr.drag-over-before, tr.drag-over-after, tr.is-dragging").forEach((row) => {
+          row.classList.remove("drag-over-before", "drag-over-after", "is-dragging");
+        });
+      }
+
+      function setWatchlistDragIndicator(row, clientY) {
+        if (!watchlistBody || !row) return;
+        watchlistBody.querySelectorAll("tr.drag-over-before, tr.drag-over-after").forEach((el) => {
+          if (el !== row) el.classList.remove("drag-over-before", "drag-over-after");
+        });
+        const rect = row.getBoundingClientRect();
+        const placeAfter = clientY > rect.top + rect.height / 2;
+        row.classList.toggle("drag-over-before", !placeAfter);
+        row.classList.toggle("drag-over-after", placeAfter);
+      }
+
+      function reorderWatchlistItems(fromId, targetId, placeAfter) {
+        const from = String(fromId || "").trim();
+        const target = String(targetId || "").trim();
+        if (!from || !target || from === target) return false;
+        const display = sortedWatchlistForDisplay();
+        const fromIdx = display.findIndex((item) => item.id === from);
+        const targetIdx = display.findIndex((item) => item.id === target);
+        if (fromIdx < 0 || targetIdx < 0) return false;
+        const next = display.slice();
+        const [moved] = next.splice(fromIdx, 1);
+        let insertAt = next.findIndex((item) => item.id === target);
+        if (insertAt < 0) return false;
+        if (placeAfter) insertAt += 1;
+        next.splice(insertAt, 0, moved);
+        const unchanged =
+          next.length === state.watchlist.length &&
+          next.every((item, index) => item.id === state.watchlist[index]?.id);
+        if (unchanged && state.watchlistSort === "default") return false;
+        state.watchlist = next;
+        state.watchlistSort = "default";
+        scheduleSaveWatchlist({ immediate: true });
+        renderWatchlist();
+        return true;
+      }
+
       function renderWatchlist() {
         if (state.discoveryTab !== "watchlist") {
+          hideWatchlistHoverPreview();
           renderDiscoveryTable();
           return;
         }
@@ -3378,6 +3731,8 @@
 
       function renderWatchlistCore() {
         if (!watchlistBody) return;
+        hideWatchlistHoverPreview();
+        clearWatchlistDragIndicators();
         syncDiscoveryToolbarUi();
         setDiscoveryTableHead(["Cards", "Last", "Chg", "Chg%"]);
         if (!state.watchlist.length) {
@@ -3414,8 +3769,8 @@
               </div>`
             : `<span class="${moveClass}">${hasChange ? `${sign}${formatNumber(item.changePct, 2)}%` : "--"}</span>`;
           return `
-            <tr class="${activeClass}${compareClass}" data-watch-id="${escapeHtml(item.id)}">
-              <td title="${escapeHtml(item.card)}"><span class="watch-card">${escapeHtml(item.card)}</span></td>
+            <tr class="${activeClass}${compareClass}" data-watch-id="${escapeHtml(item.id)}" draggable="true">
+              <td><span class="watch-card">${escapeHtml(item.card)}</span></td>
               <td>${lastCell}</td>
               <td>${changeCell}</td>
               <td>${pctCell}</td>
@@ -3424,6 +3779,7 @@
         }).join("");
         watchlistBody.querySelectorAll("tr[data-watch-id]").forEach((row) => {
           row.addEventListener("click", () => {
+            if (watchlistDragSuppressClick) return;
             const id = row.getAttribute("data-watch-id");
             if (id) selectWatchlistCard(id);
           });
@@ -3434,6 +3790,59 @@
             if (!id) return;
             if (id !== state.selectedWatchlistId) selectWatchlistCard(id);
             showChartContextMenu(event.clientX, event.clientY, null, { fromWatchlist: true });
+          });
+          bindAsideRowHoverPreview(row, () => getWatchlistItem(row.getAttribute("data-watch-id")));
+          row.addEventListener("dragstart", (event) => {
+            const id = row.getAttribute("data-watch-id");
+            if (!id) {
+              event.preventDefault();
+              return;
+            }
+            hideWatchlistHoverPreview();
+            watchlistDragId = id;
+            watchlistDragSuppressClick = true;
+            row.classList.add("is-dragging");
+            event.dataTransfer.effectAllowed = "move";
+            event.dataTransfer.setData("text/plain", id);
+            try {
+              event.dataTransfer.setData("application/x-watchlist-id", id);
+            } catch {
+              /* some browsers restrict custom types */
+            }
+          });
+          row.addEventListener("dragend", () => {
+            watchlistDragId = null;
+            clearWatchlistDragIndicators();
+            window.setTimeout(() => {
+              watchlistDragSuppressClick = false;
+            }, 40);
+          });
+          row.addEventListener("dragover", (event) => {
+            if (!watchlistDragId) return;
+            event.preventDefault();
+            event.dataTransfer.dropEffect = "move";
+            const id = row.getAttribute("data-watch-id");
+            if (!id || id === watchlistDragId) return;
+            setWatchlistDragIndicator(row, event.clientY);
+          });
+          row.addEventListener("dragleave", (event) => {
+            if (!row.contains(event.relatedTarget)) {
+              row.classList.remove("drag-over-before", "drag-over-after");
+            }
+          });
+          row.addEventListener("drop", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const targetId = row.getAttribute("data-watch-id");
+            const fromId =
+              watchlistDragId ||
+              event.dataTransfer.getData("application/x-watchlist-id") ||
+              event.dataTransfer.getData("text/plain");
+            const rect = row.getBoundingClientRect();
+            const placeAfter = event.clientY > rect.top + rect.height / 2;
+            clearWatchlistDragIndicators();
+            watchlistDragId = null;
+            reorderWatchlistItems(fromId, targetId, placeAfter);
           });
         });
       }
@@ -3481,7 +3890,24 @@
           void confirmComparePickerSelection();
           return;
         }
+        if (state.watchlistModalMode === "change") {
+          changeChartSymbolFromPicker();
+          return;
+        }
         addWatchlistCard();
+      }
+
+      function changeChartSymbolFromPicker() {
+        const selectedId = state.watchlistPickerSelectedId;
+        const selected = selectedId ? getPickerCardById(selectedId) : null;
+        const entry = pickerSelectionToWatchItem(selected);
+        if (!entry) {
+          window.alert("Select a card or product first.");
+          return;
+        }
+        closeWatchlistModal();
+        // Chart the pick without adding to the watchlist (same as Open in Poke View).
+        focusWatchItemFromOutsideWatchlist(entry, { add: false });
       }
 
       function addWatchlistCard() {
@@ -3496,6 +3922,7 @@
         renderWatchlist();
         closeWatchlistModal();
         scheduleSaveWatchlist({ immediate: true });
+        void hydrateWatchlistItemMetrics(entry, { force: true });
         selectWatchlistCard(id);
       }
 
@@ -3863,6 +4290,20 @@
         }
       }
 
+      async function openChangeSymbolPickerModal() {
+        try {
+          await Promise.all([
+            loadCardsFromSetsIndex(),
+            loadSealedProductsIndex(),
+            loadCardNicknames(),
+            loadCollectionPickerCards({ force: true })
+          ]);
+          openWatchlistModal({ mode: "change" });
+        } catch {
+          window.alert("Could not load cards or sealed products.");
+        }
+      }
+
       function removeSelectedWatchlistCard() {
         if (!state.watchlist.length) return;
         if (!state.selectedWatchlistId) {
@@ -3977,6 +4418,7 @@
           state.chartItem = null;
         }
         renderWatchlist();
+        void hydrateWatchlistItemMetrics(getWatchlistItem(item.id) || item, { force: true });
       }
 
       function selectDiscoveryEntry(entry) {
@@ -4078,6 +4520,7 @@
 
       function renderDiscoveryTable() {
         if (!watchlistBody) return;
+        hideWatchlistHoverPreview();
         syncDiscoveryToolbarUi();
         const tab = state.discoveryTab;
 
@@ -4112,7 +4555,7 @@
                   </div>`;
               return `
                 <tr class="${activeClass}" data-alert-id="${escapeHtml(alert.id)}" data-watch-id="${escapeHtml(alert.watchlistCardId || "")}">
-                  <td title="${escapeHtml(label)}">
+                  <td>
                     <span class="watch-card">${escapeHtml(label)}</span>
                     <span class="discovery-reason">${escapeHtml(conditionText)}${alert.recurrence === "recurring" ? " · Every time" : ""}</span>
                   </td>
@@ -4123,7 +4566,11 @@
               `;
             })
             .join("");
-          watchlistBody.querySelectorAll("tr[data-watch-id]").forEach((row) => {
+          watchlistBody.querySelectorAll("tr[data-alert-id]").forEach((row) => {
+            const alertId = row.getAttribute("data-alert-id");
+            bindAsideRowHoverPreview(row, () =>
+              alertRowToHoverItem(state.discoveryRows.find((a) => a.id === alertId))
+            );
             row.addEventListener("click", (event) => {
               if (event.target.closest(".discovery-alert-actions")) return;
               const id = row.getAttribute("data-watch-id");
@@ -4187,7 +4634,7 @@
               const activeClass = row.id === state.selectedWatchlistId ? " active" : "";
               return `
                 <tr class="${activeClass}" data-discovery-id="${escapeHtml(row.id)}">
-                  <td title="${escapeHtml(row.label || row.id)}">
+                  <td>
                     <span class="watch-card">${escapeHtml(row.label || row.id)}</span>
                     <span class="discovery-reason">${escapeHtml(row.reason || "")}</span>
                   </td>
@@ -4214,7 +4661,7 @@
               const activeClass = row.id === state.selectedWatchlistId ? " active" : "";
               return `
                 <tr class="${activeClass}" data-discovery-id="${escapeHtml(row.id)}">
-                  <td title="${escapeHtml(row.label || row.id)}">
+                  <td>
                     <span class="watch-card">${escapeHtml(row.label || row.id)}</span>
                     <span class="discovery-reason">${escapeHtml(row.reason || "")}</span>
                   </td>
@@ -4229,9 +4676,13 @@
         }
 
         watchlistBody.querySelectorAll("tr[data-discovery-id]").forEach((row) => {
+          const id = row.getAttribute("data-discovery-id");
+          bindAsideRowHoverPreview(row, () => {
+            const entry = state.discoveryRows.find((r) => r.id === id);
+            return entry ? discoveryEntryToWatchItem(entry) : null;
+          });
           row.addEventListener("click", (event) => {
             if (event.target.closest(".discovery-pin-btn")) return;
-            const id = row.getAttribute("data-discovery-id");
             const entry = state.discoveryRows.find((r) => r.id === id);
             if (entry) selectDiscoveryEntry(entry);
           });
@@ -4239,8 +4690,8 @@
         watchlistBody.querySelectorAll(".discovery-pin-btn[data-pin-id]").forEach((btn) => {
           btn.addEventListener("click", (event) => {
             event.stopPropagation();
-            const id = btn.getAttribute("data-pin-id");
-            const entry = state.discoveryRows.find((r) => r.id === id);
+            const pinId = btn.getAttribute("data-pin-id");
+            const entry = state.discoveryRows.find((r) => r.id === pinId);
             if (entry) pinDiscoveryEntry(entry);
           });
         });
@@ -4319,6 +4770,186 @@
 
       function isWatchlistAccountSignedIn() {
         return Boolean(window.InfinityAccount && window.InfinityAccount.isSignedIn());
+      }
+
+      function watchItemFromDeepLinkParams(params) {
+        if (!params) return null;
+        const id = String(params.get("id") || params.get("focus") || "").trim();
+        if (!id) return null;
+        const kind =
+          String(params.get("kind") || "").trim().toLowerCase() === "sealed" ||
+          id.toLowerCase().startsWith("sealed:")
+            ? "sealed"
+            : "single";
+        const setCode = String(params.get("setCode") || "").trim().toUpperCase();
+        const cardNo = kind === "sealed" ? "" : String(params.get("cardNo") || "").trim();
+        const setName = String(params.get("setName") || "").trim();
+        const cardName = String(params.get("cardName") || "").trim();
+        const cardLabel = String(params.get("card") || "").trim();
+        const productId =
+          kind === "sealed"
+            ? String(params.get("productId") || id.replace(/^sealed:/i, "")).trim()
+            : "";
+        const label =
+          cardLabel ||
+          (kind === "sealed"
+            ? cardName || productId || id
+            : cardName
+              ? `${cardName}${setCode ? ` (${setCode}${cardNo ? ` #${cardNo}` : ""})` : ""}`
+              : id);
+        return {
+          id,
+          kind,
+          card: label,
+          cardName: cardName || label,
+          setCode,
+          cardNo,
+          setName,
+          language: "english",
+          productId,
+          productUrl: String(params.get("productUrl") || "").trim(),
+          productType: String(params.get("productType") || "").trim(),
+          imageUrl: String(params.get("imageUrl") || "").trim(),
+          last: null,
+          change: null,
+          changePct: null,
+          psaLast: null,
+          psaChange: null,
+          psaChangePct: null
+        };
+      }
+
+      function persistPokeViewOpenIntent(intent) {
+        if (!intent?.item?.id) return;
+        try {
+          sessionStorage.setItem(
+            POKE_VIEW_OPEN_STORAGE_KEY,
+            JSON.stringify({
+              item: intent.item,
+              add: Boolean(intent.add),
+              ts: Date.now()
+            })
+          );
+        } catch {
+          /* private mode */
+        }
+      }
+
+      function readStoredPokeViewOpenIntent() {
+        try {
+          const raw = sessionStorage.getItem(POKE_VIEW_OPEN_STORAGE_KEY);
+          if (!raw) return null;
+          const parsed = JSON.parse(raw);
+          const id = String(parsed?.item?.id || "").trim();
+          const ts = Number(parsed?.ts) || 0;
+          if (!id || !ts || Date.now() - ts > 5 * 60 * 1000) {
+            sessionStorage.removeItem(POKE_VIEW_OPEN_STORAGE_KEY);
+            return null;
+          }
+          return {
+            item: parsed.item,
+            add: Boolean(parsed.add)
+          };
+        } catch {
+          return null;
+        }
+      }
+
+      function clearStoredPokeViewOpenIntent() {
+        try {
+          sessionStorage.removeItem(POKE_VIEW_OPEN_STORAGE_KEY);
+        } catch {
+          /* ignore */
+        }
+      }
+
+      function capturePokeViewDeepLinkFromUrl() {
+        try {
+          const params = new URLSearchParams(window.location.search || "");
+          const item = watchItemFromDeepLinkParams(params);
+          if (item) {
+            pendingPokeViewDeepLink = {
+              item,
+              add: params.get("add") === "1" || params.get("watchlist") === "1"
+            };
+            persistPokeViewOpenIntent(pendingPokeViewDeepLink);
+            const cleanUrl = `${window.location.pathname}${window.location.hash || ""}`;
+            window.history.replaceState({}, "", cleanUrl);
+            return pendingPokeViewDeepLink;
+          }
+        } catch {
+          /* fall through to storage */
+        }
+        const stored = readStoredPokeViewOpenIntent();
+        if (stored?.item?.id) {
+          pendingPokeViewDeepLink = stored;
+          return pendingPokeViewDeepLink;
+        }
+        pendingPokeViewDeepLink = null;
+        return null;
+      }
+
+      function focusWatchItemFromOutsideWatchlist(item, { add = false } = {}) {
+        const hydrated = hydrateWatchlistEntry(item);
+        if (!hydrated?.id) return false;
+        if (add && isWatchlistAccountSignedIn()) {
+          if (!state.watchlist.some((row) => row.id === hydrated.id)) {
+            state.watchlist.push(hydrated);
+            scheduleSaveWatchlist({ immediate: true });
+          }
+        }
+        const onList = state.watchlist.some((row) => row.id === hydrated.id);
+        if (onList) {
+          offWatchlistFocusItem = null;
+          state.chartItem = null;
+        } else {
+          offWatchlistFocusItem = hydrated;
+          state.chartItem = hydrated;
+        }
+        selectWatchlistCard(hydrated.id);
+        void hydrateWatchlistItemMetrics(getWatchlistItem(hydrated.id) || hydrated, { force: true });
+        return true;
+      }
+
+      function reassertOffWatchlistFocus() {
+        if (!offWatchlistFocusItem?.id) return false;
+        if (state.watchlist.some((row) => row.id === offWatchlistFocusItem.id)) {
+          offWatchlistFocusItem = null;
+          return false;
+        }
+        state.chartItem = offWatchlistFocusItem;
+        if (state.selectedWatchlistId !== offWatchlistFocusItem.id) {
+          selectWatchlistCard(offWatchlistFocusItem.id);
+        } else {
+          // Ensure live data kicks off even if id was already selected.
+          const item = getWatchlistItem(offWatchlistFocusItem.id);
+          if (item && !state.historyCandlesFull.length) {
+            state.activeRequestId += 1;
+            refreshSelectedCardLiveData({ requestId: state.activeRequestId, showLoading: true });
+          }
+        }
+        return true;
+      }
+
+      function applyPendingPokeViewDeepLink({ force = false } = {}) {
+        if (!pendingPokeViewDeepLink?.item?.id) {
+          const stored = readStoredPokeViewOpenIntent();
+          if (stored?.item?.id) pendingPokeViewDeepLink = stored;
+        }
+        if (!pendingPokeViewDeepLink?.item?.id) return false;
+        // When signed in, wait for the saved watchlist so auth load doesn't stomp focus.
+        if (
+          !force &&
+          isWatchlistAccountSignedIn() &&
+          !watchlistLoadCompleted &&
+          (watchlistLoadInFlight || !watchlistAuthBooted)
+        ) {
+          return false;
+        }
+        const intent = pendingPokeViewDeepLink;
+        pendingPokeViewDeepLink = null;
+        clearStoredPokeViewOpenIntent();
+        return focusWatchItemFromOutsideWatchlist(intent.item, { add: intent.add });
       }
 
       function toWatchlistMetric(value) {
@@ -4451,6 +5082,7 @@
 
       async function loadSavedWatchlist({ mergeLocal = false } = {}) {
         if (!isWatchlistAccountSignedIn()) return false;
+        watchlistLoadInFlight = true;
         try {
           const response = await fetch("/api/poke-view/watchlist", {
             credentials: "same-origin",
@@ -4470,14 +5102,34 @@
             await persistWatchlist();
           }
 
+          const deepId =
+            pendingPokeViewDeepLink?.item?.id ||
+            offWatchlistFocusItem?.id ||
+            state.chartItem?.id ||
+            "";
+          const deepPending = Boolean(pendingPokeViewDeepLink?.item?.id);
+          const keepOffListFocus =
+            Boolean(deepId) && !state.watchlist.some((item) => item.id === deepId);
           const keepSelected =
-            state.selectedWatchlistId && state.watchlist.some((item) => item.id === state.selectedWatchlistId);
+            (state.selectedWatchlistId &&
+              state.watchlist.some((item) => item.id === state.selectedWatchlistId)) ||
+            deepPending ||
+            keepOffListFocus;
           if (!keepSelected) {
             state.selectedWatchlistId = state.watchlist[0]?.id || null;
           }
           renderWatchlist();
           updatePsa10ToggleUi();
 
+          watchlistLoadCompleted = true;
+          if (applyPendingPokeViewDeepLink({ force: true })) {
+            void hydrateMissingWatchlistMetrics({ preferIds: [state.selectedWatchlistId] });
+            return true;
+          }
+          if (reassertOffWatchlistFocus()) {
+            void hydrateMissingWatchlistMetrics({ preferIds: [state.selectedWatchlistId] });
+            return true;
+          }
           if (state.selectedWatchlistId) {
             selectWatchlistCard(state.selectedWatchlistId);
           } else {
@@ -4486,9 +5138,15 @@
             syncChartSymbolHeader();
             drawChart();
           }
+          void hydrateMissingWatchlistMetrics({ preferIds: [state.selectedWatchlistId] });
           return true;
         } catch {
           return false;
+        } finally {
+          watchlistLoadInFlight = false;
+          watchlistLoadCompleted = true;
+          if (pendingPokeViewDeepLink) applyPendingPokeViewDeepLink({ force: true });
+          else reassertOffWatchlistFocus();
         }
       }
 
@@ -4520,7 +5178,7 @@
         state.collectionAcquiredLoaded = false;
         state.acquisitionMarkerHits = [];
         hideChartAcquiredTip();
-        state.watchlistPickerSource = "catalog";
+        state.watchlistPickerSource = isWatchlistAccountSignedIn() ? "collection" : "catalog";
         state.priceAlerts = [];
         clearPriceAlertLines();
         resetChartHistoryState();
@@ -4574,6 +5232,8 @@
         if (key === "1M") return Math.ceil((30 * 24 * 60 * 60 * 1000) / s) + 1;
         if (key === "3M") return Math.ceil((90 * 24 * 60 * 60 * 1000) / s) + 1;
         if (key === "6M") return Math.ceil((180 * 24 * 60 * 60 * 1000) / s) + 1;
+        if (key === "18M") return Math.ceil((540 * 24 * 60 * 60 * 1000) / s) + 1;
+        if (key === "3Y") return Math.ceil((3 * 365 * 24 * 60 * 60 * 1000) / s) + 1;
         // For longer presets we keep existing history size (we don't want huge arrays at minute bars).
         return 0;
       }
@@ -4808,27 +5468,182 @@
         return { last, change, changePct };
       }
 
-      function syncSelectedWatchlistMetrics() {
-        const item = getWatchlistItem(state.selectedWatchlistId);
-        if (!item || !state.historyCandlesFull.length) return;
-        const rangeCandles = filterCandlesByPreset(state.historyCandlesFull, state.activeRangePreset);
-        const metrics = computeRangeChange(rangeCandles);
+      /**
+       * Period return vs price at/just before the preset start.
+       * Important for sparse (monthly) sealed series: a 1M window can contain
+       * zero points, and must NOT fall back to all-time first→last.
+       */
+      function computePresetRangeChange(candles, key) {
+        if (!Array.isArray(candles) || !candles.length) {
+          return { last: null, change: null, changePct: null };
+        }
+        if (key === "ALL") return computeRangeChange(candles);
+
+        const { startMs, endMs } = presetRangeBoundsMs(key, candles);
+        let baseline = null;
+        let lastCandle = null;
+        let firstInWindow = null;
+        for (const c of candles) {
+          const ts = Number(c.ts);
+          if (!Number.isFinite(ts)) continue;
+          if (ts <= endMs) lastCandle = c;
+          if (ts <= startMs) baseline = c;
+          if (!firstInWindow && ts >= startMs && ts <= endMs) firstInWindow = c;
+        }
+        if (!lastCandle) {
+          return { last: null, change: null, changePct: null };
+        }
+        // New listings with no history before the window: use first in-window print.
+        if (!baseline) baseline = firstInWindow || lastCandle;
+
+        const first = Number(baseline.close);
+        const last = Number(lastCandle.close);
+        if (!Number.isFinite(last) || last <= 0) {
+          return { last: null, change: null, changePct: null };
+        }
+        if (!Number.isFinite(first) || first <= 0 || baseline === lastCandle) {
+          return { last, change: 0, changePct: 0 };
+        }
+        const change = last - first;
+        const changePct = (change / first) * 100;
+        return { last, change, changePct };
+      }
+
+      function applyMetricsToWatchlistItem(item, rawCandles, psa10Candles = []) {
+        if (!item) return false;
+        const full = Array.isArray(rawCandles) ? rawCandles : [];
+        if (!full.length) return false;
+        const metrics = computePresetRangeChange(full, state.activeRangePreset);
         if (metrics.last != null) item.last = metrics.last;
         item.change = metrics.change;
         item.changePct = metrics.changePct;
 
-        if (state.historyCandlesPsa10Full.length) {
-          const psaRange = filterCandlesByPreset(state.historyCandlesPsa10Full, state.activeRangePreset);
-          const psaMetrics = computeRangeChange(psaRange);
+        const psaFull = Array.isArray(psa10Candles) ? psa10Candles : [];
+        if (psaFull.length) {
+          const psaMetrics = computePresetRangeChange(psaFull, state.activeRangePreset);
           if (psaMetrics.last != null) item.psaLast = psaMetrics.last;
           item.psaChange = psaMetrics.change;
           item.psaChangePct = psaMetrics.changePct;
-        } else {
-          item.psaLast = null;
-          item.psaChange = null;
-          item.psaChangePct = null;
         }
+        return metrics.last != null;
+      }
+
+      const watchlistHistoryById = new Map();
+
+      function rememberWatchlistHistory(itemId, raw, psa10 = []) {
+        const id = String(itemId || "").trim();
+        if (!id) return;
+        const rawBars = Array.isArray(raw) ? raw : [];
+        if (!rawBars.length) return;
+        watchlistHistoryById.set(id, {
+          raw: rawBars,
+          psa10: Array.isArray(psa10) ? psa10 : []
+        });
+      }
+
+      function getCachedWatchlistHistory(itemId) {
+        const id = String(itemId || "").trim();
+        if (!id) return null;
+        if (
+          id === String(state.selectedWatchlistId || "") &&
+          Array.isArray(state.historyCandlesFull) &&
+          state.historyCandlesFull.length
+        ) {
+          return {
+            raw: state.historyCandlesFull,
+            psa10: Array.isArray(state.historyCandlesPsa10Full) ? state.historyCandlesPsa10Full : []
+          };
+        }
+        return watchlistHistoryById.get(id) || null;
+      }
+
+      const watchlistMetricHydrateInFlight = new Set();
+
+      async function hydrateWatchlistItemMetrics(item, { force = false } = {}) {
+        if (!item?.id) return false;
+        if (!force && Number.isFinite(item.last) && Number.isFinite(item.changePct)) return true;
+        if (watchlistMetricHydrateInFlight.has(item.id)) return false;
+        watchlistMetricHydrateInFlight.add(item.id);
+        try {
+          // Prefer a quick live last price so the row isn't stuck on "--".
+          try {
+            const live = await fetchLiveCardSnapshot(item);
+            const livePrice = Number(live?.marketPrice || 0);
+            const listItem = getWatchlistItem(item.id) || item;
+            if (livePrice > 0 && !Number.isFinite(listItem.last)) {
+              listItem.last = livePrice;
+              if (live.productUrl && isSealedWatchlistItem(listItem)) {
+                listItem.productUrl = String(live.productUrl).trim();
+              }
+              if (state.discoveryTab === "watchlist") renderWatchlist();
+            }
+          } catch {
+            /* history path below still fills metrics */
+          }
+
+          const loaded = await loadMarketHistoryCandles(item);
+          const listItem = getWatchlistItem(item.id) || item;
+          rememberWatchlistHistory(listItem.id, loaded.raw, loaded.psa10);
+          const ok = applyMetricsToWatchlistItem(listItem, loaded.raw, loaded.psa10);
+          if (ok) {
+            scheduleSaveWatchlist();
+            if (state.discoveryTab === "watchlist") renderWatchlist();
+          }
+          return ok;
+        } catch {
+          return false;
+        } finally {
+          watchlistMetricHydrateInFlight.delete(item.id);
+        }
+      }
+
+      async function hydrateMissingWatchlistMetrics({ limit = 20, preferIds = [] } = {}) {
+        const prefer = new Set((preferIds || []).map((id) => String(id || "").trim()).filter(Boolean));
+        const missing = state.watchlist
+          .filter((item) => item && (!Number.isFinite(item.last) || !Number.isFinite(item.changePct)))
+          .sort((a, b) => Number(prefer.has(b.id)) - Number(prefer.has(a.id)));
+        const batch = missing.slice(0, Math.max(1, limit));
+        if (!batch.length) return;
+        await Promise.all(batch.map((item) => hydrateWatchlistItemMetrics(item)));
+      }
+
+      function syncSelectedWatchlistMetrics() {
+        const item = getWatchlistItem(state.selectedWatchlistId);
+        if (!item || !state.historyCandlesFull.length) return;
+        rememberWatchlistHistory(item.id, state.historyCandlesFull, state.historyCandlesPsa10Full);
+        applyMetricsToWatchlistItem(item, state.historyCandlesFull, state.historyCandlesPsa10Full);
         scheduleSaveWatchlist();
+      }
+
+      function syncAllWatchlistMetricsForActiveRange({ hydrateMissing = true } = {}) {
+        let any = false;
+        const needHydrate = [];
+        for (const item of state.watchlist) {
+          if (!item?.id) continue;
+          const cached = getCachedWatchlistHistory(item.id);
+          if (cached?.raw?.length) {
+            if (applyMetricsToWatchlistItem(item, cached.raw, cached.psa10)) any = true;
+          } else if (hydrateMissing) {
+            needHydrate.push(item);
+          }
+        }
+        const offList = state.chartItem;
+        if (
+          offList?.id &&
+          !state.watchlist.some((row) => row.id === offList.id)
+        ) {
+          const cached = getCachedWatchlistHistory(offList.id);
+          if (cached?.raw?.length) {
+            applyMetricsToWatchlistItem(offList, cached.raw, cached.psa10);
+          }
+        }
+        if (any) scheduleSaveWatchlist();
+        renderWatchlist();
+        if (needHydrate.length) {
+          void Promise.all(
+            needHydrate.map((item) => hydrateWatchlistItemMetrics(item, { force: true }))
+          );
+        }
       }
 
       function resetChartHistoryState() {
@@ -4845,6 +5660,13 @@
         state.hasPsa10History = state.historyCandlesPsa10Full.length > 0;
         if (!state.hasPsa10History) state.showPsa10Overlay = false;
         state.candles = state.historyCandlesFull.slice();
+        if (state.selectedWatchlistId) {
+          rememberWatchlistHistory(
+            state.selectedWatchlistId,
+            state.historyCandlesFull,
+            state.historyCandlesPsa10Full
+          );
+        }
         syncSelectedWatchlistMetrics();
         state.applyChartViewportOnNextDraw = true;
         state.applyChartPriceScaleOnNextDraw = true;
@@ -5144,6 +5966,12 @@
           spanMs = Math.max(0, endTs - startTs);
         } else if (key === "1Y") {
           spanMs = 365 * 24 * 60 * 60 * 1000;
+          startTs = endTs - spanMs;
+        } else if (key === "18M") {
+          spanMs = 540 * 24 * 60 * 60 * 1000;
+          startTs = endTs - spanMs;
+        } else if (key === "3Y") {
+          spanMs = 3 * 365 * 24 * 60 * 60 * 1000;
           startTs = endTs - spanMs;
         }
 
@@ -5969,6 +6797,9 @@
         resetChartView();
         if (state.watchlist.some((item) => item.id === id)) {
           state.chartItem = null;
+          if (offWatchlistFocusItem && offWatchlistFocusItem.id !== id) {
+            offWatchlistFocusItem = null;
+          }
         }
         state.selectedWatchlistId = id;
         if (isComparingId(id)) {
@@ -6026,6 +6857,20 @@
       if (watchlistRemoveBtn) {
         watchlistRemoveBtn.addEventListener("click", removeSelectedWatchlistCard);
       }
+      if (chartSymbolTitle) {
+        chartSymbolTitle.addEventListener("dblclick", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          void openChangeSymbolPickerModal();
+        });
+      }
+      if (chartAddToWatchlistBtn) {
+        chartAddToWatchlistBtn.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          addCurrentChartItemToWatchlist();
+        });
+      }
       if (discoveryTabs) {
         discoveryTabs.addEventListener("click", (event) => {
           const btn = event.target.closest("[data-discovery-tab]");
@@ -6076,6 +6921,12 @@
 
       function bindWatchlistPickerGrid(root) {
         if (!root) return;
+        // Prevent button focus from scrolling the grid when selecting a tile.
+        root.addEventListener("mousedown", (event) => {
+          const tile = event.target.closest(".watchlist-card-tile, .watchlist-set-row");
+          if (!tile || !root.contains(tile)) return;
+          event.preventDefault();
+        });
         root.addEventListener("click", (event) => {
           const tile = event.target.closest(".watchlist-card-tile");
           if (!tile || !root.contains(tile)) return;
@@ -6115,6 +6966,7 @@
           if (watchlistSearchInput) watchlistSearchInput.value = "";
           syncWatchlistSourceTabsUi();
           renderCardPickerOptions();
+          resetWatchlistPickerScroll();
         });
       }
       if (watchlistBrowseKind) {
@@ -6122,6 +6974,7 @@
           const btn = event.target.closest("[data-browse-kind]");
           if (!btn || !watchlistBrowseKind.contains(btn)) return;
           setWatchlistBrowseKind(btn.getAttribute("data-browse-kind"));
+          resetWatchlistPickerScroll();
         });
       }
       if (watchlistSealedSetSortBtn) {
@@ -6159,6 +7012,8 @@
           const onUp = () => {
             document.body.style.cursor = "";
             document.body.style.userSelect = "";
+            applyPanelWidths();
+            saveWatchlistWidth(state.watchlistWidth);
             chartResizer.removeEventListener("pointermove", onMove);
             chartResizer.removeEventListener("pointerup", onUp);
             chartResizer.removeEventListener("pointercancel", onUp);
@@ -6256,6 +7111,7 @@
           chartSymbolHeader.hidden = true;
           chartSymbolTitle.textContent = "";
           chartSymbolTitle.innerHTML = "";
+          if (chartAddToWatchlistBtn) chartAddToWatchlistBtn.hidden = true;
           if (chartSymbolStats) chartSymbolStats.hidden = true;
           return;
         }
@@ -6270,7 +7126,32 @@
         } else {
           chartSymbolTitle.textContent = name;
         }
+        chartSymbolTitle.title = "Double-click to change card or product";
         chartSymbolHeader.hidden = false;
+        if (chartAddToWatchlistBtn) {
+          const selectedId = state.selectedWatchlistId;
+          const onWatchlist = Boolean(
+            selectedId && state.watchlist.some((row) => row.id === selectedId)
+          );
+          chartAddToWatchlistBtn.hidden = !selectedId || onWatchlist;
+        }
+      }
+
+      function addCurrentChartItemToWatchlist() {
+        const item = getWatchlistItem(state.selectedWatchlistId);
+        if (!item?.id) return;
+        if (state.watchlist.some((row) => row.id === item.id)) {
+          syncChartSymbolHeader();
+          return;
+        }
+        const entry = hydrateWatchlistEntry(item);
+        state.watchlist.push(entry);
+        offWatchlistFocusItem = null;
+        state.chartItem = null;
+        renderWatchlist();
+        scheduleSaveWatchlist({ immediate: true });
+        void hydrateWatchlistItemMetrics(entry, { force: true });
+        syncChartSymbolHeader();
       }
 
       function updateChartSymbolHover({
@@ -6910,24 +7791,58 @@
         return best;
       }
 
+      function buildSetsDetailsUrlForWatchItem(item) {
+        if (!item) return "";
+        const setCode = String(item.setCode || "").trim().toUpperCase();
+        if (!setCode) return "";
+        const params = new URLSearchParams();
+        params.set("set", setCode);
+        if (isSealedWatchlistItem(item)) {
+          params.set("mode", "sealed");
+          const productId = String(
+            item.productId || String(item.id || "").replace(/^sealed:/i, "")
+          ).trim();
+          if (!productId) return "";
+          params.set("product", productId);
+          return `/sets.html?${params.toString()}`;
+        }
+        const cardNo = String(item.cardNo || "").trim();
+        if (!cardNo) return "";
+        params.set("card", cardNo);
+        if (String(item.language || "english").toLowerCase() === "japanese") {
+          params.set("lang", "ja");
+        }
+        return `/sets.html?${params.toString()}`;
+      }
+
       function showChartContextMenu(clientX, clientY, price, { fromWatchlist = false } = {}) {
         if (!chartContextMenu) return;
         if (!state.selectedWatchlistId && !fromWatchlist) return;
         const nearby = Number.isFinite(Number(price)) ? findNearbyPriceAlert(price) : null;
+        const item = getWatchlistItem(state.selectedWatchlistId);
+        const setsDetailsUrl = buildSetsDetailsUrlForWatchItem(item);
         state.priceAlertContext = {
           price: Number.isFinite(Number(price)) ? Number(price) : null,
           nearbyAlertId: nearby?.id || null,
-          fromWatchlist: Boolean(fromWatchlist)
+          fromWatchlist: Boolean(fromWatchlist),
+          setsDetailsUrl
         };
         const alertBtn = chartContextMenu.querySelector('[data-ctx-action="add-alert"]');
         const compareBtn = chartContextMenu.querySelector('[data-ctx-action="compare"]');
         const clearCompareBtn = chartContextMenu.querySelector('[data-ctx-action="clear-compare"]');
+        const detailsBtn = chartContextMenu.querySelector('[data-ctx-action="open-sets-details"]');
         const removeBtn = chartContextMenu.querySelector('[data-ctx-action="remove-alert"]');
         const sep = chartContextMenu.querySelector("[data-ctx-sep]");
         const hasCompare = state.comparisons.length > 0;
         if (alertBtn) alertBtn.hidden = false;
         if (compareBtn) compareBtn.hidden = false;
         if (clearCompareBtn) clearCompareBtn.hidden = !hasCompare;
+        if (detailsBtn) {
+          detailsBtn.hidden = !setsDetailsUrl;
+          detailsBtn.textContent = isSealedWatchlistItem(item)
+            ? "Product details…"
+            : "Card details…";
+        }
         if (removeBtn) removeBtn.hidden = !nearby;
         if (sep) sep.hidden = !nearby;
         chartContextMenu.classList.add("open");
@@ -7585,6 +8500,11 @@
               clearCompareOverlay();
               return;
             }
+            if (action === "open-sets-details") {
+              const url = String(ctx?.setsDetailsUrl || "").trim();
+              if (url) window.location.href = url;
+              return;
+            }
             if (action === "remove-alert" && ctx?.nearbyAlertId) {
               void removePriceAlertById(ctx.nearbyAlertId);
             }
@@ -7828,7 +8748,10 @@
           timeScale: {
             borderColor: "#2a2e39",
             timeVisible: true,
-            secondsVisible: false
+            secondsVisible: false,
+            rightOffset: 16,
+            // Allow zooming out far enough to reveal future whitespace dates.
+            minBarSpacing: 0.25
           },
           crosshair: {
             mode: 2
@@ -8236,11 +9159,56 @@
         return [...extra].sort((a, b) => a - b);
       }
 
+      /**
+       * Future whitespace timestamps so the x-axis calendar continues past the
+       * last real candle when zooming out / scrolling right.
+       */
+      function collectFutureWhitespaceTimeSecs(primaryBars) {
+        const bars = Array.isArray(primaryBars) ? primaryBars : [];
+        if (bars.length < 1) return [];
+        const lastSec = toLwTimeSec(bars[bars.length - 1]);
+        if (!Number.isFinite(lastSec)) return [];
+
+        const DAY = 24 * 60 * 60;
+        let stepSec = DAY;
+        if (bars.length >= 2) {
+          const prevSec = toLwTimeSec(bars[bars.length - 2]);
+          const delta = lastSec - prevSec;
+          if (Number.isFinite(delta) && delta > 0) {
+            // Keep extension on a daily-ish grid even if source bars are denser.
+            stepSec = delta >= DAY ? Math.min(7 * DAY, delta) : DAY;
+          }
+        }
+
+        // ~3 years of future dates (matches the longest preset below All).
+        const futureSpanSec = 3 * 365 * DAY;
+        const endSec = lastSec + futureSpanSec;
+        const maxPoints = 1100;
+        const out = [];
+        for (let t = lastSec + stepSec; t <= endSec; t += stepSec) {
+          out.push(t);
+          if (out.length >= maxPoints) break;
+        }
+        return out;
+      }
+
       function candlesToLwDataWithCompareExtensions(bars) {
         const candleData = candlesToLwData(bars);
         const extensions = collectCompareExtensionTimeSecs(bars);
-        if (!extensions.length) return candleData;
-        const merged = candleData.concat(extensions.map((time) => ({ time })));
+        const future = collectFutureWhitespaceTimeSecs(bars);
+        if (!extensions.length && !future.length) return candleData;
+        const seen = new Set(candleData.map((row) => Number(row.time)));
+        const merged = candleData.slice();
+        for (const time of extensions) {
+          if (seen.has(time)) continue;
+          seen.add(time);
+          merged.push({ time });
+        }
+        for (const time of future) {
+          if (seen.has(time)) continue;
+          seen.add(time);
+          merged.push({ time });
+        }
         merged.sort((a, b) => Number(a.time) - Number(b.time));
         return merged;
       }
@@ -8324,6 +9292,8 @@
         if (key === "6M") return endSec - 180 * 24 * 60 * 60;
         if (key === "YTD") return Math.floor(Date.UTC(2026, 0, 1) / 1000);
         if (key === "1Y") return endSec - 365 * 24 * 60 * 60;
+        if (key === "18M") return endSec - 540 * 24 * 60 * 60;
+        if (key === "3Y") return endSec - 3 * 365 * 24 * 60 * 60;
         return endSec - 24 * 60 * 60;
       }
 
@@ -8336,6 +9306,8 @@
         if (key === "6M") return endMs - 180 * 24 * 60 * 60 * 1000;
         if (key === "YTD") return Date.UTC(2026, 0, 1);
         if (key === "1Y") return endMs - 365 * 24 * 60 * 60 * 1000;
+        if (key === "18M") return endMs - 540 * 24 * 60 * 60 * 1000;
+        if (key === "3Y") return endMs - 3 * 365 * 24 * 60 * 60 * 1000;
         return endMs - 24 * 60 * 60 * 1000;
       }
 
@@ -8346,7 +9318,8 @@
         let startMs = presetStartMs(key, endMs);
         if (!Number.isFinite(startMs) || startMs >= endMs) startMs = endMs - 24 * 60 * 60 * 1000;
         const spanMs = Math.max(1, endMs - startMs);
-        const count = key === "YTD" || key === "1Y" ? 320 : 240;
+        const count =
+          key === "YTD" || key === "1Y" || key === "18M" || key === "3Y" ? 320 : 240;
         const stepMs = Math.max(60 * 1000, Math.floor(spanMs / Math.max(1, count - 1)));
         const basePrice = hasLive
           ? Number(state.candles[state.candles.length - 1]?.close) || 120
@@ -8364,11 +9337,10 @@
         } else if (USE_FAKE_CHART_DATA) {
           rebuildCandlesForPreset(key);
         }
-        syncSelectedWatchlistMetrics();
+        syncAllWatchlistMetricsForActiveRange();
         updateRangeTabButtons();
         state.applyChartViewportOnNextDraw = true;
         drawChart();
-        renderWatchlist();
       }
 
       function bindPriceScaleRedraw(chart) {
@@ -8394,7 +9366,34 @@
 
         const timeScale = chart.timeScale();
 
+        // Keep zoom-out floor low so future whitespace dates can enter view.
+        // Initial barSpacing still fits the selected preset window.
+        const applyZoomFloor = (barSpacing) => {
+          try {
+            const opts = {
+              minBarSpacing: 0.25,
+              rightOffset: 16
+            };
+            if (Number.isFinite(barSpacing) && barSpacing > 0) opts.barSpacing = barSpacing;
+            timeScale.applyOptions(opts);
+          } catch {
+            /* ignore */
+          }
+        };
+
         if (key === "ALL") {
+          applyZoomFloor(null);
+          // Fit real history only — do not include future whitespace in the default view.
+          try {
+            const from = toLwTimeSec(bars[0]);
+            const to = toLwTimeSec(bars[bars.length - 1]);
+            if (typeof timeScale.setVisibleRange === "function") {
+              timeScale.setVisibleRange({ from, to });
+              return;
+            }
+          } catch {
+            /* fall through */
+          }
           if (typeof timeScale.fitContent === "function") timeScale.fitContent();
           return;
         }
@@ -8404,15 +9403,7 @@
         const chartWidth = chartContainer?.clientWidth || 300;
         const plotWidth = Math.max(100, chartWidth - 90);
         const barSpacing = Math.min(56, Math.max(8, Math.floor(plotWidth / count) - 1));
-        try {
-          timeScale.applyOptions({
-            barSpacing,
-            minBarSpacing: 4,
-            rightOffset: 6
-          });
-        } catch {
-          /* ignore */
-        }
+        applyZoomFloor(barSpacing);
 
         const { startMs, endMs } = presetRangeBoundsMs(key, bars);
         const fromSec = Math.floor(startMs / 1000);
@@ -8529,6 +9520,7 @@
         drawChart();
       });
       applyPanelWidths();
+      capturePokeViewDeepLinkFromUrl();
       document.querySelectorAll(".chart-range-btn").forEach((btn) => {
         btn.addEventListener("click", () => {
           const r = btn.getAttribute("data-range");
@@ -8546,6 +9538,15 @@
       startFooterLocalClock();
       window.__pokeViewBootWatchlistAuth = bootWatchlistAuthSync;
       window.addEventListener("beforeunload", flushWatchlistOnUnload);
+      // Guest: apply immediately. Signed-in: wait for watchlist load (fallback below).
+      window.setTimeout(() => {
+        if (!pendingPokeViewDeepLink) return;
+        if (isWatchlistAccountSignedIn() && !watchlistLoadCompleted) return;
+        applyPendingPokeViewDeepLink({ force: true });
+      }, 200);
+      window.setTimeout(() => {
+        if (pendingPokeViewDeepLink) applyPendingPokeViewDeepLink({ force: true });
+      }, 2500);
     })();
   </script>
   <script src="/site-nav.js?v=12" defer></script>

@@ -5,15 +5,22 @@ const fsp = require("fs/promises");
 const path = require("path");
 const { writeJsonAtomic } = require("./write-json-atomic");
 const { forEachCachedChartEntry } = require("./pricecharting-market-history-cache");
+const { forEachCachedCardDetailsEntry } = require("./pricecharting-card-details-cache");
 
 const DATA_DIR = path.join(__dirname, "..", "data");
 const SNAPSHOT_FILE = path.join(DATA_DIR, "poke-view-discovery.json");
 const TRENDING_FILE = path.join(DATA_DIR, "poke-view-discovery-trending.json");
 const SET_CARD_LISTS_FILE = path.join(DATA_DIR, "set-card-lists.json");
+const SEALED_BY_SET_FILE = path.join(DATA_DIR, "pricecharting-sealed-by-set.json");
 
-const SNAPSHOT_VERSION = 1;
+const SNAPSHOT_VERSION = 2;
 const SNAPSHOT_TTL_MS = 1000 * 60 * 60 * 6;
 const TRENDING_MAX_KEYS = 5000;
+const SOURCE_PRIORITY = {
+  chart: 3,
+  "sealed-series": 2,
+  "sold-listings": 1
+};
 
 const RANGE_DAYS = {
   "1D": 1,
@@ -29,6 +36,7 @@ let snapshotCache = null;
 let snapshotBuiltAt = 0;
 let snapshotBuildPromise = null;
 let cardListsCache = null;
+let sealedTitleCache = null;
 let trendingState = { version: 1, savedAt: null, views: {} };
 let trendingLoaded = false;
 let trendingPersistTimer = null;
@@ -65,6 +73,112 @@ function chartPointsFromEntry(value) {
   return points;
 }
 
+function parseSoldListingDateMs(raw) {
+  const text = String(raw || "").trim();
+  if (!text) return null;
+  const m = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) {
+    const ts = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    return Number.isFinite(ts) ? ts : null;
+  }
+  const ts = Date.parse(text);
+  return Number.isFinite(ts) ? ts : null;
+}
+
+function collectSoldListings(value) {
+  if (Array.isArray(value?.soldListings) && value.soldListings.length) {
+    return value.soldListings;
+  }
+  const out = [];
+  for (const guide of Array.isArray(value?.soldGuides) ? value.soldGuides : []) {
+    if (Array.isArray(guide?.listings)) out.push(...guide.listings);
+  }
+  return out;
+}
+
+function pointsFromSoldListings(value) {
+  const byDay = new Map();
+  for (const listing of collectSoldListings(value)) {
+    if (!listing || typeof listing !== "object") continue;
+    const title = String(listing.title || "").toLowerCase();
+    if (/\b(psa|cgc|bgs|sgc|graded|gem\s*mint\s*10)\b/.test(title)) continue;
+    if (/\b(lot|lots|x\d+|play\s*set)\b/.test(title)) continue;
+    const ts = parseSoldListingDateMs(listing.date || listing.soldDate);
+    const price = Number(listing.price);
+    if (!Number.isFinite(ts) || !Number.isFinite(price) || price <= 0) continue;
+    const day = Math.floor(ts / 86400000) * 86400000;
+    if (!byDay.has(day)) byDay.set(day, []);
+    byDay.get(day).push(price);
+  }
+  const points = [];
+  for (const [ts, prices] of byDay.entries()) {
+    if (!prices.length) continue;
+    const sorted = prices.slice().sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    const median =
+      sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+    points.push({ ts, price: Number(median.toFixed(2)) });
+  }
+  points.sort((a, b) => a.ts - b.ts);
+  if (points.length < 3) return [];
+  const spanDays = (points[points.length - 1].ts - points[0].ts) / 86400000;
+  if (spanDays < 7) return [];
+  return points;
+}
+
+function pickSealedSeries(value) {
+  const series = Array.isArray(value?.series) ? value.series : [];
+  if (!series.length) return null;
+  const scored = series
+    .map((row) => {
+      const points = Array.isArray(row?.points) ? row.points : [];
+      const variant = String(row?.variantKey || row?.label || "").toLowerCase();
+      let score = points.length;
+      if (variant.includes("ungraded") || variant === "used" || variant.includes("loose")) score += 1000;
+      if (variant.includes("cib") || variant.includes("new")) score += 100;
+      return { row, score, points };
+    })
+    .filter((entry) => entry.points.length >= 2)
+    .sort((a, b) => b.score - a.score);
+  return scored[0]?.row || null;
+}
+
+function pointsFromSealedSeries(value) {
+  const series = pickSealedSeries(value);
+  if (!series) return [];
+  const points = [];
+  for (const row of Array.isArray(series.points) ? series.points : []) {
+    if (!row || typeof row !== "object") continue;
+    const ts = Number(row.ts) || parseSoldListingDateMs(row.date);
+    const price = Number(row.price);
+    if (!Number.isFinite(ts) || !Number.isFinite(price) || price <= 0) continue;
+    points.push({ ts, price: Number(price.toFixed(2)) });
+  }
+  points.sort((a, b) => a.ts - b.ts);
+  return points;
+}
+
+function parseDetailsCacheKey(key) {
+  const raw = String(key || "").trim();
+  const sealedMatch = raw.match(/^([A-Za-z0-9]+):sealed:(\d+)$/i);
+  if (sealedMatch) {
+    return {
+      kind: "sealed",
+      setCode: sealedMatch[1].toUpperCase(),
+      productId: sealedMatch[2],
+      cardNo: ""
+    };
+  }
+  const cardMatch = raw.match(/^([A-Za-z0-9]+):(.+)$/);
+  if (!cardMatch) return null;
+  return {
+    kind: "single",
+    setCode: cardMatch[1].toUpperCase(),
+    cardNo: String(cardMatch[2] || "").trim(),
+    productId: ""
+  };
+}
+
 function filterPointsSince(points, startMs) {
   return points.filter((p) => p.ts >= startMs);
 }
@@ -87,6 +201,11 @@ function computeDelta(points) {
 }
 
 function metricsForRange(points, rangeKey) {
+  if (!Array.isArray(points) || !points.length) {
+    return { last: null, change: null, changePct: null, startPrice: null };
+  }
+  if (!rangeKey || rangeKey === "ALL") return computeDelta(points);
+
   const now = Date.now();
   let startMs = 0;
   if (rangeKey === "YTD") {
@@ -96,9 +215,29 @@ function metricsForRange(points, rangeKey) {
     if (!days) return computeDelta(points);
     startMs = now - days * 24 * 60 * 60 * 1000;
   }
-  const sliced = filterPointsSince(points, startMs);
-  const usable = sliced.length >= 2 ? sliced : points.length >= 2 ? points.slice(-2) : points;
-  return computeDelta(usable);
+
+  // Use price at/just before range start — never fall back to all-time first→last
+  // when a sparse (monthly) series has zero points inside the window.
+  let baseline = null;
+  let lastPt = null;
+  let firstInWindow = null;
+  for (const p of points) {
+    if (!Number.isFinite(p?.ts) || !Number.isFinite(p?.price)) continue;
+    if (p.ts <= now) lastPt = p;
+    if (p.ts <= startMs) baseline = p;
+    if (!firstInWindow && p.ts >= startMs && p.ts <= now) firstInWindow = p;
+  }
+  if (!lastPt) return computeDelta([]);
+  if (!baseline) baseline = firstInWindow || lastPt;
+  if (baseline === lastPt) {
+    return {
+      last: lastPt.price,
+      change: 0,
+      changePct: 0,
+      startPrice: baseline.price
+    };
+  }
+  return computeDelta([baseline, lastPt]);
 }
 
 function averagePrice(points, days) {
@@ -140,6 +279,32 @@ async function loadCardListsLookup() {
   return cardListsCache;
 }
 
+async function loadSealedTitleLookup() {
+  if (sealedTitleCache) return sealedTitleCache;
+  const byProductId = new Map();
+  try {
+    const raw = await fsp.readFile(SEALED_BY_SET_FILE, "utf8");
+    const parsed = JSON.parse(raw);
+    const byCode = parsed?.byCode && typeof parsed.byCode === "object" ? parsed.byCode : {};
+    for (const [setCode, entry] of Object.entries(byCode)) {
+      const setName = String(entry?.name || entry?.setName || setCode).trim();
+      for (const product of Array.isArray(entry?.products) ? entry.products : []) {
+        const productId = String(product?.productId || "").trim();
+        if (!productId) continue;
+        byProductId.set(productId, {
+          setCode: String(setCode || "").trim().toUpperCase(),
+          setName,
+          title: String(product?.title || product?.name || "").trim()
+        });
+      }
+    }
+  } catch {
+    /* optional */
+  }
+  sealedTitleCache = byProductId;
+  return sealedTitleCache;
+}
+
 function resolveCardMeta(setCode, cardNo, lookup) {
   const code = String(setCode || "").trim().toUpperCase();
   const no = String(cardNo || "").trim();
@@ -155,20 +320,45 @@ function resolveCardMeta(setCode, cardNo, lookup) {
   return { setName, cardName, label };
 }
 
-function buildItemRecord(value, lookup) {
-  const setCode = String(value?.setCode || "").trim().toUpperCase();
-  const cardNo = String(value?.cardNo || "").trim();
-  if (!setCode || !cardNo) return null;
-  const points = chartPointsFromEntry(value);
-  if (points.length < 2) return null;
+function resolveSealedMeta(setCode, productId, value, lookup, sealedTitles) {
+  const code = String(setCode || "").trim().toUpperCase();
+  const id = String(productId || "").trim();
+  const fromCatalog = sealedTitles?.get(id) || null;
+  const setEntry = lookup?.byCode?.[code];
+  const setName =
+    String(fromCatalog?.setName || setEntry?.sourceTitle || setEntry?.setName || code).trim() || code;
+  const series = pickSealedSeries(value);
+  const cardName =
+    String(fromCatalog?.title || series?.label || value?.productTitle || value?.title || "").trim() ||
+    `Sealed ${id}`;
+  const label = `${cardName} (${setName})`;
+  return { setName, cardName, label };
+}
 
-  const meta = resolveCardMeta(setCode, cardNo, lookup);
+function buildItemRecordFromPoints({
+  id,
+  kind = "single",
+  setCode,
+  cardNo = "",
+  setName = "",
+  cardName = "",
+  label = "",
+  productId = "",
+  productUrl = "",
+  points,
+  source = "chart"
+} = {}) {
+  if (!Array.isArray(points) || points.length < 2) return null;
+  const code = String(setCode || "").trim().toUpperCase();
+  if (!code) return null;
+  if (kind !== "sealed" && !String(cardNo || "").trim()) return null;
+
   const metrics = {};
   for (const key of Object.keys(RANGE_DAYS)) {
     metrics[key] = metricsForRange(points, key);
   }
 
-  const last = metrics["1M"]?.last ?? metrics.ALL?.last ?? points[points.length - 1].price;
+  const last = metrics["1M"]?.last ?? points[points.length - 1].price;
   const avg90 = averagePrice(points, 90);
   const high365 = highPrice(points, 365);
   const ma30 = movingAverageAtEnd(points, 30);
@@ -183,23 +373,81 @@ function buildItemRecord(value, lookup) {
       undervaluedReason = `${Math.round((1 - ratio) * 100)}% below 90-day avg`;
     }
   }
+  if (
+    (source === "sold-listings" || source === "sealed-series") &&
+    (!Number.isFinite(last) || last < 0.5)
+  ) {
+    undervaluedScore = null;
+    undervaluedReason = "";
+  }
 
-  let breakoutScore = null;
-  let breakoutReason = "";
-  if (Number.isFinite(last) && Number.isFinite(high365) && high365 > 0) {
-    const nearHigh = last >= high365 * 0.95;
-    const maCross = Number.isFinite(ma30) && Number.isFinite(ma90) && ma30 > ma90 && last > ma30;
-    const monthUp = Number(metrics["1M"]?.changePct) > 5;
-    if (nearHigh && monthUp) {
-      breakoutScore = Number(metrics["1M"].changePct);
-      breakoutReason = `Near 52w high, up ${metrics["1M"].changePct}% (1M)`;
-    } else if (maCross && monthUp) {
-      breakoutScore = Number(metrics["1M"].changePct);
-      breakoutReason = `30d MA above 90d MA, up ${metrics["1M"].changePct}% (1M)`;
+  // Comp/series caches can spike from sparse or bad points; drop absurd range moves first.
+  if (source === "sold-listings" || source === "sealed-series") {
+    for (const key of Object.keys(metrics)) {
+      const pct = metrics[key]?.changePct;
+      const start = metrics[key]?.startPrice;
+      const end = metrics[key]?.last;
+      if (!Number.isFinite(pct)) continue;
+      const absurd =
+        Math.abs(pct) > 250 ||
+        (Number.isFinite(start) && start < 0.5 && Math.abs(pct) > 150) ||
+        (Number.isFinite(end) && end > 5000 && Number.isFinite(start) && end / start > 20);
+      if (absurd) {
+        metrics[key] = { ...metrics[key], change: null, changePct: null };
+      }
     }
   }
 
+  let breakoutScore = null;
+  let breakoutReason = "";
+  const monthPct = Number(metrics["1M"]?.changePct);
+  if (Number.isFinite(last) && Number.isFinite(high365) && high365 > 0) {
+    const nearHigh = last >= high365 * 0.95;
+    const maCross = Number.isFinite(ma30) && Number.isFinite(ma90) && ma30 > ma90 && last > ma30;
+    const monthUp = monthPct > 5;
+    if (nearHigh && monthUp) {
+      breakoutScore = monthPct;
+      breakoutReason = `Near 52w high, up ${monthPct}% (1M)`;
+    } else if (maCross && monthUp) {
+      breakoutScore = monthPct;
+      breakoutReason = `30d MA above 90d MA, up ${monthPct}% (1M)`;
+    }
+  }
+
+  const hasAnyMove = Object.values(metrics).some((m) => Number.isFinite(m?.changePct));
+  if (!hasAnyMove && !Number.isFinite(undervaluedScore) && !Number.isFinite(breakoutScore)) {
+    return null;
+  }
+
   return {
+    id: String(id || "").trim(),
+    kind: kind === "sealed" ? "sealed" : "single",
+    setCode: code,
+    cardNo: kind === "sealed" ? "" : String(cardNo || "").trim(),
+    setName: String(setName || code).trim(),
+    cardName: String(cardName || "").trim(),
+    label: String(label || "").trim() || String(id || code).trim(),
+    productId: String(productId || "").trim(),
+    productUrl: String(productUrl || "").trim(),
+    last,
+    metrics,
+    undervaluedScore,
+    undervaluedReason,
+    breakoutScore,
+    breakoutReason,
+    pointCount: points.length,
+    source
+  };
+}
+
+function buildItemRecord(value, lookup) {
+  const setCode = String(value?.setCode || "").trim().toUpperCase();
+  const cardNo = String(value?.cardNo || "").trim();
+  if (!setCode || !cardNo) return null;
+  const points = chartPointsFromEntry(value);
+  if (points.length < 2) return null;
+  const meta = resolveCardMeta(setCode, cardNo, lookup);
+  return buildItemRecordFromPoints({
     id: `${setCode}:${cardNo}`,
     kind: "single",
     setCode,
@@ -209,14 +457,27 @@ function buildItemRecord(value, lookup) {
     label: meta.label,
     productId: String(value?.productId || "").trim(),
     productUrl: String(value?.productUrl || "").trim(),
-    last,
-    metrics,
-    undervaluedScore,
-    undervaluedReason,
-    breakoutScore,
-    breakoutReason,
-    pointCount: points.length
-  };
+    points,
+    source: "chart"
+  });
+}
+
+function upsertDiscoveryItem(byId, row) {
+  if (!row?.id) return;
+  const existing = byId.get(row.id);
+  if (!existing) {
+    byId.set(row.id, row);
+    return;
+  }
+  const nextPriority = SOURCE_PRIORITY[row.source] || 0;
+  const prevPriority = SOURCE_PRIORITY[existing.source] || 0;
+  if (nextPriority > prevPriority) {
+    byId.set(row.id, row);
+    return;
+  }
+  if (nextPriority === prevPriority && Number(row.pointCount || 0) > Number(existing.pointCount || 0)) {
+    byId.set(row.id, row);
+  }
 }
 
 function buildHeatBySet(items, rangeKey = "1M") {
@@ -264,16 +525,72 @@ async function buildDiscoverySnapshot({ force = false } = {}) {
 
   snapshotBuildPromise = (async () => {
     const lookup = await loadCardListsLookup();
-    const items = [];
+    const sealedTitles = await loadSealedTitleLookup();
+    const byId = new Map();
+
     forEachCachedChartEntry((_key, value) => {
       const row = buildItemRecord(value, lookup);
-      if (row) items.push(row);
+      if (row) upsertDiscoveryItem(byId, row);
     });
 
+    forEachCachedCardDetailsEntry((key, value) => {
+      const parsed = parseDetailsCacheKey(key);
+      if (!parsed) return;
+
+      if (parsed.kind === "sealed") {
+        const points = pointsFromSealedSeries(value);
+        if (points.length < 2) return;
+        const meta = resolveSealedMeta(parsed.setCode, parsed.productId, value, lookup, sealedTitles);
+        const row = buildItemRecordFromPoints({
+          id: `sealed:${parsed.productId}`,
+          kind: "sealed",
+          setCode: parsed.setCode,
+          cardNo: "",
+          setName: meta.setName,
+          cardName: meta.cardName,
+          label: meta.label,
+          productId: parsed.productId,
+          productUrl: String(value?.productUrl || "").trim(),
+          points,
+          source: "sealed-series"
+        });
+        if (row) upsertDiscoveryItem(byId, row);
+        return;
+      }
+
+      const existing = byId.get(`${parsed.setCode}:${parsed.cardNo}`);
+      if (existing && (SOURCE_PRIORITY[existing.source] || 0) >= SOURCE_PRIORITY.chart) {
+        return;
+      }
+      const points = pointsFromSoldListings(value);
+      if (points.length < 2) return;
+      const meta = resolveCardMeta(parsed.setCode, parsed.cardNo, lookup);
+      const row = buildItemRecordFromPoints({
+        id: `${parsed.setCode}:${parsed.cardNo}`,
+        kind: "single",
+        setCode: parsed.setCode,
+        cardNo: parsed.cardNo,
+        setName: meta.setName,
+        cardName: meta.cardName,
+        label: meta.label,
+        productId: String(value?.productId || "").trim(),
+        productUrl: String(value?.productUrl || "").trim(),
+        points,
+        source: "sold-listings"
+      });
+      if (row) upsertDiscoveryItem(byId, row);
+    });
+
+    const items = [...byId.values()];
     const payload = {
       version: SNAPSHOT_VERSION,
       builtAt: new Date().toISOString(),
       sourceEntries: items.length,
+      sourceBreakdown: {
+        chart: items.filter((i) => i.source === "chart").length,
+        sealedSeries: items.filter((i) => i.source === "sealed-series").length,
+        soldListings: items.filter((i) => i.source === "sold-listings").length
+      },
       items,
       heatBySet: {
         "1M": buildHeatBySet(items, "1M"),
