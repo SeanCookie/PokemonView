@@ -2720,7 +2720,26 @@
       const setCode = String(code || "").trim().toUpperCase();
       const setName = String(name || "").trim();
       if (!setCode || !canOpenSet(setCode)) return;
+      try {
+        await openSetViewInner(setCode, setName, options);
+      } catch (err) {
+        console.error(`[sets] Failed to open set ${setCode}:`, err);
+        const content = document.getElementById("content");
+        if (!content) return;
+        content.innerHTML = `<article class="era-block"><h2 class="era-title">${escapeHtml(
+          setName || setCode
+        )}</h2><div class="card-meta">This set could not be loaded. Go back and try again.</div><button type="button" id="backToSets" class="set-filter-tab">Back to Sets</button></article>`;
+        document.getElementById("backToSets")?.addEventListener("click", () => {
+          state.selectedSetCode = null;
+          state.selectedSetName = "";
+          state.selectedCardNumber = null;
+          state.selectedSealedProductId = null;
+          renderAll();
+        });
+      }
+    }
 
+    async function openSetViewInner(setCode, setName = "", options = {}) {
       state.selectedSetCode = setCode;
       state.selectedSetName = setName;
       state.setBoosterPackView = false;
@@ -4488,7 +4507,9 @@
       MEP: "/set-images/MEP/cover.png",
       CL: "/set-images/CL-call-of-legends-cover.png",
       RS: "/set-images/RS-ruby-sapphire-cover.png",
-      RG: "/set-images/RG/cover.png"
+      RG: "/set-images/RG/cover.png",
+      // Cache-busted so browsers that hit a 404 before the logo was deployed don't keep a blank cover.
+      "30C": "/pokesymbols/logos/30th-celebration.png?v=20261003"
     };
 
     const localSetCoverNameOverridesByCode = {

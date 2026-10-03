@@ -1178,8 +1178,8 @@
     "30th-celebration": {
       "name": "30th Celebration",
       "code": "30C",
-      "symbol": "/pokesymbols/symbols/30th-celebration.png",
-      "logo": "/pokesymbols/logos/30th-celebration.png"
+      "symbol": "/pokesymbols/symbols/30th-celebration.png?v=20261003",
+      "logo": "/pokesymbols/logos/30th-celebration.png?v=20261003"
     }
   },
   "byCode": {
@@ -1890,8 +1890,8 @@
     },
     "30C": {
       "slug": "30th-celebration",
-      "symbol": "/pokesymbols/symbols/30th-celebration.png",
-      "logo": "/pokesymbols/logos/30th-celebration.png"
+      "symbol": "/pokesymbols/symbols/30th-celebration.png?v=20261003",
+      "logo": "/pokesymbols/logos/30th-celebration.png?v=20261003"
     }
   },
   "failed": []
