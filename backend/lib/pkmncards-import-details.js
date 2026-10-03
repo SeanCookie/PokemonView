@@ -123,6 +123,9 @@ function resolveDetailsStorageKey(details, row, setEntry) {
       if (!mRaw) continue;
       if (mRaw === imgRaw || comparableImageUrl(mRaw) === imgPath) return k;
     }
+    // When a set list exists, never fall back to collector number alone — mixed
+    // Classic Collection / variant pages can share numbers and overwrite mains.
+    return null;
   }
 
   if (/\bAnn25thR?-/i.test(imgRaw)) {

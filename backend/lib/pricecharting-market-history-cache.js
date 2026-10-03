@@ -1,8 +1,10 @@
 const fsp = require("fs/promises");
 const path = require("path");
+const { pullPricingCacheFromR2, pushPricingCacheToR2 } = require("./pricing-cache-r2-sync");
 
 const DATA_DIR = path.join(__dirname, "..", "data");
 const CACHE_FILE = path.join(DATA_DIR, "pricecharting-market-history-cache.json");
+const CACHE_R2_NAME = "pricecharting-market-history-cache.json";
 const CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const CACHE_VERSION = 1;
 const PERSIST_DEBOUNCE_MS = 500;
@@ -121,12 +123,31 @@ async function persistMarketHistoryCacheNow() {
   cacheMeta.savedAt = payload.savedAt;
   cacheMeta.entryCount = payload.meta.entryCount;
   await fsp.mkdir(DATA_DIR, { recursive: true });
-  await fsp.writeFile(CACHE_FILE, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+  const body = `${JSON.stringify(payload, null, 2)}\n`;
+  await fsp.writeFile(CACHE_FILE, body, "utf8");
+  try {
+    await pushPricingCacheToR2(CACHE_R2_NAME, body);
+  } catch {
+    /* optional R2 */
+  }
 }
 
 async function loadPersistedPriceChartingMarketHistoryCache() {
   try {
-    const raw = await fsp.readFile(CACHE_FILE, "utf8");
+    let raw = null;
+    try {
+      raw = await fsp.readFile(CACHE_FILE, "utf8");
+    } catch {
+      raw = null;
+    }
+    if (!raw || raw.length < 2) {
+      raw = await pullPricingCacheFromR2(CACHE_R2_NAME);
+      if (raw && raw.length > 2) {
+        await fsp.mkdir(DATA_DIR, { recursive: true });
+        await fsp.writeFile(CACHE_FILE, raw, "utf8");
+      }
+    }
+    if (!raw || raw.length < 2) return;
     const parsed = JSON.parse(raw);
     const fileVersion = Number(parsed?.version) || 0;
     if (fileVersion !== CACHE_VERSION) {

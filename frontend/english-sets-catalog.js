@@ -8,6 +8,7 @@
 
   global.ENGLISH_SETS_BY_ERA = {
     "Mega Evolution": [
+      set("30th Celebration", "30C"),
       set("Pitch Black", "PBL"),
       set("Chaos Rising", "CRI"),
       set("Perfect Order", "POR"),
@@ -205,6 +206,7 @@
   ];
 
   global.BULBA_SYMBOL_FILE_BY_CODE = {
+    "30C": "SetSymbol30th_Celebration.png",
     PBL: "SetSymbolPitch_Black.png",
     CRI: "SetSymbolChaos_Rising.png",
     POR: "SetSymbolPerfect_Order.png",
@@ -408,6 +410,7 @@
     EVS: "August 27, 2021",
     PAL: "June 9, 2023",
     GE: "February 13, 2008",
+    "30C": "September 16, 2026",
     PBL: "July 17, 2026",
     CRI: "May 22, 2026",
     POR: "March 27, 2026",

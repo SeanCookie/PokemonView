@@ -29,6 +29,7 @@ const {
   getSealedProductsForSetCode,
   syncPriceChartingSealedCatalog,
   downloadSealedProductImages,
+  persistSealedCatalogNow,
   SEALED_IMAGE_DIR
 } = require("./lib/pricecharting-sealed");
 const { isSelfHosted } = require("./lib/self-hosted");
@@ -81,9 +82,15 @@ const {
   readCachedCardDetails,
   writeCachedCardDetails,
   persistPriceChartingCardDetailsCacheNow,
+  readCachedSealedProductDetails,
   averageRecentUngradedSoldPrice
 } = require("./lib/pricecharting-card-details-cache");
-const { loadPersistedPriceChartingMarketHistoryCache } = require("./lib/pricecharting-market-history-cache");
+const {
+  loadPersistedPriceChartingMarketHistoryCache,
+  persistMarketHistoryCacheNow,
+  getPriceChartingMarketHistoryCacheMeta,
+  readCachedChartEntry
+} = require("./lib/pricecharting-market-history-cache");
 const {
   buildCollectionValueHistory,
   getItemHistoricalPriceOnDate
@@ -111,7 +118,9 @@ const {
   getDiscoveryResults,
   getTrendingResults,
   recordDiscoveryView,
-  getDiscoveryMeta
+  getDiscoveryMeta,
+  persistDiscoverySnapshotNow,
+  persistTrendingNow
 } = require("./lib/poke-view-discovery");
 const { pullStoreFromR2, pushStoreToR2 } = require("./lib/store-r2-sync");
 const {
@@ -324,6 +333,7 @@ const TCG_LISTING_MARKET_FLOOR_RATIO = 0.88;
 const TCG_PRICE_GUIDE_INDEX_TTL_MS = 1000 * 60 * 60 * 6;
 /** App set code → TCGplayer price guide slug when auto-matching is unreliable. */
 const TCG_GUIDE_SLUG_BY_SET_CODE = {
+  "30C": "me-30th-celebration",
   PBL: "me05-pitch-black",
   CRI: "me04-chaos-rising",
   HIF: "hidden-fates",
@@ -10352,6 +10362,8 @@ async function route(req, res) {
   }
 
   if (pathname === "/api/poke-view/discovery/rebuild" && req.method === "POST") {
+    const admin = requireAdmin(req, res);
+    if (!admin) return;
     void buildDiscoverySnapshot({ force: true })
       .then((snapshot) =>
         json(res, 200, {
@@ -12196,11 +12208,22 @@ async function route(req, res) {
     readSealedCatalog,
     syncPriceChartingSealedCatalog,
     downloadSealedProductImages,
+    persistSealedCatalogNow,
     runAdminTcgPriceCheckForSet,
     runPriceChartingDetailsPrewarmBackground,
     persistTcgLinkPriceCacheNow,
     persistPriceChartingCardDetailsCacheNow,
     persistAdminSetRefreshTimestampsNow,
+    persistMarketHistoryCacheNow,
+    persistDiscoverySnapshotNow,
+    persistTrendingNow,
+    getPriceChartingMarketHistoryCacheMeta,
+    getDiscoveryMeta,
+    buildDiscoverySnapshot,
+    fetchPriceChartingMarketHistoryForCard,
+    getOrFetchPriceChartingSealedDetails,
+    readCachedChartEntry,
+    readCachedSealedProductDetails,
     spawnSplitSetCardDetails: () =>
       new Promise((resolve) => {
         const script = path.join(__dirname, "..", "scripts", "split-set-card-details.js");
@@ -12433,6 +12456,51 @@ async function startDeferredBackgroundWork() {
           }
         }
       });
+    },
+    runMarketHistoryWarm: async (opts) => {
+      const actor = opts.actor || "schedule";
+      const limit = Number(opts.limit) || 200;
+      const missingOnly = opts.missingOnly !== false;
+      const targets = [];
+      const sets = await listEnglishSetPricingTargets();
+      const manifest = await getSetCardManifest("english");
+      const byCode = manifest?.byCode && typeof manifest.byCode === "object" ? manifest.byCode : {};
+      for (const set of sets) {
+        if (targets.length >= limit) break;
+        const code = String(set.setCode || "").trim().toUpperCase();
+        const cards = byCode[code]?.cards && typeof byCode[code].cards === "object" ? byCode[code].cards : {};
+        for (const [cardNo, card] of Object.entries(cards)) {
+          if (targets.length >= limit) break;
+          const no = String(cardNo || "").trim();
+          if (!no) continue;
+          if (missingOnly && readCachedChartEntry(code, no)) continue;
+          targets.push({
+            kind: "card",
+            setCode: code,
+            setName: set.setName || code,
+            cardNo: no,
+            cardName: String(card?.name || card?.cardName || "").trim()
+          });
+        }
+      }
+      await adminOps.runMarketHistoryWarmJob({
+        actor,
+        targets,
+        concurrency: 2,
+        warmFn: async (target) => {
+          const series = await fetchPriceChartingMarketHistoryForCard({
+            setCode: target.setCode,
+            setName: target.setName,
+            cardNo: target.cardNo,
+            cardName: target.cardName,
+            forceRefresh: false
+          });
+          return { ok: Array.isArray(series) && series.length > 0 };
+        }
+      });
+    },
+    runDiscoveryRebuild: async () => {
+      await buildDiscoverySnapshot({ force: true });
     }
   });
   setTimeout(() => {

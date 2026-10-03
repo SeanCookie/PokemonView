@@ -22,7 +22,15 @@ const DEFAULT_FLAGS = {
 const DEFAULT_SCHEDULES = {
   restockNightly: { enabled: false, hourUtc: 6, lastRunAt: null },
   tcgGapDaily: { enabled: false, hourUtc: 7, lastRunAt: null, limit: 12, staleDays: 14 },
-  pcGapDaily: { enabled: false, hourUtc: 8, lastRunAt: null, limit: 12, staleDays: 21 }
+  pcGapDaily: { enabled: false, hourUtc: 8, lastRunAt: null, limit: 12, staleDays: 21 },
+  marketHistoryGapDaily: {
+    enabled: false,
+    hourUtc: 9,
+    lastRunAt: null,
+    limit: 200,
+    missingOnly: true
+  },
+  discoveryRebuildDaily: { enabled: false, hourUtc: 10, lastRunAt: null }
 };
 
 const JOB_HISTORY_MAX = 80;
@@ -45,6 +53,8 @@ let metricsState = {
 let scheduleTimer = null;
 let gapJob = null;
 let sealedJob = null;
+let marketHistoryJob = null;
+let pullCatalogJob = null;
 let opsHooks = null;
 
 function nowIso() {
@@ -87,7 +97,15 @@ async function loadSchedules() {
   schedulesCache = {
     restockNightly: { ...DEFAULT_SCHEDULES.restockNightly, ...(incoming.restockNightly || {}) },
     tcgGapDaily: { ...DEFAULT_SCHEDULES.tcgGapDaily, ...(incoming.tcgGapDaily || {}) },
-    pcGapDaily: { ...DEFAULT_SCHEDULES.pcGapDaily, ...(incoming.pcGapDaily || {}) }
+    pcGapDaily: { ...DEFAULT_SCHEDULES.pcGapDaily, ...(incoming.pcGapDaily || {}) },
+    marketHistoryGapDaily: {
+      ...DEFAULT_SCHEDULES.marketHistoryGapDaily,
+      ...(incoming.marketHistoryGapDaily || {})
+    },
+    discoveryRebuildDaily: {
+      ...DEFAULT_SCHEDULES.discoveryRebuildDaily,
+      ...(incoming.discoveryRebuildDaily || {})
+    }
   };
   return schedulesCache;
 }
@@ -97,7 +115,15 @@ async function saveSchedules(next) {
   schedulesCache = {
     restockNightly: { ...current.restockNightly, ...(next.restockNightly || {}) },
     tcgGapDaily: { ...current.tcgGapDaily, ...(next.tcgGapDaily || {}) },
-    pcGapDaily: { ...current.pcGapDaily, ...(next.pcGapDaily || {}) }
+    pcGapDaily: { ...current.pcGapDaily, ...(next.pcGapDaily || {}) },
+    marketHistoryGapDaily: {
+      ...current.marketHistoryGapDaily,
+      ...(next.marketHistoryGapDaily || {})
+    },
+    discoveryRebuildDaily: {
+      ...current.discoveryRebuildDaily,
+      ...(next.discoveryRebuildDaily || {})
+    }
   };
   await writeJsonAtomic(SCHEDULES_FILE, { updatedAt: nowIso(), schedules: schedulesCache });
   return schedulesCache;
@@ -211,6 +237,8 @@ async function buildHealthSnapshot(ctx = {}) {
     tcgCache: await fileMeta(path.join(DATA_DIR, "tcg-link-prices-cache.json")),
     pcDetails: await fileMeta(path.join(DATA_DIR, "pricecharting-card-details-cache.json")),
     pcMarket: await fileMeta(path.join(DATA_DIR, "pricecharting-market-history-cache.json")),
+    discovery: await fileMeta(path.join(DATA_DIR, "poke-view-discovery.json")),
+    discoveryTrending: await fileMeta(path.join(DATA_DIR, "poke-view-discovery-trending.json")),
     sealed: await fileMeta(path.join(DATA_DIR, "pricecharting-sealed-by-set.json")),
     restock: await fileMeta(path.join(DATA_DIR, "restock-tracker.json")),
     nicknames: await fileMeta(path.join(DATA_DIR, "card-nicknames.json")),
@@ -231,12 +259,16 @@ async function buildHealthSnapshot(ctx = {}) {
     schedules,
     jobs: {
       gap: gapJob,
-      sealed: sealedJob
+      sealed: sealedJob,
+      marketHistory: marketHistoryJob,
+      pullCatalog: pullCatalogJob
     },
     tcg: ctx.tcg || null,
     priceCharting: ctx.priceCharting || null,
     restock: ctx.restock || null,
-    site: ctx.site || null
+    site: ctx.site || null,
+    marketHistoryMeta: ctx.marketHistoryMeta || null,
+    discoveryMeta: ctx.discoveryMeta || null
   };
 }
 
@@ -353,6 +385,14 @@ function getSealedJob() {
   return sealedJob;
 }
 
+function getMarketHistoryJob() {
+  return marketHistoryJob;
+}
+
+function getPullCatalogJob() {
+  return pullCatalogJob;
+}
+
 async function runGapRefreshJob({ kind, mode, staleDays, limit, actor, coverageRows, runSet }) {
   if (gapJob?.status === "running") {
     throw new Error("A gap refresh job is already running");
@@ -460,6 +500,203 @@ async function runSealedRefreshJob({ actor, syncFn, downloadImages }) {
     }
   })();
   return { ok: true, started: true, job: sealedJob };
+}
+
+async function runMarketHistoryWarmJob({
+  actor,
+  targets,
+  warmFn,
+  concurrency = 2,
+  label = "Market history warm",
+  allowDuringPullCatalog = false
+} = {}) {
+  if (marketHistoryJob?.status === "running") {
+    throw new Error("Market history warm already running");
+  }
+  if (!allowDuringPullCatalog && pullCatalogJob?.status === "running") {
+    throw new Error("Pull Catalog is already running");
+  }
+  const list = Array.isArray(targets) ? targets : [];
+  if (!list.length) {
+    return { ok: true, message: "No market-history targets to warm", targets: [] };
+  }
+  const history = await pushJobHistory({
+    kind: "market-history-warm",
+    label,
+    actor: actor || "admin",
+    targetCount: list.length
+  });
+  marketHistoryJob = {
+    status: "running",
+    startedAt: nowIso(),
+    actor: actor || "admin",
+    jobId: history.id,
+    total: list.length,
+    done: 0,
+    ok: 0,
+    fail: 0,
+    skipped: 0,
+    current: "",
+    stopRequested: false
+  };
+  const limit = Math.max(1, Math.min(6, Number(concurrency) || 2));
+
+  void (async () => {
+    let cursor = 0;
+    async function worker() {
+      while (true) {
+        if (marketHistoryJob?.stopRequested) return;
+        const idx = cursor;
+        cursor += 1;
+        if (idx >= list.length) return;
+        const target = list[idx];
+        const labelText =
+          target?.kind === "sealed"
+            ? `${target.setCode}:sealed:${target.productId}`
+            : `${target.setCode}#${target.cardNo}`;
+        marketHistoryJob.current = labelText;
+        try {
+          const result = await warmFn(target);
+          if (result?.skipped) marketHistoryJob.skipped += 1;
+          else if (result?.ok === false) marketHistoryJob.fail += 1;
+          else marketHistoryJob.ok += 1;
+        } catch {
+          marketHistoryJob.fail += 1;
+        }
+        marketHistoryJob.done += 1;
+      }
+    }
+    await Promise.all(Array.from({ length: limit }, () => worker()));
+    const stopped = Boolean(marketHistoryJob?.stopRequested);
+    const summary = {
+      status: stopped ? "stopped" : marketHistoryJob.fail ? "error" : "done",
+      ok: marketHistoryJob.ok,
+      fail: marketHistoryJob.fail,
+      skipped: marketHistoryJob.skipped,
+      done: marketHistoryJob.done,
+      total: marketHistoryJob.total
+    };
+    await finishJobHistory(history.id, summary);
+    marketHistoryJob = {
+      ...marketHistoryJob,
+      status: summary.status,
+      finishedAt: nowIso(),
+      current: ""
+    };
+  })();
+
+  return { ok: true, started: true, targets: list.length, job: marketHistoryJob };
+}
+
+function stopMarketHistoryWarmJob() {
+  if (!marketHistoryJob || marketHistoryJob.status !== "running") {
+    return { ok: false, error: "No market-history warm running" };
+  }
+  marketHistoryJob.stopRequested = true;
+  return { ok: true, job: marketHistoryJob };
+}
+
+async function runPullCatalogJob({
+  actor,
+  stages = {},
+  runStage
+} = {}) {
+  if (pullCatalogJob?.status === "running") {
+    throw new Error("Pull Catalog already running");
+  }
+  if (gapJob?.status === "running" || marketHistoryJob?.status === "running" || sealedJob?.status === "running") {
+    throw new Error("Another cache job is already running — stop it first");
+  }
+  const selected = {
+    sealed: stages.sealed !== false,
+    pricecharting: stages.pricecharting !== false,
+    tcg: stages.tcg !== false,
+    marketHistory: stages.marketHistory !== false,
+    discovery: stages.discovery !== false,
+    persist: stages.persist !== false
+  };
+  const stageOrder = ["sealed", "pricecharting", "tcg", "marketHistory", "discovery", "persist"].filter(
+    (key) => selected[key]
+  );
+  if (!stageOrder.length) {
+    return { ok: false, error: "No stages selected" };
+  }
+  const history = await pushJobHistory({
+    kind: "pull-catalog",
+    label: `Pull Catalog (${stageOrder.join(" → ")})`,
+    actor: actor || "admin",
+    stages: stageOrder
+  });
+  pullCatalogJob = {
+    status: "running",
+    startedAt: nowIso(),
+    actor: actor || "admin",
+    jobId: history.id,
+    stages: stageOrder,
+    stageIndex: 0,
+    currentStage: stageOrder[0] || "",
+    detail: "Starting…",
+    stopRequested: false,
+    results: {}
+  };
+
+  void (async () => {
+    try {
+      for (let i = 0; i < stageOrder.length; i += 1) {
+        if (pullCatalogJob?.stopRequested) break;
+        const stage = stageOrder[i];
+        pullCatalogJob.stageIndex = i;
+        pullCatalogJob.currentStage = stage;
+        pullCatalogJob.detail = `Running ${stage}…`;
+        const result = await runStage(stage, {
+          stopRequested: () => Boolean(pullCatalogJob?.stopRequested),
+          setDetail: (text) => {
+            if (pullCatalogJob) pullCatalogJob.detail = text;
+          }
+        });
+        pullCatalogJob.results[stage] = result || { ok: true };
+        if (result?.aborted) break;
+      }
+      const stopped = Boolean(pullCatalogJob?.stopRequested);
+      const summary = {
+        status: stopped ? "stopped" : "done",
+        results: pullCatalogJob.results,
+        stages: stageOrder
+      };
+      await finishJobHistory(history.id, summary);
+      pullCatalogJob = {
+        ...pullCatalogJob,
+        status: summary.status,
+        finishedAt: nowIso(),
+        detail: stopped ? "Stopped" : "Pull Catalog complete",
+        currentStage: ""
+      };
+    } catch (err) {
+      pullCatalogJob = {
+        ...pullCatalogJob,
+        status: "error",
+        finishedAt: nowIso(),
+        detail: err.message || "Pull Catalog failed"
+      };
+      await finishJobHistory(history.id, {
+        status: "error",
+        error: err.message || "failed",
+        results: pullCatalogJob.results
+      });
+    }
+  })();
+
+  return { ok: true, started: true, stages: stageOrder, job: pullCatalogJob };
+}
+
+function stopPullCatalogJob() {
+  if (!pullCatalogJob || pullCatalogJob.status !== "running") {
+    return { ok: false, error: "No Pull Catalog job running" };
+  }
+  pullCatalogJob.stopRequested = true;
+  if (marketHistoryJob?.status === "running") marketHistoryJob.stopRequested = true;
+  if (gapJob?.status === "running") gapJob.stopRequested = true;
+  return { ok: true, job: pullCatalogJob };
 }
 
 async function buildSealedAdminSummary(readSealedCatalog) {
@@ -586,6 +823,20 @@ async function tickSchedules() {
       });
     }
   });
+  await maybeRun("marketHistoryGapDaily", schedules.marketHistoryGapDaily.hourUtc, async (cfg) => {
+    if (typeof opsHooks.runMarketHistoryWarm === "function") {
+      await opsHooks.runMarketHistoryWarm({
+        limit: cfg.limit || 200,
+        missingOnly: cfg.missingOnly !== false,
+        actor: "schedule"
+      });
+    }
+  });
+  await maybeRun("discoveryRebuildDaily", schedules.discoveryRebuildDaily.hourUtc, async () => {
+    if (typeof opsHooks.runDiscoveryRebuild === "function") {
+      await opsHooks.runDiscoveryRebuild({ actor: "schedule" });
+    }
+  });
 }
 
 module.exports = {
@@ -617,6 +868,12 @@ module.exports = {
   getGapJob,
   runSealedRefreshJob,
   getSealedJob,
+  runMarketHistoryWarmJob,
+  stopMarketHistoryWarmJob,
+  getMarketHistoryJob,
+  runPullCatalogJob,
+  stopPullCatalogJob,
+  getPullCatalogJob,
   buildSealedAdminSummary,
   buildImageReport,
   daysAgoIso,

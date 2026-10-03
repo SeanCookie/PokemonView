@@ -1,20 +1,83 @@
 .admin-page {
-  max-width: 1100px;
+  max-width: 1280px;
   margin: 0 auto;
-  padding: 20px 16px 48px;
+  padding: 20px 16px 56px;
   display: grid;
-  gap: 16px;
+  gap: 18px;
 }
 
 .admin-hero h1 {
   margin: 0 0 6px;
-  font-size: 24px;
+  font-size: 28px;
+  letter-spacing: -0.02em;
 }
 
 .admin-hero p {
   margin: 0;
   color: var(--muted);
-  font-size: 14px;
+  font-size: 15px;
+}
+
+.admin-section-label {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.admin-section-label h2 {
+  margin: 0 0 4px;
+  font-size: 18px;
+}
+
+.admin-section-label p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.admin-card--cache {
+  padding: 20px;
+  gap: 14px;
+}
+
+.admin-card--status {
+  padding: 18px 20px;
+}
+
+.admin-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-stat-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 700px) {
+  .admin-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.admin-inline-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+}
+
+.admin-inline-fields label {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.admin-inline-fields .admin-input {
+  width: 110px;
 }
 
 .admin-grid {
@@ -793,3 +856,4 @@
   font-family: ui-monospace, Consolas, monospace;
   font-size: 12px;
 }
+

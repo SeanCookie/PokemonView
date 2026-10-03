@@ -336,10 +336,14 @@
   }
 
   function renderSite(site, restock) {
-    statUsers.textContent = Number(site?.userCount || 0).toLocaleString();
-    statItems.textContent = Number(site?.collectionItemCount || 0).toLocaleString();
-    statActivities.textContent = Number(site?.activityCount || 0).toLocaleString();
-    statManualRestock.textContent = Number(restock?.manualItemCount || 0).toLocaleString();
+    if (statUsers) statUsers.textContent = Number(site?.userCount || 0).toLocaleString();
+    if (statItems) statItems.textContent = Number(site?.collectionItemCount || 0).toLocaleString();
+    if (statActivities) {
+      statActivities.textContent = Number(site?.activityCount || 0).toLocaleString();
+    }
+    if (statManualRestock) {
+      statManualRestock.textContent = Number(restock?.manualItemCount || 0).toLocaleString();
+    }
   }
 
   function getSelectedRestockRetailers() {

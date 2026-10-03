@@ -113,7 +113,11 @@ const ALLOWED_APP_DATA_FILES = new Set([
   "pricecharting-card-details-cache.json",
   "tcg-link-price-fail-links.json",
   "pricecharting-card-details-fail-links.json",
-  "admin-set-refresh-timestamps.json"
+  "admin-set-refresh-timestamps.json",
+  "pricecharting-market-history-cache.json",
+  "poke-view-discovery.json",
+  "poke-view-discovery-trending.json",
+  "pricecharting-sealed-by-set.json"
 ]);
 /** Per-set warm price snapshots written by the container. */
 const SET_LINK_PRICES_R2_RE = /^set-link-prices\/[A-Z0-9][A-Z0-9_-]{0,31}\.json$/;

@@ -6,10 +6,13 @@ const path = require("path");
 const { writeJsonAtomic } = require("./write-json-atomic");
 const { forEachCachedChartEntry } = require("./pricecharting-market-history-cache");
 const { forEachCachedCardDetailsEntry } = require("./pricecharting-card-details-cache");
+const { pullPricingCacheFromR2, pushPricingCacheToR2 } = require("./pricing-cache-r2-sync");
 
 const DATA_DIR = path.join(__dirname, "..", "data");
 const SNAPSHOT_FILE = path.join(DATA_DIR, "poke-view-discovery.json");
 const TRENDING_FILE = path.join(DATA_DIR, "poke-view-discovery-trending.json");
+const SNAPSHOT_R2_NAME = "poke-view-discovery.json";
+const TRENDING_R2_NAME = "poke-view-discovery-trending.json";
 const SET_CARD_LISTS_FILE = path.join(DATA_DIR, "set-card-lists.json");
 const SEALED_BY_SET_FILE = path.join(DATA_DIR, "pricecharting-sealed-by-set.json");
 
@@ -602,8 +605,9 @@ async function buildDiscoverySnapshot({ force = false } = {}) {
     snapshotBuiltAt = Date.now();
     try {
       await writeJsonAtomic(SNAPSHOT_FILE, payload);
+      await pushPricingCacheToR2(SNAPSHOT_R2_NAME, `${JSON.stringify(payload)}\n`);
     } catch {
-      /* disk optional */
+      /* disk/R2 optional */
     }
     return payload;
   })();
@@ -618,7 +622,20 @@ async function buildDiscoverySnapshot({ force = false } = {}) {
 async function loadPersistedDiscoverySnapshot() {
   if (snapshotCache) return snapshotCache;
   try {
-    const raw = await fsp.readFile(SNAPSHOT_FILE, "utf8");
+    let raw = null;
+    try {
+      raw = await fsp.readFile(SNAPSHOT_FILE, "utf8");
+    } catch {
+      raw = null;
+    }
+    if (!raw || raw.length < 2) {
+      raw = await pullPricingCacheFromR2(SNAPSHOT_R2_NAME);
+      if (raw && raw.length > 2) {
+        await fsp.mkdir(DATA_DIR, { recursive: true });
+        await fsp.writeFile(SNAPSHOT_FILE, raw, "utf8");
+      }
+    }
+    if (!raw || raw.length < 2) return null;
     const parsed = JSON.parse(raw);
     if (Number(parsed?.version) === SNAPSHOT_VERSION && Array.isArray(parsed?.items)) {
       snapshotCache = parsed;
@@ -629,6 +646,24 @@ async function loadPersistedDiscoverySnapshot() {
     /* no file */
   }
   return null;
+}
+
+async function persistDiscoverySnapshotNow() {
+  if (!snapshotCache) {
+    try {
+      const raw = await fsp.readFile(SNAPSHOT_FILE, "utf8");
+      if (raw && raw.length > 2) {
+        await pushPricingCacheToR2(SNAPSHOT_R2_NAME, raw);
+        return { ok: true, fromDisk: true };
+      }
+    } catch {
+      return { ok: false, error: "No discovery snapshot" };
+    }
+  }
+  const body = `${JSON.stringify(snapshotCache)}\n`;
+  await writeJsonAtomic(SNAPSHOT_FILE, snapshotCache);
+  await pushPricingCacheToR2(SNAPSHOT_R2_NAME, body);
+  return { ok: true };
 }
 
 async function ensureDiscoverySnapshot({ force = false } = {}) {
@@ -753,14 +788,28 @@ async function loadTrendingState() {
   if (trendingLoaded) return trendingState;
   trendingLoaded = true;
   try {
-    const raw = await fsp.readFile(TRENDING_FILE, "utf8");
-    const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === "object") {
-      trendingState = {
-        version: 1,
-        savedAt: parsed.savedAt || null,
-        views: parsed.views && typeof parsed.views === "object" ? parsed.views : {}
-      };
+    let raw = null;
+    try {
+      raw = await fsp.readFile(TRENDING_FILE, "utf8");
+    } catch {
+      raw = null;
+    }
+    if (!raw || raw.length < 2) {
+      raw = await pullPricingCacheFromR2(TRENDING_R2_NAME);
+      if (raw && raw.length > 2) {
+        await fsp.mkdir(DATA_DIR, { recursive: true });
+        await fsp.writeFile(TRENDING_FILE, raw, "utf8");
+      }
+    }
+    if (raw && raw.length > 2) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object") {
+        trendingState = {
+          version: 1,
+          savedAt: parsed.savedAt || null,
+          views: parsed.views && typeof parsed.views === "object" ? parsed.views : {}
+        };
+      }
     }
   } catch {
     /* no file */
@@ -780,6 +829,7 @@ async function persistTrendingNow() {
   trendingState.savedAt = new Date().toISOString();
   try {
     await writeJsonAtomic(TRENDING_FILE, trendingState);
+    await pushPricingCacheToR2(TRENDING_R2_NAME, `${JSON.stringify(trendingState)}\n`);
   } catch {
     /* optional */
   }
@@ -873,6 +923,8 @@ module.exports = {
   getTrendingResults,
   recordDiscoveryView,
   getDiscoveryMeta,
+  persistDiscoverySnapshotNow,
+  persistTrendingNow,
   normalizeRange,
   normalizeKind
 };

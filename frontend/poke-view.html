@@ -1495,7 +1495,7 @@
               <span
                 id="chartSymbolTitle"
                 class="chart-symbol-title"
-                title="Double-click to change card or product"
+                title="Click to change card or product"
               ></span>
               <button
                 id="chartAddToWatchlistBtn"
@@ -6858,7 +6858,7 @@
         watchlistRemoveBtn.addEventListener("click", removeSelectedWatchlistCard);
       }
       if (chartSymbolTitle) {
-        chartSymbolTitle.addEventListener("dblclick", (event) => {
+        chartSymbolTitle.addEventListener("click", (event) => {
           event.preventDefault();
           event.stopPropagation();
           void openChangeSymbolPickerModal();
@@ -7126,7 +7126,7 @@
         } else {
           chartSymbolTitle.textContent = name;
         }
-        chartSymbolTitle.title = "Double-click to change card or product";
+        chartSymbolTitle.title = "Click to change card or product";
         chartSymbolHeader.hidden = false;
         if (chartAddToWatchlistBtn) {
           const selectedId = state.selectedWatchlistId;

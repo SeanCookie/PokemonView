@@ -17,7 +17,11 @@ const ALLOWED_FILES = new Set([
   "pricecharting-card-details-cache.json",
   "tcg-link-price-fail-links.json",
   "pricecharting-card-details-fail-links.json",
-  "admin-set-refresh-timestamps.json"
+  "admin-set-refresh-timestamps.json",
+  "pricecharting-market-history-cache.json",
+  "poke-view-discovery.json",
+  "poke-view-discovery-trending.json",
+  "pricecharting-sealed-by-set.json"
 ]);
 
 /** Per-set snapshots: set-link-prices/{CODE}.json (strict set-code charset). */

@@ -9,7 +9,7 @@
   <meta name="robots" content="noindex, nofollow" />
   <title>Admin — PokemonView</title>
   <link rel="stylesheet" href="/site-nav.css" />
-  <link rel="stylesheet" href="/admin.css?v=5" />
+  <link rel="stylesheet" href="/admin.css?v=7" />
   <style>
     :root {
       color-scheme: dark;
@@ -59,51 +59,59 @@
 
   <main id="adminApp" class="admin-page" hidden>
     <section class="admin-hero">
-      <h1>Site administration</h1>
-      <p>Manage TCG price cache, restock tracker products, and moderation tools.</p>
+      <h1>Admin</h1>
+      <p>Warm and save pricing caches for faster Sets and Poke View loads.</p>
+    </section>
+
+    <!-- ========== CACHES (primary) ========== -->
+    <section class="admin-section-label">
+      <h2>Caches</h2>
+      <p>Archived price and chart data. Warm these so Poke View and Sets load from cache instead of live scrapes.</p>
+    </section>
+
+    <section class="admin-card admin-card--status" id="opsHealthCard">
+      <div class="admin-card-head">
+        <h2>Cache status</h2>
+        <button type="button" class="admin-btn" id="btnOpsHealthRefresh">Refresh</button>
+      </div>
+      <div class="admin-overview-stats" id="opsHealthStats"></div>
+      <p class="admin-status" id="opsHealthMsg"></p>
+      <div class="admin-actions">
+        <button type="button" class="admin-btn primary" id="btnOpsPersist">Save all caches to disk / R2</button>
+      </div>
+      <p class="admin-status" id="opsPersistMsg"></p>
+      <!-- persist targets (always all important caches) -->
+      <input type="checkbox" id="opsPersistTcg" checked hidden />
+      <input type="checkbox" id="opsPersistPc" checked hidden />
+      <input type="checkbox" id="opsPersistMarketHistory" checked hidden />
+      <input type="checkbox" id="opsPersistDiscovery" checked hidden />
+      <input type="checkbox" id="opsPersistSealed" checked hidden />
+      <input type="checkbox" id="opsPersistStamps" checked hidden />
     </section>
 
     <section class="admin-grid admin-grid--pricing">
-      <article class="admin-card" id="tcgCacheCard">
-        <h2>TCG Price Check cache</h2>
-        <p class="admin-hint">TCGplayer listing prices by product + printing (Normal, Reverse Holofoil, etc.). Cache and failed links save to R2 every <strong>1000</strong> cards. Totals count unique print keys, not duplicate URL shapes. Each finished set gets a timestamp in the dropdown (one-set refresh or Update all). Starting this while PriceCharting is running will <strong>stop and save</strong> PriceCharting first.</p>
-        <div class="admin-stat">
-          <span class="label">Last successful full check</span>
-          <span class="value mono" id="tcgLastSuccess">—</span>
-        </div>
-        <div class="admin-stat">
-          <span class="label">Cache saved at</span>
-          <span class="value mono" id="tcgCacheSaved">—</span>
-        </div>
-        <div class="admin-stat admin-stat--live">
-          <span class="label">Cards in cache <span class="admin-live-dot" aria-hidden="true"></span></span>
-          <span class="value" id="tcgCacheLive">—</span>
-        </div>
-        <div class="admin-stat">
-          <span class="label">Priced successfully</span>
-          <span class="value" id="tcgPricedCount">—</span>
-        </div>
-        <div class="admin-stat">
-          <span class="label">Total TCG print links</span>
-          <span class="value" id="tcgTotalLinks">—</span>
-        </div>
-        <div class="admin-stat">
-          <span class="label">Status</span>
-          <span class="value"><span class="admin-badge" id="tcgStatusBadge">idle</span></span>
+      <article class="admin-card admin-card--cache" id="tcgCacheCard">
+        <h2>TCG prices</h2>
+        <p class="admin-hint">TCGplayer listing prices. Starting this stops PriceCharting first (and vice versa).</p>
+        <div class="admin-stat-grid">
+          <div class="admin-stat"><span class="label">Last success</span><span class="value mono" id="tcgLastSuccess">—</span></div>
+          <div class="admin-stat"><span class="label">Saved at</span><span class="value mono" id="tcgCacheSaved">—</span></div>
+          <div class="admin-stat admin-stat--live"><span class="label">In cache <span class="admin-live-dot" aria-hidden="true"></span></span><span class="value" id="tcgCacheLive">—</span></div>
+          <div class="admin-stat"><span class="label">Priced</span><span class="value" id="tcgPricedCount">—</span></div>
+          <div class="admin-stat"><span class="label">Total links</span><span class="value" id="tcgTotalLinks">—</span></div>
+          <div class="admin-stat"><span class="label">Status</span><span class="value"><span class="admin-badge" id="tcgStatusBadge">idle</span></span></div>
         </div>
         <div class="admin-progress" aria-hidden="true"><span id="tcgProgressBar"></span></div>
-        <p class="admin-stat"><span class="label">TCG progress</span><span class="value" id="tcgProgressText">—</span></p>
+        <p class="admin-stat"><span class="label">Progress</span><span class="value" id="tcgProgressText">—</span></p>
         <div class="admin-set-refresh">
-          <label class="admin-set-refresh-label" for="tcgSetRefreshSelect">Refresh one set
-            <select id="tcgSetRefreshSelect">
-              <option value="">Select a set…</option>
-            </select>
+          <label class="admin-set-refresh-label" for="tcgSetRefreshSelect">One set
+            <select id="tcgSetRefreshSelect"><option value="">Select a set…</option></select>
           </label>
-          <button type="button" class="admin-btn" id="btnTcgSetRefresh">Refresh set prices</button>
+          <button type="button" class="admin-btn" id="btnTcgSetRefresh">Refresh set</button>
         </div>
         <div class="admin-actions">
           <button type="button" class="admin-btn primary" id="btnTcgPriceUpdate">Update all TCG prices</button>
-          <button type="button" class="admin-btn danger" id="btnTcgPriceStop" hidden>Stop price check</button>
+          <button type="button" class="admin-btn danger" id="btnTcgPriceStop" hidden>Stop</button>
         </div>
         <section class="admin-fail-links" id="tcgFailLinksSection" hidden>
           <div class="admin-fail-links-head">
@@ -111,67 +119,40 @@
             <span class="admin-fail-links-count" id="tcgFailLinksCount">0</span>
             <button type="button" class="admin-btn" id="btnClearTcgFailLinks">Clear all</button>
           </div>
-          <p class="admin-hint">These TCGplayer URLs could not be priced automatically. Paste a <strong>TCGplayer</strong> or <strong>PriceCharting</strong> product link with the price you want, then <strong>Save to cache</strong>.</p>
+          <p class="admin-hint">Paste a TCGplayer or PriceCharting product link, then Save to cache.</p>
           <div class="admin-fail-links-list" id="tcgFailLinksList"></div>
         </section>
         <p class="admin-status" id="tcgStatusMsg"></p>
       </article>
 
-      <article class="admin-card" id="pcCacheCard">
-        <h2>PriceCharting details cache</h2>
-        <p class="admin-hint">Sold listings and graded guides. Separate from TCG listing prices. Saves every <strong>1000</strong> cards (gzip + fail-links to R2). The denominator is the full English catalog — many cards are missing on PriceCharting, so the cache often stays well below 100%. Each finished set gets a timestamp in the dropdown. Starting this while TCG is running will <strong>stop and save</strong> TCG first.</p>
-        <div class="admin-stat">
-          <span class="label">Last successful refresh</span>
-          <span class="value mono" id="pcLastSuccess">—</span>
-        </div>
-        <div class="admin-stat">
-          <span class="label">Cache saved at</span>
-          <span class="value mono" id="pcCacheSaved">—</span>
-        </div>
-        <div class="admin-stat admin-stat--live">
-          <span class="label">Cards in cache <span class="admin-live-dot" aria-hidden="true"></span></span>
-          <span class="value" id="pcDetailsCacheCount">—</span>
-        </div>
-        <div class="admin-stat">
-          <span class="label">Updated successfully</span>
-          <span class="value" id="pcUpdatedCount">—</span>
-        </div>
-        <div class="admin-stat">
-          <span class="label">Total PriceCharting Sections</span>
-          <span class="value" id="pcTotalSections">—</span>
-        </div>
-        <div class="admin-stat">
-          <span class="label">Status</span>
-          <span class="value"><span class="admin-badge" id="pcStatusBadge">idle</span></span>
+      <article class="admin-card admin-card--cache" id="pcCacheCard">
+        <h2>PriceCharting details</h2>
+        <p class="admin-hint">Sold listings and graded guides. Separate from TCG listing prices.</p>
+        <div class="admin-stat-grid">
+          <div class="admin-stat"><span class="label">Last success</span><span class="value mono" id="pcLastSuccess">—</span></div>
+          <div class="admin-stat"><span class="label">Saved at</span><span class="value mono" id="pcCacheSaved">—</span></div>
+          <div class="admin-stat admin-stat--live"><span class="label">In cache <span class="admin-live-dot" aria-hidden="true"></span></span><span class="value" id="pcDetailsCacheCount">—</span></div>
+          <div class="admin-stat"><span class="label">Updated</span><span class="value" id="pcUpdatedCount">—</span></div>
+          <div class="admin-stat"><span class="label">Sections</span><span class="value" id="pcTotalSections">—</span></div>
+          <div class="admin-stat"><span class="label">Status</span><span class="value"><span class="admin-badge" id="pcStatusBadge">idle</span></span></div>
         </div>
         <div class="admin-progress" aria-hidden="true"><span id="pcProgressBar"></span></div>
-        <p class="admin-stat"><span class="label">PriceCharting progress</span><span class="value" id="pcDetailsProgressText">—</span></p>
+        <p class="admin-stat"><span class="label">Progress</span><span class="value" id="pcDetailsProgressText">—</span></p>
         <div class="admin-set-refresh">
-          <label class="admin-set-refresh-label" for="pcSetRefreshSelect">Refresh one set
-            <select id="pcSetRefreshSelect">
-              <option value="">Select a set…</option>
-            </select>
+          <label class="admin-set-refresh-label" for="pcSetRefreshSelect">One set
+            <select id="pcSetRefreshSelect"><option value="">Select a set…</option></select>
           </label>
-          <button type="button" class="admin-btn" id="btnPcSetRefresh">Refresh set details</button>
+          <button type="button" class="admin-btn" id="btnPcSetRefresh">Refresh set</button>
         </div>
         <div class="admin-actions">
           <button type="button" class="admin-btn primary" id="btnPcDetailsUpdate">Update PriceCharting cache</button>
-          <button type="button" class="admin-btn danger" id="btnPcDetailsStop" hidden>Stop PriceCharting</button>
+          <button type="button" class="admin-btn danger" id="btnPcDetailsStop" hidden>Stop</button>
         </div>
         <section class="admin-pc-correct" id="pcCorrectSection">
-          <div class="admin-fail-links-head">
-            <h3>Correct a cached link</h3>
-          </div>
-          <p class="admin-hint">Search a card, review the current PriceCharting URL, then paste the correct product page to overwrite cache.</p>
+          <div class="admin-fail-links-head"><h3>Correct a cached link</h3></div>
+          <p class="admin-hint">Search a card, paste the correct PriceCharting product page, save.</p>
           <label class="admin-console-resolve-label" for="pcCorrectCardSearch">Card
-            <input
-              type="search"
-              id="pcCorrectCardSearch"
-              class="nickname-card-search"
-              placeholder="Search cards…"
-              autocomplete="off"
-              disabled
-            />
+            <input type="search" id="pcCorrectCardSearch" class="nickname-card-search" placeholder="Search cards…" autocomplete="off" disabled />
           </label>
           <div id="pcCorrectSelectedCard" class="nickname-selected-card" hidden></div>
           <div id="pcCorrectCardResults" class="nickname-card-results" hidden>
@@ -179,7 +160,7 @@
             <div class="nickname-card-grid" id="pcCorrectCardGrid"></div>
           </div>
           <p class="admin-pc-correct-current" id="pcCorrectCurrentLink">Select a card to see its cached link.</p>
-          <label class="admin-console-resolve-label" for="pcCorrectProductUrl">Correct PriceCharting product page
+          <label class="admin-console-resolve-label" for="pcCorrectProductUrl">Correct PriceCharting URL
             <input type="url" id="pcCorrectProductUrl" placeholder="https://www.pricecharting.com/game/..." />
           </label>
           <div class="admin-actions">
@@ -193,15 +174,13 @@
             <span class="admin-fail-links-count" id="pcFailLinksCount">0</span>
             <button type="button" class="admin-btn" id="btnClearPcFailLinks">Clear all</button>
           </div>
-          <p class="admin-hint">These cards could not load PriceCharting sold/graded details. Paste one PriceCharting <strong>console/set</strong> page to resolve many at once, or a single product URL per card.</p>
+          <p class="admin-hint">Paste a console/set page to resolve many, or a product URL per card.</p>
           <div class="admin-console-resolve">
             <label class="admin-console-resolve-label" for="pcConsoleResolveUrl">Console/set page
-              <input type="url" id="pcConsoleResolveUrl" placeholder="https://www.pricecharting.com/console/pokemon-scarlet-&-violet-151" />
+              <input type="url" id="pcConsoleResolveUrl" placeholder="https://www.pricecharting.com/console/..." />
             </label>
             <label class="admin-console-resolve-label" for="pcConsoleResolveSet">Apply to set
-              <select id="pcConsoleResolveSet">
-                <option value="">Auto</option>
-              </select>
+              <select id="pcConsoleResolveSet"><option value="">Auto</option></select>
             </label>
             <button type="button" class="admin-btn primary" id="btnPcConsoleResolve">Resolve from console</button>
           </div>
@@ -211,47 +190,95 @@
       </article>
     </section>
 
-    <section class="admin-card" id="restockCacheCard">
-      <h2>Restock Tracker cache</h2>
-      <p class="admin-hint">Re-check tracked product pages for stock status and prices, then save the result to <code>restock-tracker.json</code>. Refresh is manual only — use the button below when you want an update.</p>
-      <div class="admin-stat">
-        <span class="label">Last cache refresh</span>
-        <span class="value mono" id="restockLastRefresh">—</span>
-      </div>
-      <div class="admin-stat">
-        <span class="label">Tracked products</span>
-        <span class="value" id="restockItemCount">—</span>
-      </div>
-      <div class="admin-stat">
-        <span class="label">Last run summary</span>
-        <span class="value" id="restockLastSummary">—</span>
-      </div>
-      <div class="admin-stat">
-        <span class="label">Status</span>
-        <span class="value"><span class="admin-badge" id="restockStatusBadge">idle</span></span>
-      </div>
-      <div class="admin-progress" aria-hidden="true"><span id="restockProgressBar"></span></div>
-      <p class="admin-stat"><span class="label">Restock progress</span><span class="value" id="restockProgressText">—</span></p>
-      <div class="restock-retailer-picker">
-        <div class="restock-retailer-picker-head">
-          <span class="label">Retailers to refresh</span>
-          <div class="admin-actions">
-            <button type="button" class="admin-btn" id="btnRestockSelectAll">Select all</button>
-            <button type="button" class="admin-btn" id="btnRestockSelectNone">Select none</button>
-          </div>
+    <section class="admin-grid admin-grid--pricing">
+      <article class="admin-card admin-card--cache" id="hub-history">
+        <h2>Market history (Poke View charts)</h2>
+        <p class="admin-hint">Warm PriceCharting chart series into local + R2 cache. Missing cards only by default — this is what makes Poke View charts fast.</p>
+        <div class="admin-overview-stats" id="marketHistoryStats"></div>
+        <div class="admin-inline-fields">
+          <label>Limit
+            <input id="marketHistoryLimit" class="admin-input" type="number" min="1" max="5000" value="300" />
+          </label>
+          <label>Concurrency
+            <input id="marketHistoryConcurrency" class="admin-input" type="number" min="1" max="6" value="2" />
+          </label>
         </div>
-        <div class="restock-retailer-list" id="restockRetailerList"></div>
-      </div>
-      <div class="admin-actions">
-        <button type="button" class="admin-btn primary" id="btnRestockRefresh">Refresh cache</button>
-        <button type="button" class="admin-btn danger" id="btnRestockStop" hidden>Stop restock refresh</button>
-      </div>
-      <p class="admin-status" id="restockRefreshMsg"></p>
+        <label class="admin-check"><input type="checkbox" id="marketHistoryMissingOnly" checked /> Missing only</label>
+        <label class="admin-check"><input type="checkbox" id="marketHistoryIncludeSealed" checked /> Include sealed products</label>
+        <div class="admin-actions">
+          <button type="button" class="admin-btn" id="btnMarketHistoryRefreshMeta">Refresh stats</button>
+          <button type="button" class="admin-btn primary" id="btnMarketHistoryWarm">Warm market history</button>
+          <button type="button" class="admin-btn danger" id="btnMarketHistoryStop" hidden>Stop</button>
+        </div>
+        <p class="admin-status" id="marketHistoryMsg"></p>
+      </article>
+
+      <article class="admin-card admin-card--cache" id="hub-discovery">
+        <h2>Discovery (Poke View tabs)</h2>
+        <p class="admin-hint">Rebuild the movers / leaders / breakouts index from warmed history. Run after market history fills in.</p>
+        <div class="admin-overview-stats" id="discoveryStats"></div>
+        <div class="admin-actions">
+          <button type="button" class="admin-btn" id="btnDiscoveryRefreshMeta">Refresh stats</button>
+          <button type="button" class="admin-btn primary" id="btnDiscoveryRebuild">Rebuild discovery</button>
+        </div>
+        <p class="admin-status" id="discoveryMsg"></p>
+      </article>
+    </section>
+
+    <section class="admin-grid admin-grid--pricing">
+      <article class="admin-card admin-card--cache" id="hub-sealed">
+        <h2>Sealed catalog</h2>
+        <p class="admin-hint">PriceCharting sealed products for Sets and Trade Analyzer.</p>
+        <div class="admin-overview-stats" id="opsSealedStats"></div>
+        <label class="admin-check">
+          <input type="checkbox" id="opsSealedDownloadImages" checked />
+          Download sealed images after sync
+        </label>
+        <div class="admin-actions">
+          <button type="button" class="admin-btn" id="btnOpsSealedRefreshStats">Refresh stats</button>
+          <button type="button" class="admin-btn primary" id="btnOpsSealedSync">Sync sealed catalog</button>
+        </div>
+        <p class="admin-status" id="opsSealedMsg"></p>
+      </article>
+
+      <article class="admin-card admin-card--cache" id="restockCacheCard">
+        <h2>Restock Tracker cache</h2>
+        <p class="admin-hint">Re-check tracked product pages for stock and price, then save.</p>
+        <div class="admin-stat-grid">
+          <div class="admin-stat"><span class="label">Last refresh</span><span class="value mono" id="restockLastRefresh">—</span></div>
+          <div class="admin-stat"><span class="label">Tracked products</span><span class="value" id="restockItemCount">—</span></div>
+          <div class="admin-stat"><span class="label">Last summary</span><span class="value" id="restockLastSummary">—</span></div>
+          <div class="admin-stat"><span class="label">Status</span><span class="value"><span class="admin-badge" id="restockStatusBadge">idle</span></span></div>
+        </div>
+        <div class="admin-progress" aria-hidden="true"><span id="restockProgressBar"></span></div>
+        <p class="admin-stat"><span class="label">Progress</span><span class="value" id="restockProgressText">—</span></p>
+        <div class="restock-retailer-picker">
+          <div class="restock-retailer-picker-head">
+            <span class="label">Retailers</span>
+            <div class="admin-actions">
+              <button type="button" class="admin-btn" id="btnRestockSelectAll">All</button>
+              <button type="button" class="admin-btn" id="btnRestockSelectNone">None</button>
+            </div>
+          </div>
+          <div class="restock-retailer-list" id="restockRetailerList"></div>
+        </div>
+        <div class="admin-actions">
+          <button type="button" class="admin-btn primary" id="btnRestockRefresh">Refresh cache</button>
+          <button type="button" class="admin-btn danger" id="btnRestockStop" hidden>Stop</button>
+        </div>
+        <p class="admin-status" id="restockRefreshMsg"></p>
+      </article>
+    </section>
+
+    <!-- ========== TOOLS ========== -->
+    <section class="admin-section-label">
+      <h2>Tools</h2>
+      <p>Manual restock products, nicknames, and user management.</p>
     </section>
 
     <section class="admin-card">
       <h2>Add restock tracker product</h2>
-      <p style="margin:0;color:var(--muted);font-size:13px;">Manual products are merged into the public Restock Tracker and kept when imports run.</p>
+      <p class="admin-hint">Manual products are merged into the public Restock Tracker and kept when imports run.</p>
       <form class="admin-form" id="restockForm">
         <label>Product name
           <input type="text" id="restockName" required placeholder="Pokémon TCG …" />
@@ -296,7 +323,7 @@
 
     <section class="admin-card">
       <h2>Hidden card nicknames</h2>
-      <p class="admin-hint">Nicknames are not shown on cards. Enter a nickname, search and click a card, then add. You can link <strong>multiple cards</strong> to the same nickname — when someone searches on Sets (e.g. <strong>Bubble Mew</strong>), all linked cards appear.</p>
+      <p class="admin-hint">Nicknames are not shown on cards. Enter a nickname, search and click a card, then add. Link multiple cards to the same nickname for Sets search.</p>
       <form class="admin-form" id="nicknameForm">
         <label>Nickname
           <input type="text" id="nicknameText" required placeholder="Bubble Mew" maxlength="80" />
@@ -308,14 +335,7 @@
           </select>
         </label>
         <label>Card
-          <input
-            type="search"
-            id="nicknameCardSearch"
-            class="nickname-card-search"
-            placeholder="Search cards…"
-            autocomplete="off"
-            disabled
-          />
+          <input type="search" id="nicknameCardSearch" class="nickname-card-search" placeholder="Search cards…" autocomplete="off" disabled />
         </label>
         <div id="nicknameSelectedCard" class="nickname-selected-card" hidden></div>
         <div id="nicknameCardResults" class="nickname-card-results" hidden>
@@ -346,234 +366,9 @@
       </div>
     </section>
 
-    <section class="admin-card" id="siteOverviewCard">
-      <h2>Site overview</h2>
-      <div class="admin-overview-stats">
-        <div class="admin-stat"><span class="label">Registered users</span><span class="value" id="statUsers">—</span></div>
-        <div class="admin-stat"><span class="label">Collection items</span><span class="value" id="statItems">—</span></div>
-        <div class="admin-stat"><span class="label">Activity log entries</span><span class="value" id="statActivities">—</span></div>
-        <div class="admin-stat"><span class="label">Manual restock products</span><span class="value" id="statManualRestock">—</span></div>
-      </div>
-      <div class="admin-actions">
-        <button type="button" class="admin-btn danger" id="btnClearActivities">Clear activity log</button>
-      </div>
-      <p class="admin-status" id="siteStatusMsg"></p>
-    </section>
-
-    <section class="admin-hero admin-ops-divider">
-      <h1>Ops tools</h1>
-      <p>Health, coverage, gap refresh, sealed catalog, jobs, schedules, flags, images, metrics, showcase, and nickname bulk import.</p>
-    </section>
-
-    <section class="admin-grid admin-grid--ops">
-      <article class="admin-card" id="opsHealthCard">
-        <h2>1. Ops / health</h2>
-        <p class="admin-hint">Memory, uptime, and key cache file sizes on disk.</p>
-        <div class="admin-overview-stats" id="opsHealthStats"></div>
-        <div class="admin-actions">
-          <button type="button" class="admin-btn" id="btnOpsHealthRefresh">Refresh health</button>
-        </div>
-        <p class="admin-status" id="opsHealthMsg"></p>
-      </article>
-
-      <article class="admin-card" id="opsMetricsCard">
-        <h2>10. API metrics</h2>
-        <p class="admin-hint">Request counters for hot pricing / catalog endpoints since process start (persisted lightly).</p>
-        <div class="admin-table-wrap">
-          <table class="admin-table">
-            <thead><tr><th>Endpoint</th><th>Hits</th><th>Last hit</th></tr></thead>
-            <tbody id="opsMetricsBody"></tbody>
-          </table>
-        </div>
-        <div class="admin-actions">
-          <button type="button" class="admin-btn" id="btnOpsMetricsRefresh">Refresh metrics</button>
-        </div>
-      </article>
-    </section>
-
-    <section class="admin-card" id="opsCoverageCard">
-      <h2>2. Coverage heatmap</h2>
-      <p class="admin-hint">Per-set freshness for TCG / PriceCharting, details, and local images. Filter or sort to find gaps.</p>
-      <div class="admin-users-toolbar">
-        <input id="opsCoverageSearch" class="admin-input admin-users-search" type="search" placeholder="Filter set name or code…" />
-        <select id="opsCoverageFilter" class="admin-input">
-          <option value="all">All sets</option>
-          <option value="staleTcg">Stale TCG</option>
-          <option value="stalePc">Stale PriceCharting</option>
-          <option value="missingDetails">Missing details</option>
-          <option value="missingImages">Missing images</option>
-        </select>
-        <button type="button" class="admin-btn" id="btnOpsCoverageRefresh">Load coverage</button>
-      </div>
-      <p class="admin-status" id="opsCoverageMsg"></p>
-      <div class="admin-table-wrap admin-coverage-wrap">
-        <table class="admin-table admin-coverage-table">
-          <thead>
-            <tr>
-              <th>Set</th>
-              <th>Cards</th>
-              <th>Details</th>
-              <th>Images</th>
-              <th>TCG</th>
-              <th>PC</th>
-              <th>Sealed</th>
-            </tr>
-          </thead>
-          <tbody id="opsCoverageBody"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <section class="admin-grid admin-grid--ops">
-      <article class="admin-card" id="opsGapCard">
-        <h2>3. Gap / stale refresh</h2>
-        <p class="admin-hint">Refresh only missing, stale, or newest sets instead of a full scrape.</p>
-        <label>Kind
-          <select id="opsGapKind" class="admin-input">
-            <option value="tcg">TCG prices</option>
-            <option value="pricecharting">PriceCharting details</option>
-          </select>
-        </label>
-        <label>Mode
-          <select id="opsGapMode" class="admin-input">
-            <option value="stale">Stale / never</option>
-            <option value="missing">Never refreshed</option>
-            <option value="newest">Newest codes</option>
-          </select>
-        </label>
-        <label>Limit
-          <input id="opsGapLimit" class="admin-input" type="number" min="1" max="50" value="10" />
-        </label>
-        <label>Stale days
-          <input id="opsGapStaleDays" class="admin-input" type="number" min="1" max="90" value="14" />
-        </label>
-        <div class="admin-actions">
-          <button type="button" class="admin-btn primary" id="btnOpsGapStart">Start gap refresh</button>
-          <button type="button" class="admin-btn danger" id="btnOpsGapStop" hidden>Stop</button>
-        </div>
-        <p class="admin-status" id="opsGapMsg"></p>
-      </article>
-
-      <article class="admin-card" id="opsSealedCard">
-        <h2>4. Sealed catalog</h2>
-        <p class="admin-hint">PriceCharting sealed products used by Sets / Trade Analyzer.</p>
-        <div class="admin-overview-stats" id="opsSealedStats"></div>
-        <label class="admin-check">
-          <input type="checkbox" id="opsSealedDownloadImages" checked />
-          Download sealed images after sync
-        </label>
-        <div class="admin-actions">
-          <button type="button" class="admin-btn" id="btnOpsSealedRefreshStats">Refresh stats</button>
-          <button type="button" class="admin-btn primary" id="btnOpsSealedSync">Sync sealed catalog</button>
-        </div>
-        <p class="admin-status" id="opsSealedMsg"></p>
-      </article>
-    </section>
-
-    <section class="admin-card" id="opsIntegrityCard">
-      <h2>5. Catalog integrity</h2>
-      <p class="admin-hint">Scan for empty details, missing images, stale pricing, and sealed price gaps.</p>
-      <div class="admin-actions">
-        <button type="button" class="admin-btn primary" id="btnOpsIntegrityScan">Run integrity scan</button>
-      </div>
-      <p class="admin-status" id="opsIntegrityMsg"></p>
-      <pre class="admin-pre" id="opsIntegrityOut"></pre>
-    </section>
-
-    <section class="admin-grid admin-grid--ops">
-      <article class="admin-card" id="opsJobsCard">
-        <h2>6. Job history</h2>
-        <div class="admin-actions">
-          <button type="button" class="admin-btn" id="btnOpsJobsRefresh">Refresh jobs</button>
-        </div>
-        <div class="admin-table-wrap">
-          <table class="admin-table">
-            <thead><tr><th>When</th><th>Kind</th><th>Status</th><th>Detail</th></tr></thead>
-            <tbody id="opsJobsBody"></tbody>
-          </table>
-        </div>
-      </article>
-
-      <article class="admin-card" id="opsSchedulesCard">
-        <h2>7. Scheduled jobs</h2>
-        <p class="admin-hint">UTC hour triggers (checked every minute). Last run stamped per day.</p>
-        <div id="opsSchedulesForm" class="admin-form admin-schedules-form"></div>
-        <div class="admin-actions">
-          <button type="button" class="admin-btn primary" id="btnOpsSchedulesSave">Save schedules</button>
-        </div>
-        <p class="admin-status" id="opsSchedulesMsg"></p>
-      </article>
-    </section>
-
-    <section class="admin-grid admin-grid--ops">
-      <article class="admin-card" id="opsPersistCard">
-        <h2>8. Persist / rebuild</h2>
-        <p class="admin-hint">Force-save caches to disk/R2 and optionally rebuild set-card-details by-code splits.</p>
-        <label class="admin-check"><input type="checkbox" id="opsPersistTcg" checked /> TCG link price cache</label>
-        <label class="admin-check"><input type="checkbox" id="opsPersistPc" checked /> PriceCharting details cache</label>
-        <label class="admin-check"><input type="checkbox" id="opsPersistStamps" checked /> Set refresh timestamps</label>
-        <label class="admin-check"><input type="checkbox" id="opsPersistSplit" /> Split set-card-details by-code</label>
-        <div class="admin-actions">
-          <button type="button" class="admin-btn primary" id="btnOpsPersist">Run persist</button>
-        </div>
-        <p class="admin-status" id="opsPersistMsg"></p>
-      </article>
-
-      <article class="admin-card" id="opsImagesCard">
-        <h2>9. Image / R2 helpers</h2>
-        <p class="admin-hint">Local disk gaps vs catalog card counts. Upload to R2 with <code>npm run upload:card-images</code>.</p>
-        <div class="admin-actions">
-          <button type="button" class="admin-btn" id="btnOpsImagesReport">Scan missing images</button>
-        </div>
-        <p class="admin-status" id="opsImagesMsg"></p>
-        <div class="admin-table-wrap">
-          <table class="admin-table">
-            <thead><tr><th>Set</th><th>Expected</th><th>On disk</th><th>Missing</th><th>%</th></tr></thead>
-            <tbody id="opsImagesBody"></tbody>
-          </table>
-        </div>
-      </article>
-    </section>
-
-    <section class="admin-grid admin-grid--ops">
-      <article class="admin-card" id="opsFlagsCard">
-        <h2>12. Feature flags</h2>
-        <div id="opsFlagsForm" class="admin-form admin-flags-form"></div>
-        <div class="admin-actions">
-          <button type="button" class="admin-btn primary" id="btnOpsFlagsSave">Save flags</button>
-        </div>
-        <p class="admin-status" id="opsFlagsMsg"></p>
-      </article>
-
-      <article class="admin-card" id="opsShowcaseCard">
-        <h2>11. Showcase moderation</h2>
-        <p class="admin-hint">Force profiles private or clear custom avatars.</p>
-        <div class="admin-actions">
-          <button type="button" class="admin-btn" id="btnOpsShowcaseRefresh">Load showcases</button>
-        </div>
-        <div class="admin-table-wrap">
-          <table class="admin-table">
-            <thead><tr><th>User</th><th>Public</th><th>Items</th><th></th></tr></thead>
-            <tbody id="opsShowcaseBody"></tbody>
-          </table>
-        </div>
-        <p class="admin-status" id="opsShowcaseMsg"></p>
-      </article>
-    </section>
-
-    <section class="admin-card" id="opsNicknamesBulkCard">
-      <h2>14. Nickname bulk import</h2>
-      <p class="admin-hint">CSV columns: <code>nickname,setCode,cardNumber,setName,language</code> (header optional).</p>
-      <textarea id="opsNicknameCsv" class="admin-textarea" rows="6" placeholder="Bubble Mew,SVI,25,Scarlet & Violet,english"></textarea>
-      <div class="admin-actions">
-        <button type="button" class="admin-btn primary" id="btnOpsNicknameBulk">Import nicknames</button>
-      </div>
-      <p class="admin-status" id="opsNicknameBulkMsg"></p>
-    </section>
-
     <section class="admin-card">
       <h2>Users</h2>
-      <p class="admin-hint">Search all accounts, or browse recent signups below. Edit username/name/email, then Save. Use Disable / Reset collection / Delete carefully. Role toggle is 13. User tools.</p>
+      <p class="admin-hint">Search accounts, edit username/name/email, then Save. Use Disable / Reset collection / Delete carefully.</p>
       <div class="admin-users-toolbar">
         <input
           id="usersSearch"
@@ -608,7 +403,7 @@
   </main>
 
   <script src="/account-ui.js?v=5"></script>
-  <script src="/admin.js?v=6"></script>
-  <script src="/admin-ops-panel.js?v=1"></script>
+  <script src="/admin.js?v=8"></script>
+  <script src="/admin-ops-panel.js?v=3"></script>
 </body>
 </html>

@@ -1174,6 +1174,12 @@
       "code": "PBL",
       "symbol": "/pokesymbols/symbols/pitch-black.png",
       "logo": "/pokesymbols/logos/pitch-black.png"
+    },
+    "30th-celebration": {
+      "name": "30th Celebration",
+      "code": "30C",
+      "symbol": "/pokesymbols/symbols/30th-celebration.png",
+      "logo": "/pokesymbols/logos/30th-celebration.png"
     }
   },
   "byCode": {
@@ -1881,6 +1887,11 @@
       "slug": "pitch-black",
       "symbol": "/pokesymbols/symbols/pitch-black.png",
       "logo": "/pokesymbols/logos/pitch-black.png"
+    },
+    "30C": {
+      "slug": "30th-celebration",
+      "symbol": "/pokesymbols/symbols/30th-celebration.png",
+      "logo": "/pokesymbols/logos/30th-celebration.png"
     }
   },
   "failed": []

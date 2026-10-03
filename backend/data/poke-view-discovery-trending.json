@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "savedAt": "2026-09-12T05:28:09.017Z",
+  "savedAt": "2026-10-03T21:57:17.744Z",
   "views": {
     "sealed:2189391": {
       "count": 30,
@@ -263,10 +263,10 @@
       "cardName": "Meganium"
     },
     "sealed:5287290": {
-      "count": 99,
+      "count": 109,
       "label": "Paldea Evolved(PAL) - Booster Box",
       "kind": "sealed",
-      "lastAt": "2026-09-12T05:28:08.240Z",
+      "lastAt": "2026-10-03T21:57:16.938Z",
       "setCode": "PAL",
       "setName": "Paldea Evolved",
       "cardName": "Booster Box",

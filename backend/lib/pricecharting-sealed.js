@@ -9,9 +9,11 @@ const {
   buildPriceChartingProductUrl
 } = require("./pricecharting-market-history");
 const { writeJsonAtomic } = require("./write-json-atomic");
+const { pushPricingCacheToR2, pullPricingCacheFromR2 } = require("./pricing-cache-r2-sync");
 
 const DATA_DIR = path.join(__dirname, "..", "data");
 const SEALED_CATALOG_FILE = path.join(DATA_DIR, "pricecharting-sealed-by-set.json");
+const SEALED_CATALOG_R2_NAME = "pricecharting-sealed-by-set.json";
 const SEALED_IMAGE_DIR = path.join(DATA_DIR, "pricecharting-sealed-images");
 const INDEX_CACHE_DIR = path.join(DATA_DIR, "pricecharting-index-cache");
 
@@ -380,11 +382,40 @@ async function syncPriceChartingSealedCatalog({
   };
 
   await writeJsonAtomic(SEALED_CATALOG_FILE, catalog);
+  try {
+    await pushPricingCacheToR2(SEALED_CATALOG_R2_NAME, `${JSON.stringify(catalog)}\n`);
+  } catch {
+    /* optional R2 */
+  }
   return catalog;
 }
 
+async function persistSealedCatalogNow(catalog = null) {
+  let payload = catalog;
+  if (!payload) {
+    const raw = await fsp.readFile(SEALED_CATALOG_FILE, "utf8");
+    payload = JSON.parse(raw);
+  }
+  await writeJsonAtomic(SEALED_CATALOG_FILE, payload);
+  await pushPricingCacheToR2(SEALED_CATALOG_R2_NAME, `${JSON.stringify(payload)}\n`);
+  return true;
+}
+
 async function readSealedCatalog() {
-  const raw = await fsp.readFile(SEALED_CATALOG_FILE, "utf8");
+  let raw = null;
+  try {
+    raw = await fsp.readFile(SEALED_CATALOG_FILE, "utf8");
+  } catch {
+    raw = null;
+  }
+  if (!raw || raw.length < 2) {
+    raw = await pullPricingCacheFromR2(SEALED_CATALOG_R2_NAME);
+    if (raw && raw.length > 2) {
+      await fsp.mkdir(DATA_DIR, { recursive: true });
+      await fsp.writeFile(SEALED_CATALOG_FILE, raw, "utf8");
+    }
+  }
+  if (!raw || raw.length < 2) throw new Error("Sealed catalog missing");
   const parsed = JSON.parse(raw);
   if (!parsed || typeof parsed !== "object") throw new Error("Invalid sealed catalog");
   return normalizeSealedCatalogImages(parsed);
@@ -546,6 +577,7 @@ module.exports = {
   collectEnglishSets,
   loadSealedProductsForConsole,
   syncPriceChartingSealedCatalog,
+  persistSealedCatalogNow,
   readSealedCatalog,
   getSealedProductsForSetCode,
   normalizeSealedCatalogImages,
