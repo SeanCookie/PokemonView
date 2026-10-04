@@ -50,6 +50,7 @@ scripts/*
 !scripts/setup-r2-card-images.js
 !scripts/upload-card-images-to-r2.js
 !scripts/upload-static-assets-to-r2.js
+!scripts/warm-static-assets-on-edge.js
 !scripts/split-set-card-details.js
 !scripts/build-catalog-illustrators.js
 !scripts/embed-frontend-overrides.js

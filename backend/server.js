@@ -8805,10 +8805,6 @@ async function sendImageFromDir(res, pathname, routePrefix, rootDir) {
         return;
       }
     } else if (routePrefix === "pokesymbols") {
-      if (isSelfHosted()) {
-        notFound(res);
-        return;
-      }
       try {
         data = await fetchPokesymbolBytes(decodedRel, { cachePath: filePath });
       } catch (err) {
@@ -8827,10 +8823,6 @@ async function sendImageFromDir(res, pathname, routePrefix, rootDir) {
       data = await materializeLfsFile(filePath, data);
     } catch (err) {
       if (routePrefix === "pokesymbols") {
-        if (isSelfHosted()) {
-          notFound(res);
-          return;
-        }
         try {
           data = await fetchPokesymbolBytes(decodedRel, { cachePath: filePath });
         } catch (cdnErr) {
@@ -12548,11 +12540,9 @@ async function bootstrapServer({ hosted = false } = {}) {
       materializeDirectoryIfNeeded(SET_IMAGE_DIR, { label: "set-images" }).catch((err) => {
         console.warn(`[startup] Deferred set-image LFS materialize failed: ${err.message}`);
       });
-      if (!isSelfHosted()) {
-        hydratePokesymbolsFromCdnIfNeeded(POKESYMBOLS_DIR, { label: "pokesymbols" }).catch((err) => {
-          console.warn(`[startup] Deferred pokesymbols CDN hydrate failed: ${err.message}`);
-        });
-      }
+      hydratePokesymbolsFromCdnIfNeeded(POKESYMBOLS_DIR, { label: "pokesymbols" }).catch((err) => {
+        console.warn(`[startup] Deferred pokesymbols CDN hydrate failed: ${err.message}`);
+      });
     });
     return;
   }
@@ -12578,11 +12568,9 @@ async function bootstrapServer({ hosted = false } = {}) {
   materializeDirectoryIfNeeded(SET_IMAGE_DIR, { label: "set-images" }).catch((err) => {
     console.warn(`[startup] Set-image LFS materialize failed: ${err.message}`);
   });
-  if (!isSelfHosted()) {
-    hydratePokesymbolsFromCdnIfNeeded(POKESYMBOLS_DIR, { label: "pokesymbols" }).catch((err) => {
-      console.warn(`[startup] Pokesymbols CDN hydrate failed: ${err.message}`);
-    });
-  }
+  hydratePokesymbolsFromCdnIfNeeded(POKESYMBOLS_DIR, { label: "pokesymbols" }).catch((err) => {
+    console.warn(`[startup] Pokesymbols CDN hydrate failed: ${err.message}`);
+  });
 }
 
 function onServerListening() {

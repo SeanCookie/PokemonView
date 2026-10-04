@@ -529,7 +529,7 @@ async function enrichAuthMePreferences(request, response, env) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     // Durable account store — handled at the Worker (no container), so boot can restore without deadlock.
     const storeResponse = await handleDurableStoreRequest(request, env);
     if (storeResponse) return storeResponse;
@@ -537,9 +537,17 @@ export default {
     const dataResponse = await handleDurableAppDataRequest(request, env);
     if (dataResponse) return dataResponse;
 
+    // Fresh DO so the container boots with current secrets + latest image after CI rebuild.
+    const container = env.POKEMONVIEW.getByName("main-v43");
+
     // Card / symbol / set art is served from the R2 binding at the edge.
-    // No public R2 S3 API URL is required for the site.
-    const imageResponse = await tryServeCardImageFromR2(request, env);
+    // Misses: pokesymbols fill from CDN; set/sealed/card art write-through from the container.
+    const imageResponse = await tryServeCardImageFromR2(request, env, {
+      fetchOrigin: (req) => container.fetch(req),
+      waitUntil: (promise) => {
+        if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(promise);
+      }
+    });
     if (imageResponse) return imageResponse;
 
     // Warm per-set prices — edge R2 hit skips container / monolith restore.
@@ -554,8 +562,6 @@ export default {
     const navAsset = tryServeNavAssetOverride(request);
     if (navAsset) return navAsset;
 
-    // Fresh DO so the container boots with current secrets + latest image after CI rebuild.
-    const container = env.POKEMONVIEW.getByName("main-v42");
     const response = await enrichAuthMePreferences(
       request,
       await container.fetch(request),
