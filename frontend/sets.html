@@ -15,6 +15,7 @@
   <link rel="stylesheet" href="/card-sky.css?v=8" />
   <link rel="stylesheet" href="/brand-logo.css" />
   <script src="/catalog-illustrator-names.js?v=1"></script>
+  <script src="/set-art-embedded.js?v=1"></script>
   <script src="/card-sky.js?v=8" defer></script>
   <style>
     :root {
@@ -2292,6 +2293,7 @@
       <a href="/scan-your-cards.html" class="nav-link">Scan Your Cards</a>
       <a href="/restock-tracker.html" class="nav-link">Restock Tracker</a>
       <a href="/trade-analyzer.html" class="nav-link">Trade Analyzer</a>
+      <a href="/ebay-terminal.html" class="nav-link">eBay Terminal</a>
     </div>
     <div class="nav-right">
       <div class="nav-search-wrap">
@@ -2550,6 +2552,8 @@
       selectedSealedProductId: null,
       imagesByCode: {},
       imagesByName: {},
+      /** False until pokesymbols + set-images manifests load — avoids one hardcoded cover painting alone. */
+      setCoverManifestReady: false,
       cardNamesBySetCode: {},
       cardImagesBySetCode: {},
       cardSourceBySetCode: {},
@@ -4507,9 +4511,7 @@
       MEP: "/set-images/MEP/cover.png",
       CL: "/set-images/CL-call-of-legends-cover.png",
       RS: "/set-images/RS-ruby-sapphire-cover.png",
-      RG: "/set-images/RG/cover.png",
-      // Cache-busted so browsers that hit a 404 before the logo was deployed don't keep a blank cover.
-      "30C": "/pokesymbols/logos/30th-celebration.png?v=20261003"
+      RG: "/set-images/RG/cover.png"
     };
 
     const localSetCoverNameOverridesByCode = {
@@ -4946,17 +4948,41 @@
       });
     }
 
+    function hydrateSetArtFromEmbedded() {
+      const payload = window.__POKEMONVIEW_SET_ART__;
+      if (!payload || typeof payload !== "object") return false;
+      const poke =
+        payload.pokesymbolsByCode && typeof payload.pokesymbolsByCode === "object"
+          ? payload.pokesymbolsByCode
+          : {};
+      const imagesByCode =
+        payload.imagesByCode && typeof payload.imagesByCode === "object" ? payload.imagesByCode : {};
+      const imagesByName =
+        payload.imagesByName && typeof payload.imagesByName === "object" ? payload.imagesByName : {};
+      if (!Object.keys(poke).length && !Object.keys(imagesByCode).length) return false;
+      if (Object.keys(poke).length) {
+        state.pokesymbolsByCode = { ...poke };
+      }
+      if (Object.keys(imagesByCode).length) state.imagesByCode = { ...imagesByCode };
+      if (Object.keys(imagesByName).length) state.imagesByName = { ...imagesByName };
+      state.setCoverManifestReady = true;
+      return true;
+    }
+
     async function loadSetImageManifest() {
       try {
         const response = await fetch("/api/sets/images");
         if (!response.ok) return;
         const payload = await response.json();
         if (!payload || !payload.ok) return;
-        state.imagesByCode = payload.byCode || {};
-        state.imagesByName = payload.byName || {};
+        const nextByCode = payload.byCode || {};
+        const nextByName = payload.byName || {};
+        // Merge over embedded seed so a failed/partial API never blanks covers.
+        state.imagesByCode = { ...state.imagesByCode, ...nextByCode };
+        state.imagesByName = { ...state.imagesByName, ...nextByName };
+        state.setCoverManifestReady = true;
       } catch {
-        state.imagesByCode = {};
-        state.imagesByName = {};
+        /* keep embedded seed */
       }
     }
 
@@ -4971,14 +4997,15 @@
         const serverByCode =
           payload.byCode && typeof payload.byCode === "object" ? payload.byCode : {};
         if (Object.keys(serverByCode).length) {
-          state.pokesymbolsByCode = { ...serverByCode };
+          state.pokesymbolsByCode = { ...state.pokesymbolsByCode, ...serverByCode };
           mergePokesymbolsAppCodeOverrides();
+          state.setCoverManifestReady = true;
           return;
         }
         recomputePokesymbolsByCodeFromSlugs();
+        state.setCoverManifestReady = true;
       } catch {
-        state.pokesymbolsBySlug = {};
-        state.pokesymbolsByCode = {};
+        /* keep embedded seed */
       }
     }
 
@@ -5844,22 +5871,39 @@
       if (!code) return;
       if (Object.keys(state.cardNamesBySetCode[code] || {}).length > 0) return;
       if (state.cardManifestLoadingBySetCode[code]) {
-        await state.cardManifestLoadingBySetCode[code];
+        try {
+          await state.cardManifestLoadingBySetCode[code];
+        } catch {
+          /* ignore — allow caller to fall back */
+        }
         return;
       }
       const loadPromise = (async () => {
+        const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+        const timeoutMs = 8000;
+        const timer = controller
+          ? setTimeout(() => {
+              try {
+                controller.abort();
+              } catch (_) {
+                /* ignore */
+              }
+            }, timeoutMs)
+          : null;
         try {
           const response = await fetch(
             `/api/sets/cards?language=${encodeURIComponent(language)}&setCode=${encodeURIComponent(code)}`,
-            { cache: "no-store" }
+            { cache: "no-store", signal: controller ? controller.signal : undefined }
           );
           if (!response.ok) return;
           const payload = await response.json();
           if (!payload || !payload.ok || !payload.byCode || typeof payload.byCode !== "object") return;
-          const entry = payload.byCode[code];
+          const entry = payload.byCode[code] || payload.byCode[String(setCode || "").trim()];
           if (entry) applySetCardManifestEntry(code, entry);
         } catch {
-          /* ignore */
+          /* ignore network/abort — caller falls back to setConfig placeholders */
+        } finally {
+          if (timer) clearTimeout(timer);
         }
       })();
       state.cardManifestLoadingBySetCode[code] = loadPromise;
@@ -6584,6 +6628,9 @@
     }
 
     function resolveSetImage(setEntry) {
+      // Wait for manifests so hardcoded overrides (and 30C previously) don't race ahead alone.
+      if (!state.setCoverManifestReady) return "";
+
       const localOverride = localSetCoverOverridesByCode[setEntry.code];
       if (localOverride) return localOverride;
 
@@ -6612,10 +6659,14 @@
     }
 
     function getSetByCode(code) {
+      const wanted = String(code || "").trim().toUpperCase();
+      if (!wanted) return null;
       const languageSets = setsByEra[state.language] || {};
       for (const [era, setList] of Object.entries(languageSets)) {
         for (const setEntry of setList) {
-          if (setEntry.code === code) return { era, ...setEntry };
+          if (String(setEntry.code || "").trim().toUpperCase() === wanted) {
+            return { era, ...setEntry, code: wanted };
+          }
         }
       }
       return null;
@@ -6979,10 +7030,15 @@
     }
 
     function getSetCards(setEntry, setConfig) {
-      const importedNames = state.cardNamesBySetCode[setEntry.code] || {};
-      const importedImages = state.cardImagesBySetCode[setEntry.code] || {};
+      const codeKey = String(setEntry?.code || "")
+        .trim()
+        .toUpperCase();
+      const importedNames =
+        state.cardNamesBySetCode[codeKey] || state.cardNamesBySetCode[setEntry.code] || {};
+      const importedImages =
+        state.cardImagesBySetCode[codeKey] || state.cardImagesBySetCode[setEntry.code] || {};
       const importedCardKeys = getSortedCardKeys(importedNames);
-      const importedSlug = getImportedSetSlug(setEntry.code);
+      const importedSlug = getImportedSetSlug(codeKey || setEntry.code);
 
       if (importedCardKeys.length) {
         return importedCardKeys.map((cardNo, index) => {
@@ -9918,11 +9974,16 @@
       setDetailRenderPending = false;
       try {
       const selectedSet = getSetByCode(state.selectedSetCode);
-      const setConfig = selectedSet ? detailedSetConfigs[selectedSet.code] : null;
+      const setConfig = selectedSet
+        ? detailedSetConfigs[String(selectedSet.code || "").trim().toUpperCase()] ||
+          detailedSetConfigs[selectedSet.code] ||
+          null
+        : null;
       if (!selectedSet) {
         state.selectedSetCode = null;
         state.selectedSetName = "";
-        renderAll();
+        // Defer catalog re-render so we do not nest renderAll while holding the detail lock.
+        queueMicrotask(() => renderAll());
         return;
       }
       const content = document.getElementById("content");
@@ -9930,11 +9991,11 @@
       const setCodeKey = String(selectedSet.code || "").trim().toUpperCase();
       const hasImportedNames = Object.keys(state.cardNamesBySetCode[setCodeKey] || {}).length > 0;
       const alreadyTriedLoad = state.setCardLoadAttemptedByCode?.[setCodeKey] === true;
-      // setConfig.total can synthesize empty placeholders — still fetch real names/images once.
+      const canSynthesizePlaceholders = Boolean(setConfig && Number(setConfig.total) > 0);
+      // Fetch real names/images once, but never block the UI when we can paint placeholders.
       if (!hasImportedNames && !alreadyTriedLoad) {
         if (!state.setCardLoadAttemptedByCode) state.setCardLoadAttemptedByCode = {};
         state.setCardLoadAttemptedByCode[setCodeKey] = true;
-        content.innerHTML = `<div class="card-meta" style="padding:16px;">Loading ${escapeHtml(selectedSet.name || "set")}…</div>`;
         void ensureSetCardsLoaded(selectedSet.code)
           .then(() => {
             if (String(state.selectedSetCode || "").toUpperCase() !== setCodeKey) return;
@@ -9944,7 +10005,11 @@
             if (String(state.selectedSetCode || "").toUpperCase() !== setCodeKey) return;
             renderSelectedSetDetail();
           });
-        return;
+        if (!canSynthesizePlaceholders) {
+          content.innerHTML = `<div class="card-meta" style="padding:16px;">Loading ${escapeHtml(selectedSet.name || "set")}…</div>`;
+          return;
+        }
+        // Fall through and render setConfig placeholders immediately.
       }
       const allCards = getSetCards(selectedSet, setConfig);
       if (!allCards.length) {
@@ -11335,6 +11400,7 @@
 
     (async function bootstrapSetsPage() {
       hydrateCatalogIllustratorsFromEmbedded() || hydrateCatalogIllustratorsFromCache();
+      hydrateSetArtFromEmbedded();
       renderAll();
       try {
         await Promise.all([
@@ -11346,6 +11412,7 @@
           loadSetCatalog(state.language),
           loadCatalogIllustratorsIndex()
         ]);
+        state.setCoverManifestReady = true;
         renderAll();
         await applySetsDeepLink();
         renderAll();
@@ -11354,6 +11421,7 @@
           startTcgLinkCacheWatch();
         }
       } catch {
+        state.setCoverManifestReady = true;
         renderAll();
       }
     })();

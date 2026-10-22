@@ -1,12 +1,12 @@
 {
   "version": 1,
-  "savedAt": "2026-10-03T21:57:17.744Z",
+  "savedAt": "2026-10-11T06:19:32.104Z",
   "views": {
     "sealed:2189391": {
-      "count": 30,
+      "count": 35,
       "label": "Vivid Voltage(VIV) - Booster Box",
       "kind": "sealed",
-      "lastAt": "2026-09-12T05:14:16.626Z",
+      "lastAt": "2026-10-11T04:56:53.651Z",
       "setCode": "VIV",
       "setName": "Vivid Voltage",
       "cardName": "Booster Box",
@@ -43,10 +43,10 @@
       "productId": "4277088"
     },
     "sealed:4998474": {
-      "count": 6,
-      "label": "Scarlet & Violet(SVI) - Base Set Booster Box",
+      "count": 7,
+      "label": "Base Set Booster Box (Scarlet & Violet)",
       "kind": "sealed",
-      "lastAt": "2026-09-07T20:04:01.467Z",
+      "lastAt": "2026-10-11T04:53:00.643Z",
       "setCode": "SVI",
       "setName": "Scarlet & Violet",
       "cardName": "Base Set Booster Box",
@@ -83,10 +83,10 @@
       "productId": "13644012"
     },
     "sealed:12368453": {
-      "count": 4,
-      "label": "Perfect Order(POR) - Booster Box",
+      "count": 5,
+      "label": "Booster Box (Perfect Order)",
       "kind": "sealed",
-      "lastAt": "2026-09-07T20:04:00.165Z",
+      "lastAt": "2026-10-11T04:52:37.217Z",
       "setCode": "POR",
       "setName": "Perfect Order",
       "cardName": "Booster Box",
@@ -133,20 +133,20 @@
       "productId": "3490294"
     },
     "sealed:13644013": {
-      "count": 58,
+      "count": 60,
       "label": "Pitch Black(PBL) - Booster Bundle",
       "kind": "sealed",
-      "lastAt": "2026-09-12T02:08:30.185Z",
+      "lastAt": "2026-10-11T04:46:12.176Z",
       "setCode": "PBL",
       "setName": "Pitch Black",
       "cardName": "Booster Bundle",
       "productId": "13644013"
     },
     "SWSHP:SWSH020": {
-      "count": 6,
+      "count": 8,
       "label": "Pikachu (SWSHP #SWSH020)",
       "kind": "single",
-      "lastAt": "2026-09-12T03:14:38.418Z",
+      "lastAt": "2026-10-11T04:46:14.536Z",
       "setCode": "SWSHP",
       "cardNo": "SWSH020",
       "setName": "Sword & Shield Promos",
@@ -263,30 +263,30 @@
       "cardName": "Meganium"
     },
     "sealed:5287290": {
-      "count": 109,
+      "count": 129,
       "label": "Paldea Evolved(PAL) - Booster Box",
       "kind": "sealed",
-      "lastAt": "2026-10-03T21:57:16.938Z",
+      "lastAt": "2026-10-11T06:19:31.361Z",
       "setCode": "PAL",
       "setName": "Paldea Evolved",
       "cardName": "Booster Box",
       "productId": "5287290"
     },
     "sealed:5605518": {
-      "count": 17,
+      "count": 20,
       "label": "Obsidian Flames(OBF) - Booster Box",
       "kind": "sealed",
-      "lastAt": "2026-09-12T02:08:34.456Z",
+      "lastAt": "2026-10-11T04:46:09.494Z",
       "setCode": "OBF",
       "setName": "Obsidian Flames",
       "cardName": "Booster Box",
       "productId": "5605518"
     },
     "CG:089": {
-      "count": 19,
+      "count": 21,
       "label": "Aggron ex (CG #089)",
       "kind": "single",
-      "lastAt": "2026-09-12T02:08:29.641Z",
+      "lastAt": "2026-10-11T04:57:11.075Z",
       "setCode": "CG",
       "cardNo": "089",
       "setName": "Crystal Guardians",
@@ -323,20 +323,20 @@
       "cardName": "Team Aqua Grunt"
     },
     "PBL:116": {
-      "count": 33,
+      "count": 37,
       "label": "Mega Darkrai ex (PBL #116)",
       "kind": "single",
-      "lastAt": "2026-09-12T02:08:30.506Z",
+      "lastAt": "2026-10-11T04:50:53.646Z",
       "setCode": "PBL",
       "cardNo": "116",
       "setName": "Pitch Black",
       "cardName": "Mega Darkrai ex"
     },
     "PBL:117": {
-      "count": 17,
+      "count": 19,
       "label": "Morpeko ex (PBL #117)",
       "kind": "single",
-      "lastAt": "2026-09-12T03:15:08.942Z",
+      "lastAt": "2026-10-11T04:47:02.599Z",
       "setCode": "PBL",
       "cardNo": "117",
       "setName": "Pitch Black",
@@ -353,14 +353,94 @@
       "cardName": "Exeggcute"
     },
     "SWSHP:SWSH066": {
-      "count": 1,
+      "count": 2,
       "label": "Charizard (SWSHP #SWSH066)",
       "kind": "single",
-      "lastAt": "2026-09-12T01:18:31.739Z",
+      "lastAt": "2026-10-11T04:49:52.498Z",
       "setCode": "SWSHP",
       "cardNo": "SWSH066",
       "setName": "Sword & Shield Promos",
       "cardName": "Charizard"
+    },
+    "BRS:029": {
+      "count": 1,
+      "label": "Kingler VMAX (Brilliant Stars #029)",
+      "kind": "single",
+      "lastAt": "2026-10-11T04:50:19.363Z",
+      "setCode": "BRS",
+      "cardNo": "029",
+      "setName": "Brilliant Stars",
+      "cardName": "Kingler VMAX"
+    },
+    "30C:104": {
+      "count": 2,
+      "label": "Ferrothorn (30th Celebration #104)",
+      "kind": "single",
+      "lastAt": "2026-10-11T04:51:50.759Z",
+      "setCode": "30C",
+      "cardNo": "104",
+      "setName": "30th Celebration",
+      "cardName": "Ferrothorn"
+    },
+    "30C:088": {
+      "count": 1,
+      "label": "Nidorina (30th Celebration #088)",
+      "kind": "single",
+      "lastAt": "2026-10-11T04:50:28.039Z",
+      "setCode": "30C",
+      "cardNo": "088",
+      "setName": "30th Celebration",
+      "cardName": "Nidorina"
+    },
+    "30C:084": {
+      "count": 1,
+      "label": "Seismitoad (30th Celebration #084)",
+      "kind": "single",
+      "lastAt": "2026-10-11T04:50:28.680Z",
+      "setCode": "30C",
+      "cardNo": "084",
+      "setName": "30th Celebration",
+      "cardName": "Seismitoad"
+    },
+    "30C:095": {
+      "count": 1,
+      "label": "Zorua (30th Celebration #095)",
+      "kind": "single",
+      "lastAt": "2026-10-11T04:51:52.070Z",
+      "setCode": "30C",
+      "cardNo": "095",
+      "setName": "30th Celebration",
+      "cardName": "Zorua"
+    },
+    "sealed:9420221": {
+      "count": 1,
+      "label": "Elite Trainer Box (Destined Rivals)",
+      "kind": "sealed",
+      "lastAt": "2026-10-11T04:52:39.443Z",
+      "setCode": "DRI",
+      "setName": "Destined Rivals",
+      "cardName": "Elite Trainer Box",
+      "productId": "9420221"
+    },
+    "sealed:7183610": {
+      "count": 1,
+      "label": "3-Pack Blister (Roaring Skies)",
+      "kind": "sealed",
+      "lastAt": "2026-10-11T04:52:51.866Z",
+      "setCode": "ROS",
+      "setName": "Roaring Skies",
+      "cardName": "3-Pack Blister",
+      "productId": "7183610"
+    },
+    "sealed:6241385": {
+      "count": 1,
+      "label": "Elite Trainer Box (Roaring Skies)",
+      "kind": "sealed",
+      "lastAt": "2026-10-11T04:52:53.053Z",
+      "setCode": "ROS",
+      "setName": "Roaring Skies",
+      "cardName": "Elite Trainer Box",
+      "productId": "6241385"
     }
   }
 }

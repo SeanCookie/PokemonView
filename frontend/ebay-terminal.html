@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/favicon.png" type="image/png" sizes="32x32" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>eBay Terminal — PokemonView</title>
+  <meta name="description" content="Live Pokémon TCG eBay auctions and Buy It Now deals with market value comparison" />
+  <link rel="stylesheet" href="/ebay-terminal.css" />
+  <link rel="stylesheet" href="/site-nav.css?v=12" />
+</head>
+<body>
+  <nav class="top-nav">
+    <div class="nav-left">
+      <a href="/" class="brand" aria-label="Go to homepage">
+        <span class="pokeball-logo" aria-hidden="true"></span>
+      </a>
+      <a href="/" class="nav-link">Home</a>
+      <a href="/sets.html" class="nav-link">Sets</a>
+      <a href="/dashboard.html" class="nav-link">Collection</a>
+      <a href="/showcase" class="nav-link">Showcase</a>
+      <a href="/poke-view.html" class="nav-link">Poke View</a>
+      <a href="/scan-your-cards.html" class="nav-link">Scan Your Cards</a>
+      <a href="/restock-tracker.html" class="nav-link">Restock Tracker</a>
+      <a href="/trade-analyzer.html" class="nav-link">Trade Analyzer</a>
+      <a href="/ebay-terminal.html" class="nav-link active">eBay Terminal</a>
+    </div>
+    <div class="nav-right">
+      <div data-account-slot></div>
+    </div>
+  </nav>
+
+  <main class="page">
+    <header class="hero panel">
+      <div>
+        <h1 class="title">eBay Terminal</h1>
+        <p class="sub">Live Pokémon TCG eBay auctions and Buy It Now — refreshed on the server every ~45s, with estimated value and vs-market scoring.</p>
+      </div>
+      <button type="button" class="btn ghost" id="refreshBtn">Refresh</button>
+    </header>
+
+    <section class="controls panel">
+      <div class="mode-tabs" role="tablist" aria-label="Listing type">
+        <button type="button" class="mode-tab active" data-mode="auction" role="tab" aria-selected="true">Auctions</button>
+        <button type="button" class="mode-tab" data-mode="bin" role="tab" aria-selected="false">Buy It Now</button>
+      </div>
+      <div class="filter-row">
+        <label class="category-pill" title="Locked to Pokémon TCG">
+          <span class="category-label">Category</span>
+          <span class="category-value">Pokémon</span>
+        </label>
+        <label class="sort-label">
+          Sort
+          <select id="sortSelect" aria-label="Sort listings">
+            <option value="ending">Ending soonest</option>
+            <option value="deal">Best deal</option>
+            <option value="priceHigh">Price: high</option>
+            <option value="priceLow">Price: low</option>
+          </select>
+        </label>
+        <input
+          id="searchInput"
+          class="search-input"
+          type="search"
+          autocomplete="off"
+          placeholder="Filter titles…"
+          aria-label="Filter listing titles"
+        />
+      </div>
+      <p class="status-line" id="statusLine">Loading Pokémon deals…</p>
+    </section>
+
+    <section class="table-panel panel">
+      <div class="table-scroll">
+        <table class="deals-table" aria-label="Pokémon eBay deals">
+          <thead>
+            <tr>
+              <th data-col="ends">Ends</th>
+              <th data-col="card">Card</th>
+              <th data-col="type">Type</th>
+              <th data-col="est">Est. value</th>
+              <th data-col="price">Price</th>
+              <th data-col="vs">vs value</th>
+              <th data-col="grade">Grade</th>
+              <th data-col="seller">Seller</th>
+              <th data-col="from">From</th>
+            </tr>
+          </thead>
+          <tbody id="dealsBody">
+            <tr><td colspan="9" class="muted center">Loading deals…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="/site-nav.js?v=12" defer></script>
+  <script src="/account-ui.js?v=9"></script>
+  <script src="/ebay-terminal.js"></script>
+</body>
+</html>

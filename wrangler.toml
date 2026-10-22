@@ -33,9 +33,9 @@ bucket_name = "pokemonview-card-images"
 [[routes]]
 pattern = "pokemonview.com"
 custom_domain = true
-# [[routes]]
-# pattern = "www.pokemonview.com"
-# custom_domain = true
+[[routes]]
+pattern = "www.pokemonview.com"
+custom_domain = true
 
 [observability]
 enabled = false

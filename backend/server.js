@@ -34,6 +34,14 @@ const {
 } = require("./lib/pricecharting-sealed");
 const { isSelfHosted } = require("./lib/self-hosted");
 const {
+  getEbayTerminalDeals,
+  getEbayCredentials,
+  getEbayTerminalMeta,
+  refreshEbayTerminalSnapshot,
+  startEbayTerminalPoller,
+  setEbayTerminalEnrichers
+} = require("./lib/ebay-terminal-deals");
+const {
   isDetailsCatalogComplete,
   finalizeLocalCardDetailsFile
 } = require("./lib/finalize-local-card-details");
@@ -10188,6 +10196,62 @@ async function route(req, res) {
     return;
   }
 
+  if (pathname === "/api/ebay-terminal/meta" && req.method === "GET") {
+    json(res, 200, { ok: true, ...getEbayTerminalMeta(), ebayConfigured: getEbayCredentials().configured });
+    return;
+  }
+
+  if (pathname === "/api/ebay-terminal/refresh" && req.method === "POST") {
+    const admin = requireAdmin(req, res);
+    if (!admin) return;
+    try {
+      await refreshEbayTerminalSnapshot({ force: true });
+      json(res, 200, { ok: true, ...getEbayTerminalMeta() });
+    } catch (err) {
+      json(res, 502, { ok: false, error: err.message || "Refresh failed" });
+    }
+    return;
+  }
+
+  if (pathname === "/api/ebay-terminal/deals" && req.method === "GET") {
+    try {
+      const modeRaw = String(parsedUrl.searchParams.get("mode") || "auction").trim().toLowerCase();
+      const mode = modeRaw === "bin" || modeRaw === "buy" ? "bin" : modeRaw === "all" ? "all" : "auction";
+      const sortRaw = String(parsedUrl.searchParams.get("sort") || "ending").trim().toLowerCase();
+      const sort =
+        sortRaw === "deal" || sortRaw === "best"
+          ? "deal"
+          : sortRaw === "pricehigh" || sortRaw === "price-high"
+            ? "priceHigh"
+            : sortRaw === "pricelow" || sortRaw === "price-low"
+              ? "priceLow"
+              : "ending";
+      const limit = Math.max(1, Math.min(200, Number(parsedUrl.searchParams.get("limit")) || 80));
+      const q = String(parsedUrl.searchParams.get("q") || "").trim();
+      const refresh = String(parsedUrl.searchParams.get("refresh") || "") === "1";
+      const result = await getEbayTerminalDeals({
+        mode,
+        sort,
+        limit,
+        q,
+        refresh
+      });
+      if (!result.ok) {
+        json(res, 503, result);
+        return;
+      }
+      json(res, 200, result);
+    } catch (err) {
+      json(res, 502, {
+        ok: false,
+        error: err.message || "Could not load eBay deals",
+        configured: true,
+        rows: []
+      });
+    }
+    return;
+  }
+
   if (pathname === "/api/poke-view/watchlist" && req.method === "GET") {
     const sessionUser = requireSignedInUser(req, res);
     if (!sessionUser) return;
@@ -12415,6 +12479,13 @@ async function startDeferredBackgroundWork() {
   startRestockHourlyRefreshLoop();
   startTcgLinkPriceHourlyRefreshLoop();
   startPriceAlertPollLoop();
+  setEbayTerminalEnrichers({
+    getPriceChartingProduct: getConfig("PRICECHARTING_API_TOKEN")
+      ? (params) => getPriceChartingProduct(params)
+      : null,
+    getPsaCertData: getConfig("PSA_ACCESS_TOKEN") ? (cert) => getPsaCertData(cert) : null
+  });
+  startEbayTerminalPoller();
   adminOps.initAdminOps({
     runRestockRefresh: async () => {
       if (!(await adminOps.getFeatureFlag("restockLiveFetch"))) return;

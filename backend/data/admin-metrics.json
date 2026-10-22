@@ -1,0 +1,19 @@
+{
+  "updatedAt": "2026-10-22T03:29:51.053Z",
+  "startedAt": "2026-09-07T18:27:39.211Z",
+  "counters": {
+    "api.sets.pricing": 48,
+    "api.sets.pricechartingCardDetails": 34,
+    "api.sets.sealed": 317,
+    "api.sets.linkPrices": 72,
+    "api.restock": 0,
+    "api.admin.status": 10
+  },
+  "lastHitAt": {
+    "api.sets.sealed": "2026-10-22T03:29:36.048Z",
+    "api.sets.pricing": "2026-10-22T03:29:38.755Z",
+    "api.sets.linkPrices": "2026-10-22T03:29:39.187Z",
+    "api.sets.pricechartingCardDetails": "2026-10-04T20:11:15.623Z",
+    "api.admin.status": "2026-10-04T20:11:23.663Z"
+  }
+}

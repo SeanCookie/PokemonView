@@ -567,7 +567,7 @@ export default {
       await container.fetch(request),
       env
     );
-    const rewritten = maybeRewriteHtmlNav(request, response);
+    const rewritten = await maybeRewriteHtmlNav(request, response);
     const path = new URL(request.url).pathname;
     if (path === "/api/tcgplayer/link-cache-meta") {
       const headers = new Headers(rewritten.headers);
