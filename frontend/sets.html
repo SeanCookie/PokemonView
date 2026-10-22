@@ -2701,7 +2701,8 @@
     }
 
     function getSetGridPageSize() {
-      return isConstrainedMobileClient() ? 24 : 120;
+      // Live serves full R2 card JPEGs; phones OOM if too many decode at once.
+      return isConstrainedMobileClient() ? 12 : 120;
     }
 
     async function warmMissingInlinePricesForActiveSet(setCode, setName = "", loadToken = setPricesLoadToken) {
@@ -2829,12 +2830,14 @@
       const code = String(setCode || "").trim().toUpperCase();
       if (!code) return;
       if (isSealedCatalogMode()) return;
+      const mobile = isConstrainedMobileClient();
       try {
         if (state.language === "english") {
           await syncTcgLinkCacheGeneration();
         }
         await Promise.all([
-          ensureSetCardDetailsLoaded(code),
+          // Card details JSON is large; on phones load only when opening a single card.
+          mobile ? Promise.resolve() : ensureSetCardDetailsLoaded(code),
           // Wait for manifest + link-price hydrate so tiles/stats do not flash seed prices.
           state.language === "english"
             ? ensureSetPricingLoaded(code, setName).catch(() => {
@@ -2847,6 +2850,11 @@
       }
       if (String(state.selectedSetCode || "").toUpperCase() !== code) return;
       if (isSealedCatalogMode()) return;
+      if (mobile) {
+        // Price hydrate only — do not remount the grid (that re-decodes images and crashes).
+        updateSetDetailInlinePrices();
+        return;
+      }
       primeActiveSetPrices(code, setName);
       const y = window.scrollY;
       if (state.selectedCardNumber) {
@@ -8630,14 +8638,46 @@
       return rarities;
     }
 
-    function renderCardThumbMarkup(card, { loading = "lazy", fetchPriority = "" } = {}) {
+    function renderCardThumbMarkup(card, { loading = "lazy", fetchPriority = "", deferSrc = false } = {}) {
       const alt = escapeHtml(getCardDisplayName(card));
       const url = String(card?.imageUrl || "").trim();
       if (!url) {
         return `<div class="card-thumb-frame"><div class="card-thumb placeholder">No image</div></div>`;
       }
       const priorityAttr = fetchPriority ? ` fetchpriority="${escapeHtml(fetchPriority)}"` : "";
-      return `<div class="card-thumb-frame"><img class="card-thumb" src="${escapeHtml(url)}" alt="${alt}" loading="${escapeHtml(loading)}"${priorityAttr} /></div>`;
+      // 1x1 gif placeholder — real src attached when near viewport (mobile set grids).
+      if (deferSrc) {
+        return `<div class="card-thumb-frame"><img class="card-thumb" data-src="${escapeHtml(url)}" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="${alt}" loading="lazy" decoding="async"${priorityAttr} /></div>`;
+      }
+      return `<div class="card-thumb-frame"><img class="card-thumb" src="${escapeHtml(url)}" alt="${alt}" loading="${escapeHtml(loading)}" decoding="async"${priorityAttr} /></div>`;
+    }
+
+    function hydrateDeferredSetCardImages(root) {
+      const scope = root && root.querySelectorAll ? root : document;
+      const imgs = scope.querySelectorAll("img.card-thumb[data-src]");
+      if (!imgs.length) return;
+      const loadOne = (img) => {
+        const src = img.getAttribute("data-src");
+        if (!src) return;
+        img.removeAttribute("data-src");
+        img.src = src;
+      };
+      if (typeof IntersectionObserver !== "function") {
+        imgs.forEach(loadOne);
+        return;
+      }
+      const io = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (!entry.isIntersecting) continue;
+            const img = entry.target;
+            io.unobserve(img);
+            loadOne(img);
+          }
+        },
+        { rootMargin: "160px 0px", threshold: 0.01 }
+      );
+      imgs.forEach((img) => io.observe(img));
     }
 
     function buildCollectionOwnedBannerMarkup(setCode, allCards) {
@@ -8678,6 +8718,7 @@
           ? `<button type="button" class="card-owned-remove" data-remove-from-collection aria-label="Remove from collection" title="Remove from collection"><span class="card-btn-icon card-btn-icon--minus" aria-hidden="true"></span></button>`
           : `<button type="button" class="card-add-btn" data-add-to-collection aria-label="Add to collection" title="Add to collection"><span class="card-btn-icon card-btn-icon--plus" aria-hidden="true"></span></button>`;
       const ownedChip = owned ? `<span class="card-owned-chip">In your collection</span>` : "";
+      const deferSrc = isConstrainedMobileClient();
       // Use a div (not <button>) for the tile: owned qty is also a <button>, and nested
       // buttons make the HTML parser close the tile early — every following card blows out.
       return `
@@ -8685,7 +8726,7 @@
                 ${actionBtn}
                 ${ownedChip}
                 <div class="card-tile" role="button" tabindex="0"${owned ? ' title="In your collection"' : ""}>
-                ${renderCardThumbMarkup(card)}
+                ${renderCardThumbMarkup(card, { deferSrc })}
                 <div>${renderCardName(card)}</div>
                 <div class="card-meta card-meta-row">
                   <span class="card-meta-left">${leftMeta}</span>
@@ -10266,6 +10307,7 @@
           renderSelectedSetDetail();
         });
       }
+      hydrateDeferredSetCardImages(content);
 
       document.getElementById("backToSets").addEventListener("click", () => {
         exitSelectedSetToCatalog();
