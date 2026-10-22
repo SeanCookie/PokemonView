@@ -117,9 +117,9 @@
         shuffle(cards);
       }
     } else {
-      /** Fewer layers than before = less decode / layout work. */
-      const slotCount = narrow ? 72 : 102;
-      const maxDistinct = Math.min(pool.length, narrow ? 28 : 44);
+      /** Mobile phones OOM with dozens of decoded card bitmaps — keep slots tiny. */
+      const slotCount = narrow ? 14 : 72;
+      const maxDistinct = Math.min(pool.length, narrow ? 10 : 36);
       const effectivePool = pool.slice(0, Math.max(1, maxDistinct));
       cards = [];
       for (let i = 0; i < slotCount; i += 1) {
@@ -232,6 +232,16 @@
       return;
     }
 
+    const saveData =
+      (typeof navigator !== "undefined" && navigator.connection && navigator.connection.saveData) ||
+      false;
+    const narrow = window.innerWidth < 900;
+    // Skip animated sky on constrained phones — main crash source on iOS Safari / Android Chrome.
+    if (saveData || (narrow && window.innerWidth < 700)) {
+      sky.replaceChildren();
+      return;
+    }
+
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       renderInfinityCardSky(uniq, opts);
       return;
@@ -241,15 +251,14 @@
     skyRecyclerToken = token;
     sky.classList.add("card-sky--recycle");
 
-    const narrow = window.innerWidth < 900;
     const homeSky = Boolean(opts.homeSky);
     let pool = uniq;
-    /** Home/browse: cycle a capped random sample (~500); reshuffled each page load. */
-    const HOME_SKY_MAX_URLS = 500;
+    /** Home/browse: cycle a capped random sample; keep mobile samples small. */
+    const HOME_SKY_MAX_URLS = narrow ? 80 : 500;
     let homeDeck = null;
     let homeDeckIndex = 0;
     if (catalogSearch) {
-      const maxUnique = narrow ? 12 : 16;
+      const maxUnique = narrow ? 8 : 16;
       pool = uniq.slice(0, Math.min(uniq.length, maxUnique));
     } else if (homeSky) {
       const sample =
@@ -257,14 +266,14 @@
       homeDeck = shuffle(sample);
       pool = homeDeck;
     } else {
-      const maxDistinct = Math.min(uniq.length, narrow ? 28 : 44);
+      const maxDistinct = Math.min(uniq.length, narrow ? 12 : 36);
       pool = uniq.slice(0, Math.max(1, maxDistinct));
     }
     const maxActive = catalogSearch
-      ? Math.min(narrow ? 10 : 14, pool.length)
+      ? Math.min(narrow ? 6 : 14, pool.length)
       : homeSky
-        ? Math.min(narrow ? 28 : 36, pool.length)
-        : Math.min(narrow ? 20 : 28, pool.length);
+        ? Math.min(narrow ? 10 : 28, pool.length)
+        : Math.min(narrow ? 8 : 24, pool.length);
     const inUse = new Set();
     const durMinSec = catalogSearch ? 11 : 7;
     const durRangeSec = catalogSearch ? 8 : 9;

@@ -9,14 +9,12 @@
   <title>PokemonView Sets</title>
   <link rel="preload" href="/api/pokesymbols/manifest" as="fetch" crossorigin="anonymous" />
   <link rel="preload" href="/api/sets/images" as="fetch" crossorigin="anonymous" />
-  <link rel="preload" href="/api/sets/card-sky-urls?limit=500&localOnly=1" as="fetch" crossorigin="anonymous" />
-  <link rel="preload" href="/catalog-illustrator-names.json" as="fetch" crossorigin="anonymous" />
-  <link rel="preload" href="/catalog-illustrators.json" as="fetch" crossorigin="anonymous" />
-  <link rel="stylesheet" href="/card-sky.css?v=8" />
+  <!-- Do not preload catalog-illustrators.json (~430KB) or card-sky-urls — they contend with boot on mobile. -->
+  <link rel="stylesheet" href="/card-sky.css?v=9" />
   <link rel="stylesheet" href="/brand-logo.css" />
   <script src="/catalog-illustrator-names.js?v=1"></script>
   <script src="/set-art-embedded.js?v=1"></script>
-  <script src="/card-sky.js?v=8" defer></script>
+  <script src="/card-sky.js?v=9" defer></script>
   <style>
     :root {
       color-scheme: dark;
@@ -6005,16 +6003,8 @@
         await ensureSetCardDetailsLoaded(setCode);
         return;
       }
-      try {
-        const response = await fetch("/api/sets/card-details");
-        if (!response.ok) return;
-        const payload = await response.json();
-        if (!payload || !payload.ok || !payload.byCode || typeof payload.byCode !== "object") return;
-        state.cardDetailsBySetCode = payload.byCode;
-        invalidateCatalogSearchIndex();
-      } catch {
-        state.cardDetailsBySetCode = {};
-      }
+      // Never fetch the full ~15MB all-sets details blob in the browser — it OOMs phones.
+      return;
     }
 
     const CATALOG_ILLUSTRATORS_STORAGE_KEY = "pokemonview.catalogIllustrators.v1";
@@ -10958,6 +10948,16 @@
       const renderSky = typeof renderPokemonViewky === "function" ? renderPokemonViewky : null;
       if (!startRecycler && !renderSky) return;
 
+      // Avoid building large URL lists / decoding art on small phones (common iOS crash).
+      const narrowPhone = window.innerWidth < 700;
+      const saveData =
+        typeof navigator !== "undefined" && navigator.connection && navigator.connection.saveData;
+      if (narrowPhone || saveData) {
+        if (stopRecycler) stopRecycler();
+        else if (renderSky) renderSky([], { homeSky: true });
+        return;
+      }
+
       let urls = [];
       let catalogSearch = false;
 
@@ -11403,19 +11403,28 @@
       hydrateSetArtFromEmbedded();
       renderAll();
       try {
+        // Keep the critical path small — illustrators (~430KB) load after first paint.
         await Promise.all([
           loadPokesymbolsManifest(),
           loadBoosterPackArtManifest(),
           loadSealedProductsCatalog(),
           loadSetImageManifest(),
           loadCardNicknames(),
-          loadSetCatalog(state.language),
-          loadCatalogIllustratorsIndex()
+          loadSetCatalog(state.language)
         ]);
         state.setCoverManifestReady = true;
         renderAll();
         await applySetsDeepLink();
         renderAll();
+        const scheduleIdle =
+          typeof requestIdleCallback === "function"
+            ? (fn) => requestIdleCallback(fn, { timeout: 4000 })
+            : (fn) => setTimeout(fn, 1200);
+        scheduleIdle(() => {
+          void loadCatalogIllustratorsIndex().then(() => {
+            updateGlobalArtistFilterSelect();
+          });
+        });
         if (state.language === "english") {
           void syncTcgLinkCacheGeneration();
           startTcgLinkCacheWatch();
