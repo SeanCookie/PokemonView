@@ -29,12 +29,13 @@ new_sqlite_classes = ["PokemonViewContainer"]
 binding = "CARD_IMAGES"
 bucket_name = "pokemonview-card-images"
 
-# Custom domain (keep in sync with dashboard so deploys do not drop it)
+# Apex custom domain only. Do NOT add www as custom_domain here — Wrangler’s
+# /domains/records call fails when www already has a manual DNS record, and that
+# aborts the whole deploy after the Worker/container already uploaded.
+# Serve www via Cloudflare Redirect Rule (www → https://pokemonview.com/$1) with
+# a proxied DNS AAAA www → 100:: (or A → 192.0.2.1) in the zone dashboard.
 [[routes]]
 pattern = "pokemonview.com"
-custom_domain = true
-[[routes]]
-pattern = "www.pokemonview.com"
 custom_domain = true
 
 [observability]
