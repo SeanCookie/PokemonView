@@ -2799,8 +2799,11 @@
       }
 
       const hadCards = Object.keys(state.cardNamesBySetCode[setCode] || {}).length > 0;
-      // Start card fetch before first paint so the loading flag is set (avoids bouncing back to catalog).
+      // Start card + price cache fetches immediately (new users have no localStorage snapshot).
       const cardsPromise = ensureSetCardsLoaded(setCode).catch(() => {});
+      if (state.language === "english") {
+        void ensureSetPricingLoaded(setCode, setName).catch(() => {});
+      }
       scrollToPageTop();
       renderAll();
 
@@ -2812,18 +2815,8 @@
       }
       if (!hadCards) renderAll();
 
-      if (isConstrainedMobileClient()) {
-        const scheduleIdle =
-          typeof requestIdleCallback === "function"
-            ? (fn) => requestIdleCallback(fn, { timeout: 2500 })
-            : (fn) => setTimeout(fn, 600);
-        scheduleIdle(() => {
-          if (String(state.selectedSetCode || "").toUpperCase() !== setCode) return;
-          void enrichOpenSetView(setCode, setName);
-        });
-      } else {
-        void enrichOpenSetView(setCode, setName);
-      }
+      // Pricing already kicked off above — enrich only needs details (desktop) + UI sync.
+      void enrichOpenSetView(setCode, setName);
     }
 
     async function enrichOpenSetView(setCode, setName = "") {
@@ -2832,16 +2825,13 @@
       if (isSealedCatalogMode()) return;
       const mobile = isConstrainedMobileClient();
       try {
-        if (state.language === "english") {
-          await syncTcgLinkCacheGeneration();
-        }
         await Promise.all([
           // Card details JSON is large; on phones load only when opening a single card.
           mobile ? Promise.resolve() : ensureSetCardDetailsLoaded(code),
-          // Wait for manifest + link-price hydrate so tiles/stats do not flash seed prices.
+          // Pricing was started in openSetViewInner; await so UI can sync when ready.
           state.language === "english"
             ? ensureSetPricingLoaded(code, setName).catch(() => {
-                /* best effort — tiles can still warm later */
+                /* best effort */
               })
             : Promise.resolve()
         ]);
@@ -2850,22 +2840,11 @@
       }
       if (String(state.selectedSetCode || "").toUpperCase() !== code) return;
       if (isSealedCatalogMode()) return;
-      if (mobile) {
-        // Price hydrate only — do not remount the grid (that re-decodes images and crashes).
-        updateSetDetailInlinePrices();
-        return;
-      }
-      primeActiveSetPrices(code, setName);
-      const y = window.scrollY;
+      // Always refresh prices in place — never remount the grid just for hydrate.
+      updateSetDetailInlinePrices();
+      if (mobile) return;
       if (state.selectedCardNumber) {
         renderAll();
-      } else if (isSealedCatalogMode()) {
-        renderSealedSetDetail();
-      } else {
-        renderSelectedSetDetail();
-      }
-      if (Math.abs(window.scrollY - y) > 2) {
-        window.scrollTo(0, y);
       }
     }
 
@@ -6240,12 +6219,16 @@
 
       setPricingLoadPromisesByCode[code] = (async () => {
         await ensureSetPricingManifestLoaded(code, setName);
+        // Paint guide/seed prices as soon as the set pricing manifest is in memory —
+        // do not wait for the link-price hydrate round-trip.
+        if (String(state.selectedSetCode || "").toUpperCase() === code) {
+          if (state.selectedCardNumber) updateCardDetailTcgPanelPrices();
+          else updateSetDetailInlinePrices();
+        }
         await hydrateSetLinkPricesFromCache(code, setName);
-        if (
-          String(state.selectedSetCode || "").toUpperCase() === code &&
-          state.selectedCardNumber
-        ) {
-          updateCardDetailTcgPanelPrices();
+        if (String(state.selectedSetCode || "").toUpperCase() === code) {
+          if (state.selectedCardNumber) updateCardDetailTcgPanelPrices();
+          else updateSetDetailInlinePrices();
         }
       })();
       try {
@@ -6402,8 +6385,10 @@
       const code = String(setCode || "").trim().toUpperCase();
       if (!code || state.language !== "english") return;
       // Never call sync when force=true — sync is the caller and would re-enter forever.
+      // Do not await meta sync before link-prices — that serial delay is why new users
+      // wait on blank tiles even though the set cache is already warm on the edge.
       if (!state.tcgLinkCacheGenerationKey && !options.force) {
-        await syncTcgLinkCacheGeneration();
+        void syncTcgLinkCacheGeneration();
       }
       const hydrationKey = String(state.tcgLinkCacheGenerationKey || "").trim();
       const force = options.force === true;
@@ -8539,14 +8524,10 @@
     }
 
     function shouldUseManifestPriceSeed(setCode = "") {
-      // English Sets prices should match card-price-value (link cache). Avoid flashing
-      // stale guide/seed totals before hydrate finishes.
-      if (state.language !== "english") return true;
-      const code = String(setCode || state.selectedSetCode || "")
-        .trim()
-        .toUpperCase();
-      if (!code) return true;
-      return Boolean(state.setLinkPricesHydratedBySetCode[code]);
+      // Always allow manifest/guide seeds as a fallback. getEffectiveTcgplayerPrice still
+      // prefers live link-cache nodes when present — without this, new users (no
+      // localStorage snapshot) stare at blank tiles/stats until /api/sets/link-prices returns.
+      return true;
     }
 
     function getEffectiveTcgplayerPrice(pricingInfo, card = null, options = {}) {
