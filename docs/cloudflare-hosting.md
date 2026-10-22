@@ -129,18 +129,14 @@ npx wrangler containers list
 
 ## 5. Attach your domain
 
-`wrangler.toml` already attaches **`pokemonview.com`** as a Worker custom domain on deploy.
+In the [Cloudflare dashboard](https://dash.cloudflare.com):
 
-**Do not** add `www.pokemonview.com` as a second `custom_domain` in `wrangler.toml`. If `www` already has a normal DNS record, Wrangler’s domain step fails with `/domains/records` and the Git deploy reports failure (even after the Worker/container image uploaded).
+1. **Workers & Pages** → **pokemonview** → **Settings** → **Domains & routes**
+2. **Add custom domain** → `pokemonview.com` (and `www` if you use it)
 
-For www → apex:
+If the zone is already on Cloudflare, DNS is configured automatically.
 
-1. DNS → add proxied `AAAA` for `www` → `100::` (or proxied `A` → `192.0.2.1`)
-2. Rules → Redirect Rules → Bulk Redirects or a single Redirect Rule:
-   - If hostname equals `www.pokemonview.com`
-   - Then dynamic redirect to `concat("https://pokemonview.com", http.request.uri.path)` (301)
-
-In the [Cloudflare dashboard](https://dash.cloudflare.com) you can also confirm: **Workers & Pages** → **pokemonview** → **Settings** → **Domains & routes** → `pokemonview.com`.
+Alternatively, uncomment the `[[routes]]` blocks in `wrangler.toml` and redeploy.
 
 ---
 
