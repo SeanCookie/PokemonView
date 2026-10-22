@@ -2535,6 +2535,9 @@
       globalSearchCardNumberOrder: "asc",
       globalSearchPriceOrder: "asc",
       setCardQuery: "",
+      /** How many set-grid tiles to mount (mobile pages this to avoid OOM). */
+      setGridVisibleLimit: 0,
+      setGridLimitKey: "",
       /** From /api/pokesymbols/manifest.bySlug — keys are site slugs (e.g. call-of-legends). */
       pokesymbolsBySlug: {},
       /** Resolved per app set code for logos/symbols (rebuilt from slugs + overrides). */
@@ -2682,11 +2685,32 @@
      * Fetch live TCGPlayer link prices for set tiles still showing "—" after cache hydrate,
      * so inline prices appear without clicking Price sort.
      */
+    function isConstrainedMobileClient() {
+      try {
+        if (typeof navigator !== "undefined" && navigator.connection && navigator.connection.saveData) {
+          return true;
+        }
+        const w = Number(window.innerWidth) || 0;
+        if (w > 0 && w < 700) return true;
+        const ua = String(navigator.userAgent || "");
+        if (w > 0 && w < 920 && /iPhone|iPod|Android.+Mobile/i.test(ua)) return true;
+      } catch (_) {
+        /* ignore */
+      }
+      return false;
+    }
+
+    function getSetGridPageSize() {
+      return isConstrainedMobileClient() ? 24 : 120;
+    }
+
     async function warmMissingInlinePricesForActiveSet(setCode, setName = "", loadToken = setPricesLoadToken) {
       const code = String(setCode || "").trim().toUpperCase();
       if (!code || state.language !== "english") return;
       if (String(state.selectedSetCode || "").toUpperCase() !== code) return;
       if (state.selectedCardNumber) return;
+      // Per-card price fetches on a full set OOMs / freezes phones — rely on link-price hydrate.
+      if (isConstrainedMobileClient()) return;
 
       const selectedSet = getSetByCode(code);
       if (!selectedSet) return;
@@ -2746,6 +2770,8 @@
       state.selectedSetName = setName;
       state.setBoosterPackView = false;
       state.selectedSealedProductId = null;
+      state.setGridVisibleLimit = getSetGridPageSize();
+      state.setGridLimitKey = "";
       if (Object.prototype.hasOwnProperty.call(options, "cardNumber")) {
         state.selectedCardNumber = options.cardNumber;
       } else if (!options.keepCardNumber) {
@@ -2785,7 +2811,18 @@
       }
       if (!hadCards) renderAll();
 
-      void enrichOpenSetView(setCode, setName);
+      if (isConstrainedMobileClient()) {
+        const scheduleIdle =
+          typeof requestIdleCallback === "function"
+            ? (fn) => requestIdleCallback(fn, { timeout: 2500 })
+            : (fn) => setTimeout(fn, 600);
+        scheduleIdle(() => {
+          if (String(state.selectedSetCode || "").toUpperCase() !== setCode) return;
+          void enrichOpenSetView(setCode, setName);
+        });
+      } else {
+        void enrichOpenSetView(setCode, setName);
+      }
     }
 
     async function enrichOpenSetView(setCode, setName = "") {
@@ -10032,6 +10069,28 @@
       const vaultFilteredCards = applySetShinyVaultFilter(rarityFilteredCards, selectedSet.code);
       const galleryFilteredCards = applySetTrainerGalleryFilter(vaultFilteredCards, selectedSet.code);
       const visibleCards = filterCardsBySetQuery(galleryFilteredCards, state.setCardQuery);
+      const pageSize = getSetGridPageSize();
+      const gridKey = [
+        setCodeKey,
+        state.setSort,
+        state.setArtistFilter,
+        state.setRarityFilter,
+        state.setShinyVaultOnly,
+        state.setTrainerGalleryOnly,
+        String(state.setCardQuery || "").trim()
+      ].join("|");
+      if (state.setGridLimitKey !== gridKey) {
+        state.setGridLimitKey = gridKey;
+        state.setGridVisibleLimit = pageSize;
+      }
+      if (!(Number(state.setGridVisibleLimit) > 0)) state.setGridVisibleLimit = pageSize;
+      const constrainGrid = isConstrainedMobileClient();
+      const paintedCards = constrainGrid
+        ? visibleCards.slice(0, Math.min(Number(state.setGridVisibleLimit) || pageSize, visibleCards.length))
+        : visibleCards;
+      const remainingCards = constrainGrid
+        ? Math.max(0, visibleCards.length - paintedCards.length)
+        : 0;
       const pricingMap = state.cardPricingBySetCode[setCodeKey];
       const hasPricing = Boolean(pricingMap && Object.keys(pricingMap).length);
       const linkHydrated = Boolean(state.setLinkPricesHydratedBySetCode[setCodeKey]);
@@ -10061,7 +10120,14 @@
       const priceSortActive = state.setSort === "price" || state.setSort === "price-desc";
       const priceSortArrow = state.setSort === "price-desc" ? "▼" : "▲";
 
-      const cardsMarkup = renderSetCardsGridMarkup(visibleCards);
+      const cardsMarkup = renderSetCardsGridMarkup(paintedCards);
+      const loadMoreMarkup = remainingCards
+        ? `<div class="set-grid-more" style="padding:16px;text-align:center;">
+            <button type="button" id="setGridLoadMore" class="set-filter-tab">
+              Show more (${remainingCards} left)
+            </button>
+          </div>`
+        : "";
 
       const setCoverUrl = resolveSetImage(selectedSet);
       const setCoverFallback = getBulbaFallbackImage(selectedSet.code);
@@ -10184,11 +10250,21 @@
           }</div>
           ${buildCollectionOwnedBannerMarkup(selectedSet.code, allCards)}
           ${cardsMarkup}
+          ${loadMoreMarkup}
         </article>
       `;
 
       state.collectionOwnedPatchToken += 1;
       queueCollectionOwnedPatch(selectedSet.code, allCards);
+
+      const setGridLoadMore = document.getElementById("setGridLoadMore");
+      if (setGridLoadMore) {
+        setGridLoadMore.addEventListener("click", () => {
+          state.setGridVisibleLimit =
+            (Number(state.setGridVisibleLimit) || pageSize) + pageSize;
+          renderSelectedSetDetail();
+        });
+      }
 
       document.getElementById("backToSets").addEventListener("click", () => {
         exitSelectedSetToCatalog();
@@ -10310,7 +10386,12 @@
       // Always sync prices after paint. Async pricing can finish mid-render and get wiped by
       // innerHTML, or finish before tiles exist — without this pass, tiles stay on "—".
       updateSetDetailInlinePrices();
-      if (hasPricing && linkHydrated && state.language === "english") {
+      if (
+        hasPricing &&
+        linkHydrated &&
+        state.language === "english" &&
+        !isConstrainedMobileClient()
+      ) {
         void warmMissingInlinePricesForActiveSet(selectedSet.code, selectedSet.name, setPricesLoadToken);
       }
       } finally {
