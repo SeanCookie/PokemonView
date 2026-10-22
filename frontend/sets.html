@@ -6380,11 +6380,11 @@
         if (isSealedCatalogMode()) return;
         if (state.selectedCardNumber) {
           updateCardDetailTcgPanelPrices();
-        } else if (options.quiet) {
-          updateSetDetailInlinePrices();
-        } else {
-          renderSelectedSetDetail();
+          return;
         }
+        // Never full-remount the set grid for price hydrate — that remounts every tile
+        // (and re-primes) and looks like the page keeps refreshing.
+        updateSetDetailInlinePrices();
       } else if (String(state.query || "").trim() && !state.selectedSetCode) {
         scheduleSetPriceRerender();
       }
@@ -10094,8 +10094,9 @@
       const pricingMap = state.cardPricingBySetCode[setCodeKey];
       const hasPricing = Boolean(pricingMap && Object.keys(pricingMap).length);
       const linkHydrated = Boolean(state.setLinkPricesHydratedBySetCode[setCodeKey]);
-      // Re-prime when pricing/hydration never finished (price updates can race ahead of first paint).
-      if (lastPrimedSetCode !== setCodeKey || !hasPricing || !linkHydrated) {
+      // Prime once per opened set. Re-priming when !hasPricing / !linkHydrated caused a
+      // hydrate → full remount → prime loop that kept refreshing the grid.
+      if (lastPrimedSetCode !== setCodeKey) {
         lastPrimedSetCode = setCodeKey;
         primeActiveSetPrices(selectedSet.code, selectedSet.name);
       }
